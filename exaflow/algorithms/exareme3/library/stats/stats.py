@@ -146,54 +146,6 @@ def kmeans(agg_client, x, n_clusters, tol=1e-4, maxiter=100, random_state=123):
     )
 
 
-def pca(agg_client, x):
-
-    x = _to_numpy(x)
-    n_obs = len(x)
-    sx = np.einsum("ij->j", x)
-    sxx = np.einsum("ij,ij->j", x, x)
-    total_n_obs_arr = agg_client.sum(np.array([float(n_obs)], dtype=float))
-    total_sx = agg_client.sum(sx)
-    total_sxx = agg_client.sum(sxx)
-
-    total_n_obs = float(total_n_obs_arr.reshape(-1)[0])
-    total_sx = np.asarray(total_sx, dtype=float)
-    total_sxx = np.asarray(total_sxx, dtype=float)
-
-    means = total_sx / total_n_obs
-    variances = (total_sxx - total_n_obs * means**2) / (total_n_obs - 1)
-    variances = np.maximum(variances, 0.0)
-    sigmas = np.sqrt(variances)
-    zero_sigma = sigmas == 0
-    if np.any(zero_sigma):
-        sigmas = sigmas.copy()
-        sigmas[zero_sigma] = 1.0
-
-    # Standardize in place to avoid holding an extra full-size buffer.
-    if not x.flags.writeable:
-        x = np.array(x, copy=True)
-
-    np.subtract(x, means, out=x)
-    np.divide(x, sigmas, out=x)
-
-    gramian = np.einsum("ji,jk->ik", x, x)
-    total_gramian = np.asarray(agg_client.sum(gramian), dtype=float).reshape(
-        gramian.shape
-    )
-    covariance = total_gramian / (total_n_obs - 1)
-
-    eigenvalues, eigenvectors = np.linalg.eig(covariance)
-    idx = eigenvalues.argsort()[::-1]
-    eigenvalues = eigenvalues[idx]
-    eigenvectors = eigenvectors[:, idx]
-    eigenvectors = eigenvectors.T
-    return dict(
-        n_obs=int(total_n_obs),
-        eigenvalues=eigenvalues.real.tolist(),
-        eigenvectors=eigenvectors.real.tolist(),
-    )
-
-
 def pearson_correlation(agg_client, x, y, alpha):
     n_obs = len(y)
 
@@ -558,7 +510,6 @@ def roc_curve_binary(y_true, y_score):
 
 # Apply lazy aggregation to key aggregated helpers
 kmeans = lazy_agg()(kmeans)
-pca = lazy_agg()(pca)
 pearson_correlation = lazy_agg()(pearson_correlation)
 ttest_one_sample = lazy_agg()(ttest_one_sample)
 ttest_paired = lazy_agg()(ttest_paired)

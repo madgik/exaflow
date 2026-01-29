@@ -102,12 +102,6 @@ def _expect_logistic(calls):
     "name,fn,args_builder,checker",
     [
         (
-            "pca",
-            stats.pca,
-            lambda: (np.array([[1.0, 2.0], [3.0, 4.0]], dtype=float),),
-            _expect_exact([("batch", 3), ("batch", 1)]),
-        ),
-        (
             "pearson",
             lambda agg, x, y: stats.pearson_correlation(agg, x, y, alpha=0.05),
             lambda: (

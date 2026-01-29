@@ -4,9 +4,9 @@ from typing import List
 import numpy as np
 from pydantic import BaseModel
 
-from exaflow.algorithms.exareme3.library.stats.stats import pca as core_pca
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
+from exaflow.algorithms.federated.pca import FederatedPCA
 from exaflow.worker_communication import BadUserInput
 
 ALGORITHM_NAME = "pca_with_transformation"
@@ -181,9 +181,10 @@ def pca_with_transformation_local_step(
     # ---------------------------
     # 3. Delegate to the base PCA
     # ---------------------------
-    # The base PCA helper will:
-    #   - compute global means/sigmas again
-    #   - standardize all columns
-    #   - compute covariance and eigen-decomposition
-    # This matches the old exaflow PCA-with-transformation behaviour.
-    return core_pca(agg_client, X_values)
+    model = FederatedPCA(agg_client=agg_client)
+    model.fit(X_values)
+    return dict(
+        n_obs=model.n_samples_seen_,
+        eigenvalues=model.explained_variance_.tolist(),
+        eigenvectors=model.components_.tolist(),
+    )

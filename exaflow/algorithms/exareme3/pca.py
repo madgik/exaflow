@@ -2,9 +2,9 @@ from typing import List
 
 from pydantic import BaseModel
 
-from exaflow.algorithms.exareme3.library.stats.stats import pca
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
+from exaflow.algorithms.federated.pca import FederatedPCA
 
 ALGORITHM_NAME = "pca"
 
@@ -40,4 +40,12 @@ class PCAAlgorithm(Algorithm, algname=ALGORITHM_NAME):
 
 @exareme3_udf(with_aggregation_server=True)
 def local_step(agg_client, data, y_vars):
-    return pca(agg_client, data[y_vars])
+    X = data[y_vars]
+
+    model = FederatedPCA(agg_client=agg_client)
+    model.fit(X)
+    return dict(
+        n_obs=model.n_samples_seen_,
+        eigenvalues=model.explained_variance_.tolist(),
+        eigenvectors=model.components_.tolist(),
+    )

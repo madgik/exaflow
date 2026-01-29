@@ -1,14 +1,14 @@
 {
     "name": "pca",
-    "desc": "Computes the principal components of a set of correlated variables. The principal components can then be used to represent the original data with reduced dimensions.",
-    "label": "Principal Component Analysis (PCA)",
+    "desc": "Federated PCA that computes eigenvalues and eigenvectors from aggregated covariances to summarize multivariate structure.",
+    "label": "Principal Component Analysis",
     "enabled": true,
     "components": ["AGGREGATION_SERVER"],
     "type": "exareme3",
     "inputdata": {
         "y": {
-            "label": "Variables",
-            "desc": "A list of numerical variables.",
+            "label": "Variables (features)",
+            "desc": "List of numerical variables used to compute the covariance matrix.",
             "types": [
                 "real",
                 "int"
