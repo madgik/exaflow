@@ -14,7 +14,7 @@ base = importr("base")
 stats = importr("stats")
 car = importr("car")
 
-SPECS_PATH = Path("exareme3", "algorithms", "anova.json")
+SPECS_PATH = Path("exareme3", "algorithms", "anova_twoway.json")
 EXPECTED_PATH = Path(
     "tests",
     "algorithm_validation_tests",

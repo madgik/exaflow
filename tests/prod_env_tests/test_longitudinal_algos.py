@@ -47,7 +47,7 @@ def test_longitudinal_anova_twoway():
         "lefthippocampus": "diff",
         "agegroup": "first",
     }
-    response = algorithm_request("anova", input)
+    response = algorithm_request("anova_twoway", input)
     assert response.status_code == 200, f"{response.status_code}: {response.content}"
 
 

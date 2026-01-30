@@ -1,14 +1,14 @@
 {
-    "name": "anova",
-    "desc": "Test the difference in the means of the dependent variable between two or more groups, when there are two independent covariates.",
-    "label": "Two-way ANOVA",
+    "name": "anova_twoway",
+    "desc": "Federated two-way (factorial) ANOVA for hypothesis testing with two categorical factors, including main effects and interaction (Type I or II sums of squares).",
+    "label": "Two-way ANOVA (OLS)",
     "enabled": true,
     "components": ["AGGREGATION_SERVER"],
     "type": "exareme3",
     "inputdata": {
         "y": {
-            "label": "Variable (dependent)",
-            "desc": "A unique numerical variable.",
+            "label": "Outcome (dependent)",
+            "desc": "Single numerical outcome variable.",
             "types": [
                 "real",
                 "int"
@@ -20,8 +20,8 @@
             "multiple": false
         },
         "x": {
-            "label": "Covariates (independent)",
-            "desc": "Two nominal variables.",
+            "label": "Factors (independent)",
+            "desc": "Exactly two categorical (nominal) factors.",
             "types": [
                 "int",
                 "text"
@@ -35,8 +35,8 @@
     },
     "parameters": {
         "sstype": {
-            "label": "sstype",
-            "desc": "Type of sum of squares to use. It can be 1 or 2.",
+            "label": "Sum of squares type",
+            "desc": "Sum of squares type: 1 (Type I, sequential) or 2 (Type II, marginal).",
             "types": [
                 "int"
             ],

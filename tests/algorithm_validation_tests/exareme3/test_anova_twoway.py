@@ -7,7 +7,7 @@ from tests.algorithm_validation_tests.exareme3.helpers import assert_allclose
 from tests.algorithm_validation_tests.exareme3.helpers import get_test_params
 from tests.algorithm_validation_tests.exareme3.helpers import parse_response
 
-alrorithm_name = "anova"
+alrorithm_name = "anova_twoway"
 expected_file = Path(__file__).parent / "expected" / f"{alrorithm_name}_expected.json"
 
 
@@ -101,5 +101,5 @@ def test_anova_two_way__invalid_input__single_depvar():
         },
         "parameters": {"sstype": 2},
     }
-    response = algorithm_request("anova", test_input)
+    response = algorithm_request("anova_twoway", test_input)
     assert response.status_code == 460

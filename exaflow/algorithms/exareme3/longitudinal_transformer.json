@@ -45,8 +45,8 @@
         }
     },
     "compatible_algorithms": [
-        "anova",
         "anova_oneway",
+        "anova_twoway",
         "linear_regression",
         "linear_regression_cv",
         "logistic_regression",
