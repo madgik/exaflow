@@ -26,126 +26,6 @@ def _to_numpy(x) -> np.ndarray:
     return np.asarray(x, dtype=float)
 
 
-def kmeans(agg_client, x, n_clusters, tol=1e-4, maxiter=100, random_state=123):
-    """
-    Distributed K-means clustering using secure aggregation via agg_client.
-
-    Parameters
-    ----------
-    agg_client
-        Aggregation client providing sum/min/max over lists of floats.
-    x
-        Local data, 2D array-like (n_samples_local, n_features).
-    n_clusters
-        Number of clusters (k).
-    tol
-        Convergence tolerance on the Frobenius norm of center difference.
-    maxiter
-        Maximum number of iterations.
-    random_state
-        Seed for deterministic center initialization.
-
-    Returns
-    -------
-    dict with keys:
-        n_obs: int
-            Total number of observations across all workers.
-        centers: List[List[float]]
-            Final cluster centers (k x n_features).
-    """
-
-    # Convert to numpy array
-    X = _to_numpy(x)
-    if X.ndim == 1:
-        X = X.reshape(-1, 1)
-
-    n_local, n_features = X.shape
-
-    # Global number of observations
-    total_n_obs = int(agg_client.sum([float(n_local)])[0])
-
-    # If there is no data at all, return empty centers
-    if total_n_obs == 0:
-        return dict(n_obs=0, centers=[])
-
-    # ------------------------------------------------------------------
-    # Global initialization of centers using global min/max per feature
-    # ------------------------------------------------------------------
-    if n_local > 0:
-        local_min = np.nanmin(X, axis=0)
-        local_max = np.nanmax(X, axis=0)
-    else:
-        # This worker has no rows but we still need to participate
-        local_min = np.full((n_features,), np.inf, dtype=float)
-        local_max = np.full((n_features,), -np.inf, dtype=float)
-
-    global_min = np.asarray(agg_client.min(local_min), dtype=float)
-    global_max = np.asarray(agg_client.max(local_max), dtype=float)
-
-    rng = np.random.RandomState(seed=random_state)
-    centers = rng.uniform(
-        low=global_min,
-        high=global_max,
-        size=(int(n_clusters), n_features),
-    )
-
-    # ------------------------------------------------------------------
-    # Lloyd's algorithm with distributed aggregation of sums/counts
-    # ------------------------------------------------------------------
-    for _ in range(int(maxiter)):
-        # If this worker has no data, it contributes zero sums/counts
-        if n_local > 0:
-            # Compute squared distances to centers
-            # X: (n_local, n_features)
-            # centers: (k, n_features)
-            # diff: (n_local, k, n_features)
-            diff = X[:, np.newaxis, :] - centers[np.newaxis, :, :]
-            dists_sq = np.einsum("ijk,ijk->ij", diff, diff)
-            labels = np.argmin(dists_sq, axis=1)
-
-            # Local sums and counts per cluster
-            sum_local = np.zeros((n_clusters, n_features), dtype=float)
-            count_local = np.zeros((n_clusters,), dtype=float)
-
-            for k in range(n_clusters):
-                mask = labels == k
-                if np.any(mask):
-                    sum_local[k] = X[mask].sum(axis=0)
-                    count_local[k] = float(mask.sum())
-        else:
-            sum_local = np.zeros((n_clusters, n_features), dtype=float)
-            count_local = np.zeros((n_clusters,), dtype=float)
-
-        # Aggregate sums and counts across workers
-        sum_global_arr = agg_client.sum(sum_local.ravel())
-        count_global_arr = agg_client.sum(count_local)
-        sum_global = np.asarray(sum_global_arr, dtype=float).reshape(
-            (n_clusters, n_features)
-        )
-        count_global = np.asarray(count_global_arr, dtype=float)
-
-        # Update centers; if a cluster has no assigned points, follow the
-        # original Exareme behavior by resetting it to the origin so that
-        # it can capture the smallest-norm observations in the next step.
-        new_centers = np.zeros_like(centers)
-        for k in range(n_clusters):
-            if count_global[k] > 0.0:
-                new_centers[k] = sum_global[k] / count_global[k]
-            else:
-                new_centers[k] = np.zeros(n_features, dtype=float)
-
-        # Check convergence (Frobenius norm)
-        diff_norm = np.linalg.norm(new_centers - centers, ord="fro")
-        centers = new_centers
-        if diff_norm <= tol:
-            break
-
-    return dict(
-        n_obs=int(total_n_obs),
-        centers=centers.tolist(),
-    )
-
-
 def pearson_correlation(agg_client, x, y, alpha):
     n_obs = len(y)
 
@@ -509,7 +389,6 @@ def roc_curve_binary(y_true, y_score):
 
 
 # Apply lazy aggregation to key aggregated helpers
-kmeans = lazy_agg()(kmeans)
 pearson_correlation = lazy_agg()(pearson_correlation)
 ttest_one_sample = lazy_agg()(ttest_one_sample)
 ttest_paired = lazy_agg()(ttest_paired)
