@@ -2,9 +2,9 @@ from typing import List
 
 from pydantic import BaseModel
 
-from exaflow.algorithms.exareme3.library.stats.stats import kmeans
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
+from exaflow.algorithms.federated.kmeans import FederatedKMeans
 
 ALGORITHM_NAME = "kmeans"
 
@@ -44,11 +44,11 @@ class KMeansAlgorithm(Algorithm, algname=ALGORITHM_NAME):
 
 @exareme3_udf(with_aggregation_server=True)
 def local_step(agg_client, data, n_clusters, tol, maxiter):
-    result = kmeans(
+    estimator = FederatedKMeans(
         agg_client=agg_client,
-        x=data,
-        n_clusters=int(n_clusters),
-        tol=float(tol),
-        maxiter=int(maxiter),
-    )
-    return result
+        n_clusters=n_clusters,
+        tol=tol,
+        maxiter=maxiter,
+    ).fit(data)
+
+    return dict(n_obs=estimator.n_obs_, centers=estimator.cluster_centers_)

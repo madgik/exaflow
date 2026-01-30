@@ -1,7 +1,7 @@
 {
     "name": "kmeans",
-    "desc": "K-Means",
-    "label": "K-Means",
+    "desc": "Secure federated K-Means clustering with an aggregation-server-backed initialization",
+    "label": "Federated K-Means",
     "enabled": true,
     "components": ["AGGREGATION_SERVER"],
     "type": "exareme3",
