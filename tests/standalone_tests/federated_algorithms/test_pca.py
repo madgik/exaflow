@@ -5,11 +5,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from exaflow.algorithms.federated.pca import FederatedPCA
-
-
-class DummyAggClient:
-    def sum(self, value):
-        return np.asarray(value, dtype=float)
+from tests.standalone_tests.federated_algorithms.utils import DummyAggClient
 
 
 def _components_match(a, b, atol=1e-8):

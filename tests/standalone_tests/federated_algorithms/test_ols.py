@@ -3,11 +3,7 @@ import pytest
 import statsmodels.api as sm
 
 from exaflow.algorithms.federated.ols import FederatedOLS
-
-
-class DummyAggClient:
-    def sum(self, value):
-        return np.asarray(value, dtype=float)
+from tests.standalone_tests.federated_algorithms.utils import DummyAggClient
 
 
 def _run_and_compare(X_raw, y):

@@ -1,14 +1,14 @@
 {
     "name": "anova_oneway",
-    "desc": "Test the difference in the means of the dependent variable between two or more groups, when there is a single independent covariate.",
+    "desc": "Federated one-way ANOVA for hypothesis testing across groups with Tukey HSD pairwise comparisons and group min/max summaries.",
     "label": "One-way ANOVA",
     "enabled": true,
     "components": ["AGGREGATION_SERVER"],
     "type": "exareme3",
     "inputdata": {
         "y": {
-            "label": "Variable (dependent)",
-            "desc": "A unique continuous variable.",
+            "label": "Outcome (dependent)",
+            "desc": "Single continuous outcome variable.",
             "types": [
                 "real",
                 "int"
@@ -20,8 +20,8 @@
             "multiple": false
         },
         "x": {
-            "label": "Covariate (independent)",
-            "desc": "A unique nominal variable.",
+            "label": "Factor (independent)",
+            "desc": "Single categorical (nominal) factor defining the groups.",
             "types": [
                 "int",
                 "text"
