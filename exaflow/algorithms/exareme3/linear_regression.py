@@ -1,18 +1,14 @@
 from typing import List
 
-import numpy as np
 from pydantic import BaseModel
 
-from exaflow.algorithms.exareme3.library.linear_models import compute_summary_from_stats
-from exaflow.algorithms.exareme3.library.linear_models import (
-    run_distributed_linear_regression,
-)
 from exaflow.algorithms.exareme3.metrics import build_design_matrix
 from exaflow.algorithms.exareme3.metrics import collect_categorical_levels_from_df
 from exaflow.algorithms.exareme3.metrics import construct_design_labels
 from exaflow.algorithms.exareme3.preprocessing import get_dummy_categories
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
+from exaflow.algorithms.federated.ols import FederatedOLS
 
 ALGORITHM_NAME = "linear_regression"
 
@@ -71,30 +67,10 @@ class LinearRegressionAlgorithm(Algorithm, algname=ALGORITHM_NAME):
 
         model_stats = udf_results[0]
 
-        coefficients = np.array(model_stats["coefficients"], dtype=float)
-        xTx_inv = np.array(model_stats["xTx_inv"], dtype=float)
-        rss = float(model_stats["rss"])
-        tss = float(model_stats["tss"])
-        sum_abs_resid = float(model_stats["sum_abs_resid"])
-        n_obs = int(model_stats["n_obs"])
-
-        # Number of predictors excluding intercept
-        p = len(indep_var_names) - 1
-
-        summary = compute_summary_from_stats(
-            coefficients=coefficients,
-            xTx_inv=xTx_inv,
-            rss=rss,
-            tss=tss,
-            sum_abs_resid=sum_abs_resid,
-            n_obs=n_obs,
-            p=p,
-        )
-
         return LinearRegressionResult(
             dependent_var=y_var,
             indep_vars=indep_var_names,
-            **summary,
+            **model_stats,
         )
 
 
@@ -121,5 +97,22 @@ def linear_regression_local_step(
         numerical_vars=numerical_vars,
     )
 
-    model_stats = run_distributed_linear_regression(agg_client, X, y)
-    return model_stats
+    model = FederatedOLS(agg_client=agg_client)
+    results = model.fit(X, y)
+    conf_int = results.conf_int()
+    return {
+        "n_obs": model.nobs,
+        "df_resid": model.df_resid,
+        "df_model": model.df_model,
+        "rse": model.rse,
+        "r_squared": model.rsquared,
+        "r_squared_adjusted": model.rsquared_adj,
+        "f_stat": model.fvalue,
+        "f_pvalue": model.f_pvalue,
+        "coefficients": results.params.tolist(),
+        "std_err": results.bse.tolist(),
+        "t_stats": results.tvalues.tolist(),
+        "pvalues": results.pvalues.tolist(),
+        "lower_ci": conf_int[:, 0].tolist() if conf_int.size else [],
+        "upper_ci": conf_int[:, 1].tolist() if conf_int.size else [],
+    }

@@ -5,11 +5,9 @@ from typing import Optional
 import scipy.stats as st
 from pydantic import BaseModel
 
-from exaflow.algorithms.exareme3.library.linear_models import (
-    run_distributed_linear_regression,
-)
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
+from exaflow.algorithms.federated.ols import FederatedOLS
 from exaflow.worker_communication import BadUserInput
 
 ALGORITHM_NAME = "anova"
@@ -104,11 +102,12 @@ def anova_twoway_local_step(agg_client, data, x1, x2, y, levels_a, levels_b):
     }
 
     def _fit_model(X: np.ndarray):
-        stats = run_distributed_linear_regression(agg_client, X, y_vector)
+        model = FederatedOLS(agg_client=agg_client)
+        model.fit(X, y_vector)
         return {
-            "rss": stats["rss"],
-            "n_obs": stats["n_obs"],
-            "rank": stats["rank"],
+            "rss": model.rss,
+            "n_obs": model.nobs,
+            "rank": model.rank_,
         }
 
     return {name: _fit_model(X) for name, X in design_mats.items()}

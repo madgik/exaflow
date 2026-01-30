@@ -1,14 +1,14 @@
 {
     "name": "linear_regression",
-    "desc": "Statistical method that models the relationship between a dependent variable and one or more independent variables by fitting a linear model to the observed data by ordinary least squares (OLS).",
-    "label": "Linear Regression",
+    "desc": "Federated ordinary least squares (OLS) linear regression with global coefficients, standard errors, t-tests, p-values, confidence intervals, and fit statistics.",
+    "label": "Linear Regression (OLS)",
     "enabled": true,
     "components": ["AGGREGATION_SERVER"],
     "type": "exareme3",
     "inputdata": {
         "y": {
-            "label": "Variable (dependent)",
-            "desc": "A unique numerical variable.",
+            "label": "Outcome (dependent)",
+            "desc": "Single numerical outcome variable.",
             "types": [
                 "real"
             ],
@@ -20,7 +20,7 @@
         },
         "x": {
             "label": "Covariates (independent)",
-            "desc": "One or more variables. Can be numerical or nominal. For nominal variables dummy encoding is used.",
+            "desc": "One or more variables (numerical or categorical). Categorical covariates are dummy-encoded.",
             "types": [
                 "real",
                 "int",

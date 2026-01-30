@@ -7,15 +7,13 @@ from sklearn.model_selection import KFold
 
 from exaflow.algorithms.exareme3.crossvalidation import buffered_kfold_split
 from exaflow.algorithms.exareme3.crossvalidation import min_rows_for_cv
-from exaflow.algorithms.exareme3.library.linear_models import (
-    run_distributed_linear_regression,
-)
 from exaflow.algorithms.exareme3.metrics import build_design_matrix
 from exaflow.algorithms.exareme3.metrics import collect_categorical_levels_from_df
 from exaflow.algorithms.exareme3.metrics import construct_design_labels
 from exaflow.algorithms.exareme3.preprocessing import get_dummy_categories
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
+from exaflow.algorithms.federated.ols import FederatedOLS
 from exaflow.worker_communication import BadUserInput
 
 ALGORITHM_NAME = "linear_regression_cv"
@@ -201,14 +199,11 @@ def linear_regression_cv_local_step(
         # --------------------------
         # Training: global OLS model
         # --------------------------
-        train_stats = run_distributed_linear_regression(
-            agg_client=agg_client,
-            X=X_train,
-            y=y_train,
-        )
+        model = FederatedOLS(agg_client=agg_client)
+        model.fit(X_train, y_train)
 
-        n_train = int(train_stats["n_obs"])
-        coeff = np.asarray(train_stats["coefficients"], dtype=float).reshape(-1, 1)
+        n_train = int(model.nobs)
+        coeff = np.asarray(model.params, dtype=float).reshape(-1, 1)
 
         if n_train == 0 or coeff.size == 0:
             n_obs_per_fold.append(0)
