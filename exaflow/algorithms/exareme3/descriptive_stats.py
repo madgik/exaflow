@@ -1,16 +1,16 @@
-from collections import Counter
-from functools import reduce
 from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Union
 
-import numpy as np
 import pandas as pd
 from pydantic import BaseModel
 
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
+from exaflow.algorithms.federated.descriptive_stats import (
+    FederatedDescriptiveStatistics,
+)
 
 DATASET_VAR_NAME = "dataset"
 ALGORITHM_NAME = "descriptive_stats"
@@ -83,11 +83,17 @@ class DescriptiveStatisticsAlgorithm(Algorithm, algname=ALGORITHM_NAME):
             var for var in variable_names if self.metadata[var]["is_categorical"]
         ]
 
+        nominal_levels = {}
+        for var in nominal_vars:
+            enums = self.metadata[var].get("enumerations") or {}
+            nominal_levels[var] = [code for code in enums.keys()]
+
         local_results = self.run_local_udf(
             func=local_step,
             kw_args={
                 "numerical_vars": numerical_vars,
                 "nominal_vars": nominal_vars,
+                "nominal_levels": nominal_levels,
             },
         )
 
@@ -98,15 +104,22 @@ class DescriptiveStatisticsAlgorithm(Algorithm, algname=ALGORITHM_NAME):
             rec for worker_res in local_results for rec in worker_res["recs_modbased"]
         ]
 
-        append_missing_datasets(variable_names, self.inputdata.datasets, recs_varbased)
-        append_missing_datasets(variable_names, self.inputdata.datasets, recs_modbased)
-
-        recs_varbased += [
-            reduce_recs_for_var(recs_varbased, var) for var in variable_names
-        ]
-        recs_modbased += [
-            reduce_recs_for_var(recs_modbased, var) for var in variable_names
-        ]
+        recs_varbased = _append_missing_datasets(
+            records=recs_varbased,
+            variables=variable_names,
+            datasets=self.inputdata.datasets,
+        )
+        recs_modbased = _append_missing_datasets(
+            records=recs_modbased,
+            variables=variable_names,
+            datasets=self.inputdata.datasets,
+        )
+        recs_varbased += local_results[0][
+            "global_varbased"
+        ]  # The global stats are the same in all responses
+        recs_modbased += local_results[0][
+            "global_modbased"
+        ]  # The global stats are the same in all responses
 
         return Result(
             variable_based=[Variable.from_record(rec) for rec in recs_varbased],
@@ -114,8 +127,8 @@ class DescriptiveStatisticsAlgorithm(Algorithm, algname=ALGORITHM_NAME):
         )
 
 
-@exareme3_udf()
-def local_step(data, numerical_vars, nominal_vars):
+@exareme3_udf(with_aggregation_server=True)
+def local_step(agg_client, data, numerical_vars, nominal_vars, nominal_levels):
     from exaflow.worker import config as worker_config
 
     min_row_count = worker_config.privacy.minimum_row_count
@@ -124,159 +137,31 @@ def local_step(data, numerical_vars, nominal_vars):
         if isinstance(ds, pd.DataFrame):
             data["dataset"] = ds.iloc[:, 0]
 
-    return _compute_local_stats(data, numerical_vars, nominal_vars, min_row_count)
-
-
-def _compute_local_stats(data, numerical_vars, nominal_vars, min_row_count):
-    datasets = set(data["dataset"]) if "dataset" in data.columns else ["unknown"]
-    recs_varbased = [
-        stats
-        for dataset in datasets
-        for stats in _compute_stats_records(
-            data[data["dataset"] == dataset],
-            dataset,
-            numerical_vars,
-            nominal_vars,
-            min_row_count,
-        )
-    ]
-
-    data_nona = data.dropna()
-    recs_modbased = [
-        stats
-        for dataset in datasets
-        for stats in _compute_stats_records(
-            data_nona[data_nona.dataset == dataset],
-            dataset,
-            numerical_vars,
-            nominal_vars,
-            min_row_count,
-        )
-    ]
-
+    descriptive_stats = FederatedDescriptiveStatistics(agg_client=agg_client)
+    result = descriptive_stats.describe(
+        data=data,
+        numerical_vars=numerical_vars,
+        nominal_vars=nominal_vars,
+        min_row_count=min_row_count,
+        nominal_levels=nominal_levels,
+        dataset_col=DATASET_VAR_NAME,
+    )
     return {
-        "recs_varbased": recs_varbased,
-        "recs_modbased": recs_modbased,
+        "recs_varbased": result.recs_varbased,
+        "recs_modbased": result.recs_modbased,
+        "global_varbased": result.global_varbased,
+        "global_modbased": result.global_modbased,
     }
 
 
-def _compute_stats_records(
-    df: pd.DataFrame,
-    dataset: str,
-    numerical_vars: List[str],
-    nominal_vars: List[str],
-    min_row_count: int,
-):
-    def record(var, dataset, payload):
-        return dict(variable=var, dataset=dataset, data=payload)
-
-    variables = numerical_vars + nominal_vars
-    if len(df) < min_row_count:
-        return [record(var, dataset, None) for var in variables]
-
-    num_total = len(df)
-    descr_all = df.describe(include="all")
-    descr_numerical = (
-        df[numerical_vars].describe() if numerical_vars else pd.DataFrame()
-    )
-    num_dtps = descr_all.loc["count"].to_dict()
-    num_na = {var: num_total - num_dtps.get(var, 0) for var in variables}
-
-    numerical_recs = []
-    for var in numerical_vars:
-        if num_dtps.get(var, 0) < min_row_count:
-            numerical_recs.append(record(var, dataset, None))
-            continue
-        numerical_recs.append(
-            record(
-                var,
-                dataset,
-                dict(
-                    num_dtps=num_dtps[var],
-                    num_na=num_na[var],
-                    num_total=num_total,
-                    sx=df[numerical_vars].sum().to_dict()[var],
-                    sxx=(df[numerical_vars] ** 2).sum().to_dict()[var],
-                    q1=descr_numerical.loc["25%"][var],
-                    q2=descr_numerical.loc["50%"][var],
-                    q3=descr_numerical.loc["75%"][var],
-                    mean=descr_numerical.loc["mean"][var],
-                    std=(
-                        None
-                        if np.isnan(descr_numerical.loc["std"][var])
-                        else descr_numerical.loc["std"][var]
-                    ),
-                    min=descr_numerical.loc["min"][var],
-                    max=descr_numerical.loc["max"][var],
-                ),
-            )
-        )
-
-    nominal_recs = []
-    for var in nominal_vars:
-        if num_dtps.get(var, 0) < min_row_count:
-            nominal_recs.append(record(var, dataset, None))
-            continue
-        nominal_recs.append(
-            record(
-                var,
-                dataset,
-                dict(
-                    num_dtps=num_dtps[var],
-                    num_na=num_na[var],
-                    num_total=num_total,
-                    counts=df[var].value_counts().to_dict(),
-                ),
-            )
-        )
-
-    return numerical_recs + nominal_recs
-
-
-def reduce_recs_for_var(records, variable):
-    var_records = [r for r in records if r["variable"] == variable and not isempty(r)]
-    if not var_records:
-        return dict(variable=variable, dataset="all datasets", data=None)
-    reduced_data = reduce(add_records, [rec["data"] for rec in var_records])
-    if len(var_records) == 1:
-        reduced_data = {
-            k: v for k, v in reduced_data.items() if k not in ("q1", "q2", "q3")
-        }
-    return dict(variable=variable, dataset="all datasets", data=reduced_data)
-
-
-def add_records(r1, r2):
-    result = {}
-    for key in ["num_dtps", "num_na", "num_total"]:
-        result[key] = r1[key] + r2[key]
-    if "counts" in r1:
-        result["counts"] = Counter(r1["counts"]) + Counter(r2["counts"])
-        return result
-    for key in ["sx", "sxx"]:
-        result[key] = r1[key] + r2[key]
-    result["min"] = min(r1["min"], r2["min"])
-    result["max"] = max(r1["max"], r2["max"])
-    sx = result["sx"]
-    sxx = result["sxx"]
-    num = result["num_dtps"]
-    mean = sx / num
-    result["mean"] = mean
-    variance = sxx / (num - 1) - 2 * mean * sx / (num - 1) + num / (num - 1) * mean**2
-    result["std"] = None if np.isnan(variance) else float(np.sqrt(max(variance, 0.0)))
-    return result
-
-
-def isempty(rec):
-    return rec["data"] is None
-
-
-def append_missing_datasets(vars, datasets, records):
+def _append_missing_datasets(*, records, variables, datasets):
     def missing(var, dataset):
         return not any(
             r for r in records if r["variable"] == var and r["dataset"] == dataset
         )
 
-    for var in vars:
+    for var in variables:
         for dataset in datasets:
             if missing(var, dataset):
                 records.append({"variable": var, "dataset": dataset, "data": None})
+    return records

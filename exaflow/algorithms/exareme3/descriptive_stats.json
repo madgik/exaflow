@@ -1,9 +1,9 @@
 {
     "name": "descriptive_stats",
-    "desc": "Descriptive statistics",
-    "label": "Descriptive statistics",
+    "desc": "Federated descriptive statistics mirroring statsmodels Describe: per-dataset records plus aggregation server-backed global summaries.",
+    "label": "Descriptive stats (Describe)",
     "enabled": true,
-    "components": [],
+    "components": ["AGGREGATION_SERVER"],
     "type": "exareme3",
     "inputdata": {
         "y": {
