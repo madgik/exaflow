@@ -4,6 +4,12 @@ import numpy as np
 import pyarrow as pa
 
 
+class BadInputError(ValueError):
+    def __init__(self, message):
+        super().__init__(message)
+        self.message = message
+
+
 def _to_numpy(x) -> np.ndarray:
     """Convert input (Arrow Table/Array or list/array) to NumPy array."""
     if isinstance(x, pa.Table):

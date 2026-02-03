@@ -11,12 +11,14 @@ import exaflow.protos.aggregation_server.aggregation_server_pb2_grpc as pb2_grpc
 
 from .constants import AggregationType
 from .serialization import bytes_to_ndarray
+from .serialization import bytes_to_values
 from .serialization import ndarray_to_bytes
+from .serialization import values_to_bytes
 
 logger = logging.getLogger(__name__)
 
 
-ArrayInput = NDArray[np.floating] | Sequence[float]
+ArrayInput = NDArray | Sequence[object]
 
 DEFAULT_AGGREGATION_PORT = "50051"
 
@@ -74,13 +76,19 @@ class BaseAggregationClient:
     def _aggregate_batch_request(
         self, ops: list[tuple[AggregationType, ArrayInput]], *, step: int | None = None
     ) -> list[NDArray[np.floating]]:
-        operations = [
-            pb2.Operation(
-                aggregation_type=op.value,
-                tensor=ndarray_to_bytes(np.asarray(vals, dtype=np.float64)),
+        operations = []
+        for op, vals in ops:
+            if op == AggregationType.UNION:
+                tensor = values_to_bytes(vals)
+            else:
+                array = np.asarray(vals, dtype=np.float64)
+                tensor = ndarray_to_bytes(array)
+            operations.append(
+                pb2.Operation(
+                    aggregation_type=op.value,
+                    tensor=tensor,
+                )
             )
-            for op, vals in ops
-        ]
         req = pb2.AggregateRequest(
             request_id=self._request_id,
             step=step or self._next_step(),
@@ -88,7 +96,13 @@ class BaseAggregationClient:
         )
         resp = self._stub.Aggregate(req)
         if resp.tensors:
-            return [bytes_to_ndarray(tensor) for tensor in resp.tensors]
+            decoded = []
+            for (op, _), tensor in zip(ops, resp.tensors):
+                if op == AggregationType.UNION:
+                    decoded.append(bytes_to_values(tensor))
+                else:
+                    decoded.append(bytes_to_ndarray(tensor))
+            return decoded
 
         results = resp.results
         offsets = resp.offsets

@@ -1,14 +1,14 @@
 {
     "name": "linear_regression_cv",
-    "desc": "Method used to evaluate the performance of a linear regression model. It involves splitting the data into training and validation sets and testing the model's ability to generalize to new data by using the validation set.",
-    "label": "Linear Regression Cross-validation",
+    "desc": "Evaluates a federated linear regression model using K-fold cross-validation. Each fold trains a global model and reports metrics over the held-out data.",
+    "label": "Linear Regression (K-Fold CV)",
     "enabled": true,
     "components": ["AGGREGATION_SERVER"],
     "type": "exareme3",
     "inputdata": {
         "y": {
-            "label": "Variable (dependent)",
-            "desc": "A unique numerical variable.",
+            "label": "Dependent Variable",
+            "desc": "Single numerical target variable.",
             "types": [
                 "real"
             ],
@@ -19,8 +19,8 @@
             "multiple": false
         },
         "x": {
-            "label": "Covariates (independent)",
-            "desc": "One or more variables. Can be numerical or nominal. For nominal variables dummy encoding is used.",
+            "label": "Independent Variables",
+            "desc": "One or more predictors (numerical or nominal). Nominal variables are one-hot encoded with a global schema across workers.",
             "types": [
                 "real",
                 "int",
@@ -36,8 +36,8 @@
     },
     "parameters": {
         "n_splits": {
-            "label": "Number of splits",
-            "desc": "Number of splits for cross-validation.",
+            "label": "Number of Folds",
+            "desc": "Number of folds for K-fold cross-validation.",
             "types": [
                 "int"
             ],

@@ -334,6 +334,26 @@ def test_batch_aggregation_sum_and_max(controller_factory, worker_factory):
         np.testing.assert_allclose(response[1], expected_max)
 
 
+def test_batch_aggregation_union(controller_factory, worker_factory):
+    request_id = "batch-union"
+    controller = controller_factory(request_id)
+    controller.configure(2)
+    worker_a = worker_factory(request_id)
+    worker_b = worker_factory(request_id)
+
+    ops_a = [(AggregationType.UNION, ["b", "a", "a"])]
+    ops_b = [(AggregationType.UNION, ["c", "a"])]
+
+    responses = _run_parallel(
+        lambda: worker_a._aggregate_batch_request(ops_a),
+        lambda: worker_b._aggregate_batch_request(ops_b),
+    )
+    expected_union = np.array(["a", "b", "c"], dtype=object)
+    for response in responses:
+        assert len(response) == 1
+        np.testing.assert_array_equal(response[0], expected_union)
+
+
 def test_batch_single_worker_request(controller_factory, worker_factory):
     request_id = "batch-single"
     controller = controller_factory(request_id)

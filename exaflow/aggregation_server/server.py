@@ -28,7 +28,9 @@ from exaflow.protos.aggregation_server.aggregation_server_pb2_grpc import (
 
 from .constants import AggregationType
 from .serialization import bytes_to_ndarray
+from .serialization import bytes_to_values
 from .serialization import ndarray_to_bytes
+from .serialization import values_to_bytes
 
 logger = logging.getLogger("AggregationServer")
 """
@@ -174,16 +176,19 @@ class AggregationContext:
         assert self.batch_vectors is not None
         assert self.batch_vector_lengths is not None
         for idx, op in enumerate(request.operations):
-            vector = decode_fn(op.tensor, op.vectors, request.request_id)
+            vector = decode_fn(
+                op.tensor, op.vectors, op.aggregation_type, request.request_id
+            )
             vector_length = len(vector)
-            expected_len = self.batch_vector_lengths[idx]
-            if expected_len is None:
-                self.batch_vector_lengths[idx] = vector_length
-            elif vector_length != expected_len:
-                raise ValueError(
-                    f"All vectors in batch op {idx} must have the same length "
-                    f"(expected {expected_len}, got {vector_length})"
-                )
+            if op.aggregation_type != AggregationType.UNION.value:
+                expected_len = self.batch_vector_lengths[idx]
+                if expected_len is None:
+                    self.batch_vector_lengths[idx] = vector_length
+                elif vector_length != expected_len:
+                    raise ValueError(
+                        f"All vectors in batch op {idx} must have the same length "
+                        f"(expected {expected_len}, got {vector_length})"
+                    )
             self.batch_vectors[idx].append(vector)
 
         return len(self.batch_vectors[0])
@@ -198,8 +203,11 @@ class AggregationContext:
             vectors = self.batch_vectors[idx]
             res = agg_fn(vectors)
             tensor_results.append(res)
-            flat_results.extend(res.tolist())
-            offsets.append(len(flat_results))
+            if op_type == AggregationType.UNION.value:
+                offsets.append(len(flat_results))
+            else:
+                flat_results.extend(res.tolist())
+                offsets.append(len(flat_results))
 
         self.batch_result = (flat_results, offsets, tensor_results)
         self.state = AggregationState.READY
@@ -280,8 +288,12 @@ class AggregationServer(AggregationServerServicer):
             context.abort(grpc.StatusCode.INVALID_ARGUMENT, msg)
         return agg_ctx
 
-    def _decode_vector(self, tensor: bytes, vectors, request_id: str) -> np.ndarray:
+    def _decode_vector(
+        self, tensor: bytes, vectors, aggregation_type: str, request_id: str
+    ) -> np.ndarray:
         if tensor:
+            if aggregation_type == AggregationType.UNION.value:
+                return bytes_to_values(tensor)
             return bytes_to_ndarray(tensor)
         if vectors:
             return np.asarray(vectors, dtype=np.float64)
@@ -303,6 +315,10 @@ class AggregationServer(AggregationServerServicer):
             return lambda vectors: np.min(vectors, axis=0)
         if agg_type == AggregationType.MAX:
             return lambda vectors: np.max(vectors, axis=0)
+        if agg_type == AggregationType.UNION:
+            return lambda vectors: np.asarray(
+                sorted(set(np.concatenate(vectors))), dtype=object
+            )
 
         raise ValueError(f"Unhandled aggregation type '{aggregation_type}'")
 
@@ -377,8 +393,8 @@ class AggregationServer(AggregationServerServicer):
                 agg_ctx.ensure_step(request.step, request.operations, context)
                 agg_ctx.store_vectors(
                     request,
-                    lambda tensor, vectors, request_id=request.request_id: self._decode_vector(
-                        tensor, vectors, request_id
+                    lambda tensor, vectors, aggregation_type, request_id=request.request_id: self._decode_vector(
+                        tensor, vectors, aggregation_type, request_id
                     ),
                 )
 
@@ -404,7 +420,14 @@ class AggregationServer(AggregationServerServicer):
         return AggregateResponse(
             results=results,
             offsets=offsets,
-            tensors=[ndarray_to_bytes(tensor) for tensor in tensors],
+            tensors=[
+                (
+                    values_to_bytes(tensor)
+                    if tensor.dtype == object
+                    else ndarray_to_bytes(tensor)
+                )
+                for tensor in tensors
+            ],
         )
 
     def Cleanup(self, request, context):
