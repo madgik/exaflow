@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.anova_twoway import FederatedAnovaTwoWay
+from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.worker_communication import BadUserInput
 
 ALGORITHM_NAME = "anova_twoway"
@@ -68,7 +69,7 @@ def anova_twoway_local_step(agg_client, data, x1, x2, y, levels_a, levels_b, sst
             levels_a=levels_a,
             levels_b=levels_b,
         )
-    except ValueError as exc:
+    except BadInputError as exc:
         raise BadUserInput(str(exc))
 
     terms = model.terms_
