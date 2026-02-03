@@ -3,11 +3,17 @@ from __future__ import annotations
 import numpy as np
 from scipy import stats
 
+from exaflow.algorithms.federated.agg_client import AggregationClient
+from exaflow.algorithms.federated.interfaces import FederatedEstimator
+from exaflow.algorithms.federated.interfaces import FederatedEstimatorResults
+
 ALPHA = 0.05
 
 
-class FederatedOLSResults:
+class FederatedOLSResults(FederatedEstimatorResults):
     """Container for fitted federated OLS statistics."""
+
+    nobs: int
 
     def __init__(
         self,
@@ -50,17 +56,11 @@ class FederatedOLSResults:
         self.xTx_inv_ = np.asarray(xTx_inv_, dtype=float)
         self.cov_params = np.asarray(cov_params, dtype=float)
 
-    @property
-    def coefficients(self):
-        return self.params
-
-    @property
-    def std_err(self):
-        return self.bse
-
-    @property
-    def t_stats(self):
-        return self.tvalues
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        if self.params.size == 0:
+            return np.zeros((X.shape[0], 1), dtype=float)
+        coeff = self.params.reshape(-1, 1)
+        return np.asarray(X, dtype=float) @ coeff
 
     def conf_int(self, alpha: float = ALPHA):
         if self.df_resid <= 0 or self.params.size == 0:
@@ -71,11 +71,10 @@ class FederatedOLSResults:
         return np.stack([lower, upper], axis=1)
 
 
-class FederatedOLS:
+class FederatedOLS(FederatedEstimator):
     """Federated Ordinary Least Squares with statsmodels-like results."""
 
-    def __init__(self, agg_client, *, fit_intercept: bool = True):
-        self.agg_client = agg_client
+    def __init__(self, *, fit_intercept: bool = True):
         self.fit_intercept = fit_intercept
         self.results: FederatedOLSResults | None = None
         self.params = np.array([], dtype=float)
@@ -97,7 +96,13 @@ class FederatedOLS:
         self.xTx_inv_ = np.zeros((0, 0), dtype=float)
         self.cov_params = np.zeros((0, 0), dtype=float)
 
-    def fit(self, X, y) -> FederatedOLSResults:
+    def fit(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        *,
+        agg_client: AggregationClient,
+    ) -> FederatedOLSResults:
         """
         Unlike statsmodels’ OLS, we call fit with X/y, since the federated
         aggregate client will recompute sufficient statistics every time
@@ -106,7 +111,7 @@ class FederatedOLS:
         X = np.asarray(X, dtype=float)
         y = np.asarray(y, dtype=float).reshape(-1, 1)
 
-        stats_dict = self._collect_stats(X, y)
+        stats_dict = self._collect_stats(X, y, agg_client)
 
         coefficients = np.asarray(stats_dict["coefficients"], dtype=float)
         xTx_inv = np.asarray(stats_dict["xTx_inv"], dtype=float)
@@ -180,12 +185,9 @@ class FederatedOLS:
 
         return results
 
-    def conf_int(self, alpha: float = ALPHA):
-        if self.results is None:
-            return np.empty((0, 2), dtype=float)
-        return self.results.conf_int(alpha)
-
-    def _collect_stats(self, X: np.ndarray, y: np.ndarray):
+    def _collect_stats(
+        self, X: np.ndarray, y: np.ndarray, agg_client: AggregationClient
+    ):
         n_features = X.shape[1]
 
         xTx_local = X.T @ X if n_features > 0 else np.zeros((0, 0), dtype=float)
@@ -195,27 +197,27 @@ class FederatedOLS:
         sum_sq_y_local = float((y**2).sum())
 
         if n_features > 0:
-            xTx = np.asarray(self.agg_client.sum(xTx_local), dtype=float)
-            xTy = np.asarray(self.agg_client.sum(xTy_local), dtype=float)
+            xTx = np.asarray(agg_client.sum(xTx_local), dtype=float)
+            xTy = np.asarray(agg_client.sum(xTy_local), dtype=float)
         else:
             xTx = np.zeros((0, 0), dtype=float)
             xTy = np.zeros((0, 1), dtype=float)
 
         n_obs = int(
             np.asarray(
-                self.agg_client.sum(np.array([n_obs_local], dtype=float)),
+                agg_client.sum(np.array([n_obs_local], dtype=float)),
                 dtype=float,
             ).reshape(-1)[0]
         )
         sum_y = float(
             np.asarray(
-                self.agg_client.sum(np.array([sum_y_local], dtype=float)),
+                agg_client.sum(np.array([sum_y_local], dtype=float)),
                 dtype=float,
             ).reshape(-1)[0]
         )
         sum_sq_y = float(
             np.asarray(
-                self.agg_client.sum(np.array([sum_sq_y_local], dtype=float)),
+                agg_client.sum(np.array([sum_sq_y_local], dtype=float)),
                 dtype=float,
             ).reshape(-1)[0]
         )
@@ -238,10 +240,8 @@ class FederatedOLS:
             rss_local = 0.0
             sum_abs_resid_local = 0.0
 
-        rss_arr = self.agg_client.sum(np.array([rss_local], dtype=float))
-        sum_abs_resid_arr = self.agg_client.sum(
-            np.array([sum_abs_resid_local], dtype=float)
-        )
+        rss_arr = agg_client.sum(np.array([rss_local], dtype=float))
+        sum_abs_resid_arr = agg_client.sum(np.array([sum_abs_resid_local], dtype=float))
         rss = float(np.asarray(rss_arr, dtype=float).reshape(-1)[0])
         sum_abs_resid = float(np.asarray(sum_abs_resid_arr, dtype=float).reshape(-1)[0])
 

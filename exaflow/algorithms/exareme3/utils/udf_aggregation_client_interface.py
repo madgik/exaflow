@@ -1,25 +1,19 @@
 from abc import ABC
 from abc import abstractmethod
-from typing import Sequence
-from typing import Union
 
 import numpy as np
 
 from exaflow.aggregation_clients import AggregationType
-
-ArrayInput = Union[
-    Sequence[float],
-    Sequence[Sequence[float]],
-    np.ndarray,
-]
+from exaflow.algorithms.federated.agg_client import AggregationClient
+from exaflow.algorithms.federated.agg_client import ArrayInput
 
 
-class Exareme3UDFAggregationClientI(ABC):
+class Exareme3UDFAggregationClientI(AggregationClient, ABC):
     """
     Minimal interface passed into UDFs when `with_aggregation_server=True`.
 
     Implementations must perform secure aggregation across workers according to
-    the requested `AggregationType` (SUM/MIN/MAX). UDFs should pass plain numpy
+    the requested `AggregationType` (SUM/MIN/MAX/UNION). UDFs should pass plain numpy
     arrays or array-likes; the implementation is responsible for returning a
     numpy array of the aggregated result.
     """
@@ -40,3 +34,6 @@ class Exareme3UDFAggregationClientI(ABC):
 
     def max(self, values: ArrayInput) -> np.ndarray:
         return self.aggregate(AggregationType.MAX, values)
+
+    def union(self, values: list[object]) -> np.ndarray:
+        return self.aggregate(AggregationType.UNION, values)

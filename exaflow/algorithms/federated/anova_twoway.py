@@ -148,8 +148,8 @@ class FederatedAnovaTwoWay:
         }
 
         def _fit_model(X: np.ndarray):
-            model = FederatedOLS(agg_client=self.agg_client)
-            model.fit(X, y_vector)
+            model = FederatedOLS()
+            model.fit(X, y_vector, agg_client=self.agg_client)
             return {
                 "rss": float(model.rss),
                 "n_obs": int(model.nobs),

@@ -11,8 +11,8 @@ def _run_and_compare(X_raw, y):
     y = np.asarray(y, dtype=float).reshape(-1, 1)
 
     agg_client = DummyAggClient()
-    model = FederatedOLS(agg_client=agg_client)
-    model.fit(X, y)
+    model = FederatedOLS()
+    model.fit(X, y, agg_client=agg_client)
 
     sm_model = sm.OLS(y, X).fit()
 
