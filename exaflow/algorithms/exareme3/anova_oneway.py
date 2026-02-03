@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.anova_oneway import FederatedAnovaOneWay
+from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.worker_communication import BadUserInput
 
 ALGORITHM_NAME = "anova_oneway"
@@ -124,7 +125,7 @@ def anova_oneway_local_step(agg_client, data, x_var, y_var, covar_enums):
     model = FederatedAnovaOneWay(agg_client=agg_client)
     try:
         model.fit(groups=groups, categories=covar_enums)
-    except ValueError as exc:
+    except BadInputError as exc:
         raise BadUserInput(str(exc))
 
     return {

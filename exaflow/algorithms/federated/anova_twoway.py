@@ -10,6 +10,7 @@ import scipy.stats as st
 from patsy import dmatrix
 
 from exaflow.algorithms.federated.ols import FederatedOLS
+from exaflow.algorithms.federated.utils import BadInputError
 
 
 class FederatedAnovaTwoWay:
@@ -68,12 +69,12 @@ class FederatedAnovaTwoWay:
         levels_a = list(levels_a)
         levels_b = list(levels_b)
         if len(levels_a) < 2:
-            raise ValueError(
+            raise BadInputError(
                 f"The variable {x1} has less than 2 levels and Anova cannot be "
                 "performed. Please choose another variable."
             )
         if len(levels_b) < 2:
-            raise ValueError(
+            raise BadInputError(
                 f"The variable {x2} has less than 2 levels and Anova cannot be "
                 "performed. Please choose another variable."
             )
@@ -209,13 +210,13 @@ class FederatedAnovaTwoWay:
         df_resid = max(n_obs - rank_full, 0)
 
         if df_a == 0:
-            raise ValueError(
+            raise BadInputError(
                 f"The data of variable {x1_name} contain less than 2 levels and "
                 "Anova cannot be performed. Please select more data or choose another "
                 "variable."
             )
         if df_b == 0:
-            raise ValueError(
+            raise BadInputError(
                 f"The data of variable {x2_name} contain less than 2 levels and "
                 "Anova cannot be performed. Please select more data or choose another "
                 "variable."

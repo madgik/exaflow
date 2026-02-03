@@ -9,6 +9,8 @@ import pandas as pd
 import scipy.stats as st
 from statsmodels.stats.libqsturng import psturng
 
+from exaflow.algorithms.federated.utils import BadInputError
+
 
 class FederatedAnovaOneWay:
     """
@@ -58,7 +60,7 @@ class FederatedAnovaOneWay:
         group_stats_index = stats["group_stats_index"]
 
         if len(group_stats_index) < 2:
-            raise ValueError(
+            raise BadInputError(
                 "Cannot perform Anova one-way. Covariable has only one level."
             )
 
