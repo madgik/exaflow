@@ -1,13 +1,13 @@
 {
     "name": "logistic_regression",
-    "desc": "Statistical method modeling the relationship between a binary dependent variable and independent variables using logistic regression.",
+    "desc": "Federated logistic regression for a binary outcome, with one-hot encoding for categorical covariates.",
     "label": "Logistic Regression",
     "enabled": true,
     "components": ["AGGREGATION_SERVER"],
     "type": "exareme3",
     "inputdata": {
         "y": {
-            "label": "Variable (dependent)",
+            "label": "Dependent variable (binary)",
             "desc": "A unique nominal variable. The variable is converted to binary by assigning 1 to the positive class and 0 to all other classes.",
             "types": ["int", "text"],
             "stattypes": ["nominal"],
@@ -16,7 +16,7 @@
         },
         "x": {
             "label": "Covariates (independent)",
-            "desc": "One or more variables. Can be numerical or nominal. For nominal variables dummy encoding is used.",
+            "desc": "One or more covariates (numerical or categorical). Categorical variables are one-hot encoded.",
             "types": ["real", "int", "text"],
             "stattypes": ["numerical", "nominal"],
             "notblank": true,
@@ -25,7 +25,7 @@
     },
     "parameters": {
         "positive_class": {
-            "label": "Positive class",
+            "label": "Positive class (y=1)",
             "desc": "Positive class of y. All other classes are considered negative.",
             "types": ["text", "int"],
             "notblank": true,
