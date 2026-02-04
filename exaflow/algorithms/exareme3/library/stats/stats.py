@@ -1,5 +1,3 @@
-from typing import List
-
 import numpy as np
 import pyarrow as pa
 import scipy.special as special
@@ -324,68 +322,6 @@ def ttest_independent(
         ci_lower=ci_lower,
         cohens_d=cohens_d,
     )
-
-
-def roc_curve_binary(y_true, y_score):
-    """
-    Compute ROC curve points (FPR, TPR) for binary classification.
-
-    Parameters
-    ----------
-    y_true : array-like of shape (n_samples,)
-        Ground truth binary labels {0, 1}.
-    y_score : array-like of shape (n_samples,)
-        Predicted probabilities for positive class.
-
-    Returns
-    -------
-    dict with keys:
-        "tpr" : List[float]
-        "fpr" : List[float]
-
-    Notes
-    -----
-    - Identical to sklearn.metrics.roc_curve(..., drop_intermediate=False)
-    - Does NOT perform secure aggregation — operates on already-local arrays.
-    """
-    y_true = _to_numpy(y_true).astype(int)
-    y_score = _to_numpy(y_score).astype(float)
-
-    # Sort by descending score
-    desc_idx = np.argsort(-y_score)
-    y_true = y_true[desc_idx]
-    y_score = y_score[desc_idx]
-
-    # Count positives/negatives
-    P = np.sum(y_true == 1)
-    N = np.sum(y_true == 0)
-
-    if P == 0 or N == 0:
-        # Degenerate case: only one class present
-        return {"tpr": [0.0, 1.0], "fpr": [0.0, 1.0]}
-
-    # True positives & false positives cumulative
-    tps = np.cumsum(y_true == 1)
-    fps = np.cumsum(y_true == 0)
-
-    # Threshold changes
-    # Find indices where the score changes
-    distinct_idx = np.where(np.diff(y_score))[0]
-    # Always include last index
-    threshold_idxs = np.r_[distinct_idx, y_true.size - 1]
-
-    # Compute TPR, FPR at each threshold
-    tpr = tps[threshold_idxs] / P
-    fpr = fps[threshold_idxs] / N
-
-    # prepend (0,0) to match sklearn behavior
-    tpr = np.r_[0.0, tpr]
-    fpr = np.r_[0.0, fpr]
-
-    return {
-        "tpr": tpr.tolist(),
-        "fpr": fpr.tolist(),
-    }
 
 
 # Apply lazy aggregation to key aggregated helpers

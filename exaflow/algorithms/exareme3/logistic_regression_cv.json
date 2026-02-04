@@ -1,13 +1,13 @@
 {
     "name": "logistic_regression_cv",
-    "desc": "Method used to evaluate the performance of a logistic regression model. It involves splitting the data into training and validation sets and testing the model's ability to generalize to new data by using the validation set.",
+    "desc": "Federated K-fold cross-validation for logistic regression with one-hot encoded categorical covariates.",
     "label": "Logistic Regression Cross-validation",
     "enabled": true,
     "components": ["AGGREGATION_SERVER"],
     "type": "exareme3",
     "inputdata": {
         "y": {
-            "label": "Variable (dependent)",
+            "label": "Dependent variable (binary)",
             "desc": "A unique nominal variable. The variable is converted to binary by assigning 1 to the positive class and 0 to all other classes. ",
             "types": [
                 "int",
@@ -21,7 +21,7 @@
         },
         "x": {
             "label": "Covariates (independent)",
-            "desc": "One or more variables. Can be numerical or nominal. For nominal variables dummy encoding is used.",
+            "desc": "One or more covariates (numerical or categorical). Categorical variables are one-hot encoded.",
             "types": [
                 "real",
                 "int",
@@ -37,7 +37,7 @@
     },
     "parameters": {
         "positive_class": {
-            "label": "Positive class",
+            "label": "Positive class (y=1)",
             "desc": "Positive class of y. All other classes are considered negative.",
             "types": [
                 "text",
@@ -53,8 +53,8 @@
             }
         },
         "n_splits": {
-            "label": "Number of splits",
-            "desc": "Number of splits for cross-validation.",
+            "label": "Number of folds",
+            "desc": "Number of folds for K-fold cross-validation.",
             "types": [
                 "int"
             ],
