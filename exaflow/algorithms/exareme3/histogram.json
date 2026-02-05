@@ -1,14 +1,14 @@
 {
-    "name": "multiple_histograms",
-    "desc": "Multiple Histograms",
-    "label": "Multiple Histograms",
+    "name": "histogram",
+    "desc": "Federated histogram with optional grouping and privacy masking.",
+    "label": "Histogram",
     "enabled": true,
     "components": ["AGGREGATION_SERVER"],
     "type": "exareme3",
     "inputdata": {
         "y": {
-            "label": "Variable to distribute among bins.",
-            "desc": "Variable to distribute among bins.",
+            "label": "Target variable",
+            "desc": "Numerical or categorical variable to bin into a histogram.",
             "types": ["real", "int", "text"],
             "stattypes": ["numerical", "nominal"],
             "notblank": true,
@@ -16,7 +16,7 @@
         },
         "x": {
             "label": "Grouping variables",
-            "desc": "Nominal variables for grouping bins.",
+            "desc": "Optional categorical variables used to produce grouped histograms.",
             "types": ["int", "text"],
             "stattypes": ["nominal"],
             "notblank": false,
@@ -26,7 +26,7 @@
     "parameters": {
         "bins": {
             "label": "Number of bins",
-            "desc": "Number of bins for numerical histograms.",
+            "desc": "Bin count for numerical histograms (ignored for categorical targets).",
             "types": ["int"],
             "notblank": false,
             "multiple": false,

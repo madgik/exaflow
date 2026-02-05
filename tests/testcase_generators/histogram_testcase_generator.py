@@ -260,7 +260,7 @@ class HistogramTestcaseGenerator(TestCaseGenerator):
 
 
 if __name__ == "__main__":
-    with open("exareme3/algorithms/multiple_histograms.json") as specs_file:
+    with open("exareme3/algorithms/histogram.json") as specs_file:
         gen = HistogramTestcaseGenerator(specs_file)
     with open("new_histogram.json", "w") as expected_file:
         gen.write_test_cases(expected_file, 2)
