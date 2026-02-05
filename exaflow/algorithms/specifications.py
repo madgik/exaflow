@@ -75,7 +75,7 @@ class AlgorithmName(str, Enum):
     PCA = "pca"
     PCA_WITH_TRANSFORMATION = "pca_with_transformation"
     PEARSON_CORRELATION = "pearson_correlation"
-    SVM_SCIKIT = "svm_scikit"
+    LINEAR_SVM = "linear_svm"
     TTEST_INDEPENDENT = "ttest_independent"
     TTEST_ONESAMPLE = "ttest_onesample"
     TTEST_PAIRED = "ttest_paired"

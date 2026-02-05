@@ -8,17 +8,17 @@ from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.worker_communication import BadUserInput
 
-ALGORITHM_NAME = "svm_scikit"
+ALGORITHM_NAME = "linear_svm"
 
 
 class SVMResult(BaseModel):
     title: str
     n_obs: int
-    coeff: List[float]
-    support_vectors: List[float]
+    weights: List[float]
+    intercept: float
 
 
-class SVMAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class LinearSVMAlgorithm(Algorithm, algname=ALGORITHM_NAME):
     def run(self):
         y_var = self.inputdata.y[0]
         x_vars = self.inputdata.x
@@ -36,30 +36,39 @@ class SVMAlgorithm(Algorithm, algname=ALGORITHM_NAME):
             )
 
         udf_results = self.run_local_udf(
-            func=svm_scikit_local_step,
+            func=linear_svm_local_step,
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
-                "y_levels": y_levels,
                 "gamma": float(gamma),
                 "C": float(C),
             },
         )
 
-        model_stats = udf_results[0]
+        coeff_sum = None
+        intercept_sum = 0.0
+        total_n_obs = 0
+        for res in udf_results:
+            coeff_vec = np.asarray(res["coeff_local"], dtype=float)
+            coeff_sum = coeff_vec if coeff_sum is None else coeff_sum + coeff_vec
+            intercept_sum += float(res["intercept_local"])
+            total_n_obs += int(res["n_obs"])
+
+        num_workers = float(len(udf_results) or 1.0)
+        coeff_mean = (coeff_sum / num_workers).reshape(-1)
+        intercept_mean = float(intercept_sum / num_workers)
         return SVMResult(
-            title="SVM Result",
-            n_obs=int(model_stats["n_obs"]),
-            coeff=model_stats["coeff"],
-            support_vectors=model_stats["support_vectors"],
+            title="Federated Linear SVM (Averaged Parameters)",
+            n_obs=int(total_n_obs),
+            weights=coeff_mean.tolist(),
+            intercept=intercept_mean,
         )
 
 
-@exareme3_udf(with_aggregation_server=True)
-def svm_scikit_local_step(agg_client, data, y_var, x_vars, y_levels, gamma, C):
+@exareme3_udf()
+def linear_svm_local_step(data, y_var, x_vars, gamma, C):
     """
-    Train a linear SVM locally, then securely average the model parameters
-    (coefficients and a per-feature summary of support vectors) across workers.
+    Train a linear SVM locally and return local model summaries for global aggregation.
     """
     # Keep only required columns and drop rows with missing values
     cols = list(dict.fromkeys(list(x_vars) + [y_var]))
@@ -84,21 +93,11 @@ def svm_scikit_local_step(agg_client, data, y_var, x_vars, y_levels, gamma, C):
     # Fix shape across workers: average across class rows to a single vector
     coeff_local = coeff_arr.mean(axis=0)
 
-    # Summarize support vectors as mean per feature to keep a fixed shape.
-    support_summary_local = np.asarray(model.support_vectors_, dtype=float).mean(axis=0)
-
-    coeff_sum_arr = agg_client.sum(coeff_local)
-    support_sum_arr = agg_client.sum(support_summary_local)
-    n_obs_arr = agg_client.sum(np.array([n_obs_local], dtype=float))
-    workers_arr = agg_client.sum(np.array([1.0], dtype=float))
-
-    num_workers = float(np.asarray(workers_arr, dtype=float).reshape(-1)[0] or 1.0)
-    coeff_mean = np.asarray(coeff_sum_arr, dtype=float) / num_workers
-    support_mean = np.asarray(support_sum_arr, dtype=float) / num_workers
-    total_n_obs = int(np.asarray(n_obs_arr, dtype=float).reshape(-1)[0])
+    intercept_arr = np.asarray(model.intercept_, dtype=float)
+    intercept_local = float(intercept_arr.mean())
 
     return {
-        "n_obs": total_n_obs,
-        "coeff": coeff_mean.reshape(-1).tolist(),
-        "support_vectors": support_mean.reshape(-1).tolist(),
+        "n_obs": int(n_obs_local),
+        "coeff_local": np.asarray(coeff_local, dtype=float).reshape(-1).tolist(),
+        "intercept_local": intercept_local,
     }
