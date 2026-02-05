@@ -11,19 +11,19 @@ SPECS_PATH = Path("exareme3", "algorithms", "ttest_onesample.json")
 EXPECTED_PATH = Path(
     "tests",
     "algorithm_validation_tests",
+    "exareme3",
     "expected",
-    "one_sample_expected.json",
+    "ttest_onesample_expected.json",
 )
 utils = rpackages.importr("utils")
 utils.chooseCRANmirror(ind=1)
-packnames = ("stats", "lsr", "effsize")
+packnames = ("stats", "effsize")
 
 names_to_install = [x for x in packnames if not rpackages.isinstalled(x)]
 if len(names_to_install) > 0:
     utils.install_packages(StrVector(names_to_install))
 
 stats = rpackages.importr("stats")
-lsr = rpackages.importr("lsr")
 effsize = rpackages.importr("effsize")
 
 
@@ -46,7 +46,7 @@ class OneSampleTtestTestCaseGenerator(TestCaseGenerator):
             conf_level=1 - alpha,
         )
 
-        cohens_d_res = lsr.cohensD(FloatVector(Y[y_name]), mu=mu)
+        cohens_d_res = effsize.cohen_d(FloatVector(Y[y_name]), mu=mu)
 
         t_test_res_py = dict(zip(t_test_res.names, map(list, list(t_test_res))))
         expected_out = {
@@ -55,7 +55,7 @@ class OneSampleTtestTestCaseGenerator(TestCaseGenerator):
             "p_value": t_test_res_py["p.value"][0],
             "df": t_test_res_py["parameter"][0],
             "mean_diff": t_test_res_py["estimate"][0],
-            "se_diff": t_test_res_py["stderr"],
+            "se_diff": t_test_res_py["stderr"][0],
             "ci_upper": t_test_res_py["conf.int"][1],
             "ci_lower": t_test_res_py["conf.int"][0],
             "cohens_d": cohens_d_res[0],

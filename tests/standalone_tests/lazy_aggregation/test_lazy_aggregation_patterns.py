@@ -102,14 +102,6 @@ def _expect_logistic(calls):
     "name,fn,args_builder,checker",
     [
         (
-            "ttest_one_sample",
-            lambda agg, sample: stats.ttest_one_sample(
-                agg, sample, mu=0.0, alpha=0.05, alternative="two-sided"
-            ),
-            lambda: (np.array([1.0, 2.0, 3.0], dtype=float),),
-            _expect_exact([("batch", 5)]),
-        ),
-        (
             "ttest_paired",
             lambda agg, x, y: stats.ttest_paired(
                 agg, x, y, alpha=0.05, alternative="two-sided"
