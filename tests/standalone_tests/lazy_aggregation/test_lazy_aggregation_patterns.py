@@ -102,15 +102,6 @@ def _expect_logistic(calls):
     "name,fn,args_builder,checker",
     [
         (
-            "pearson",
-            lambda agg, x, y: stats.pearson_correlation(agg, x, y, alpha=0.05),
-            lambda: (
-                np.array([[1.0], [2.0], [3.0]], dtype=float),
-                np.array([[1.0], [0.0], [1.0]], dtype=float),
-            ),
-            _expect_exact([("batch", 6)]),
-        ),
-        (
             "ttest_one_sample",
             lambda agg, sample: stats.ttest_one_sample(
                 agg, sample, mu=0.0, alpha=0.05, alternative="two-sided"

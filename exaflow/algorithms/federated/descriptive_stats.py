@@ -9,6 +9,8 @@ from exaflow.algorithms.federated.describe import DescribeResult
 from exaflow.algorithms.federated.describe import FederatedDescribe
 from exaflow.algorithms.federated.histogram import FederatedHistogram
 from exaflow.algorithms.federated.histogram import HistogramResult
+from exaflow.algorithms.federated.pearson_correlation import FederatedPearsonCorrelation
+from exaflow.algorithms.federated.pearson_correlation import PearsonCorrelationResult
 
 
 class FederatedDescriptiveStatistics:
@@ -34,6 +36,7 @@ class FederatedDescriptiveStatistics:
         self.agg_client = agg_client
         self._describe = FederatedDescribe(agg_client)
         self._hist = FederatedHistogram(agg_client)
+        self._pearson = FederatedPearsonCorrelation(agg_client)
 
     def describe(
         self,
@@ -71,4 +74,34 @@ class FederatedDescriptiveStatistics:
             metadata=metadata,
             bins=bins,
             min_row_count=min_row_count,
+        )
+
+    def corrcoef(
+        self,
+        *,
+        data: pd.DataFrame,
+        x_vars: List[str],
+        y_vars: List[str],
+        alpha: float,
+    ) -> PearsonCorrelationResult:
+        return self._pearson.corrcoef(
+            data=data,
+            x_vars=x_vars,
+            y_vars=y_vars,
+            alpha=alpha,
+        )
+
+    def pearson_correlation(
+        self,
+        *,
+        data: pd.DataFrame,
+        x_vars: List[str],
+        y_vars: List[str],
+        alpha: float,
+    ) -> PearsonCorrelationResult:
+        return self.corrcoef(
+            data=data,
+            x_vars=x_vars,
+            y_vars=y_vars,
+            alpha=alpha,
         )

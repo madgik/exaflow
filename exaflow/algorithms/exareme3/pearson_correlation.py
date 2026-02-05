@@ -2,9 +2,9 @@ from typing import Sequence
 
 from pydantic import BaseModel
 
-from exaflow.algorithms.exareme3.library.stats.stats import pearson_correlation
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
+from exaflow.algorithms.federated import FederatedDescriptiveStatistics
 
 ALGORITHM_NAME = "pearson_correlation"
 
@@ -77,13 +77,17 @@ def _format_result_matrices(
 
 @exareme3_udf(with_aggregation_server=True)
 def local_step(agg_client, data, y_vars, x_vars, alpha):
-    # Use numpy arrays directly to avoid pandas alignment overhead.
-    x_matrix = data[x_vars].to_numpy(dtype=float, copy=False)
-    y_matrix = data[y_vars].to_numpy(dtype=float, copy=False)
-
-    return pearson_correlation(
-        agg_client=agg_client,
-        x=x_matrix,
-        y=y_matrix,
+    stats = FederatedDescriptiveStatistics(agg_client=agg_client)
+    corrcoef = stats.corrcoef(
+        data=data,
+        x_vars=x_vars,
+        y_vars=y_vars,
         alpha=alpha,
     )
+    return {
+        "n_obs": corrcoef.n_obs,
+        "correlations": corrcoef.correlations,
+        "p_values": corrcoef.p_values,
+        "ci_hi": corrcoef.ci_hi,
+        "ci_lo": corrcoef.ci_lo,
+    }
