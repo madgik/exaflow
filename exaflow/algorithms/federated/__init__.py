@@ -15,6 +15,7 @@ from exaflow.algorithms.federated.preprocessing.one_hot_encoder import (
 )
 from exaflow.algorithms.federated.ttest_independent import FederatedTTestIndependent
 from exaflow.algorithms.federated.ttest_onesample import FederatedTTestOneSample
+from exaflow.algorithms.federated.ttest_paired import FederatedTTestPaired
 
 __all__ = [
     "FederatedAnovaOneWay",
@@ -26,6 +27,7 @@ __all__ = [
     "FederatedPCA",
     "FederatedTTestIndependent",
     "FederatedTTestOneSample",
+    "FederatedTTestPaired",
     "FederatedKFoldSplitter",
     "FederatedOneHotEncoder",
     "FederatedRegressionScorer",
