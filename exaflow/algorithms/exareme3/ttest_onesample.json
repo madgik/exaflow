@@ -1,14 +1,14 @@
 {
     "name": "ttest_onesample",
-    "desc": "Test the difference in mean of a single sample with a population mean. It assumes that the sample is drawn from a normal distribution.",
-    "label": "T-Test One-Sample",
+    "desc": "Federated Student's one-sample t-test compares the mean of a numeric sample to a specified value (mu). It reports confidence intervals and Cohen's d, with df = n - 1.",
+    "label": "Student's One-Sample T-Test",
     "enabled": true,
     "components": ["AGGREGATION_SERVER"],
     "type": "exareme3",
     "inputdata": {
         "y": {
             "label": "Variable",
-            "desc": "Variable of interest.",
+            "desc": "Numeric variable of interest.",
             "types": [
                 "real",
                 "int"
@@ -23,7 +23,7 @@
     "parameters": {
         "alt_hypothesis": {
             "label": "Alternative Hypothesis",
-            "desc": "Specifies whether the result is less than, greater than, or two-sided.",
+            "desc": "Specifies the alternative hypothesis (two-sided, less, or greater).",
             "types": [
                 "text"
             ],
@@ -53,7 +53,7 @@
         },
         "mu": {
             "label": "Population mean",
-            "desc": "The population mean, if it is known, else it defaults to 0.",
+            "desc": "Null hypothesis mean value (mu0).",
             "types": [
                 "real"
             ],

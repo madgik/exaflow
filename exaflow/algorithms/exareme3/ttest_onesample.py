@@ -1,14 +1,26 @@
-from exaflow.algorithms.exareme3.library.stats.stats import ttest_one_sample
-from exaflow.algorithms.exareme3.library.ttest_common import (
-    build_one_sample_ttest_result,
-)
+from pydantic import BaseModel
+
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
+from exaflow.algorithms.federated.ttest_onesample import FederatedTTestOneSample
 
 ALGORITHM_NAME = "ttest_onesample"
 
 
-class OneSampleTTestAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class TTestOneSampleResult(BaseModel):
+    n_obs: int
+    std: float
+    t_stat: float
+    df: int
+    p: float
+    mean_diff: float
+    se_diff: float
+    ci_upper: str | float
+    ci_lower: str | float
+    cohens_d: float
+
+
+class TTestOneSampleAlgorithm(Algorithm, algname=ALGORITHM_NAME):
     def run(self):
         alpha = self.get_parameter("alpha")
         alternative = self.get_parameter("alt_hypothesis")
@@ -23,15 +35,27 @@ class OneSampleTTestAlgorithm(Algorithm, algname=ALGORITHM_NAME):
                 "mu": mu,
             },
         )
-        return build_one_sample_ttest_result(results[0])
+        result = results[0]
+        return TTestOneSampleResult(
+            n_obs=result["n_obs"],
+            std=result["std"],
+            t_stat=result["t_stat"],
+            df=result["df"],
+            p=result["p_value"],
+            mean_diff=result["mean_diff"],
+            se_diff=result["se_diff"],
+            ci_upper=result["ci_upper"],
+            ci_lower=result["ci_lower"],
+            cohens_d=result["cohens_d"],
+        )
 
 
 @exareme3_udf(with_aggregation_server=True)
 def local_step(agg_client, data, y_var, alpha, alternative, mu):
     sample = data[y_var].to_numpy(dtype=float, copy=False)
 
-    return ttest_one_sample(
-        agg_client=agg_client,
+    ttest = FederatedTTestOneSample(agg_client=agg_client)
+    return ttest.compute(
         sample=sample,
         mu=mu,
         alpha=alpha,
