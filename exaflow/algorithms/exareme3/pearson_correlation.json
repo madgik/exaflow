@@ -1,14 +1,14 @@
 {
     "name": "pearson_correlation",
-    "desc": "Measure the linear relationship between two continuous variables. It calculates the correlation coefficient (range: -1 to 1). The correlation matrix will be computed between all possible pairs of variables and covariates. Leaving covariates empty is equivalent to having covariates = variables.",
-    "label": "Pearson Correlation Matrix",
+    "desc": "Federated Pearson correlation with p-values and confidence intervals. Computes correlations for all pairs between variables and optional covariates.",
+    "label": "Pearson Correlation",
     "enabled": true,
     "components": ["AGGREGATION_SERVER"],
     "type": "exareme3",
     "inputdata": {
         "y": {
             "label": "Variables",
-            "desc": "Numerical variables on x axis of correlation matrix.",
+            "desc": "Numerical variables for the primary axis of the correlation matrix.",
             "types": [
                 "real",
                 "int"
@@ -21,7 +21,7 @@
         },
         "x": {
             "label": "Covariates (optional)",
-            "desc": "Numerical variables on y axis of correlation matrix.",
+            "desc": "Optional numerical variables for the secondary axis. If empty, uses the same variables.",
             "types": [
                 "real",
                 "int"
@@ -36,7 +36,7 @@
     "parameters": {
         "alpha": {
             "label": "Confidence level",
-            "desc": "The confidence level alpha used in the calculation of the confidence intervals for the correlation coefficients.",
+            "desc": "Confidence level used to compute correlation coefficient intervals.",
             "types": [
                 "real"
             ],

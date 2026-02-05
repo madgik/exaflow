@@ -4,7 +4,7 @@ from typing import Optional
 
 import numpy as np
 
-from exaflow.algorithms.federated.utils import _to_numpy
+from exaflow.algorithms.federated.utils import to_numpy
 
 
 class FederatedPCA:
@@ -15,7 +15,7 @@ class FederatedPCA:
         self.copy = copy
 
     def fit(self, X, y: Optional[None] = None):
-        X = _to_numpy(X)
+        X = to_numpy(X)
 
         n_obs = len(X)
         sx = np.einsum("ij->j", X)
@@ -64,7 +64,7 @@ class FederatedPCA:
         return self
 
     def transform(self, X):
-        X = _to_numpy(X)
+        X = to_numpy(X)
         if self.copy or not X.flags.writeable:
             X = np.array(X, copy=True)
         np.subtract(X, self.mean_, out=X)

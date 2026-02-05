@@ -10,7 +10,7 @@ class BadInputError(ValueError):
         self.message = message
 
 
-def _to_numpy(x) -> np.ndarray:
+def to_numpy(x) -> np.ndarray:
     """Convert input (Arrow Table/Array or list/array) to NumPy array."""
     if isinstance(x, pa.Table):
         # Prefer zero-copy Arrow->NumPy via pandas destruction when possible

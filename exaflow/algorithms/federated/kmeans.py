@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from exaflow.algorithms.federated.utils import _to_numpy
+from exaflow.algorithms.federated.utils import to_numpy
 
 
 class FederatedKMeans:
@@ -31,7 +31,7 @@ class FederatedKMeans:
         self.random_state = int(random_state)
 
     def fit(self, x):
-        X = _to_numpy(x)
+        X = to_numpy(x)
         if X.ndim == 1:
             X = X.reshape(-1, 1)
 
