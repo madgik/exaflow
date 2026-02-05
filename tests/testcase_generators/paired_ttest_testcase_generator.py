@@ -9,8 +9,9 @@ SPECS_PATH = Path("exareme3", "algorithms", "ttest_paired.json")
 EXPECTED_PATH = Path(
     "tests",
     "algorithm_validation_tests",
+    "exareme3",
     "expected",
-    "paired_ttest_expected.json",
+    "ttest_paired_expected.json",
 )
 
 jsonlite = importr("jsonlite")
@@ -39,21 +40,22 @@ class PairedTtestTestCaseGenerator(TestCaseGenerator):
             conf_level=1 - alpha,
         )
         cohens_d_res = effsize.cohen_d(
-            ro.vectors.FloatVector(X[x_name]), ro.vectors.FloatVector(Y[y_name])
+            ro.vectors.FloatVector(X[x_name]),
+            ro.vectors.FloatVector(Y[y_name]),
+            paired=True,
         )
         t_test_res_py = dict(zip(t_test_res.names, map(list, list(t_test_res))))
         cohens_d_res_py = dict(zip(cohens_d_res.names, map(list, list(cohens_d_res))))
 
         expected_out = {
-            "n_obs": n_obs,
-            "statistic": t_test_res_py["statistic"],
-            "p_value": t_test_res_py["p.value"],
-            "df": t_test_res_py["parameter"],
-            "mean_diff": t_test_res_py["estimate"],
-            "se_difference": t_test_res_py["stderr"],
+            "t_stat": t_test_res_py["statistic"][0],
+            "p_value": t_test_res_py["p.value"][0],
+            "df": t_test_res_py["parameter"][0],
+            "mean_diff": t_test_res_py["estimate"][0],
+            "se_diff": t_test_res_py["stderr"][0],
             "ci_upper": t_test_res_py["conf.int"][1],
             "ci_lower": t_test_res_py["conf.int"][0],
-            "cohens_d": cohens_d_res_py["estimate"],
+            "cohens_d": cohens_d_res_py["estimate"][0],
         }
 
         return expected_out

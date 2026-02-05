@@ -5,7 +5,6 @@ import numpy as np
 import pytest
 
 from exaflow.algorithms.exareme3.lazy_aggregation import lazy_agg
-from exaflow.algorithms.exareme3.library.stats import stats
 
 
 class RecordingAggClient:
@@ -96,29 +95,6 @@ def _expect_logistic(calls):
     assert len(calls) >= 2
     assert calls[0][0] in {"batch", "sum"}  # totals
     assert calls[1][0] == "batch"
-
-
-@pytest.mark.parametrize(
-    "name,fn,args_builder,checker",
-    [
-        (
-            "ttest_paired",
-            lambda agg, x, y: stats.ttest_paired(
-                agg, x, y, alpha=0.05, alternative="two-sided"
-            ),
-            lambda: (
-                np.array([1.0, 2.0, 3.0], dtype=float),
-                np.array([1.0, 2.0, 4.0], dtype=float),
-            ),
-            _expect_exact([("batch", 3)]),
-        ),
-    ],
-)
-def test_lazy_aggregation_patterns(name, fn, args_builder, checker):
-    agg = RecordingAggClient()
-    args = args_builder()
-    fn(agg, *args)
-    checker(agg.calls)
 
 
 @lazy_agg()

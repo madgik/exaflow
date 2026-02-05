@@ -1,22 +1,22 @@
 {
     "name": "ttest_paired",
-    "desc": "Test the difference in means between two related groups.",
-    "label": "T-Test Paired",
+    "desc": "Federated Student's paired t-test compares the mean of within-subject differences between two related measurements (df = n - 1). Cohen's d is computed from the paired differences.",
+    "label": "Student's Paired T-Test",
     "enabled": true,
     "components": ["AGGREGATION_SERVER"],
     "type": "exareme3",
     "inputdata": {
         "y": {
-            "label": "Variable of interest.",
-            "desc": "A unique numerical variable.",
+            "label": "Measurement 1",
+            "desc": "First numeric measurement (paired with Measurement 2).",
             "types": ["real", "int"],
             "stattypes": ["numerical"],
             "notblank": true,
             "multiple": false
         },
         "x": {
-            "label": "Variable related to variable of interest.",
-            "desc": "A unique numerical variable.",
+            "label": "Measurement 2",
+            "desc": "Second numeric measurement (paired with Measurement 1).",
             "types": ["real", "int"],
             "stattypes": ["numerical"],
             "notblank": true,
@@ -26,7 +26,7 @@
     "parameters": {
         "alt_hypothesis": {
             "label": "Alternative Hypothesis",
-            "desc": "Specifies whether measure 1 is different from, greater than, or less than measure 2.",
+            "desc": "Specifies the alternative hypothesis for the mean difference (two-sided, less, or greater).",
             "types": ["text"],
             "notblank": true,
             "multiple": false,
