@@ -1,7 +1,7 @@
 {
     "name": "ttest_independent",
-    "desc": "Test the difference in means between two independent groups.",
-    "label": "T-Test Independent",
+    "desc": "Federated Student's independent t-test for the difference in means between two independent groups (pooled variance; df = n_a + n_b - 2). Reports confidence intervals and Cohen's d (pooled SD).",
+    "label": "Student's Independent T-Test",
     "enabled": true,
     "components": ["AGGREGATION_SERVER"],
     "type": "exareme3",

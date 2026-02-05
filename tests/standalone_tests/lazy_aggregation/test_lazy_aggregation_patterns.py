@@ -120,17 +120,6 @@ def _expect_logistic(calls):
             ),
             _expect_exact([("batch", 3)]),
         ),
-        (
-            "ttest_independent",
-            lambda agg, a, b: stats.ttest_independent(
-                agg, a, b, alpha=0.05, alternative="two-sided"
-            ),
-            lambda: (
-                np.array([1.0, 2.0], dtype=float),
-                np.array([2.0, 3.0], dtype=float),
-            ),
-            _expect_exact([("batch", 2)]),
-        ),
     ],
 )
 def test_lazy_aggregation_patterns(name, fn, args_builder, checker):

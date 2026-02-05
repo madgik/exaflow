@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 class TTestResult(BaseModel):
     t_stat: float
-    df: int
+    df: float
     p: float
     mean_diff: float
     se_diff: float
