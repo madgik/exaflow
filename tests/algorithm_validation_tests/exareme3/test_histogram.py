@@ -6,7 +6,7 @@ from tests.algorithm_validation_tests.exareme3.helpers import algorithm_request
 from tests.algorithm_validation_tests.exareme3.helpers import get_test_params
 from tests.algorithm_validation_tests.exareme3.helpers import parse_response
 
-algorithm_name = "multiple_histograms"
+algorithm_name = "histogram"
 
 expected_file = Path(__file__).parent / "expected" / f"{algorithm_name}_expected.json"
 
