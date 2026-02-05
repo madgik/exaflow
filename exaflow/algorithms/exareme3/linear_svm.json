@@ -1,18 +1,16 @@
 {
-    "name": "svm_scikit",
-    "desc": "Divide datasets into classes to find a maximum marginal hyperplane.",
-    "label": "SVM",
+    "name": "linear_svm",
+    "desc": "Federated linear SVM trained locally and averaged across workers (coefficients and intercept).",
+    "label": "Linear SVM",
     "enabled": true,
-    "components": ["AGGREGATION_SERVER"],
+    "components": [],
     "type": "exareme3",
     "inputdata": {
         "y": {
-            "label": "Classes",
-            "desc": "Classes of x.",
+            "label": "Target classes",
+            "desc": "Nominal target variable defining the classes.",
             "types": [
-                "text",
-                "int",
-                "real"
+                "text"
             ],
             "stattypes": [
                 "nominal"
@@ -21,8 +19,8 @@
             "multiple": true
         },
         "x": {
-            "label": "Data points",
-            "desc": "Data points (support vectors) to be divided into classes.",
+            "label": "Features",
+            "desc": "Numerical covariates used to train the linear SVM.",
             "types": [
                 "real",
                 "int"
@@ -37,7 +35,7 @@
     "parameters": {
         "gamma": {
             "label": "Gamma",
-            "desc": "Gamma parameter of RBF controls the distance of the influence of a single training point.",
+            "desc": "Gamma parameter passed to scikit-learn's SVC (linear kernel).",
             "types": [
                 "real"
             ],
@@ -49,7 +47,7 @@
         },
         "C": {
             "label": "C",
-            "desc": "C regularization parameter used to set the tolerance of the model to allow the misclassification of data points in order to achieve lower generalization error. The C value controls the penalty of misclassification.",
+            "desc": "Regularization parameter (penalty for misclassification).",
             "types": [
                 "real"
             ],
