@@ -37,7 +37,7 @@ class IndependentTtestTestCaseGenerator(TestCaseGenerator):
             alt_hyp = "two.sided"
         else:
             alt_hyp = input_parameters["alt_hypothesis"]
-        alpha = input_parameters["confidence_lvl"]
+        alpha = input_parameters["alpha"]
         n_obs = len(Y) + len(X)
         y_name = Y.columns[0]
         x_name = X.columns[0]
@@ -47,6 +47,7 @@ class IndependentTtestTestCaseGenerator(TestCaseGenerator):
             ro.vectors.FloatVector(Y[y_name]),
             paired=False,
             alternative=alt_hyp,
+            var_equal=True,
             conf_level=1 - alpha,
         )
 
@@ -60,7 +61,7 @@ class IndependentTtestTestCaseGenerator(TestCaseGenerator):
             "n_obs": n_obs,
             "statistic": t_test_res_py["statistic"][0],
             "p_value": t_test_res_py["p.value"][0],
-            "df": n_obs - 2,
+            "df": t_test_res_py["parameter"][0],
             "mean_diff": t_test_res_py["estimate"][0] - t_test_res_py["estimate"][1],
             "se_difference": t_test_res_py["stderr"][0],
             "ci_upper": t_test_res_py["conf.int"][1],

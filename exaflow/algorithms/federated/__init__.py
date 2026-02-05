@@ -13,6 +13,7 @@ from exaflow.algorithms.federated.pca import FederatedPCA
 from exaflow.algorithms.federated.preprocessing.one_hot_encoder import (
     FederatedOneHotEncoder,
 )
+from exaflow.algorithms.federated.ttest_independent import FederatedTTestIndependent
 
 __all__ = [
     "FederatedAnovaOneWay",
@@ -22,6 +23,7 @@ __all__ = [
     "FederatedOLS",
     "FederatedLogisticRegression",
     "FederatedPCA",
+    "FederatedTTestIndependent",
     "FederatedKFoldSplitter",
     "FederatedOneHotEncoder",
     "FederatedRegressionScorer",

@@ -12,14 +12,7 @@ algorithm_name = "ttest_independent"
 expected_file = Path(__file__).parent / "expected" / f"{algorithm_name}_expected.json"
 
 
-@pytest.mark.parametrize(
-    "test_input, expected",
-    get_test_params(
-        expected_file,
-        skip_indices=[4],
-        skip_reason="P-value assertion fail. Related ticket: https://team-1617704806227.atlassian.net/browse/MIP-794",
-    ),
-)
+@pytest.mark.parametrize("test_input, expected", get_test_params(expected_file))
 def test_independent_ttest(test_input, expected, subtests):
     response = algorithm_request(algorithm_name, test_input)
     result = parse_response(response)
@@ -43,9 +36,3 @@ def test_independent_ttest(test_input, expected, subtests):
         )
     with subtests.test():
         assert_allclose(result["cohens_d"], expected["cohens_d"], rtol=1e-8, atol=1e-10)
-
-    # Due to current inability of rpy2 to properly calculate confidence intervals,
-    # they won't be tested. However, they are deemed correct, since they are calculated
-    # by tested values and through the scipy package.
-    # assert_allclose(result["ci_upper"], expected["ci_upper"], rtol=1e-8, atol=1e-10)
-    # assert_allclose(result["ci_lower"], expected["ci_lower"], rtol=1e-8, atol=1e-10)
