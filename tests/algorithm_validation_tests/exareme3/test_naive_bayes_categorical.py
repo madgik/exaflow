@@ -22,16 +22,18 @@ cv_inputs = (
 class TestCategoricalNB:
     @pytest.mark.parametrize("test_input, expected", get_test_params(fit_exp))
     def test_fit__class_count(self, test_input, expected, get_algorithm_result):
-        result = get_algorithm_result("test_nb_categorical_fit", test_input)
+        result = get_algorithm_result("naive_bayes_categorical", test_input)
         assert result["class_count"] == expected["class_count"]
 
     @pytest.mark.parametrize("test_input, expected", get_test_params(fit_exp))
     def test_fit__category_count(self, test_input, expected, get_algorithm_result):
-        result = get_algorithm_result("test_nb_categorical_fit", test_input)
+        result = get_algorithm_result("naive_bayes_categorical", test_input)
         res_cc = result["category_count"]
         exp_cc = expected["category_count"]
 
-        self._assert_category_count_match(res_cc, exp_cc)
+        x_vars = test_input["inputdata"]["x"]
+        res_cc_list = [res_cc.get(var, []) for var in x_vars]
+        self._assert_category_count_match(res_cc_list, exp_cc)
 
     @pytest.mark.parametrize("test_input, expected", get_test_params(pred_exp))
     def test_predict(self, test_input, expected, get_algorithm_result):

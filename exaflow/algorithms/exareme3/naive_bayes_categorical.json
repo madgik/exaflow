@@ -1,7 +1,7 @@
 {
-    "name": "test_nb_categorical_fit",
-    "desc": "Uses Bayes' theorem to calculate the probability of each class given a set of nominal features assuming independence between features. It then classifies data points based on the class with the highest probability.",
-    "label": "Categorical Naive Bayes classifier with cross-validation",
+    "name": "naive_bayes_categorical",
+    "desc": "Federated categorical Naive Bayes. Features are ordinal-encoded using metadata category order; unknown categories are rejected. Class labels are discovered during training and aggregated securely across workers.",
+    "label": "Categorical Naive Bayes",
     "enabled": true,
     "components": ["AGGREGATION_SERVER"],
     "type": "exareme3",

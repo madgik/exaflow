@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Iterable
+from typing import Optional
 from typing import Protocol
 
 import numpy as np
@@ -62,11 +63,14 @@ class FederatedPreprocessor(Protocol):
         agg_client: AggregationClient,
         data: pd.DataFrame,
         categorical_vars: list[str],
-        numerical_vars: list[str],
+        numerical_vars: Optional[list[str]] = None,
     ) -> None: ...
 
     def get_feature_names_out(
-        self, *, categorical_vars: list[str], numerical_vars: list[str]
+        self,
+        *,
+        categorical_vars: list[str],
+        numerical_vars: Optional[list[str]] = None,
     ) -> list[str]: ...
 
     def transform(
@@ -74,5 +78,5 @@ class FederatedPreprocessor(Protocol):
         data: pd.DataFrame,
         *,
         categorical_vars: list[str],
-        numerical_vars: list[str],
+        numerical_vars: Optional[list[str]] = None,
     ) -> np.ndarray: ...
