@@ -1,7 +1,9 @@
 import numpy as np
 
+from exaflow.algorithms.federated.agg_client import AggregationClient
 
-class DummyAggClient:
+
+class DummyAggClient(AggregationClient):
     """Local aggregator for standalone federated algorithm tests."""
 
     def sum(self, value):
@@ -18,3 +20,6 @@ class DummyAggClient:
         if arr.ndim == 0:
             return arr.reshape(1)
         return arr
+
+    def union(self, values):
+        return sorted({val for val in values if val is not None})

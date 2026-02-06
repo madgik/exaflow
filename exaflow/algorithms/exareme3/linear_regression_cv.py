@@ -114,9 +114,6 @@ def linear_regression_cv_local_step(
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,
     )
-    dummy_categories = encoder.dummy_categories
-
-    # Build design matrix and target vector
     X = encoder.transform(
         data,
         categorical_vars=categorical_vars,

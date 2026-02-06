@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Dict
 from typing import List
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -22,7 +23,7 @@ class FederatedOneHotEncoder(FederatedPreprocessor):
         agg_client: AggregationClient,
         data: pd.DataFrame,
         categorical_vars: List[str],
-        numerical_vars: List[str],
+        numerical_vars: Optional[List[str]] = None,
     ) -> None:
         if not categorical_vars:
             self.dummy_categories = {}
@@ -38,8 +39,12 @@ class FederatedOneHotEncoder(FederatedPreprocessor):
         self.dummy_categories = {var: levels[1:] for var, levels in merged.items()}
 
     def get_feature_names_out(
-        self, *, categorical_vars: List[str], numerical_vars: List[str]
+        self,
+        *,
+        categorical_vars: List[str],
+        numerical_vars: Optional[List[str]] = None,
     ) -> List[str]:
+        numerical_vars = numerical_vars or []
         labels = ["Intercept"]
         for var in categorical_vars:
             labels.extend(
@@ -53,8 +58,9 @@ class FederatedOneHotEncoder(FederatedPreprocessor):
         data: pd.DataFrame,
         *,
         categorical_vars: List[str],
-        numerical_vars: List[str],
+        numerical_vars: Optional[List[str]] = None,
     ) -> np.ndarray:
+        numerical_vars = numerical_vars or []
         return self._build_design_matrix(
             data,
             categorical_vars=categorical_vars,

@@ -13,6 +13,9 @@ from exaflow.algorithms.federated.pca import FederatedPCA
 from exaflow.algorithms.federated.preprocessing.one_hot_encoder import (
     FederatedOneHotEncoder,
 )
+from exaflow.algorithms.federated.preprocessing.ordinal_encoder import (
+    FederatedOrdinalEncoder,
+)
 from exaflow.algorithms.federated.ttest_independent import FederatedTTestIndependent
 from exaflow.algorithms.federated.ttest_onesample import FederatedTTestOneSample
 from exaflow.algorithms.federated.ttest_paired import FederatedTTestPaired
@@ -30,6 +33,7 @@ __all__ = [
     "FederatedTTestPaired",
     "FederatedKFoldSplitter",
     "FederatedOneHotEncoder",
+    "FederatedOrdinalEncoder",
     "FederatedRegressionScorer",
     "FederatedClassificationScorer",
 ]

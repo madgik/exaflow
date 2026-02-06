@@ -7,34 +7,6 @@ from exaflow.algorithms.federated.interfaces import FederatedEstimatorResults
 from exaflow.algorithms.federated.interfaces import FederatedScorer
 
 
-def compute_classification_metrics_from_confmat(confmat: dict) -> dict:
-    tp = int(confmat.get("tp", 0))
-    fp = int(confmat.get("fp", 0))
-    tn = int(confmat.get("tn", 0))
-    fn = int(confmat.get("fn", 0))
-
-    total = tp + fp + tn + fn
-    accuracy = (tp + tn) / total if total > 0 else 0.0
-
-    prec_den = tp + fp
-    precision = tp / prec_den if prec_den > 0 else 0.0
-
-    rec_den = tp + fn
-    recall = tp / rec_den if rec_den > 0 else 0.0
-
-    if precision + recall > 0:
-        fscore = 2.0 * precision * recall / (precision + recall)
-    else:
-        fscore = 0.0
-
-    return {
-        "accuracy": float(accuracy),
-        "precision": float(precision),
-        "recall": float(recall),
-        "fscore": float(fscore),
-    }
-
-
 class FederatedClassificationScorer(FederatedScorer):
     """Federated scorer for classification metrics and ROC curves."""
 
@@ -133,3 +105,31 @@ class FederatedClassificationScorer(FederatedScorer):
             "roc_tpr": tpr.tolist(),
             "roc_fpr": fpr.tolist(),
         }
+
+
+def compute_classification_metrics_from_confmat(confmat: dict) -> dict:
+    tp = int(confmat.get("tp", 0))
+    fp = int(confmat.get("fp", 0))
+    tn = int(confmat.get("tn", 0))
+    fn = int(confmat.get("fn", 0))
+
+    total = tp + fp + tn + fn
+    accuracy = (tp + tn) / total if total > 0 else 0.0
+
+    prec_den = tp + fp
+    precision = tp / prec_den if prec_den > 0 else 0.0
+
+    rec_den = tp + fn
+    recall = tp / rec_den if rec_den > 0 else 0.0
+
+    if precision + recall > 0:
+        fscore = 2.0 * precision * recall / (precision + recall)
+    else:
+        fscore = 0.0
+
+    return {
+        "accuracy": float(accuracy),
+        "precision": float(precision),
+        "recall": float(recall),
+        "fscore": float(fscore),
+    }
