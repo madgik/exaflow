@@ -63,7 +63,7 @@ class TransformerName(str, Enum):
 class AlgorithmName(str, Enum):
     ANOVA_ONEWAY = "anova_oneway"
     ANOVA_TWOWAY = "anova_twoway"
-    DESCRIPTIVE_STATS = "descriptive_stats"
+    DESCRIBE = "describe"
     LINEAR_REGRESSION = "linear_regression"
     LINEAR_REGRESSION_CV = "linear_regression_cv"
     LOGISTIC_REGRESSION = "logistic_regression"

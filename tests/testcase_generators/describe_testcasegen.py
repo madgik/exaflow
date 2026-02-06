@@ -1,8 +1,8 @@
 import pandas as pd
 
-from exaflow.algorithms.exareme3.descriptive_stats import Result
-from exaflow.algorithms.exareme3.descriptive_stats import Variable
-from exaflow.algorithms.exareme3.descriptive_stats import reduce_recs_for_var
+from exaflow.algorithms.exareme3.describe import Result
+from exaflow.algorithms.exareme3.describe import Variable
+from exaflow.algorithms.exareme3.describe import reduce_recs_for_var
 from tests.testcase_generators.testcase_generator import TestCaseGenerator
 
 # TODO privacy threshold is hardcoded. Find beter solution.
@@ -128,7 +128,7 @@ def group_by_dataset(data, datasets):
 
 
 if __name__ == "__main__":
-    with open("exareme3/algorithms/descriptive_stats.json") as specs_file:
+    with open("exareme3/algorithms/describe.json") as specs_file:
         gen = DesciptiveStatistics(specs_file)
-    with open("descriptive_stats_expected.json", "w") as expected_file:
+    with open("describe_expected.json", "w") as expected_file:
         gen.write_test_cases(expected_file, 50)

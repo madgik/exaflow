@@ -6,13 +6,13 @@ from tests.algorithm_validation_tests.exareme3.conftest import algorithm_request
 from tests.algorithm_validation_tests.exareme3.conftest import parse_response
 from tests.algorithm_validation_tests.exareme3.helpers import get_test_params
 
-algorithm_name = "descriptive_stats"
+algorithm_name = "describe"
 
 expected_file = Path(__file__).parent / "expected" / f"{algorithm_name}_expected.json"
 
 
 @pytest.mark.parametrize("test_input, expected", get_test_params(expected_file))
-def test_descriptive_stats(test_input, expected):
+def test_describe(test_input, expected):
     response = algorithm_request(algorithm_name, test_input)
     result = parse_response(response)
 

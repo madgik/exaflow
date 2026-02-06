@@ -1,5 +1,5 @@
 {
-    "name": "descriptive_stats",
+    "name": "describe",
     "desc": "Federated descriptive statistics mirroring statsmodels Describe: per-dataset records plus aggregation server-backed global summaries.",
     "label": "Descriptive stats (Describe)",
     "enabled": true,

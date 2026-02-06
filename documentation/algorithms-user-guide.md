@@ -234,7 +234,7 @@ loader via parameters passed alongside the UDF call:
 
 - `dropna` (default `True`) drops rows with missing values on the selected
   columns before the `DataFrame` reaches your UDF. Algorithms such as
-  `descriptive_stats` override this by passing `{"dropna": False}` when calling
+  `describe` override this by passing `{"dropna": False}` when calling
   `run_algorithm_udf`.
 - `include_dataset` adds the `dataset` column to the `DataFrame` so the UDF can
   emit per-dataset metrics.
@@ -361,7 +361,7 @@ The migrated flows share a small set of helpers to keep `run()` methods tidy:
 
 Treat these helpers as building blocks: copy the patterns from
 `exaflow/algorithms/exareme3/logistic_regression.py`,
-`linear_regression.py`, or `descriptive_stats.py` when you need similar logic.
+`linear_regression.py`, or `describe.py` when you need similar logic.
 
 ## Aggregation server (SUM/MIN/MAX)
 
@@ -606,7 +606,7 @@ often need subtle tweaks. Instead of writing a custom data loader you can pass
 control flags alongside the UDF call:
 
 - `dropna=False` keeps rows with missing values. See
-  `descriptive_stats.DescriptiveStatisticsAlgorithm`, which needs both the raw
+  `describe.DescriptiveStatisticsAlgorithm`, which needs both the raw
   counts and the rows without missing values.
 - `include_dataset=True` ensures the `dataset` column is available, something
   histograms and descriptive statistics rely on for per-dataset reports.

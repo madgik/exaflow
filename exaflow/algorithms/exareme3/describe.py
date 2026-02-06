@@ -13,7 +13,7 @@ from exaflow.algorithms.federated.descriptive_stats import (
 )
 
 DATASET_VAR_NAME = "dataset"
-ALGORITHM_NAME = "descriptive_stats"
+ALGORITHM_NAME = "describe"
 
 
 class NumericalDescriptiveStats(BaseModel):

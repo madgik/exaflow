@@ -45,7 +45,7 @@ def test_descriptive_statistics_has_no_longitudinal_transformer():
     result = json.loads(request.text)
 
     for algorithm in result:
-        if algorithm["name"] == "descriptive_stats":
+        if algorithm["name"] == "describe":
             if algorithm["preprocessing"]:
                 pytest.fail(
                     "Descriptive Statistics should NOT have the 'longitudinal_transform' as preprocessing step."
