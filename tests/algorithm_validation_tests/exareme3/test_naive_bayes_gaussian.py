@@ -24,17 +24,17 @@ def get_test_inputs(file):
 class TestGaussianNB:
     @pytest.mark.parametrize("test_input, expected", get_test_params(fit_exp))
     def test_fit__class_count(self, test_input, expected, get_algorithm_result):
-        result = get_algorithm_result("test_nb_gaussian_fit", test_input)
+        result = get_algorithm_result("naive_bayes_gaussian", test_input)
         assert result["class_count"] == expected["class_count"]
 
     @pytest.mark.parametrize("test_input, expected", get_test_params(fit_exp))
     def test_fit__theta(self, test_input, expected, get_algorithm_result):
-        result = get_algorithm_result("test_nb_gaussian_fit", test_input)
+        result = get_algorithm_result("naive_bayes_gaussian", test_input)
         assert_allclose(result["theta"], expected["theta"])
 
     @pytest.mark.parametrize("test_input, expected", get_test_params(fit_exp))
     def test_fit__var(self, test_input, expected, get_algorithm_result):
-        result = get_algorithm_result("test_nb_gaussian_fit", test_input)
+        result = get_algorithm_result("naive_bayes_gaussian", test_input)
         assert_allclose(result["var"], expected["var"])
 
     @pytest.mark.parametrize("test_input, expected", get_test_params(pred_exp))

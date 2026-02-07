@@ -1,7 +1,7 @@
 {
     "name": "naive_bayes_gaussian_cv",
-    "desc": "Uses Bayes' theorem to calculate the probability of each class given a set of numerical features assuming independence between features. It then classifies data points ba sed on the class with the highest probability.",
-    "label": "Gaussian Naive Bayes classifier with cross-validation",
+    "desc": "Federated Gaussian Naive Bayes with K-fold cross-validation. Features are treated as numerical; missing values are not imputed.",
+    "label": "Gaussian Naive Bayes (K-fold CV)",
     "enabled": true,
     "components": ["AGGREGATION_SERVER"],
     "type": "exareme3",

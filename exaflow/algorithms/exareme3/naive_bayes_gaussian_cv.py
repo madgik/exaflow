@@ -1,19 +1,22 @@
-from typing import List
-
 import numpy as np
 
-from exaflow.algorithms.exareme3.crossvalidation import min_rows_for_cv
 from exaflow.algorithms.exareme3.naive_bayes_common import NBResult
 from exaflow.algorithms.exareme3.naive_bayes_common import make_naive_bayes_result
-from exaflow.algorithms.exareme3.naive_bayes_common import (
-    multiclass_classification_metrics,
-)
-from exaflow.algorithms.exareme3.naive_bayes_common import (
-    multiclass_classification_summary,
-)
-from exaflow.algorithms.exareme3.naive_bayes_gaussian_model import GaussianNB
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
+from exaflow.algorithms.federated.cross_validation import FederatedCrossValidator
+from exaflow.algorithms.federated.cross_validation import FederatedKFoldSplitter
+from exaflow.algorithms.federated.cross_validation import (
+    FederatedMulticlassClassificationScorer,
+)
+from exaflow.algorithms.federated.cross_validation.scorer_multiclass import (
+    multiclass_classification_metrics,
+)
+from exaflow.algorithms.federated.cross_validation.scorer_multiclass import (
+    multiclass_classification_summary,
+)
+from exaflow.algorithms.federated.naive_bayes_gaussian import FederatedGaussianNB
+from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.worker_communication import BadUserInput
 
 ALGORITHM_NAME = "naive_bayes_gaussian_cv"
@@ -30,25 +33,7 @@ class GaussianNBAlgorithm(Algorithm, algname=ALGORITHM_NAME):
         label_dict = self.metadata[y_var]["enumerations"]
         labels = sorted(label_dict.keys())
 
-        # 1) Per-worker feasibility check
-        check_results = self.run_local_udf(
-            func=gaussian_nb_cv_check_local,
-            kw_args={
-                "y_var": y_var,
-                "n_splits": int(n_splits),
-            },
-        )
-
-        total_n_obs = sum(res["n_obs"] for res in check_results)
-
-        if total_n_obs < n_splits:
-            raise BadUserInput(
-                "Cross validation cannot run because the total number of "
-                f"observations ({total_n_obs}) is smaller than the number of "
-                f"splits, {n_splits}."
-            )
-
-        # 2) Run CV UDF (with aggregation server)
+        # Run CV UDF (with aggregation server)
         udf_results = self.run_local_udf(
             func=gaussian_nb_cv_local_step,
             kw_args={
@@ -80,20 +65,6 @@ class GaussianNBAlgorithm(Algorithm, algname=ALGORITHM_NAME):
         return make_naive_bayes_result(total_confmat, labels, summary)
 
 
-# ---------------------------------------------------------------------------
-# Helper UDFs
-# ---------------------------------------------------------------------------
-
-
-@exareme3_udf()
-def gaussian_nb_cv_check_local(data, y_var, n_splits):
-    """
-    Check on each worker whether the number of observations is at least n_splits.
-    """
-
-    return min_rows_for_cv(data, y_var, n_splits)
-
-
 @exareme3_udf(with_aggregation_server=True)
 def gaussian_nb_cv_local_step(
     agg_client,
@@ -106,101 +77,43 @@ def gaussian_nb_cv_local_step(
     """
     Exaflow UDF that performs K-fold cross-validation for Gaussian Naive Bayes.
     """
-    import pandas as pd
-    from sklearn.model_selection import KFold
-
     n_splits = int(n_splits)
     class_labels = list(labels)
-    n_classes_full = len(class_labels)
-    n_features = len(x_vars)
+    if not class_labels:
+        return {"confmats": [], "n_obs": []}
 
-    cols = list(dict.fromkeys(list(x_vars) + [y_var]))
-    data = data[cols].copy()
-
-    n_rows = data.shape[0]
-    conf_shape = (n_classes_full, n_classes_full)
-    if n_rows < n_splits:
-        confmats_global: List[np.ndarray] = []
-        n_obs_per_fold: List[int] = []
-        conf_zero = np.zeros(conf_shape, dtype=float)
-        empty_df = data.iloc[0:0].copy()
-        empty_df[y_var] = pd.Categorical(empty_df[y_var], categories=class_labels)
-        for _ in range(n_splits):
-            model = GaussianNB(
-                y_var=y_var,
-                x_vars=x_vars,
-                labels=class_labels,
-                var_smoothing=VAR_SMOOTHING,
-            )
-            model.fit(empty_df, agg_client)
-            agg_client.sum(conf_zero.ravel())
-            confmats_global.append(conf_zero.copy())
-            n_obs_per_fold.append(0)
-        return {
-            "confmats": [cm.tolist() for cm in confmats_global],
-            "n_obs": n_obs_per_fold,
-        }
-
-    data[y_var] = pd.Categorical(data[y_var], categories=class_labels)
-    idx = np.arange(n_rows)
-    kf = KFold(n_splits=n_splits, shuffle=False)
-
-    confmats_global: List[np.ndarray] = []
-    n_obs_per_fold: List[int] = []
-    label_to_idx = {label: idx for idx, label in enumerate(class_labels)}
-
-    for train_idx, test_idx in kf.split(idx):
-        train_df = data.iloc[train_idx]
-        test_df = data.iloc[test_idx]
-
-        model = GaussianNB(
-            y_var=y_var,
-            x_vars=x_vars,
-            labels=class_labels,
-            var_smoothing=VAR_SMOOTHING,
-        )
-        model.fit(train_df, agg_client)
-        total_train_n = int(model.total_n_obs)
-
-        if total_train_n == 0 or test_df.shape[0] == 0:
-            conf_zero = np.zeros(conf_shape, dtype=float)
-            flat_conf_glob = agg_client.sum(conf_zero.ravel())
-            confmat_global = np.asarray(flat_conf_glob, dtype=float).reshape(conf_shape)
-            confmats_global.append(confmat_global)
-            n_obs_per_fold.append(total_train_n)
-            continue
-
-        posterior = model.predict_proba(test_df[x_vars])
-        model_labels = list(model.labels)
-        if not model_labels:
-            conf_zero = np.zeros(conf_shape, dtype=float)
-            flat_conf_glob = agg_client.sum(conf_zero.ravel())
-            confmat_global = np.asarray(flat_conf_glob, dtype=float).reshape(conf_shape)
-            confmats_global.append(confmat_global)
-            n_obs_per_fold.append(total_train_n)
-            continue
-
-        local_to_global_idx = np.array(
-            [label_to_idx[label] for label in model_labels], dtype=int
+    valid_mask = data[y_var].notna().to_numpy()
+    data_valid = data.loc[valid_mask]
+    n_rows = int(data_valid.shape[0])
+    if n_rows == 0 or n_rows < n_splits:
+        raise BadInputError(
+            "Cross validation cannot run because the number of observations "
+            f"({n_rows}) is smaller than the number of splits ({n_splits})."
         )
 
-        y_true_cat = pd.Categorical(test_df[y_var], categories=class_labels)
-        true_codes = np.asarray(y_true_cat.codes, dtype=int)
-        valid_mask = true_codes >= 0
+    X = data_valid[x_vars].to_numpy(dtype=float, copy=False)
+    y = data_valid[y_var].to_numpy()
 
-        confmat_local = np.zeros(conf_shape, dtype=float)
-        if np.any(valid_mask):
-            true_idx = true_codes[valid_mask]
-            pred_local_idx = posterior[valid_mask].argmax(axis=1)
-            pred_idx = local_to_global_idx[pred_local_idx]
-            np.add.at(confmat_local, (true_idx, pred_idx), 1.0)
+    splitter = FederatedKFoldSplitter(n_splits=n_splits, shuffle=False)
+    estimator = FederatedGaussianNB(
+        x_vars=x_vars,
+        labels=class_labels,
+        var_smoothing=VAR_SMOOTHING,
+    )
+    scorer = FederatedMulticlassClassificationScorer(labels=class_labels)
+    cross_validator = FederatedCrossValidator(
+        estimator=estimator,
+        splitter=splitter,
+        scorer=scorer,
+    )
 
-        flat_conf_local = confmat_local.ravel().tolist()
-        flat_conf_glob = agg_client.sum(flat_conf_local)
-        confmat_global = np.asarray(flat_conf_glob, dtype=float).reshape(conf_shape)
+    try:
+        metrics = cross_validator.evaluate(X, y, agg_client=agg_client)
+    except BadInputError as exc:
+        raise BadUserInput(str(exc))
 
-        confmats_global.append(confmat_global)
-        n_obs_per_fold.append(total_train_n)
+    confmats_global = [np.asarray(cm, dtype=float) for cm in metrics["confmat"]]
+    n_obs_per_fold = [int(v) for v in metrics["n_obs"]]
 
     return {
         "confmats": [cm.tolist() for cm in confmats_global],

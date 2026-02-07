@@ -4,12 +4,11 @@ from typing import List
 
 from pydantic import BaseModel
 
-from exaflow.algorithms.exareme3.naive_bayes_gaussian_model import GaussianNB
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
+from exaflow.algorithms.federated.naive_bayes_gaussian import FederatedGaussianNB
 from exaflow.worker_communication import BadUserInput
 
-ALGNAME_FIT = "test_nb_gaussian_fit"
 ALGNAME_PRED = "test_nb_gaussian_predict"
 
 
@@ -20,37 +19,6 @@ def _sorted_labels(metadata: dict, y_var: str) -> List[str]:
 def _prepare_dataframe(data, x_vars: List[str], y_var: str):
     cols = list(dict.fromkeys(list(x_vars) + [y_var]))
     return data[cols].copy()
-
-
-class GaussianNBTestingFit(Algorithm, algname=ALGNAME_FIT):
-    class Result(BaseModel):
-        theta: List[List[float]]
-        var: List[List[float]]
-        class_count: List[float]
-
-    def run(self):
-        if not self.inputdata.y or not self.inputdata.x:
-            raise BadUserInput("Gaussian NB fit requires X and y.")
-
-        y_var = self.inputdata.y[0]
-        x_vars = list(self.inputdata.x)
-        labels = _sorted_labels(self.metadata, y_var)
-
-        udf_results = self.run_local_udf(
-            func=gaussian_nb_fit_udf,
-            kw_args={
-                "y_var": y_var,
-                "x_vars": x_vars,
-                "labels": labels,
-            },
-        )
-
-        stats = udf_results[0]
-        return self.Result(
-            theta=stats["theta"],
-            var=stats["var"],
-            class_count=stats["class_count"],
-        )
 
 
 class GaussianNBTestingPredict(Algorithm, algname=ALGNAME_PRED):
@@ -82,29 +50,6 @@ class GaussianNBTestingPredict(Algorithm, algname=ALGNAME_PRED):
 
 
 @exareme3_udf(with_aggregation_server=True)
-def gaussian_nb_fit_udf(
-    agg_client,
-    data,
-    y_var,
-    x_vars,
-    labels,
-):
-    df = _prepare_dataframe(data, x_vars, y_var)
-
-    model = GaussianNB(y_var=y_var, x_vars=x_vars, labels=labels)
-    model.fit(df, agg_client)
-
-    theta = model.theta.tolist() if model.theta is not None else []
-    var = model.var.tolist() if model.var is not None else []
-    class_count = model.class_count.tolist() if model.class_count is not None else []
-    return {
-        "theta": theta,
-        "var": var,
-        "class_count": class_count,
-    }
-
-
-@exareme3_udf(with_aggregation_server=True)
 def gaussian_nb_predict_udf(
     agg_client,
     data,
@@ -114,13 +59,16 @@ def gaussian_nb_predict_udf(
 ):
     df = _prepare_dataframe(data, x_vars, y_var)
 
-    model = GaussianNB(y_var=y_var, x_vars=x_vars, labels=labels)
-    model.fit(df, agg_client)
+    X = df[x_vars].to_numpy(dtype=float, copy=False)
+    y = df[y_var].to_numpy()
 
-    if df.shape[0] == 0 or model.total_n_obs == 0 or not model.labels:
+    model = FederatedGaussianNB(x_vars=x_vars, labels=labels)
+    results = model.fit(X, y, agg_client=agg_client)
+
+    if df.shape[0] == 0 or results.nobs == 0 or not results.labels:
         return {"predictions": {}}
 
-    preds = model.predict(df[x_vars])
+    preds = results.predict(X)
     counts = Counter(preds.tolist())
     predictions = {str(label): int(count) for label, count in counts.items()}
     return {"predictions": predictions}
