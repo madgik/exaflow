@@ -5,10 +5,9 @@ from pydantic import BaseModel
 
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.naive_bayes_categorical import FederatedCategoricalNB
-from exaflow.algorithms.federated.transformers.ordinal_encoder import (
-    FederatedOrdinalEncoder,
-)
+from exaflow.algorithms.federated.naive_bayes import FederatedCategoricalNB
+from exaflow.algorithms.federated.pipeline import FederatedPipeline
+from exaflow.algorithms.federated.preprocessing import FederatedOrdinalEncoder
 
 ALGORITHM_NAME = "naive_bayes_categorical"
 
@@ -54,28 +53,34 @@ def naive_bayes_categorical_local_step(
     x_vars,
     categories,
 ):
-    encoder = FederatedOrdinalEncoder(
-        categories=categories,
-        handle_unknown="error",
+    y = data[y_var].to_numpy()
+
+    pipeline = FederatedPipeline(
+        [
+            (
+                "features",
+                FederatedOrdinalEncoder(
+                    categories=categories,
+                    handle_unknown="error",
+                ),
+            ),
+            (
+                "model",
+                FederatedCategoricalNB(
+                    y_var=y_var,
+                    x_vars=x_vars,
+                    categories=categories,
+                ),
+            ),
+        ]
     )
-    encoder.fit(
+    results = pipeline.fit(
         agg_client=agg_client,
         data=data,
-        categorical_vars=x_vars,
-    )
-    X = encoder.transform(
-        data,
+        y=y,
         categorical_vars=x_vars,
         numerical_vars=[],
     )
-    y = data[y_var].to_numpy()
-
-    model = FederatedCategoricalNB(
-        y_var=y_var,
-        x_vars=x_vars,
-        categories=categories,
-    )
-    results = model.fit(X, y, agg_client=agg_client)
     return {
         "classes": list(results.labels),
         "class_count": results.class_count.astype(float).tolist(),

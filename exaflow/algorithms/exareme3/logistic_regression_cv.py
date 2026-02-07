@@ -9,22 +9,27 @@ from pydantic import BaseModel
 
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.cross_validation.cross_validator import (
+from exaflow.algorithms.federated.compose.column_transformer import (
+    FederatedColumnTransformer,
+)
+from exaflow.algorithms.federated.linear_model.logistic_regression import (
+    FederatedLogisticRegression,
+)
+from exaflow.algorithms.federated.model_selection.cross_validation.cross_validator import (
     FederatedCrossValidator,
 )
-from exaflow.algorithms.federated.cross_validation.scorer_classification import (
+from exaflow.algorithms.federated.model_selection.cross_validation.scorer_classification import (
     FederatedClassificationScorer,
 )
-from exaflow.algorithms.federated.cross_validation.scorer_classification import (
+from exaflow.algorithms.federated.model_selection.cross_validation.scorer_classification import (
     compute_classification_metrics_from_confmat,
 )
-from exaflow.algorithms.federated.cross_validation.splitter_kfold import (
+from exaflow.algorithms.federated.model_selection.cross_validation.splitter_kfold import (
     FederatedKFoldSplitter,
 )
-from exaflow.algorithms.federated.logistic_regression import FederatedLogisticRegression
-from exaflow.algorithms.federated.transformers.one_hot_encoder import (
-    FederatedOneHotEncoder,
-)
+from exaflow.algorithms.federated.pipeline import FederatedPipeline
+from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
+from exaflow.algorithms.federated.preprocessing import FederatedPassthrough
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.worker_communication import BadUserInput
 
@@ -176,24 +181,19 @@ def logistic_regression_cv_local_step(
     """
     n_splits = int(n_splits)
 
-    encoder = FederatedOneHotEncoder()
-    encoder.fit(
-        agg_client=agg_client,
-        data=data,
-        categorical_vars=categorical_vars,
-        numerical_vars=numerical_vars,
-    )
-    feature_names = encoder.get_feature_names_out(
-        categorical_vars=categorical_vars,
-        numerical_vars=numerical_vars,
-    )
-    feature_names = ["Intercept"] + feature_names
-
-    # Build design matrix X and binarized y
-    X = encoder.transform(
-        data,
-        categorical_vars=categorical_vars,
-        numerical_vars=numerical_vars,
+    cv_pipeline = FederatedPipeline(
+        [
+            (
+                "features",
+                FederatedColumnTransformer(
+                    [
+                        ("cat", FederatedOneHotEncoder(), "categorical"),
+                        ("num", FederatedPassthrough(), "numerical"),
+                    ]
+                ),
+            ),
+            ("model", FederatedLogisticRegression(fit_intercept=True)),
+        ]
     )
     positive_class = FederatedLogisticRegression.coerce_positive_class(
         data[y_var], positive_class
@@ -204,18 +204,43 @@ def logistic_regression_cv_local_step(
     thresholds = np.linspace(0.0, 1.0, 101)
 
     splitter = FederatedKFoldSplitter(n_splits=n_splits, shuffle=False)
-    estimator = FederatedLogisticRegression(fit_intercept=True)
     scorer = FederatedClassificationScorer(thresholds=thresholds)
     cross_validator = FederatedCrossValidator(
-        estimator=estimator,
+        estimator=cv_pipeline,
         splitter=splitter,
         scorer=scorer,
     )
 
     try:
-        metrics = cross_validator.evaluate(X, y, agg_client=agg_client)
+        metrics = cross_validator.evaluate(
+            None,
+            y,
+            data=data,
+            categorical_vars=categorical_vars,
+            numerical_vars=numerical_vars,
+            agg_client=agg_client,
+        )
     except BadInputError as exc:
         raise BadUserInput(str(exc))
+
+    # Get global feature names
+    feature_transformer = FederatedColumnTransformer(
+        [
+            ("cat", FederatedOneHotEncoder(), "categorical"),
+            ("num", FederatedPassthrough(), "numerical"),
+        ]
+    )
+    feature_transformer.fit(
+        agg_client=agg_client,
+        data=data,
+        categorical_vars=categorical_vars,
+        numerical_vars=numerical_vars,
+    )
+    feature_names = feature_transformer.get_feature_names_out(
+        categorical_vars=categorical_vars,
+        numerical_vars=numerical_vars,
+    )
+    feature_names = ["Intercept"] + feature_names
 
     return {
         "n_obs": metrics["n_obs"],

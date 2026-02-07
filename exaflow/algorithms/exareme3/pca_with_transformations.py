@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.pca import FederatedPCA
+from exaflow.algorithms.federated.decomposition.pca import FederatedPCA
 from exaflow.worker_communication import BadUserInput
 
 ALGORITHM_NAME = "pca_with_transformation"

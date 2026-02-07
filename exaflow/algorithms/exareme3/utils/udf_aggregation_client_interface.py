@@ -4,8 +4,8 @@ from abc import abstractmethod
 import numpy as np
 
 from exaflow.aggregation_clients import AggregationType
-from exaflow.algorithms.federated.agg_client import AggregationClient
-from exaflow.algorithms.federated.agg_client import ArrayInput
+from exaflow.algorithms.federated.utils.agg_client import AggregationClient
+from exaflow.algorithms.federated.utils.agg_client import ArrayInput
 
 
 class Exareme3UDFAggregationClientI(AggregationClient, ABC):

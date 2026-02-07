@@ -4,18 +4,22 @@ from exaflow.algorithms.exareme3.naive_bayes_common import NBResult
 from exaflow.algorithms.exareme3.naive_bayes_common import make_naive_bayes_result
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.cross_validation import FederatedCrossValidator
-from exaflow.algorithms.federated.cross_validation import FederatedKFoldSplitter
-from exaflow.algorithms.federated.cross_validation import (
+from exaflow.algorithms.federated.model_selection.cross_validation import (
+    FederatedCrossValidator,
+)
+from exaflow.algorithms.federated.model_selection.cross_validation import (
+    FederatedKFoldSplitter,
+)
+from exaflow.algorithms.federated.model_selection.cross_validation import (
     FederatedMulticlassClassificationScorer,
 )
-from exaflow.algorithms.federated.cross_validation.scorer_multiclass import (
+from exaflow.algorithms.federated.model_selection.cross_validation.scorer_multiclass import (
     multiclass_classification_metrics,
 )
-from exaflow.algorithms.federated.cross_validation.scorer_multiclass import (
+from exaflow.algorithms.federated.model_selection.cross_validation.scorer_multiclass import (
     multiclass_classification_summary,
 )
-from exaflow.algorithms.federated.naive_bayes_gaussian import FederatedGaussianNB
+from exaflow.algorithms.federated.naive_bayes import FederatedGaussianNB
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.worker_communication import BadUserInput
 

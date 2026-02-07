@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.descriptive_stats import (
+from exaflow.algorithms.federated.statistics.descriptive_stats import (
     FederatedDescriptiveStatistics,
 )
 
