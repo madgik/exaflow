@@ -25,6 +25,9 @@ class LinearRegressionResult(BaseModel):
     r_squared_adjusted: float
     f_stat: float
     f_pvalue: float
+    ll: float
+    aic: float
+    bic: float
     indep_vars: List[str]
     coefficients: List[float]
     std_err: List[float]
@@ -66,6 +69,9 @@ class LinearRegressionAlgorithm(Algorithm, algname=ALGORITHM_NAME):
             r_squared_adjusted=model_stats["r_squared_adjusted"],
             f_stat=model_stats["f_stat"],
             f_pvalue=model_stats["f_pvalue"],
+            ll=model_stats["ll"],
+            aic=model_stats["aic"],
+            bic=model_stats["bic"],
             coefficients=model_stats["coefficients"],
             std_err=model_stats["std_err"],
             t_stats=model_stats["t_stats"],
@@ -119,6 +125,9 @@ def linear_regression_local_step(
         "r_squared_adjusted": results.rsquared_adj,
         "f_stat": results.fvalue,
         "f_pvalue": results.f_pvalue,
+        "ll": results.ll,
+        "aic": results.aic,
+        "bic": results.bic,
         "coefficients": results.params.tolist(),
         "std_err": results.bse.tolist(),
         "t_stats": results.tvalues.tolist(),

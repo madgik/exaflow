@@ -29,6 +29,9 @@ class FederatedOLSResults(FederatedEstimatorResults):
         f_pvalue,
         r_squared,
         r_squared_adjusted,
+        ll,
+        aic,
+        bic,
         n_obs,
         rss,
         tss,
@@ -49,6 +52,9 @@ class FederatedOLSResults(FederatedEstimatorResults):
         self.f_pvalue = float(f_pvalue)
         self.rsquared = float(r_squared)
         self.rsquared_adj = float(r_squared_adjusted)
+        self.ll = float(ll)
+        self.aic = float(aic)
+        self.bic = float(bic)
         self.nobs = int(n_obs)
         self.rss = float(rss)
         self.tss = float(tss)
@@ -93,6 +99,9 @@ class FederatedOLS(FederatedEstimator):
         self.f_pvalue = float("nan")
         self.rsquared = 0.0
         self.rsquared_adj = 0.0
+        self.ll = float("nan")
+        self.aic = float("nan")
+        self.bic = float("nan")
         self.nobs = 0
         self.rss = 0.0
         self.tss = 0.0
@@ -161,6 +170,9 @@ class FederatedOLS(FederatedEstimator):
             f_pvalue=summary["f_pvalue"],
             r_squared=summary["r_squared"],
             r_squared_adjusted=summary["r_squared_adjusted"],
+            ll=summary["ll"],
+            aic=summary["aic"],
+            bic=summary["bic"],
             n_obs=summary["n_obs"],
             rss=rss,
             tss=tss,
@@ -183,6 +195,9 @@ class FederatedOLS(FederatedEstimator):
         self.f_pvalue = results.f_pvalue
         self.rsquared = results.rsquared
         self.rsquared_adj = results.rsquared_adj
+        self.ll = results.ll
+        self.aic = results.aic
+        self.bic = results.bic
         self.nobs = results.nobs
         self.rss = results.rss
         self.tss = results.tss
@@ -302,6 +317,9 @@ class FederatedOLS(FederatedEstimator):
                 "r_squared_adjusted": 0.0,
                 "f_stat": float("nan"),
                 "f_pvalue": float("nan"),
+                "ll": float("nan"),
+                "aic": float("nan"),
+                "bic": float("nan"),
                 "coefficients": coeff_flat.tolist(),
                 "std_err": nan_list,
                 "t_stats": nan_list,
@@ -336,6 +354,17 @@ class FederatedOLS(FederatedEstimator):
             f_stat = float((tss - rss) * df_resid / (p * rss))
             f_pvalue = float(stats.f.sf(f_stat, dfn=p, dfd=df_resid))
 
+        k_params = len(coeff_flat)
+        if rss > 0.0 and n_obs > 0:
+            sigma2 = rss / n_obs
+            ll = float(-0.5 * n_obs * (np.log(2.0 * np.pi * sigma2) + 1.0))
+            aic = float(2.0 * k_params - 2.0 * ll)
+            bic = float(np.log(n_obs) * k_params - 2.0 * ll)
+        else:
+            ll = float("nan")
+            aic = float("nan")
+            bic = float("nan")
+
         return {
             "n_obs": int(n_obs),
             "df_resid": float(df_resid),
@@ -345,6 +374,9 @@ class FederatedOLS(FederatedEstimator):
             "r_squared_adjusted": float(r_squared_adjusted),
             "f_stat": f_stat,
             "f_pvalue": f_pvalue,
+            "ll": ll,
+            "aic": aic,
+            "bic": bic,
             "coefficients": coeff_flat.tolist(),
             "std_err": std_err.tolist(),
             "t_stats": t_stats.tolist(),
