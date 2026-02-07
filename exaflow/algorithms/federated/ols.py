@@ -36,6 +36,7 @@ class FederatedOLSResults(FederatedEstimatorResults):
         rank_,
         xTx_inv_,
         cov_params,
+        fit_intercept,
     ):
         self.params = np.asarray(params, dtype=float)
         self.bse = np.asarray(bse, dtype=float)
@@ -55,12 +56,16 @@ class FederatedOLSResults(FederatedEstimatorResults):
         self.rank_ = int(rank_)
         self.xTx_inv_ = np.asarray(xTx_inv_, dtype=float)
         self.cov_params = np.asarray(cov_params, dtype=float)
+        self.fit_intercept = bool(fit_intercept)
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         if self.params.size == 0:
             return np.zeros((X.shape[0], 1), dtype=float)
+        X = np.asarray(X, dtype=float)
+        if self.fit_intercept:
+            X = FederatedOLS._add_intercept(X)
         coeff = self.params.reshape(-1, 1)
-        return np.asarray(X, dtype=float) @ coeff
+        return X @ coeff
 
     def conf_int(self, alpha: float = ALPHA):
         if self.df_resid <= 0 or self.params.size == 0:
@@ -109,6 +114,8 @@ class FederatedOLS(FederatedEstimator):
         without storing the full federated dataset in the init of the class.
         """
         X = np.asarray(X, dtype=float)
+        if self.fit_intercept:
+            X = self._add_intercept(X)
         y = np.asarray(y, dtype=float).reshape(-1, 1)
 
         stats_dict = self._collect_stats(X, y, agg_client)
@@ -161,6 +168,7 @@ class FederatedOLS(FederatedEstimator):
             rank_=rank,
             xTx_inv_=xTx_inv,
             cov_params=cov_params,
+            fit_intercept=self.fit_intercept,
         )
 
         self.results = results
@@ -184,6 +192,14 @@ class FederatedOLS(FederatedEstimator):
         self.cov_params = results.cov_params
 
         return results
+
+    @staticmethod
+    def _add_intercept(X: np.ndarray) -> np.ndarray:
+        if X.ndim == 1:
+            X = X.reshape(-1, 1)
+        n_rows = X.shape[0]
+        intercept = np.ones((n_rows, 1), dtype=float)
+        return np.hstack([intercept, X])
 
     def _collect_stats(
         self, X: np.ndarray, y: np.ndarray, agg_client: AggregationClient

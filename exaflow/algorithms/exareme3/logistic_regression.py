@@ -103,6 +103,7 @@ def logistic_regression_local_step(
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,
     )
+    feature_names = ["Intercept"] + feature_names
     positive_class = FederatedLogisticRegression.coerce_positive_class(
         data[y_var], positive_class
     )
@@ -113,7 +114,7 @@ def logistic_regression_local_step(
         numerical_vars=numerical_vars,
     )
 
-    model = FederatedLogisticRegression()
+    model = FederatedLogisticRegression(fit_intercept=True)
     results = model.fit(X, y, agg_client=agg_client)
 
     summary = results.summary()

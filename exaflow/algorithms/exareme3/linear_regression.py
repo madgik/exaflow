@@ -92,6 +92,7 @@ def linear_regression_local_step(
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,
     )
+    feature_names = ["Intercept"] + feature_names
     y = data[y_var].to_numpy(dtype=float, copy=False)
     X = encoder.transform(
         data,
@@ -99,7 +100,7 @@ def linear_regression_local_step(
         numerical_vars=numerical_vars,
     )
 
-    model = FederatedOLS()
+    model = FederatedOLS(fit_intercept=True)
     results = model.fit(X, y, agg_client=agg_client)
     conf_int = results.conf_int()
     return {

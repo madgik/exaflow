@@ -7,11 +7,11 @@ from tests.standalone_tests.federated_algorithms.utils import DummyAggClient
 
 
 def _fit_model(X_raw, y):
-    X = np.column_stack((np.ones(X_raw.shape[0], dtype=float), X_raw))
+    X = np.asarray(X_raw, dtype=float)
     y = np.asarray(y, dtype=float)
 
     agg_client = DummyAggClient()
-    model = FederatedLogisticRegression()
+    model = FederatedLogisticRegression(fit_intercept=True)
     results = model.fit(X, y, agg_client=agg_client)
     return results.summary()
 

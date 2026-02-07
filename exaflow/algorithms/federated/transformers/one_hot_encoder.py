@@ -12,7 +12,7 @@ from exaflow.algorithms.federated.interfaces import FederatedTransformer
 
 
 class FederatedOneHotEncoder(FederatedTransformer):
-    """Federated one-hot encoder with intercept support."""
+    """Federated one-hot encoder without intercept support."""
 
     def __init__(self) -> None:
         self.dummy_categories: Dict[str, List] = {}
@@ -45,7 +45,7 @@ class FederatedOneHotEncoder(FederatedTransformer):
         numerical_vars: Optional[List[str]] = None,
     ) -> List[str]:
         numerical_vars = numerical_vars or []
-        labels = ["Intercept"]
+        labels: List[str] = []
         for var in categorical_vars:
             labels.extend(
                 [f"{var}[{lvl}]" for lvl in self.dummy_categories.get(var, [])]
@@ -99,12 +99,10 @@ class FederatedOneHotEncoder(FederatedTransformer):
         n_dummy_cols = sum(
             len(dummy_categories.get(var, [])) for var in categorical_vars
         )
-        total_cols = 1 + n_dummy_cols + len(numerical_vars)
+        total_cols = n_dummy_cols + len(numerical_vars)
         design = np.empty((n_rows, total_cols), dtype=float)
 
         col_idx = 0
-        design[:, col_idx] = 1.0
-        col_idx += 1
 
         for var in categorical_vars:
             categories = dummy_categories.get(var, [])

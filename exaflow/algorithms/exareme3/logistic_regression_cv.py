@@ -187,6 +187,7 @@ def logistic_regression_cv_local_step(
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,
     )
+    feature_names = ["Intercept"] + feature_names
 
     # Build design matrix X and binarized y
     X = encoder.transform(
@@ -203,7 +204,7 @@ def logistic_regression_cv_local_step(
     thresholds = np.linspace(0.0, 1.0, 101)
 
     splitter = FederatedKFoldSplitter(n_splits=n_splits, shuffle=False)
-    estimator = FederatedLogisticRegression()
+    estimator = FederatedLogisticRegression(fit_intercept=True)
     scorer = FederatedClassificationScorer(thresholds=thresholds)
     cross_validator = FederatedCrossValidator(
         estimator=estimator,
