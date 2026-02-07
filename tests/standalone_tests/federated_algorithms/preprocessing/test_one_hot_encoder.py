@@ -36,10 +36,10 @@ def test_one_hot_encoder_union_and_feature_names():
         numerical_vars=["age"],
     )
 
-    assert feature_names == ["Intercept", "sex[M]", "sex[O]", "age"]
+    assert feature_names == ["sex[M]", "sex[O]", "age"]
     X = encoder.transform(
         data,
         categorical_vars=["sex"],
         numerical_vars=["age"],
     )
-    assert X.shape == (3, 4)
+    assert X.shape == (3, 3)

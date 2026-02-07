@@ -7,14 +7,15 @@ from tests.standalone_tests.federated_algorithms.utils import DummyAggClient
 
 
 def _run_and_compare(X_raw, y):
-    X = sm.add_constant(X_raw, has_constant="add")
+    X = np.asarray(X_raw, dtype=float)
     y = np.asarray(y, dtype=float).reshape(-1, 1)
 
     agg_client = DummyAggClient()
-    model = FederatedOLS()
+    model = FederatedOLS(fit_intercept=True)
     model.fit(X, y, agg_client=agg_client)
 
-    sm_model = sm.OLS(y, X).fit()
+    X_sm = sm.add_constant(X, has_constant="add")
+    sm_model = sm.OLS(y, X_sm).fit()
 
     assert model.nobs == X.shape[0]
     assert np.allclose(model.params, sm_model.params, atol=1e-8)

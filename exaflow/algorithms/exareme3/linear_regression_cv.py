@@ -133,6 +133,7 @@ def linear_regression_cv_local_step(
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,
     )
+    feature_names = ["Intercept"] + feature_names
     p = len(feature_names) - 1
     try:
         metrics = cross_validator.evaluate(X, y, p=p, agg_client=agg_client)

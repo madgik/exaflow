@@ -40,6 +40,7 @@ class FederatedLogisticRegressionResults(FederatedEstimatorResults):
         ll0,
         aic,
         bic,
+        fit_intercept,
     ):
         self.params = np.asarray(params, dtype=float)
         self.coefficients = self.params
@@ -59,11 +60,15 @@ class FederatedLogisticRegressionResults(FederatedEstimatorResults):
         self.ll0 = float(ll0)
         self.aic = float(aic)
         self.bic = float(bic)
+        self.fit_intercept = bool(fit_intercept)
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         if self.params.size == 0:
             return np.zeros((X.shape[0],), dtype=float)
-        logits = np.asarray(X, dtype=float) @ self.params.reshape(-1, 1)
+        X = np.asarray(X, dtype=float)
+        if self.fit_intercept:
+            X = FederatedLogisticRegression._add_intercept(X)
+        logits = X @ self.params.reshape(-1, 1)
         return expit(logits).reshape(-1)
 
     def summary(self) -> dict:
@@ -89,7 +94,8 @@ class FederatedLogisticRegressionResults(FederatedEstimatorResults):
 class FederatedLogisticRegression(FederatedEstimator):
     """Federated logistic regression with statsmodels-like results."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, fit_intercept: bool = True) -> None:
+        self.fit_intercept = fit_intercept
         self.results: FederatedLogisticRegressionResults | None = None
         self.params = np.array([], dtype=float)
         self.hessian_inverse = np.zeros((0, 0), dtype=float)
@@ -105,6 +111,8 @@ class FederatedLogisticRegression(FederatedEstimator):
         agg_client: AggregationClient,
     ) -> FederatedLogisticRegressionResults:
         X = np.asarray(X, dtype=float)
+        if self.fit_intercept:
+            X = self._add_intercept(X)
         y = np.asarray(y, dtype=float).reshape(-1, 1)
 
         stats_dict = self._collect_stats(X, y, agg_client)
@@ -141,6 +149,7 @@ class FederatedLogisticRegression(FederatedEstimator):
             ll0=summary["ll0"],
             aic=summary["aic"],
             bic=summary["bic"],
+            fit_intercept=self.fit_intercept,
         )
 
         self.results = results
@@ -181,6 +190,14 @@ class FederatedLogisticRegression(FederatedEstimator):
             pass
 
         return positive_class
+
+    @staticmethod
+    def _add_intercept(X: np.ndarray) -> np.ndarray:
+        if X.ndim == 1:
+            X = X.reshape(-1, 1)
+        n_rows = X.shape[0]
+        intercept = np.ones((n_rows, 1), dtype=float)
+        return np.hstack([intercept, X])
 
     @staticmethod
     def _handle_logreg_errors(nobs: int, p: int, y_sum: float) -> None:
