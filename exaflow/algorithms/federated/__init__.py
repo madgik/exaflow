@@ -10,10 +10,10 @@ from exaflow.algorithms.federated.descriptive_stats import (
 from exaflow.algorithms.federated.logistic_regression import FederatedLogisticRegression
 from exaflow.algorithms.federated.ols import FederatedOLS
 from exaflow.algorithms.federated.pca import FederatedPCA
-from exaflow.algorithms.federated.preprocessing.one_hot_encoder import (
+from exaflow.algorithms.federated.transformers.one_hot_encoder import (
     FederatedOneHotEncoder,
 )
-from exaflow.algorithms.federated.preprocessing.ordinal_encoder import (
+from exaflow.algorithms.federated.transformers.ordinal_encoder import (
     FederatedOrdinalEncoder,
 )
 from exaflow.algorithms.federated.ttest_independent import FederatedTTestIndependent

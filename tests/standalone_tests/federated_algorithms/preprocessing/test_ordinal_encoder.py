@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from exaflow.algorithms.federated.preprocessing.ordinal_encoder import (
+from exaflow.algorithms.federated.transformers.ordinal_encoder import (
     FederatedOrdinalEncoder,
 )
 

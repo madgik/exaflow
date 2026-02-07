@@ -54,8 +54,8 @@ class FederatedScorer(Protocol):
     ) -> dict: ...
 
 
-class FederatedPreprocessor(Protocol):
-    """Preprocessor interface for federated feature preparation."""
+class FederatedTransformer(Protocol):
+    """Transformer interface for federated feature preparation."""
 
     def fit(
         self,

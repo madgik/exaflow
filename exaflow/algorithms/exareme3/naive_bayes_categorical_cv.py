@@ -18,7 +18,7 @@ from exaflow.algorithms.federated.cross_validation.scorer_multiclass import (
     multiclass_classification_summary,
 )
 from exaflow.algorithms.federated.naive_bayes_categorical import FederatedCategoricalNB
-from exaflow.algorithms.federated.preprocessing.ordinal_encoder import (
+from exaflow.algorithms.federated.transformers.ordinal_encoder import (
     FederatedOrdinalEncoder,
 )
 from exaflow.algorithms.federated.utils import BadInputError

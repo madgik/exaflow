@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from exaflow.algorithms.federated.preprocessing.one_hot_encoder import (
+from exaflow.algorithms.federated.transformers.one_hot_encoder import (
     FederatedOneHotEncoder,
 )
 

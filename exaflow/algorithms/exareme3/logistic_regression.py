@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.logistic_regression import FederatedLogisticRegression
-from exaflow.algorithms.federated.preprocessing.one_hot_encoder import (
+from exaflow.algorithms.federated.transformers.one_hot_encoder import (
     FederatedOneHotEncoder,
 )
 

@@ -22,7 +22,7 @@ from exaflow.algorithms.federated.cross_validation.splitter_kfold import (
     FederatedKFoldSplitter,
 )
 from exaflow.algorithms.federated.logistic_regression import FederatedLogisticRegression
-from exaflow.algorithms.federated.preprocessing.one_hot_encoder import (
+from exaflow.algorithms.federated.transformers.one_hot_encoder import (
     FederatedOneHotEncoder,
 )
 from exaflow.algorithms.federated.utils import BadInputError

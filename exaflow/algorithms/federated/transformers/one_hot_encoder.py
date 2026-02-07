@@ -8,10 +8,10 @@ import numpy as np
 import pandas as pd
 
 from exaflow.algorithms.federated.agg_client import AggregationClient
-from exaflow.algorithms.federated.interfaces import FederatedPreprocessor
+from exaflow.algorithms.federated.interfaces import FederatedTransformer
 
 
-class FederatedOneHotEncoder(FederatedPreprocessor):
+class FederatedOneHotEncoder(FederatedTransformer):
     """Federated one-hot encoder with intercept support."""
 
     def __init__(self) -> None:
