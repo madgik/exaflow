@@ -4,10 +4,13 @@ from pydantic import BaseModel
 
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.ols import FederatedOLS
-from exaflow.algorithms.federated.transformers.one_hot_encoder import (
-    FederatedOneHotEncoder,
+from exaflow.algorithms.federated.compose.column_transformer import (
+    FederatedColumnTransformer,
 )
+from exaflow.algorithms.federated.linear_model.ols import FederatedOLS
+from exaflow.algorithms.federated.pipeline import FederatedPipeline
+from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
+from exaflow.algorithms.federated.preprocessing import FederatedPassthrough
 
 ALGORITHM_NAME = "linear_regression"
 
@@ -81,37 +84,41 @@ def linear_regression_local_step(
     numerical_vars,
 ):
 
-    encoder = FederatedOneHotEncoder()
-    encoder.fit(
+    transformer = FederatedColumnTransformer(
+        [
+            ("cat", FederatedOneHotEncoder(), "categorical"),
+            ("num", FederatedPassthrough(), "numerical"),
+        ]
+    )
+    pipeline = FederatedPipeline(
+        [
+            ("features", transformer),
+            ("model", FederatedOLS(fit_intercept=True)),
+        ]
+    )
+    y = data[y_var].to_numpy(dtype=float, copy=False)
+    results = pipeline.fit(
         agg_client=agg_client,
+        data=data,
+        y=y,
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,
-        data=data,
     )
-    feature_names = encoder.get_feature_names_out(
+    feature_names = pipeline.get_feature_names_out(
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,
     )
     feature_names = ["Intercept"] + feature_names
-    y = data[y_var].to_numpy(dtype=float, copy=False)
-    X = encoder.transform(
-        data,
-        categorical_vars=categorical_vars,
-        numerical_vars=numerical_vars,
-    )
-
-    model = FederatedOLS(fit_intercept=True)
-    results = model.fit(X, y, agg_client=agg_client)
     conf_int = results.conf_int()
     return {
-        "n_obs": model.nobs,
-        "df_resid": model.df_resid,
-        "df_model": model.df_model,
-        "rse": model.rse,
-        "r_squared": model.rsquared,
-        "r_squared_adjusted": model.rsquared_adj,
-        "f_stat": model.fvalue,
-        "f_pvalue": model.f_pvalue,
+        "n_obs": results.nobs,
+        "df_resid": results.df_resid,
+        "df_model": results.df_model,
+        "rse": results.rse,
+        "r_squared": results.rsquared,
+        "r_squared_adjusted": results.rsquared_adj,
+        "f_stat": results.fvalue,
+        "f_pvalue": results.f_pvalue,
         "coefficients": results.params.tolist(),
         "std_err": results.bse.tolist(),
         "t_stats": results.tvalues.tolist(),

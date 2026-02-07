@@ -1,24 +1,21 @@
-from exaflow.algorithms.federated.anova_oneway import FederatedAnovaOneWay
-from exaflow.algorithms.federated.anova_twoway import FederatedAnovaTwoWay
-from exaflow.algorithms.federated.cross_validation import FederatedClassificationScorer
-from exaflow.algorithms.federated.cross_validation import FederatedCrossValidator
-from exaflow.algorithms.federated.cross_validation import FederatedKFoldSplitter
-from exaflow.algorithms.federated.cross_validation import FederatedRegressionScorer
-from exaflow.algorithms.federated.descriptive_stats import (
-    FederatedDescriptiveStatistics,
-)
-from exaflow.algorithms.federated.logistic_regression import FederatedLogisticRegression
-from exaflow.algorithms.federated.ols import FederatedOLS
-from exaflow.algorithms.federated.pca import FederatedPCA
-from exaflow.algorithms.federated.transformers.one_hot_encoder import (
-    FederatedOneHotEncoder,
-)
-from exaflow.algorithms.federated.transformers.ordinal_encoder import (
-    FederatedOrdinalEncoder,
-)
-from exaflow.algorithms.federated.ttest_independent import FederatedTTestIndependent
-from exaflow.algorithms.federated.ttest_onesample import FederatedTTestOneSample
-from exaflow.algorithms.federated.ttest_paired import FederatedTTestPaired
+from exaflow.algorithms.federated.compose import FederatedColumnTransformer
+from exaflow.algorithms.federated.decomposition import FederatedPCA
+from exaflow.algorithms.federated.linear_model import FederatedLogisticRegression
+from exaflow.algorithms.federated.linear_model import FederatedOLS
+from exaflow.algorithms.federated.model_selection import FederatedClassificationScorer
+from exaflow.algorithms.federated.model_selection import FederatedCrossValidator
+from exaflow.algorithms.federated.model_selection import FederatedKFoldSplitter
+from exaflow.algorithms.federated.model_selection import FederatedRegressionScorer
+from exaflow.algorithms.federated.pipeline import FederatedPipeline
+from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
+from exaflow.algorithms.federated.preprocessing import FederatedOrdinalEncoder
+from exaflow.algorithms.federated.preprocessing import FederatedPassthrough
+from exaflow.algorithms.federated.statistics import FederatedAnovaOneWay
+from exaflow.algorithms.federated.statistics import FederatedAnovaTwoWay
+from exaflow.algorithms.federated.statistics import FederatedDescriptiveStatistics
+from exaflow.algorithms.federated.statistics import FederatedTTestIndependent
+from exaflow.algorithms.federated.statistics import FederatedTTestOneSample
+from exaflow.algorithms.federated.statistics import FederatedTTestPaired
 
 __all__ = [
     "FederatedAnovaOneWay",
@@ -34,6 +31,9 @@ __all__ = [
     "FederatedKFoldSplitter",
     "FederatedOneHotEncoder",
     "FederatedOrdinalEncoder",
+    "FederatedPassthrough",
+    "FederatedPipeline",
+    "FederatedColumnTransformer",
     "FederatedRegressionScorer",
     "FederatedClassificationScorer",
 ]

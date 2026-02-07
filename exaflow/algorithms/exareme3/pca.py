@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.pca import FederatedPCA
+from exaflow.algorithms.federated.decomposition.pca import FederatedPCA
 
 ALGORITHM_NAME = "pca"
 

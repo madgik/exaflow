@@ -7,18 +7,21 @@ from pydantic import BaseModel
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated import FederatedOLS
-from exaflow.algorithms.federated.cross_validation.cross_validator import (
+from exaflow.algorithms.federated.compose.column_transformer import (
+    FederatedColumnTransformer,
+)
+from exaflow.algorithms.federated.model_selection.cross_validation.cross_validator import (
     FederatedCrossValidator,
 )
-from exaflow.algorithms.federated.cross_validation.scorer_regression import (
+from exaflow.algorithms.federated.model_selection.cross_validation.scorer_regression import (
     FederatedRegressionScorer,
 )
-from exaflow.algorithms.federated.cross_validation.splitter_kfold import (
+from exaflow.algorithms.federated.model_selection.cross_validation.splitter_kfold import (
     FederatedKFoldSplitter,
 )
-from exaflow.algorithms.federated.transformers.one_hot_encoder import (
-    FederatedOneHotEncoder,
-)
+from exaflow.algorithms.federated.pipeline import FederatedPipeline
+from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
+from exaflow.algorithms.federated.preprocessing import FederatedPassthrough
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.worker_communication import BadUserInput
 
@@ -107,38 +110,58 @@ def linear_regression_cv_local_step(
 
     Returns identical global metrics from every worker.
     """
-    encoder = FederatedOneHotEncoder()
-    encoder.fit(
+    cv_pipeline = FederatedPipeline(
+        [
+            (
+                "features",
+                FederatedColumnTransformer(
+                    [
+                        ("cat", FederatedOneHotEncoder(), "categorical"),
+                        ("num", FederatedPassthrough(), "numerical"),
+                    ]
+                ),
+            ),
+            ("model", FederatedOLS(fit_intercept=True)),
+        ]
+    )
+    y = data[y_var].astype(float).to_numpy()
+
+    splitter = FederatedKFoldSplitter(n_splits=n_splits, shuffle=False)
+    cross_validator = FederatedCrossValidator(
+        estimator=cv_pipeline,
+        splitter=splitter,
+        scorer=FederatedRegressionScorer(),
+    )
+    try:
+        metrics = cross_validator.evaluate(
+            None,
+            y,
+            data=data,
+            categorical_vars=categorical_vars,
+            numerical_vars=numerical_vars,
+            agg_client=agg_client,
+        )
+    except BadInputError as exc:
+        raise BadUserInput(str(exc))
+
+    # Get global feature names
+    feature_transformer = FederatedColumnTransformer(
+        [
+            ("cat", FederatedOneHotEncoder(), "categorical"),
+            ("num", FederatedPassthrough(), "numerical"),
+        ]
+    )
+    feature_transformer.fit(
         agg_client=agg_client,
         data=data,
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,
     )
-    X = encoder.transform(
-        data,
-        categorical_vars=categorical_vars,
-        numerical_vars=numerical_vars,
-    )
-    y = data[y_var].astype(float).to_numpy()
-
-    splitter = FederatedKFoldSplitter(n_splits=n_splits, shuffle=False)
-    estimator = FederatedOLS(fit_intercept=True)
-    cross_validator = FederatedCrossValidator(
-        estimator=estimator,
-        splitter=splitter,
-        scorer=FederatedRegressionScorer(),
-    )
-
-    feature_names = encoder.get_feature_names_out(
+    feature_names = feature_transformer.get_feature_names_out(
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,
     )
     feature_names = ["Intercept"] + feature_names
-    p = len(feature_names) - 1
-    try:
-        metrics = cross_validator.evaluate(X, y, p=p, agg_client=agg_client)
-    except BadInputError as exc:
-        raise BadUserInput(str(exc))
 
     metrics["feature_names"] = feature_names
     return metrics

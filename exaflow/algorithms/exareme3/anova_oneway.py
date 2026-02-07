@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.anova_oneway import FederatedAnovaOneWay
+from exaflow.algorithms.federated.statistics.anova_oneway import FederatedAnovaOneWay
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.worker_communication import BadUserInput
 

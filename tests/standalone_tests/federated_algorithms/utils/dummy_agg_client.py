@@ -1,6 +1,6 @@
 import numpy as np
 
-from exaflow.algorithms.federated.agg_client import AggregationClient
+from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 
 
 class DummyAggClient(AggregationClient):

@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.naive_bayes_gaussian import FederatedGaussianNB
+from exaflow.algorithms.federated.naive_bayes import FederatedGaussianNB
 from exaflow.worker_communication import BadUserInput
 
 ALGNAME_PRED = "test_nb_gaussian_predict"

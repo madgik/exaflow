@@ -2,7 +2,9 @@ from pydantic import BaseModel
 
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.ttest_onesample import FederatedTTestOneSample
+from exaflow.algorithms.federated.statistics.ttest_onesample import (
+    FederatedTTestOneSample,
+)
 
 ALGORITHM_NAME = "ttest_onesample"
 
