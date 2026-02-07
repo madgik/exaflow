@@ -1,16 +1,10 @@
 <b><h2><center>k-means</center></h1></b>
 
-<b><h4> Some General Remarks </h4></b>
-The general architecture of the MIP follows a Master/Worker paradigm where many Workers, operating in multiple medical centers, are coordinated by one Master. Only Workers are allowed access to the anonymized data in each medical center and the Master only sees aggregate data, derived from the full data and sent to him by the Workers.
-
-As a consequence, every algorithm has to be refactored in a form that fits this model.
-
-In general, this means two things.
-
-1. On the one hand, isolating the parts of the algorithm that operate on the full data and implement them in procedures that run on Workers.
-1. On the other hand, identifying the parts of the algorithm that need to see the aggregates from all Workers and implementing these parts in procedures that run on Master.
-
-Our naming convention is that procedures run on Workers are given the adjective _local_ whereas those running on Master are called _global_.
+<b><h4>Aggregation Server</h4></b>
+Some algorithms use the aggregation server to combine partial vectors (e.g., sums)
+from workers into a single global result. The controller coordinates the flow and
+workers send partial aggregates to the aggregation server via gRPC; the combined
+result is then used in the algorithm’s global step.
 
 <b><h4> Notation </h4></b>
 Each local dataset *D<sup>(l)</sup>*, where *l*=1,...,*L*, is represented as a matrix of size *n* x *p*, where *L* is the number of medical centers, *n* is the number of points (patients) and *p* is the number of attributes. The elements of the above matrix can either be continuous or discrete (categorical).
@@ -23,6 +17,11 @@ The purpose of the k-means algorithm is to partition the data into *k* clusters.
 
 <b><h4>k-MEANS Train</b></h4>
 ![pseudo](images/kmeans_pseudocode.png)
+
+<b><h4>Exareme3 Notes</h4></b>
+
+- All predictors must be numeric.
+- The global centroids are computed by aggregating local sufficient statistics.
 
 <b><h4>Algorithm Implementation</b></h4>
 

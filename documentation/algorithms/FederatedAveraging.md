@@ -1,18 +1,10 @@
 ## Federated Averaging
 
-#### Some General Remarks
-
-The general architecture of Exaflow follows a Master/Worker paradigm where many Workers
-, operating in multiple locations, are coordinated by one Master. Only Workers
-are allowed access to the anonymized data in each location and the Master only
-sees aggregate data, derived from the full data and sent to him by the Workers.
-
-Our naming convention is that procedures run on Workers are given the adjective _local_
-whereas those running on Master are called _global_.
-
-In this premise, we implement federated averaging by building the models locally, using
-state-of-the-art Python libraries, such as scikit learn and then averaging the parameters
-on the global worker.
+<b><h4>Aggregation Server</h4></b>
+Some algorithms use the aggregation server to combine partial vectors (e.g., sums)
+from workers into a single global result. The controller coordinates the flow and
+workers send partial aggregates to the aggregation server via gRPC; the combined
+result is then used in the algorithm’s global step.
 
 #### Algorithm Description
 
