@@ -28,6 +28,9 @@ def _run_and_compare(X_raw, y):
     assert np.isclose(model.f_pvalue, sm_model.f_pvalue, atol=1e-8)
     assert np.isclose(model.df_resid, sm_model.df_resid, atol=1e-8)
     assert np.isclose(model.df_model, sm_model.df_model, atol=1e-8)
+    assert np.isclose(model.ll, sm_model.llf, atol=1e-8)
+    assert np.isclose(model.aic, sm_model.aic, atol=1e-8)
+    assert np.isclose(model.bic, sm_model.bic, atol=1e-8)
 
 
 TEST_CASES = [
