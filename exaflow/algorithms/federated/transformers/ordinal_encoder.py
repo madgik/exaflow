@@ -8,10 +8,10 @@ import numpy as np
 import pandas as pd
 
 from exaflow.algorithms.federated.agg_client import AggregationClient
-from exaflow.algorithms.federated.interfaces import FederatedPreprocessor
+from exaflow.algorithms.federated.interfaces import FederatedTransformer
 
 
-class FederatedOrdinalEncoder(FederatedPreprocessor):
+class FederatedOrdinalEncoder(FederatedTransformer):
     """
     Ordinal encoder for federated categorical features that enforces a fixed
     category ordering from metadata.

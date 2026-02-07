@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.naive_bayes_categorical import FederatedCategoricalNB
-from exaflow.algorithms.federated.preprocessing.ordinal_encoder import (
+from exaflow.algorithms.federated.transformers.ordinal_encoder import (
     FederatedOrdinalEncoder,
 )
 
