@@ -1,16 +1,10 @@
 <b><h2><center>ANOVA</center></h1></b>
 
-<b><h4> Some General Remarks </h4></b>
-The general architecture of the MIP follows a Master/Worker paradigm where many Workers, operating in multiple medical centers, are coordinated by one Master. Only Workers are allowed access to the anonymized data in each medical center and the Master only sees aggregate data, derived from the full data and sent to him by the Workers.
-
-As a consequence, every algorithm has to be refactored in a form that fits this model.
-
-In general, this means two things.
-
-1. On the one hand, isolating the parts of the algorithm that operate on the full data and implement them in procedures that run on Workers.
-1. On the other hand, identifying the parts of the algorithm that need to see the aggregates from all Workers and implementing these parts in procedures that run on Master.
-
-Our naming convention is that procedures run on Workers are given the adjective _local_ whereas those running on Master are called _global_.
+<b><h4>Aggregation Server</h4></b>
+Some algorithms use the aggregation server to combine partial vectors (e.g., sums)
+from workers into a single global result. The controller coordinates the flow and
+workers send partial aggregates to the aggregation server via gRPC; the combined
+result is then used in the algorithm’s global step.
 
 <b><h4> Sums of Squares Types </h4></b>
 There are three different classical approaches for computing sums of squares (<img src="https://render.githubusercontent.com/render/math?math=SS">) and testing hypotheses in ANOVA for unbalanced data commonly called Type I, II, and III sums of squares.
@@ -58,6 +52,17 @@ Let <img src="https://render.githubusercontent.com/render/math?math=SS(A,B,AB)">
 <img src="https://render.githubusercontent.com/render/math?math=SS(B|A)"> for factor <img src="https://render.githubusercontent.com/render/math?math=B">.
 
 <img src="https://render.githubusercontent.com/render/math?math=SS(AB|B,A)"> for interaction <img src="https://render.githubusercontent.com/render/math?math=AB">.
+
+<b><h4>Exareme3 Notes</h4></b>
+
+- Both one-way and two-way ANOVA are implemented.
+- Categorical variables are handled via federated design matrices.
+
+<b><h4>Algorithm Implementation</b></h4>
+
+[ANOVA One-Way](../../exaflow/algorithms/exareme3/anova_oneway.py)
+
+[ANOVA Two-Way](../../exaflow/algorithms/exareme3/anova_twoway.py)
 
 <b><h5>Type III: marginal or orthogonal</b></h5>
 

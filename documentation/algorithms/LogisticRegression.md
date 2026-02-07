@@ -1,23 +1,10 @@
 ## Logistic Regression
 
-#### Some General Remarks
-
-The general architecture of the MIP follows a Master/Worker paradigm where many Workers
-, operating in multiple medical centers, are coordinated by one Master. Only Workers
-are allowed access to the anonymized data in each medical center and the Master only
-sees aggregate data, derived from the full data and sent to him by the Workers.
-
-As a consequence, every algorithm has to be refactored in a form that fits this model.
-In general, this means two things.
-
-1. On the one hand, isolating the parts of the algorithm that operate on the full data
-   and implement them in procedures that run on Workers.
-1. On the other hand, identifying the parts of the algorithm that need to see the
-   aggregates from all Workers and implementing these parts in procedures that run on
-   Master.
-
-Our naming convention is that procedures run on Workers are given the adjective _local_
-whereas those running on Master are called _global_.
+<b><h4>Aggregation Server</h4></b>
+Some algorithms use the aggregation server to combine partial vectors (e.g., sums)
+from workers into a single global result. The controller coordinates the flow and
+workers send partial aggregates to the aggregation server via gRPC; the combined
+result is then used in the algorithm’s global step.
 
 #### Algorithm Description
 
@@ -27,6 +14,15 @@ following algorithm, called __Iteratively Reweighted Least Squares__ (IRLS). Her
 the dependent variable *y* has to be binary.
 
 ![pseudo](images/logistic_regression_pseudocode.png)
+
+#### Exareme3 Notes
+
+- Categorical predictors are one-hot encoded via a federated column transformer.
+- The intercept term is handled inside the estimator (`fit_intercept=True`).
+- `positive_class` determines which label is treated as the positive class.
+- The summary includes coefficients, standard errors, Wald z-scores, p-values,
+  confidence intervals, McFadden/Cox–Snell R², and AIC/BIC.
+- CV reports per-fold metrics, confusion matrix, and ROC/AUC curves.
 
 <b><h4>Algorithm Implementation</b></h4>
 
