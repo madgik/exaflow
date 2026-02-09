@@ -7,11 +7,12 @@ from pydantic import BaseModel
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated import FederatedDescriptiveStatistics
+from exaflow.algorithms.specifications import AlgorithmName
 
 HistogramBin = Union[float, str]
 
 
-class Histogram(BaseModel):
+class HistogramResultItem(BaseModel):
     var: str
     grouping_var: Optional[str]
     grouping_enum: Optional[str]
@@ -20,13 +21,10 @@ class Histogram(BaseModel):
 
 
 class HistogramResult(BaseModel):
-    histogram: List[Histogram]
+    histogram: List[HistogramResultItem]
 
 
-ALGORITHM_NAME = "histogram"
-
-
-class MultipleHistogramsAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class Histogram(Algorithm, algname=AlgorithmName.HISTOGRAM):
     def run(self):
         y_var = self.inputdata.y[0]
         x_vars = self.inputdata.x or []
@@ -49,10 +47,10 @@ class MultipleHistogramsAlgorithm(Algorithm, algname=ALGORITHM_NAME):
         )
         payload = results[0]
 
-        histograms: List[Histogram] = []
+        histograms: List[HistogramResultItem] = []
         base_bins = payload["bins"]
         histograms.append(
-            Histogram(
+            HistogramResultItem(
                 var=y_var,
                 grouping_var=None,
                 grouping_enum=None,
@@ -66,7 +64,7 @@ class MultipleHistogramsAlgorithm(Algorithm, algname=ALGORITHM_NAME):
             counts_per_group = grouped["counts"]
             for group, counts in zip(groups, counts_per_group):
                 histograms.append(
-                    Histogram(
+                    HistogramResultItem(
                         var=y_var,
                         grouping_var=grouping_var,
                         grouping_enum=group,

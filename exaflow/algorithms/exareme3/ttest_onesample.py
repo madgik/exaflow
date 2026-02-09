@@ -5,8 +5,7 @@ from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.ttest_onesample import (
     FederatedTTestOneSample,
 )
-
-ALGORITHM_NAME = "ttest_onesample"
+from exaflow.algorithms.specifications import AlgorithmName
 
 
 class TTestOneSampleResult(BaseModel):
@@ -22,7 +21,7 @@ class TTestOneSampleResult(BaseModel):
     cohens_d: float
 
 
-class TTestOneSampleAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class TTestOneSample(Algorithm, algname=AlgorithmName.TTEST_ONESAMPLE):
     def run(self):
         alpha = self.get_parameter("alpha")
         alternative = self.get_parameter("alt_hypothesis")

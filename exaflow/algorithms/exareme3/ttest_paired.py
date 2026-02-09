@@ -3,8 +3,7 @@ from pydantic import BaseModel
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.ttest_paired import FederatedTTestPaired
-
-ALGORITHM_NAME = "ttest_paired"
+from exaflow.algorithms.specifications import AlgorithmName
 
 
 class TTestPairedResult(BaseModel):
@@ -18,7 +17,7 @@ class TTestPairedResult(BaseModel):
     cohens_d: float
 
 
-class TTestPairedAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class TTestPaired(Algorithm, algname=AlgorithmName.TTEST_PAIRED):
     def run(self):
         alpha = self.get_parameter("alpha")
         alternative = self.get_parameter("alt_hypothesis")

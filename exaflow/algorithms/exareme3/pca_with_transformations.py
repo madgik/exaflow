@@ -7,9 +7,8 @@ from pydantic import BaseModel
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.decomposition.pca import FederatedPCA
+from exaflow.algorithms.specifications import AlgorithmName
 from exaflow.worker_communication import BadUserInput
-
-ALGORITHM_NAME = "pca_with_transformation"
 
 
 class PCAResult(BaseModel):
@@ -19,7 +18,7 @@ class PCAResult(BaseModel):
     eigenvectors: List[List[float]]
 
 
-class PCAWithTransformationAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class PCAWithTransformation(Algorithm, algname=AlgorithmName.PCA_WITH_TRANSFORMATION):
     def run(self):
         data_transformation: Dict = self.get_parameter("data_transformation")
 

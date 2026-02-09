@@ -7,9 +7,8 @@ from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.anova_twoway import FederatedAnovaTwoWay
 from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.specifications import AlgorithmName
 from exaflow.worker_communication import BadUserInput
-
-ALGORITHM_NAME = "anova_twoway"
 
 
 class AnovaResult(BaseModel):
@@ -20,7 +19,7 @@ class AnovaResult(BaseModel):
     f_pvalue: List[Optional[float]]
 
 
-class AnovaTwoWayAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class AnovaTwoWay(Algorithm, algname=AlgorithmName.ANOVA_TWOWAY):
     def run(self):
         y = self.inputdata.y[0]
         xs = self.inputdata.x

@@ -4,11 +4,12 @@ from typing import Any
 from typing import Dict
 from typing import Optional
 
+from exaflow.algorithms.specifications import AlgorithmName
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 
 
 class Algorithm(ABC):
-    algname: str
+    algname: AlgorithmName
 
     def __init__(
         self,

@@ -31,9 +31,8 @@ from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
 from exaflow.algorithms.federated.preprocessing import FederatedPassthrough
 from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.specifications import AlgorithmName
 from exaflow.worker_communication import BadUserInput
-
-ALGORITHM_NAME = "logistic_regression_cv"
 
 
 class ConfusionMatrix(BaseModel):
@@ -86,7 +85,7 @@ class BasicMetrics(NamedTuple):
     fscore: float
 
 
-class LogisticRegressionCVAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class LogisticRegressionCV(Algorithm, algname=AlgorithmName.LOGISTIC_REGRESSION_CV):
     def run(self):
         positive_class = self.get_parameter("positive_class")
         n_splits = self.get_parameter("n_splits")

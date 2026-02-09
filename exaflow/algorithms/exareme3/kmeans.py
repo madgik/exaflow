@@ -5,8 +5,7 @@ from pydantic import BaseModel
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.cluster.kmeans import FederatedKMeans
-
-ALGORITHM_NAME = "kmeans"
+from exaflow.algorithms.specifications import AlgorithmName
 
 
 class KMeansResult(BaseModel):
@@ -15,7 +14,7 @@ class KMeansResult(BaseModel):
     centers: List[List[float]]
 
 
-class KMeansAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class KMeans(Algorithm, algname=AlgorithmName.KMEANS):
     def run(self):
         n_clusters = int(self.get_parameter("k"))
 

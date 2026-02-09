@@ -5,8 +5,7 @@ from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.ttest_independent import (
     FederatedTTestIndependent,
 )
-
-ALGORITHM_NAME = "ttest_independent"
+from exaflow.algorithms.specifications import AlgorithmName
 
 
 class TTestIndependentResult(BaseModel):
@@ -20,7 +19,7 @@ class TTestIndependentResult(BaseModel):
     cohens_d: float
 
 
-class TTestIndependentAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class TTestIndependent(Algorithm, algname=AlgorithmName.TTEST_INDEPENDENT):
     def run(self):
         alpha = self.get_parameter("alpha")
         alternative = self.get_parameter("alt_hypothesis")

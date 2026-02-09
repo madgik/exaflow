@@ -13,8 +13,7 @@ from exaflow.algorithms.federated.linear_model.logistic_regression import (
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
 from exaflow.algorithms.federated.preprocessing import FederatedPassthrough
-
-ALGORITHM_NAME = "logistic_regression"
+from exaflow.algorithms.specifications import AlgorithmName
 
 
 class LogisticRegressionSummary(BaseModel):
@@ -41,7 +40,7 @@ class LogisticRegressionResult(BaseModel):
     summary: LogisticRegressionSummary
 
 
-class LogisticRegressionAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class LogisticRegression(Algorithm, algname=AlgorithmName.LOGISTIC_REGRESSION):
     def run(self):
         positive_class = self.get_parameter("positive_class")
         y_var = self.inputdata.y[0]

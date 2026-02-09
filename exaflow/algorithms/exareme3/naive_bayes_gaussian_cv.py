@@ -21,13 +21,13 @@ from exaflow.algorithms.federated.model_selection.cross_validation.scorer_multic
 )
 from exaflow.algorithms.federated.naive_bayes import FederatedGaussianNB
 from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.specifications import AlgorithmName
 from exaflow.worker_communication import BadUserInput
 
-ALGORITHM_NAME = "naive_bayes_gaussian_cv"
 VAR_SMOOTHING = 1e-9  # same as original GaussianNB _fit_global
 
 
-class GaussianNBAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class NaiveBayesGaussianCV(Algorithm, algname=AlgorithmName.NAIVE_BAYES_GAUSSIAN_CV):
     def run(self) -> NBResult:
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)

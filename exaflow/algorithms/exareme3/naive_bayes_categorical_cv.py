@@ -25,12 +25,13 @@ from exaflow.algorithms.federated.naive_bayes import FederatedCategoricalNB
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOrdinalEncoder
 from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.specifications import AlgorithmName
 from exaflow.worker_communication import BadUserInput
 
-ALGORITHM_NAME = "naive_bayes_categorical_cv"
 
-
-class NaiveBayesCategoricalAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class NaiveBayesCategorical(
+    Algorithm, algname=AlgorithmName.NAIVE_BAYES_CATEGORICAL_CV
+):
     def run(self):
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)

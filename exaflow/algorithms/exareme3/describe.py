@@ -11,9 +11,9 @@ from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.descriptive_stats import (
     FederatedDescriptiveStatistics,
 )
+from exaflow.algorithms.specifications import AlgorithmName
 
 DATASET_VAR_NAME = "dataset"
-ALGORITHM_NAME = "describe"
 
 
 class NumericalDescriptiveStats(BaseModel):
@@ -58,7 +58,7 @@ class Result(BaseModel):
     model_based: List[Variable]
 
 
-class DescriptiveStatisticsAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class Describe(Algorithm, algname=AlgorithmName.DESCRIBE):
     @property
     def drop_na_rows(self) -> bool:
         return False

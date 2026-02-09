@@ -11,8 +11,7 @@ from exaflow.algorithms.federated.linear_model.ols import FederatedOLS
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
 from exaflow.algorithms.federated.preprocessing import FederatedPassthrough
-
-ALGORITHM_NAME = "linear_regression"
+from exaflow.algorithms.specifications import AlgorithmName
 
 
 class LinearRegressionResult(BaseModel):
@@ -37,7 +36,7 @@ class LinearRegressionResult(BaseModel):
     upper_ci: List[float]
 
 
-class LinearRegressionAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class LinearRegression(Algorithm, algname=AlgorithmName.LINEAR_REGRESSION):
     def run(self):
         y_var = self.inputdata.y[0]
         categorical_vars = [
