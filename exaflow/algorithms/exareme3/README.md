@@ -36,8 +36,8 @@
 
 - Lazy aggregation (now default for aggregation UDFs):
 
-  - `exareme3_udf(with_aggregation_server=True)` auto-wraps the UDF with
-    `lazy_agg` from `exaflow/algorithms/exareme3/lazy_aggregation`.
+  - `exareme3_udf(with_aggregation_server=True)` enables lazy aggregation.
+    The worker applies `lazy_agg` from `exaflow/worker/exareme3/lazy_aggregation`.
   - Disable batching with `enable_lazy_aggregation=False`.
   - Use `agg_client_name="client"` if your UDF uses a custom argument name.
 

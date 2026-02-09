@@ -10,6 +10,7 @@ from exaflow.algorithms.exareme3.utils.registry import exareme3_registry
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.algorithms.utils.pandas_utils import convert_to_pandas_dataframe
 from exaflow.worker import config as worker_config
+from exaflow.worker.exareme3.lazy_aggregation import lazy_agg
 from exaflow.worker.exareme3.udf.udf_db import load_algorithm_arrow_table
 from exaflow.worker.utils.logger import get_logger
 from exaflow.worker.utils.logger import initialise_logger
@@ -89,6 +90,10 @@ def run_udf(
     if not udf:
         error_msg = f"udf '{udf_registry_key}' not found in EXAREME3_REGISTRY."
         raise ImportError(error_msg)
+
+    if exareme3_registry.lazy_aggregation_enabled(udf_registry_key):
+        agg_client_name = exareme3_registry.agg_client_name(udf_registry_key)
+        udf = lazy_agg(agg_client_name=agg_client_name)(udf)
 
     agg_client: Optional[AggregationClient] = None
     if exareme3_registry.aggregation_server_required(udf_registry_key):

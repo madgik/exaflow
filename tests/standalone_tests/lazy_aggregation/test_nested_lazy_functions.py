@@ -1,7 +1,7 @@
 import numpy as np
 
-from exaflow.algorithms.exareme3.lazy_aggregation import RecordingAggClient
-from exaflow.algorithms.exareme3.lazy_aggregation import lazy_agg
+from exaflow.worker.exareme3.lazy_aggregation import RecordingAggClient
+from exaflow.worker.exareme3.lazy_aggregation import lazy_agg
 
 
 @lazy_agg()

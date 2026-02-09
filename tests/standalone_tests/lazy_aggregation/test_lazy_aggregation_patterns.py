@@ -4,7 +4,7 @@ import traceback
 import numpy as np
 import pytest
 
-from exaflow.algorithms.exareme3.lazy_aggregation import lazy_agg
+from exaflow.worker.exareme3.lazy_aggregation import lazy_agg
 
 
 class RecordingAggClient:

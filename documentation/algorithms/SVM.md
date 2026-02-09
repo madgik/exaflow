@@ -21,4 +21,4 @@ The SVM algorithm uses the state-of-art python library, scikit-learn to calculat
 
 [SVM](../../exaflow/algorithms/exareme3/linear_svm.py)
 
-[Federated Averaging Strategy](../../exaflow/algorithms/exareme3/fedaverage.py)
+[Federated Averaging Strategy](../../exaflow/algorithms/exareme3/utils/fedaverage.py)
