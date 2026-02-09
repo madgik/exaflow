@@ -1,6 +1,4 @@
-import json
 import re
-from contextlib import contextmanager
 from sys import stdin
 
 import click

@@ -3,7 +3,6 @@ from collections import Counter
 
 from sklearn.naive_bayes import GaussianNB
 
-from exaflow.algorithms.exareme3.naive_bayes_gaussian_cv import GaussianNBAlgorithm
 from tests.testcase_generators.testcase_generator import TestCaseGenerator
 
 

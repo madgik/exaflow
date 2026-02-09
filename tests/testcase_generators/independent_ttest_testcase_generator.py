@@ -2,8 +2,6 @@ from pathlib import Path
 
 import rpy2.robjects as ro
 import rpy2.robjects.packages as rpackages
-import scipy.stats as stats
-from rpy2.robjects.packages import importr
 from rpy2.robjects.vectors import StrVector
 
 from tests.testcase_generators.testcase_generator import TestCaseGenerator

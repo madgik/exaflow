@@ -1,5 +1,3 @@
-from typing import Dict
-
 from exaflow.controller import logger as ctrl_logger
 from exaflow.controller.worker_client.tasks_handler import WorkerTasksHandler
 from exaflow.worker_communication import CommonDataElements

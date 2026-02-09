@@ -23,7 +23,6 @@ from exaflow.controller.federation_info_logs import log_worker_left_federation
 from exaflow.controller.services.worker_landscape_aggregator.worker_info_tasks_handler import (
     WorkerInfoTasksHandler,
 )
-from exaflow.controller.worker_client.app import LOGGER
 from exaflow.controller.worker_client.app import WorkerClientConnectionError
 from exaflow.controller.worker_client.app import WorkerClientTimeoutException
 from exaflow.controller.workers_addresses import WorkersAddressesFactory
