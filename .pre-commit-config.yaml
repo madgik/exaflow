@@ -10,18 +10,14 @@ repos:
       #    -   id: :pretty-format-json
     -   id: debug-statements
 
--   repo: https://github.com/psf/black
-    rev: 25.1.0
-    hooks:
-    -   id: black
-
 -   repo: https://github.com/executablebooks/mdformat
     rev: 0.7.22
     hooks:
     -   id: mdformat
 
--   repo: https://github.com/pycqa/isort
-    rev: 6.0.1
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.6
     hooks:
-    -   id: isort
-        args: ["--profile", "black", "--force-single-line-imports"]
+    -   id: ruff
+        args: ["--select", "I", "--fix"]
+    -   id: ruff-format

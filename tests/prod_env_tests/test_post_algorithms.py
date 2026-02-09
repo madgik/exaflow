@@ -90,9 +90,9 @@ def test_post_algorithm_error(algorithm_name, request_dict, expected_response):
     response = requests.post(algorithm_url, data=request_json, headers=headers)
     exp_response_status, exp_response_message = expected_response
     print(response.text)
-    assert (
-        response.status_code == exp_response_status
-    ), f"Response message: {response.text}"
+    assert response.status_code == exp_response_status, (
+        f"Response message: {response.text}"
+    )
     assert re.search(exp_response_message, response.text)
 
 

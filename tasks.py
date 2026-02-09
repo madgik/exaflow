@@ -200,24 +200,24 @@ def create_configs(c):
             worker_config["smpc"]["optional"] = deployment_config["smpc"]["optional"]
             if coordinator_ip := deployment_config["smpc"].get("coordinator_ip"):
                 if worker["role"] == "GLOBALWORKER":
-                    worker_config["smpc"][
-                        "coordinator_address"
-                    ] = f"http://{coordinator_ip}:{SMPC_COORDINATOR_PORT}"
+                    worker_config["smpc"]["coordinator_address"] = (
+                        f"http://{coordinator_ip}:{SMPC_COORDINATOR_PORT}"
+                    )
                 else:
                     worker_config["smpc"]["client_id"] = worker["smpc_client_id"]
-                    worker_config["smpc"][
-                        "client_address"
-                    ] = f"http://{coordinator_ip}:{worker['smpc_client_port']}"
+                    worker_config["smpc"]["client_address"] = (
+                        f"http://{coordinator_ip}:{worker['smpc_client_port']}"
+                    )
             else:
                 if worker["role"] == "GLOBALWORKER":
-                    worker_config["smpc"][
-                        "coordinator_address"
-                    ] = f"http://{deployment_config['ip']}:{SMPC_COORDINATOR_PORT}"
+                    worker_config["smpc"]["coordinator_address"] = (
+                        f"http://{deployment_config['ip']}:{SMPC_COORDINATOR_PORT}"
+                    )
                 else:
                     worker_config["smpc"]["client_id"] = worker["id"]
-                    worker_config["smpc"][
-                        "client_address"
-                    ] = f"http://{deployment_config['ip']}:{worker['smpc_client_port']}"
+                    worker_config["smpc"]["client_address"] = (
+                        f"http://{deployment_config['ip']}:{worker['smpc_client_port']}"
+                    )
 
         worker_config["duckdb"] = {
             "path": f"{str(_worker_data_path(worker_config['identifier']))}/data_models.duckdb"
@@ -269,13 +269,13 @@ def create_configs(c):
     if controller_config["smpc"]["enabled"]:
         controller_config["smpc"]["optional"] = deployment_config["smpc"]["optional"]
         if coordinator_ip := deployment_config["smpc"].get("coordinator_ip"):
-            controller_config["smpc"][
-                "coordinator_address"
-            ] = f"http://{coordinator_ip}:{SMPC_COORDINATOR_PORT}"
+            controller_config["smpc"]["coordinator_address"] = (
+                f"http://{coordinator_ip}:{SMPC_COORDINATOR_PORT}"
+            )
         else:
-            controller_config["smpc"][
-                "coordinator_address"
-            ] = f"http://{deployment_config['ip']}:{SMPC_COORDINATOR_PORT}"
+            controller_config["smpc"]["coordinator_address"] = (
+                f"http://{deployment_config['ip']}:{SMPC_COORDINATOR_PORT}"
+            )
 
         controller_config["smpc"]["get_result_interval"] = deployment_config["smpc"][
             "get_result_interval"
@@ -685,8 +685,7 @@ def start_aggregation_server(c, detached: bool = False):
 
     # run the script directly instead of -m exaflow.aggregation_server.server
     run_cmd = (
-        f"cd {PROJECT_ROOT!s} && "
-        f"poetry run python -m exaflow.aggregation_server.server"
+        f"cd {PROJECT_ROOT!s} && poetry run python -m exaflow.aggregation_server.server"
     )
 
     if detached:
@@ -957,8 +956,7 @@ def start_smpc_coordinator_db(c, image):
         Level.HEADER,
     )
     env_variables = (
-        "-e MONGO_INITDB_ROOT_USERNAME=sysadmin "
-        "-e MONGO_INITDB_ROOT_PASSWORD=123qwe "
+        "-e MONGO_INITDB_ROOT_USERNAME=sysadmin -e MONGO_INITDB_ROOT_PASSWORD=123qwe "
     )
     cmd = f"docker run -d -p {container_ports} {env_variables} --name {SMPC_COORDINATOR_DB_NAME} {image}"
     run(c, cmd)

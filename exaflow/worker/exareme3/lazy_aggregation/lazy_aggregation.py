@@ -513,7 +513,12 @@ class LazyAggregationRewriter:
         inserted_exec = not insert_exec
 
         def flush():
-            nonlocal pending_batch, pending_targets, inserted_exec, has_lazy, pending_location
+            nonlocal \
+                pending_batch, \
+                pending_targets, \
+                inserted_exec, \
+                has_lazy, \
+                pending_location
             if pending_batch:
                 new_body.extend(
                     self._flush_batch(pending_batch, pending_targets, pending_location)

@@ -79,7 +79,6 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
 
 class Exareme3WithAggregationServerStrategy(Exareme3Strategy):
     async def execute(self) -> str:
-
         agg_dns = (
             getattr(getattr(controller_config, "aggregation_server", {}), "dns", None)
             or None

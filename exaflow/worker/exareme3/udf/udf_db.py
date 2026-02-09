@@ -62,7 +62,7 @@ def _fetch_with_duckdb(
 
     where_clauses = []
     datasets_clause = ", ".join(quote_literal(value) for value in datasets)
-    where_clauses.append(f'{quote_identifier("dataset")} IN ({datasets_clause})')
+    where_clauses.append(f"{quote_identifier('dataset')} IN ({datasets_clause})")
 
     if inputdata.filters:
         where_clauses.append(build_filter_clause(inputdata.filters))

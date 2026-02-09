@@ -57,7 +57,6 @@ class FederatedRegressionScorer(FederatedScorer):
         n_train: int,
         p: int | None = None,
     ) -> dict:
-
         rss_arr = agg_client.sum(np.array([local_stats["rss"]], dtype=float))
         sum_abs_resid_arr = agg_client.sum(
             np.array([local_stats["sum_abs_resid"]], dtype=float)

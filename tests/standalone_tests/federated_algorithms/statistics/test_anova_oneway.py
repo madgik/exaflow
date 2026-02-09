@@ -360,7 +360,7 @@ TEST_CASES = [
 
 @pytest.mark.parametrize("groups", TEST_CASES)
 def test_federated_anova_oneway_matches_statsmodels(groups):
-    categories = [f"g{i+1}" for i in range(len(groups))]
+    categories = [f"g{i + 1}" for i in range(len(groups))]
     agg_client = DummyAggClient()
     model = FederatedAnovaOneWay(agg_client=agg_client)
     model.fit(groups=groups, categories=categories)

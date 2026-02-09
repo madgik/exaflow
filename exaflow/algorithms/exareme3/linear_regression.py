@@ -89,7 +89,6 @@ def linear_regression_local_step(
     categorical_vars,
     numerical_vars,
 ):
-
     transformer = FederatedColumnTransformer(
         [
             ("cat", FederatedOneHotEncoder(), "categorical"),
