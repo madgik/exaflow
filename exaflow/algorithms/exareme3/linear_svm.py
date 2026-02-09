@@ -6,9 +6,8 @@ from sklearn.svm import SVC
 
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
+from exaflow.algorithms.specifications import AlgorithmName
 from exaflow.worker_communication import BadUserInput
-
-ALGORITHM_NAME = "linear_svm"
 
 
 class SVMResult(BaseModel):
@@ -18,7 +17,7 @@ class SVMResult(BaseModel):
     intercept: float
 
 
-class LinearSVMAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class LinearSVM(Algorithm, algname=AlgorithmName.LINEAR_SVM):
     def run(self):
         y_var = self.inputdata.y[0]
         x_vars = self.inputdata.x

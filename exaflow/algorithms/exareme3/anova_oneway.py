@@ -9,9 +9,8 @@ from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.anova_oneway import FederatedAnovaOneWay
 from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.specifications import AlgorithmName
 from exaflow.worker_communication import BadUserInput
-
-ALGORITHM_NAME = "anova_oneway"
 
 
 class AnovaResult(BaseModel):
@@ -21,7 +20,7 @@ class AnovaResult(BaseModel):
     ci_info: Dict
 
 
-class AnovaOneWayAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class AnovaOneWay(Algorithm, algname=AlgorithmName.ANOVA_ONEWAY):
     def run(self):
         """
         Exaflow implementation of one-way ANOVA with Tukey HSD, matching the

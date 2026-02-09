@@ -5,8 +5,7 @@ from pydantic import BaseModel
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.naive_bayes import FederatedGaussianNB
-
-ALGORITHM_NAME = "naive_bayes_gaussian"
+from exaflow.algorithms.specifications import AlgorithmName
 
 
 class NaiveBayesGaussianResult(BaseModel):
@@ -18,7 +17,7 @@ class NaiveBayesGaussianResult(BaseModel):
     feature_names: List[str]
 
 
-class NaiveBayesGaussianAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class NaiveBayesGaussian(Algorithm, algname=AlgorithmName.NAIVE_BAYES_GAUSSIAN):
     def run(self) -> NaiveBayesGaussianResult:
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)

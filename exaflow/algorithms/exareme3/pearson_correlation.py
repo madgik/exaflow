@@ -5,8 +5,7 @@ from pydantic import BaseModel
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated import FederatedDescriptiveStatistics
-
-ALGORITHM_NAME = "pearson_correlation"
+from exaflow.algorithms.specifications import AlgorithmName
 
 
 class PearsonResult(BaseModel):
@@ -18,7 +17,7 @@ class PearsonResult(BaseModel):
     ci_lo: dict
 
 
-class PearsonCorrelationAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class PearsonCorrelation(Algorithm, algname=AlgorithmName.PEARSON_CORRELATION):
     def run(self):
         alpha = self.get_parameter("alpha")
         if self.inputdata.x:

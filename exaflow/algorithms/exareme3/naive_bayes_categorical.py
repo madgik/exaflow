@@ -8,8 +8,7 @@ from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.naive_bayes import FederatedCategoricalNB
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOrdinalEncoder
-
-ALGORITHM_NAME = "naive_bayes_categorical"
+from exaflow.algorithms.specifications import AlgorithmName
 
 
 class NaiveBayesCategoricalResult(BaseModel):
@@ -22,7 +21,7 @@ class NaiveBayesCategoricalResult(BaseModel):
     feature_names: List[str]
 
 
-class NaiveBayesCategoricalAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class NaiveBayesCategorical(Algorithm, algname=AlgorithmName.NAIVE_BAYES_CATEGORICAL):
     def run(self):
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)

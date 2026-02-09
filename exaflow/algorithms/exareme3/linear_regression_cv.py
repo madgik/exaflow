@@ -23,9 +23,9 @@ from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
 from exaflow.algorithms.federated.preprocessing import FederatedPassthrough
 from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.specifications import AlgorithmName
 from exaflow.worker_communication import BadUserInput
 
-ALGORITHM_NAME = "linear_regression_cv"
 ALPHA = 0.05
 
 
@@ -44,7 +44,7 @@ class LinearRegressionCVResult(BaseModel):
     f_stat: BasicStats
 
 
-class LinearRegressionCVAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class LinearRegressionCV(Algorithm, algname=AlgorithmName.LINEAR_REGRESSION_CV):
     def run(self):
         y_var = self.inputdata.y[0]
         n_splits = int(self.get_parameter("n_splits"))
