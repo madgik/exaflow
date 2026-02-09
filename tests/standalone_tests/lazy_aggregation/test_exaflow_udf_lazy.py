@@ -1,7 +1,18 @@
 import numpy as np
 
-from exaflow.algorithms.exareme3.lazy_aggregation import RecordingAggClient
+from exaflow.algorithms.exareme3.utils.registry import exareme3_registry
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
+from exaflow.algorithms.exareme3.utils.registry import get_udf_registry_key
+from exaflow.worker.exareme3.lazy_aggregation import RecordingAggClient
+from exaflow.worker.exareme3.lazy_aggregation import lazy_agg
+
+
+def _wrap_udf_for_worker(func):
+    key = get_udf_registry_key(func)
+    if exareme3_registry.lazy_aggregation_enabled(key):
+        agg_client_name = exareme3_registry.agg_client_name(key)
+        return lazy_agg(agg_client_name=agg_client_name)(func)
+    return func
 
 
 def test_exareme3_udf_enables_lazy_by_default():
@@ -13,7 +24,7 @@ def test_exareme3_udf_enables_lazy_by_default():
         b = agg_client.sum(np.array([2.0], dtype=float))
         return float(np.asarray(a, dtype=float)[0] + np.asarray(b, dtype=float)[0])
 
-    total = udf(calls)
+    total = _wrap_udf_for_worker(udf)(calls)
     assert total == 3.0
     assert calls.calls == [("batch", 2)]
 
@@ -27,7 +38,7 @@ def test_exareme3_udf_lazy_can_be_disabled():
         b = agg_client.sum(np.array([2.0], dtype=float))
         return float(np.asarray(a, dtype=float)[0] + np.asarray(b, dtype=float)[0])
 
-    total = udf(calls)
+    total = _wrap_udf_for_worker(udf)(calls)
     assert total == 3.0
     assert calls.calls == [("sum", 1), ("sum", 1)]
 
@@ -41,6 +52,6 @@ def test_exareme3_udf_custom_client_name():
         y = client.sum(np.array([5.0], dtype=float))
         return float(np.asarray(x, dtype=float)[0] + np.asarray(y, dtype=float)[0])
 
-    total = udf(calls)
+    total = _wrap_udf_for_worker(udf)(calls)
     assert total == 9.0
     assert calls.calls == [("batch", 2)]

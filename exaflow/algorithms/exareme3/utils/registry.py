@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from typing import Callable
 from typing import Dict
 
-from exaflow.algorithms.exareme3.lazy_aggregation import lazy_agg
 from exaflow.utils import Singleton
 
 """
@@ -33,13 +32,22 @@ def get_udf_registry_key(func: Callable) -> str:
 class UDFInfo:
     func: "Callable"
     with_aggregation_server: "bool"
+    enable_lazy_aggregation: "bool"
+    agg_client_name: "str"
 
 
 class Exareme3Registry(metaclass=Singleton):
     def __init__(self) -> None:
         self._registry: Dict[str, UDFInfo] = {}
 
-    def register(self, func: Callable, *, with_aggregation_server: bool = False) -> str:
+    def register(
+        self,
+        func: Callable,
+        *,
+        with_aggregation_server: bool = False,
+        enable_lazy_aggregation: bool = False,
+        agg_client_name: str = "agg_client",
+    ) -> str:
         """
         Register a UDF and return its registry key. Raises if the same key is
         reused for a different function to avoid ambiguity.
@@ -47,12 +55,25 @@ class Exareme3Registry(metaclass=Singleton):
         key = get_udf_registry_key(func)
         if key in self._registry and self._registry[key].func is not func:
             raise ValueError(f"Duplicate registration for key {key!r}")
-        self._registry[key] = UDFInfo(func, with_aggregation_server)
+        self._registry[key] = UDFInfo(
+            func,
+            with_aggregation_server,
+            enable_lazy_aggregation,
+            agg_client_name,
+        )
         return key
 
     def aggregation_server_required(self, key: str) -> bool:
         info = self._registry.get(key)
         return bool(info and info.with_aggregation_server)
+
+    def lazy_aggregation_enabled(self, key: str) -> bool:
+        info = self._registry.get(key)
+        return bool(info and info.enable_lazy_aggregation)
+
+    def agg_client_name(self, key: str) -> str:
+        info = self._registry.get(key)
+        return info.agg_client_name if info else "agg_client"
 
     def get_func(self, key: str) -> Callable:
         info = self._registry.get(key)
@@ -87,11 +108,13 @@ def exareme3_udf(
             if enable_lazy_aggregation is None
             else enable_lazy_aggregation
         )
-        wrapped = lazy_agg(agg_client_name=agg_client_name)(func) if lazy_on else func
         exareme3_registry.register(
-            wrapped, with_aggregation_server=with_aggregation_server
+            func,
+            with_aggregation_server=with_aggregation_server,
+            enable_lazy_aggregation=lazy_on,
+            agg_client_name=agg_client_name,
         )
-        return wrapped
+        return func
 
     if _func is None:
         return decorator
