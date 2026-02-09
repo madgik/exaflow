@@ -4,7 +4,6 @@ import pytest
 
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import AlgorithmType
-from exaflow.algorithms.specifications import ComponentType
 from exaflow.algorithms.specifications import InputDataSpecification
 from exaflow.algorithms.specifications import InputDataSpecifications
 from exaflow.algorithms.specifications import InputDataStatType
