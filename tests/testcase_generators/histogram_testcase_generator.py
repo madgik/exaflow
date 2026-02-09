@@ -162,13 +162,13 @@ class HistogramTestcaseGenerator(TestCaseGenerator):
             )
             return_dict["numerical"] = {}
             return_dict["categorical"] = {}
-            return_dict["categorical"][
-                "categorical_histogram"
-            ] = categorical_histogram_list
+            return_dict["categorical"]["categorical_histogram"] = (
+                categorical_histogram_list
+            )
             if xvars:
-                return_dict["categorical"][
-                    "grouped_histogram_categorical"
-                ] = grouped_list
+                return_dict["categorical"]["grouped_histogram_categorical"] = (
+                    grouped_list
+                )
         else:
             # numerical histogram
             min_value = data[yvar].min()

@@ -54,8 +54,7 @@ pytest-assume="~2.4"
 ipython = "~8.37"
 pdbpp = "~0.11"
 invoke = "~2.2"
-black = "25.1.0" # Must be upgraded together with github actions and pre-commit configuration
-isort = "6.0.1" # Must be upgraded together with github actions and pre-commit configuration
+ruff = "0.9.6" # Must be upgraded together with github actions and pre-commit configuration
 pre-commit = "~4.2"
 termcolor = "~3.1"
 coverage = {extras = ["toml"], version = "^7.9.2"}
@@ -93,3 +92,18 @@ show_missing = true
 
 [tool.coverage.html]
 show_contexts = true
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = ["I"]
+
+[tool.ruff.lint.isort]
+force-single-line = true

@@ -40,7 +40,6 @@ def load_json_file(path: Path) -> dict:
 
 
 class Specifications:
-
     SpecType = Union[AlgorithmSpecification, TransformerSpecification]
     enabled_algorithms: Dict[str, AlgorithmSpecification]
     enabled_transformers: Dict[str, TransformerSpecification]

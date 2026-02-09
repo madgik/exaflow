@@ -71,9 +71,7 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
                     self._algorithm_request_dto.parameters,
                     [h.worker_id for h in self._local_worker_tasks_handlers],
                 )
-                result = (
-                    await self._controller.flower_execution_info.get_result_with_timeout()
-                )
+                result = await self._controller.flower_execution_info.get_result_with_timeout()
 
                 self._logger.info(
                     f"Finished execution -> {self._algorithm_name} with {self._request_id}"

@@ -7,22 +7,15 @@ on:
     branches: [master]
 
 jobs:
-  black:
+  ruff:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: psf/black@stable
+      - uses: astral-sh/ruff-action@v3
         with:
-          version: "25.1.0" # Must be upgraded together with pyproject.toml
-
-  isort:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+          version: "0.9.6" # Must be upgraded together with pyproject.toml
+          args: "check --select I"
+      - uses: astral-sh/ruff-action@v3
         with:
-          python-version: "3.10"
-      - uses: isort/isort-action@v1
-        with:
-          isortVersion: "6.0.1" # Must be upgraded together with pyproject.toml
-          configuration: "--check-only --diff --profile black --force-single-line-imports"
+          version: "0.9.6" # Must be upgraded together with pyproject.toml
+          args: "format --check"

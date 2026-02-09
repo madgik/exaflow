@@ -143,7 +143,7 @@ class LogisticRegressionCVAlgorithm(Algorithm, algname=ALGORITHM_NAME):
             auc_val = float(skm.auc(x=fpr, y=tpr)) if len(tpr) > 1 else 0.0
             roc_curves_result.append(
                 ROCCurve(
-                    name=f"fold_{i+1}",
+                    name=f"fold_{i + 1}",
                     tpr=tpr,
                     fpr=fpr,
                     auc=auc_val,

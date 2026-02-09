@@ -142,7 +142,7 @@ def get_dataset_csv_paths(data_model, datasets: List[str]) -> List[str]:
             WHERE code = '{data_model_code}'
             AND version = '{data_model_version}'
         )
-        AND code IN ({', '.join("'" + str(value) + "'" for value in datasets)})
+        AND code IN ({", ".join("'" + str(value) + "'" for value in datasets)})
         AND status = 'ENABLED'
         """
     )

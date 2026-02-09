@@ -5,6 +5,7 @@ Utility to enlarge CSV-based test datasets by repeating each data row block.
 Example:
     python expand_test_data_csvs.py --factor 200 --base tests/test_data
 """
+
 from __future__ import annotations
 
 import argparse

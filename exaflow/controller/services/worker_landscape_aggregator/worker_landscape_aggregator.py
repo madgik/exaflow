@@ -547,9 +547,7 @@ class WorkerLandscapeAggregator:
         return training_datasets, validation_datasets
 
     def get_all_available_datasets_per_data_model(self) -> Dict[str, List[str]]:
-        return (
-            self._registries.data_model_registry.get_all_available_datasets_per_data_model()
-        )
+        return self._registries.data_model_registry.get_all_available_datasets_per_data_model()
 
     def data_model_exists(self, data_model: str) -> bool:
         return self._registries.data_model_registry.data_model_exists(data_model)
@@ -793,7 +791,6 @@ def _aggregate_data_models_cdes(
             data_model,
             data_model_metadata,
         ) in data_models_metadata.data_models_metadata.items():
-
             if data_model not in data_models_dataset_enumerations:
                 data_models_dataset_enumerations[data_model] = OrderedDict()
 
@@ -801,7 +798,6 @@ def _aggregate_data_models_cdes(
 
             # Assuming dataset_infos is already in the desired order.
             for dataset_info in data_model_metadata.dataset_infos:
-
                 # Only set once to avoid bumping items to the end if the same code
                 # appears from another worker.
                 if dataset_info.code not in enum_dict:
