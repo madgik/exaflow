@@ -9,6 +9,19 @@ from exaflow.algorithms.federated.utils.interfaces import FederatedScorer
 class FederatedRegressionScorer(FederatedScorer):
     """Compute regression metrics using federated aggregation."""
 
+    def score(
+        self,
+        results: FederatedEstimatorResults,
+        X_test: np.ndarray,
+        y_test: np.ndarray,
+        *,
+        agg_client,
+        n_train: int,
+        p: int,
+    ) -> dict:
+        local_stats = self.local(results, X_test, y_test)
+        return self.aggregate(local_stats, agg_client=agg_client, n_train=n_train, p=p)
+
     def local(
         self,
         results: FederatedEstimatorResults,
