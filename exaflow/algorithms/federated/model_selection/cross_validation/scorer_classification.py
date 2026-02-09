@@ -15,6 +15,19 @@ class FederatedClassificationScorer(FederatedScorer):
             thresholds = np.linspace(0.0, 1.0, 101)
         self.thresholds = np.asarray(thresholds, dtype=float)
 
+    def score(
+        self,
+        results: FederatedEstimatorResults,
+        X_test: np.ndarray,
+        y_test: np.ndarray,
+        *,
+        agg_client: AggregationClient,
+        n_train: int,
+        p: int,
+    ) -> dict:
+        local_stats = self.local(results, X_test, y_test)
+        return self.aggregate(local_stats, agg_client=agg_client, n_train=n_train, p=p)
+
     def local(
         self,
         results: FederatedEstimatorResults,

@@ -39,6 +39,17 @@ class FederatedSplitter(Protocol):
 class FederatedScorer(Protocol):
     """Scorer interface for federated CV."""
 
+    def score(
+        self,
+        results: FederatedEstimatorResults,
+        X_test: np.ndarray,
+        y_test: np.ndarray,
+        *,
+        agg_client: AggregationClient,
+        n_train: int,
+        p: int,
+    ) -> dict: ...
+
     def local(
         self,
         results: FederatedEstimatorResults,

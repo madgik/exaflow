@@ -62,13 +62,10 @@ class FederatedCrossValidator:
                 )
                 n_train = int(getattr(results, "nobs", 0))
 
-                local_stats = self.scorer.local(
+                metrics = self.scorer.score(
                     results,
                     X_test,
                     y_test,
-                )
-                metrics = self.scorer.aggregate(
-                    local_stats,
                     agg_client=agg_client,
                     n_train=n_train,
                     p=p,
@@ -86,13 +83,10 @@ class FederatedCrossValidator:
                 results = self.estimator.fit(X_train, y_train, agg_client=agg_client)
                 n_train = int(getattr(results, "nobs", 0))
 
-                local_stats = self.scorer.local(
+                metrics = self.scorer.score(
                     results,
                     X_test,
                     y_test,
-                )
-                metrics = self.scorer.aggregate(
-                    local_stats,
                     agg_client=agg_client,
                     n_train=n_train,
                     p=p,
