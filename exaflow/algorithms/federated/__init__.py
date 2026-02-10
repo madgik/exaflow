@@ -1,4 +1,5 @@
 from exaflow.algorithms.federated.compose import FederatedColumnTransformer
+from exaflow.algorithms.federated.compose import make_column_selector
 from exaflow.algorithms.federated.decomposition import FederatedPCA
 from exaflow.algorithms.federated.linear_model import FederatedLogisticRegression
 from exaflow.algorithms.federated.linear_model import FederatedOLS
@@ -34,6 +35,7 @@ __all__ = [
     "FederatedPassthrough",
     "FederatedPipeline",
     "FederatedColumnTransformer",
+    "make_column_selector",
     "FederatedRegressionScorer",
     "FederatedClassificationScorer",
 ]
