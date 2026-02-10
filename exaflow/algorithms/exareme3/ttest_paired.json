@@ -11,7 +11,7 @@
             "desc": "First numeric measurement (paired with Measurement 2).",
             "types": ["real", "int"],
             "stattypes": ["numerical"],
-            "notblank": true,
+            "required": true,
             "multiple": false
         },
         "x": {
@@ -19,7 +19,7 @@
             "desc": "Second numeric measurement (paired with Measurement 1).",
             "types": ["real", "int"],
             "stattypes": ["numerical"],
-            "notblank": true,
+            "required": true,
             "multiple": false
         }
     },
@@ -28,7 +28,7 @@
             "label": "Alternative Hypothesis",
             "desc": "Specifies the alternative hypothesis for the mean difference (two-sided, less, or greater).",
             "types": ["text"],
-            "notblank": true,
+            "required": true,
             "multiple": false,
             "default": "two-sided",
             "enums": {
@@ -40,7 +40,7 @@
             "label": "Alpha",
             "desc": "The significance level.",
             "types": ["real"],
-            "notblank": true,
+            "required": true,
             "multiple": false,
             "default": 0.05,
             "min": 0.0,

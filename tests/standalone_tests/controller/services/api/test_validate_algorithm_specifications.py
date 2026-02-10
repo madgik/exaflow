@@ -30,7 +30,7 @@ def test_validate_parameter_spec_input_var_CDE_enums_source_is_x_or_y():
                     desc="y",
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
-                    notblank=True,
+                    required=True,
                     multiple=False,
                 )
             ),
@@ -39,7 +39,7 @@ def test_validate_parameter_spec_input_var_CDE_enums_source_is_x_or_y():
                     label="sample_label",
                     desc="sample",
                     types=[ParameterType.TEXT],
-                    notblank=False,
+                    required=False,
                     multiple=False,
                     enums=ParameterEnumSpecification(
                         type=ParameterEnumType.INPUT_VAR_CDE_ENUMS,
@@ -68,7 +68,7 @@ def test_validate_parameter_spec_input_var_CDE_enums_multiple_false():
                     desc="y",
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
-                    notblank=True,
+                    required=True,
                     multiple=False,
                 )
             ),
@@ -77,7 +77,7 @@ def test_validate_parameter_spec_input_var_CDE_enums_multiple_false():
                     label="sample_label",
                     desc="sample",
                     types=[ParameterType.TEXT],
-                    notblank=False,
+                    required=False,
                     multiple=True,
                     enums=ParameterEnumSpecification(
                         type=ParameterEnumType.INPUT_VAR_CDE_ENUMS, source=["y"]
@@ -105,7 +105,7 @@ def test_validate_parameter_spec_input_var_CDE_enums_inputdata_has_multiple_fals
                     desc="y",
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
-                    notblank=True,
+                    required=True,
                     multiple=True,
                 )
             ),
@@ -114,7 +114,7 @@ def test_validate_parameter_spec_input_var_CDE_enums_inputdata_has_multiple_fals
                     label="sample_label",
                     desc="sample",
                     types=[ParameterType.TEXT],
-                    notblank=False,
+                    required=False,
                     multiple=False,
                     enums=ParameterEnumSpecification(
                         type=ParameterEnumType.INPUT_VAR_CDE_ENUMS, source=["y"]
@@ -142,7 +142,7 @@ def test_validate_parameter_spec_input_var_names_type_must_be_text():
                     desc="y",
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
-                    notblank=True,
+                    required=True,
                     multiple=True,
                 )
             ),
@@ -151,7 +151,7 @@ def test_validate_parameter_spec_input_var_names_type_must_be_text():
                     label="sample_label",
                     desc="sample",
                     types=[ParameterType.INT],
-                    notblank=False,
+                    required=False,
                     multiple=False,
                     enums=ParameterEnumSpecification(
                         type=ParameterEnumType.INPUT_VAR_NAMES, source=["y"]
@@ -179,7 +179,7 @@ def test_validate_parameter_spec_input_var_CDE_enums_only_one_value():
                     desc="y",
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
-                    notblank=True,
+                    required=True,
                     multiple=False,
                 )
             ),
@@ -188,7 +188,7 @@ def test_validate_parameter_spec_input_var_CDE_enums_only_one_value():
                     label="sample_label",
                     desc="sample",
                     types=[ParameterType.TEXT],
-                    notblank=False,
+                    required=False,
                     multiple=True,
                     enums=ParameterEnumSpecification(
                         type=ParameterEnumType.INPUT_VAR_CDE_ENUMS,
@@ -217,7 +217,7 @@ def test_validate_parameter_spec_fixed_var_CDE_enums_only_one_value():
                     desc="y",
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
-                    notblank=True,
+                    required=True,
                     multiple=False,
                 )
             ),
@@ -226,7 +226,7 @@ def test_validate_parameter_spec_fixed_var_CDE_enums_only_one_value():
                     label="sample_label",
                     desc="sample",
                     types=[ParameterType.TEXT],
-                    notblank=False,
+                    required=False,
                     multiple=True,
                     enums=ParameterEnumSpecification(
                         type=ParameterEnumType.FIXED_VAR_CDE_ENUMS,
@@ -255,7 +255,7 @@ def test_validate_parameter_dict_type_given_with_other_type():
                     desc="y",
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
-                    notblank=True,
+                    required=True,
                     multiple=False,
                 )
             ),
@@ -264,7 +264,7 @@ def test_validate_parameter_dict_type_given_with_other_type():
                     label="sample_label",
                     desc="sample",
                     types=[ParameterType.DICT, ParameterType.TEXT],
-                    notblank=False,
+                    required=False,
                     multiple=False,
                 ),
             },
@@ -289,7 +289,7 @@ def test_validate_parameter_property_dict_keys_enums_can_only_be_given_with_type
                     desc="y",
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
-                    notblank=True,
+                    required=True,
                     multiple=False,
                 )
             ),
@@ -298,7 +298,7 @@ def test_validate_parameter_property_dict_keys_enums_can_only_be_given_with_type
                     label="sample_label",
                     desc="sample",
                     types=[ParameterType.TEXT],
-                    notblank=False,
+                    required=False,
                     multiple=False,
                     dict_keys_enums=ParameterEnumSpecification(
                         type=ParameterEnumType.LIST, source=["sample_enum"]
@@ -326,7 +326,7 @@ def test_validate_parameter_property_dict_values_enums_can_only_be_given_with_ty
                     desc="y",
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
-                    notblank=True,
+                    required=True,
                     multiple=False,
                 )
             ),
@@ -335,7 +335,7 @@ def test_validate_parameter_property_dict_values_enums_can_only_be_given_with_ty
                     label="sample_label",
                     desc="sample",
                     types=[ParameterType.TEXT],
-                    notblank=False,
+                    required=False,
                     multiple=False,
                     dict_values_enums=ParameterEnumSpecification(
                         type=ParameterEnumType.LIST, source=["sample_enum"]
@@ -363,7 +363,7 @@ def test_validate_parameter_property_enums_given_with_type_dict():
                     desc="y",
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
-                    notblank=True,
+                    required=True,
                     multiple=False,
                 )
             ),
@@ -372,7 +372,7 @@ def test_validate_parameter_property_enums_given_with_type_dict():
                     label="sample_label",
                     desc="sample",
                     types=[ParameterType.DICT],
-                    notblank=False,
+                    required=False,
                     multiple=False,
                     enums=ParameterEnumSpecification(
                         type=ParameterEnumType.LIST, source=["sample_enum"]

@@ -16,7 +16,7 @@
             "stattypes": [
                 "numerical"
             ],
-            "notblank": true,
+            "required": true,
             "multiple": true
         }
     }

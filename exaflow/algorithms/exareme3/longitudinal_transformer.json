@@ -10,7 +10,7 @@
             "label": "1st Visit",
             "desc": "The earlier visit identifier.",
             "types": ["text"],
-            "notblank": true,
+            "required": true,
             "multiple": false,
             "enums": {
                 "type": "fixed_var_CDE_enums",
@@ -21,7 +21,7 @@
             "label": "2nd Visit",
             "desc": "The later visit identifier.",
             "types": ["text"],
-            "notblank": true,
+            "required": true,
             "multiple": false,
             "enums": {
                 "type": "fixed_var_CDE_enums",
@@ -32,7 +32,7 @@
             "label": "Strategies",
             "desc": "Select a strategy for each variable.",
             "types": ["dict"],
-            "notblank": true,
+            "required": true,
             "multiple": false,
             "dict_keys_enums": {
                 "type": "input_var_names",

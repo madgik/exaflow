@@ -75,7 +75,7 @@ class Specifications:
                 not any(self._flags.get(dt, False) for dt in spec.components)
             ):
                 missing = spec.components[0].value if spec.components else "unspecified"
-                warnings.warn(
+                logger.warning(
                     f"{type(spec).__name__} '{spec.name}' skipped: '{missing}' not deployed"
                 )
                 continue

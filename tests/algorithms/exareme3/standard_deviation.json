@@ -13,7 +13,7 @@
             "desc": "Column",
             "types": ["real", "int"],
             "stattypes": ["numerical"],
-            "notblank": true,
+            "required": true,
             "multiple": false
         }
     }

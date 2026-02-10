@@ -11,7 +11,7 @@
             "desc": "y",
             "types": ["int", "real", "text"],
             "stattypes": ["numerical", "nominal"],
-            "notblank": true,
+            "required": true,
             "multiple": true
         },
         "x": {
@@ -19,7 +19,7 @@
             "desc": "x",
             "types": ["int", "real", "text"],
             "stattypes": ["numerical", "nominal"],
-            "notblank": false,
+            "required": false,
             "multiple": true
         }
     }

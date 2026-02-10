@@ -16,7 +16,7 @@
             "stattypes": [
                 "numerical"
             ],
-            "notblank": true,
+            "required": true,
             "multiple": false
         }
     },
@@ -27,7 +27,7 @@
             "types": [
                 "text"
             ],
-            "notblank": true,
+            "required": true,
             "multiple": false,
             "default": "two-sided",
             "enums": {
@@ -45,7 +45,7 @@
             "types": [
                 "real"
             ],
-            "notblank": true,
+            "required": true,
             "multiple": false,
             "default": 0.05,
             "min": 0.0,
@@ -57,7 +57,7 @@
             "types": [
                 "real"
             ],
-            "notblank": true,
+            "required": true,
             "multiple": false,
             "default": 0.0,
             "min": -10.0,

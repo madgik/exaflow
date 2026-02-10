@@ -11,7 +11,7 @@
             "desc": "Numerical or categorical variable to bin into a histogram.",
             "types": ["real", "int", "text"],
             "stattypes": ["numerical", "nominal"],
-            "notblank": true,
+            "required": true,
             "multiple": false
         },
         "x": {
@@ -19,7 +19,7 @@
             "desc": "Optional categorical variables used to produce grouped histograms.",
             "types": ["int", "text"],
             "stattypes": ["nominal"],
-            "notblank": false,
+            "required": false,
             "multiple": true
         }
     },
@@ -28,7 +28,7 @@
             "label": "Number of bins",
             "desc": "Bin count for numerical histograms (ignored for categorical targets).",
             "types": ["int"],
-            "notblank": false,
+            "required": false,
             "multiple": false,
             "default": 20,
             "min": 1,

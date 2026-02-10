@@ -16,7 +16,7 @@
             "stattypes": [
                 "numerical"
             ],
-            "notblank": true,
+            "required": true,
             "multiple": true
         }
     },
@@ -25,7 +25,7 @@
             "label": "Data Transformation",
             "desc": "Transform a column with on of the given methods (log, exp, center, standardize) to reduce skewness of a distribution towards normalcy.",
             "types": ["dict"],
-            "notblank": false,
+            "required": false,
             "multiple": false,
             "transformation_method": {
                 "type": "text", "source": ["log", "exp", "center", "standardize"]

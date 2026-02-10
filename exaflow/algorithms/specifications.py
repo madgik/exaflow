@@ -102,7 +102,7 @@ class InputDataSpecification(ImmutableBaseModel):
     desc: str
     types: List[InputDataType]
     stattypes: List[InputDataStatType]
-    notblank: bool
+    required: bool
     multiple: bool
     enumslen: Optional[int]
 
@@ -122,7 +122,7 @@ class ParameterSpecification(ImmutableBaseModel):
     label: str
     desc: str
     types: List[ParameterType]
-    notblank: bool
+    required: bool
     multiple: bool
     default: Any
     enums: Optional[ParameterEnumSpecification]

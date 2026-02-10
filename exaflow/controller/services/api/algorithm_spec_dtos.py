@@ -32,7 +32,7 @@ class InputDataSpecificationDTO(ImmutableBaseModel):
     label: str
     desc: str
     types: List[InputDataType]
-    notblank: bool
+    required: bool
     multiple: bool
     stattypes: Optional[List[InputDataStatType]]
     enumslen: Optional[int]
@@ -56,7 +56,7 @@ class ParameterSpecificationDTO(ImmutableBaseModel):
     label: str
     desc: str
     types: List[ParameterType]
-    notblank: bool
+    required: bool
     multiple: bool
     default: Any
     enums: Optional[ParameterEnumSpecificationDTO]
@@ -100,7 +100,7 @@ def _convert_inputdata_specification_to_dto(self: InputDataSpecification):
         desc=self.desc,
         types=self.types,
         stattypes=self.stattypes,
-        notblank=self.notblank,
+        required=self.required,
         multiple=self.multiple,
         enumslen=self.enumslen,
     )
@@ -111,7 +111,7 @@ def _get_data_model_input_data_specification_dto():
         label="Data model of the data.",
         desc="The data model that the algorithm will run on.",
         types=[InputDataType.TEXT],
-        notblank=True,
+        required=True,
         multiple=False,
         stattypes=None,
         enumslen=None,
@@ -123,7 +123,7 @@ def _get_validation_datasets_input_data_specification_dto():
         label="Set of data to validate.",
         desc="The set of data to validate the algorithm model on.",
         types=[InputDataType.TEXT],
-        notblank=True,
+        required=True,
         multiple=True,
         stattypes=None,
         enumslen=None,
@@ -135,7 +135,7 @@ def _get_datasets_input_data_specification_dto():
         label="Set of data to use.",
         desc="The set of data to run the algorithm on.",
         types=[InputDataType.TEXT],
-        notblank=True,
+        required=True,
         multiple=True,
         stattypes=None,
         enumslen=None,
@@ -147,7 +147,7 @@ def _get_filters_input_data_specification_dto():
         label="filter on the data.",
         desc="Features used in my algorithm.",
         types=[InputDataType.JSONOBJECT],
-        notblank=False,
+        required=False,
         multiple=False,
         stattypes=None,
         enumslen=None,
@@ -186,7 +186,7 @@ def _convert_parameter_specification_to_dto(spec: ParameterSpecification):
         label=spec.label,
         desc=spec.desc,
         types=spec.types,
-        notblank=spec.notblank,
+        required=spec.required,
         multiple=spec.multiple,
         default=spec.default,
         enums=(

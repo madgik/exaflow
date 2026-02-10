@@ -16,7 +16,7 @@
             "stattypes": [
                 "nominal"
             ],
-            "notblank": true,
+            "required": true,
             "multiple": false
         },
         "x": {
@@ -29,7 +29,7 @@
             "stattypes": [
                 "nominal"
             ],
-            "notblank": true,
+            "required": true,
             "multiple": true
         }
     },
@@ -40,7 +40,7 @@
             "types": [
                 "int"
             ],
-            "notblank": true,
+            "required": true,
             "multiple": false,
             "default": 5,
             "min": 2,
