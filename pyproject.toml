@@ -85,6 +85,9 @@ norecursedirs = ["tests/testcase_generators"]
 [tool.coverage.run]
 source_pkgs = ['exaflow']
 dynamic_context = 'test_function'
+omit = [
+    "exaflow/protos/*",
+]
 
 [tool.coverage.report]
 exclude_lines = ['def __repr__', 'raise NotImplementedError', 'pragma: no cover']
