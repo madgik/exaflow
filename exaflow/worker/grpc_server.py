@@ -167,9 +167,9 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
             context.abort(grpc.StatusCode.INTERNAL, str(exc))
 
     def GetWorkerInfo(self, request, context):
-        print(
-            f"DEBUG: GetWorkerInfo called with request_id={request.request_id}",
-            flush=True,
+        LOGGER.info(
+            "GetWorkerInfo called with request_id=%s",
+            request.request_id,
         )
         try:
             info = worker_info_service.get_worker_info(request.request_id)
@@ -297,7 +297,11 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
 def serve() -> None:
     logging.basicConfig(
         level=worker_config.framework_log_level,
-        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+        format=(
+            "%(asctime)s - %(levelname)s - %(module)s.%(funcName)s(%(lineno)d) - "
+            f"[{worker_config.federation}] - [exaflow-{worker_config.role.lower()}] - "
+            f"[{worker_config.identifier}] - [BACKGROUND] - %(message)s"
+        ),
     )
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
 
@@ -310,16 +314,16 @@ def serve() -> None:
     listen_addr = f"{worker_config.grpc.ip}:{worker_config.grpc.port}"
     server.add_insecure_port(listen_addr)
     LOGGER.info("Worker gRPC server listening on %s", listen_addr)
-    print(f"DEBUG: Server starting on {listen_addr}", flush=True)
-    print(f"DEBUG: Registered services: exaflow.worker.api.WorkerService", flush=True)
-    print(
-        f"DEBUG: Service full name from descriptor: {worker_pb2.DESCRIPTOR.services_by_name['WorkerService'].full_name}",
-        flush=True,
+    LOGGER.info("Server starting on %s", listen_addr)
+    LOGGER.info("Registered services: exaflow.worker.api.WorkerService")
+    LOGGER.info(
+        "Service full name from descriptor: %s",
+        worker_pb2.DESCRIPTOR.services_by_name["WorkerService"].full_name,
     )
 
     # Add TestService
     def test_method(request, context):
-        print("DEBUG: TestService.Test called", flush=True)
+        LOGGER.info("TestService.Test called")
         return worker_pb2.HealthcheckResponse(ok=True)
 
     rpc_method_handlers = {
