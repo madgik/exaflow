@@ -21,7 +21,6 @@ from exaflow.algorithms.federated.model_selection.cross_validation.splitter_kfol
 )
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
-from exaflow.algorithms.federated.preprocessing import FederatedPassthrough
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.specifications import AlgorithmName
 from exaflow.worker_communication import BadUserInput
@@ -115,10 +114,8 @@ def linear_regression_cv_local_step(
             (
                 "features",
                 FederatedColumnTransformer(
-                    [
-                        ("cat", FederatedOneHotEncoder(), "categorical"),
-                        ("num", FederatedPassthrough(), "numerical"),
-                    ]
+                    [("cat", FederatedOneHotEncoder(), categorical_vars)],
+                    remainder="passthrough",
                 ),
             ),
             ("model", FederatedOLS(fit_intercept=True)),
@@ -146,10 +143,8 @@ def linear_regression_cv_local_step(
 
     # Get global feature names
     feature_transformer = FederatedColumnTransformer(
-        [
-            ("cat", FederatedOneHotEncoder(), "categorical"),
-            ("num", FederatedPassthrough(), "numerical"),
-        ]
+        [("cat", FederatedOneHotEncoder(), categorical_vars)],
+        remainder="passthrough",
     )
     feature_transformer.fit(
         agg_client=agg_client,

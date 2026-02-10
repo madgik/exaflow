@@ -10,7 +10,6 @@ from exaflow.algorithms.federated.compose.column_transformer import (
 from exaflow.algorithms.federated.linear_model.ols import FederatedOLS
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
-from exaflow.algorithms.federated.preprocessing import FederatedPassthrough
 from exaflow.algorithms.specifications import AlgorithmName
 
 
@@ -89,10 +88,8 @@ def linear_regression_local_step(
     numerical_vars,
 ):
     transformer = FederatedColumnTransformer(
-        [
-            ("cat", FederatedOneHotEncoder(), "categorical"),
-            ("num", FederatedPassthrough(), "numerical"),
-        ]
+        [("cat", FederatedOneHotEncoder(), categorical_vars)],
+        remainder="passthrough",
     )
     pipeline = FederatedPipeline(
         [
