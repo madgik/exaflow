@@ -11,7 +11,7 @@
             "desc": "A unique nominal variable. The variable is converted to binary by assigning 1 to the positive class and 0 to all other classes.",
             "types": ["int", "text"],
             "stattypes": ["nominal"],
-            "notblank": true,
+            "required": true,
             "multiple": false
         },
         "x": {
@@ -19,7 +19,7 @@
             "desc": "One or more covariates (numerical or categorical). Categorical variables are one-hot encoded.",
             "types": ["real", "int", "text"],
             "stattypes": ["numerical", "nominal"],
-            "notblank": true,
+            "required": true,
             "multiple": true
         }
     },
@@ -28,7 +28,7 @@
             "label": "Positive class (y=1)",
             "desc": "Positive class of y. All other classes are considered negative.",
             "types": ["text", "int"],
-            "notblank": true,
+            "required": true,
             "multiple": false,
             "enums": {
                 "type": "input_var_CDE_enums",

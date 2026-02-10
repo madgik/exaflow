@@ -112,24 +112,24 @@ class InputDataVariable(ABC):
 
 
 class SingleTypeSingleVar(InputDataVariable):
-    def __init__(self, notblank, pool):
+    def __init__(self, required, pool):
         self.pool = pool
-        self.notblank = notblank
+        self.required = required
 
     def draw(self):
-        if not self.notblank and coin():
+        if not self.required and coin():
             return ()
 
         return (self.pool.pop(),)
 
 
 class SingleTypeMultipleVar(InputDataVariable):
-    def __init__(self, notblank, pool):
+    def __init__(self, required, pool):
         self.pool = pool
-        self.notblank = notblank
+        self.required = required
 
     def draw(self):
-        if not self.notblank and coin():
+        if not self.required and coin():
             return ()
 
         r = triangular(len(self.pool))
@@ -139,13 +139,13 @@ class SingleTypeMultipleVar(InputDataVariable):
 
 
 class MixedTypeSingleVar(InputDataVariable):
-    def __init__(self, notblank, pool1, pool2):
+    def __init__(self, required, pool1, pool2):
         self.pool1 = pool1
         self.pool2 = pool2
-        self.notblank = notblank
+        self.required = required
 
     def draw(self):
-        if not self.notblank and coin():
+        if not self.required and coin():
             return ()
 
         pool = self.pool1 if coin() else self.pool2
@@ -153,13 +153,13 @@ class MixedTypeSingleVar(InputDataVariable):
 
 
 class MixedTypeMultipleVar(InputDataVariable):
-    def __init__(self, notblank, pool1, pool2):
+    def __init__(self, required, pool1, pool2):
         self.pool1 = pool1
         self.pool2 = pool2
-        self.notblank = notblank
+        self.required = required
 
     def draw(self):
-        if not self.notblank and coin():
+        if not self.required and coin():
             return ()
 
         # pool1 is the main pool and is always used. Additionally, variables
@@ -178,27 +178,27 @@ class MixedTypeMultipleVar(InputDataVariable):
 
 
 def make_input_data_variables(properties, numerical_pool, nominal_pool):
-    notblank = properties["notblank"]
+    required = properties["required"]
     multiple = properties["multiple"]
     stattypes = set(properties["stattypes"])
 
     # numerical variables
     if stattypes == {"numerical"} and not multiple:
-        return SingleTypeSingleVar(notblank, pool=numerical_pool)
+        return SingleTypeSingleVar(required, pool=numerical_pool)
     elif stattypes == {"numerical"} and multiple:
-        return SingleTypeMultipleVar(notblank, pool=numerical_pool)
+        return SingleTypeMultipleVar(required, pool=numerical_pool)
 
     # nominal variables
     elif stattypes == {"nominal"} and not multiple:
-        return SingleTypeSingleVar(notblank, pool=nominal_pool)
+        return SingleTypeSingleVar(required, pool=nominal_pool)
     elif stattypes == {"nominal"} and multiple:
-        return SingleTypeMultipleVar(notblank, pool=nominal_pool)
+        return SingleTypeMultipleVar(required, pool=nominal_pool)
 
     # mixed variables
     elif stattypes == {"numerical", "nominal"} and not multiple:
-        return MixedTypeSingleVar(notblank, pool1=numerical_pool, pool2=nominal_pool)
+        return MixedTypeSingleVar(required, pool1=numerical_pool, pool2=nominal_pool)
     elif stattypes == {"numerical", "nominal"} and multiple:
-        return MixedTypeMultipleVar(notblank, pool1=numerical_pool, pool2=nominal_pool)
+        return MixedTypeMultipleVar(required, pool1=numerical_pool, pool2=nominal_pool)
 
     else:
         raise TypeError(

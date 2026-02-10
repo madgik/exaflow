@@ -217,7 +217,7 @@ def _validate_algorithm_inputdata(
         return
 
     if not inputdata_values:
-        if inputdata_spec.notblank:
+        if inputdata_spec.required:
             raise BadUserInput(
                 f"Inputdata '{inputdata_spec.label}' should be provided."
             )
@@ -337,7 +337,7 @@ def _validate_parameters(
         return
 
     for parameter_name, parameter_spec in parameters_specs.items():
-        if parameter_spec.notblank:
+        if parameter_spec.required:
             if not parameters:
                 raise BadUserInput(f"Algorithm parameters not provided.")
             if parameter_name not in parameters.keys():

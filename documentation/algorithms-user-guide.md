@@ -276,7 +276,7 @@ In our example the specs are
             "desc": "A unique numerical variable.",
             "types": [ "real" ],
             "stattypes": [ "numerical" ],
-            "notblank": true,
+            "required": true,
             "multiple": false
         }
     }

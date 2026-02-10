@@ -13,7 +13,7 @@
             "stattypes": [
                 "numerical"
             ],
-            "notblank": true,
+            "required": true,
             "multiple": true
         }
     },
@@ -24,7 +24,7 @@
             "types": [
                 "int"
             ],
-            "notblank": true,
+            "required": true,
             "multiple": false,
             "default": 4,
             "min": 1,
@@ -36,7 +36,7 @@
             "types": [
                 "int"
             ],
-            "notblank": true,
+            "required": true,
             "multiple": false,
             "default": 1,
             "min": 1,
@@ -48,7 +48,7 @@
             "types": [
                 "real"
             ],
-            "notblank": true,
+            "required": true,
             "multiple": false,
             "default": 0.01,
             "min": 0.0,
