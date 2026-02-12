@@ -6,7 +6,9 @@ import scipy.stats as st
 from exaflow.algorithms.federated.statistics.pearson_correlation import (
     FederatedPearsonCorrelation,
 )
-from tests.standalone_tests.federated_algorithms.utils import DummyAggClient
+from tests.standalone_tests.federated_algorithms.utils.federated_algorithm_test import (
+    FederatedAlgorithmTest,
+)
 
 TEST_CASES = [
     {
@@ -122,91 +124,115 @@ TEST_CASES = [
 ]
 
 
-def _expected_results(df, x_vars, y_vars, alpha):
-    n_obs = len(df)
-    correlations = []
-    p_values = []
-    ci_lo = []
-    ci_hi = []
-    z = st.norm.ppf(1 - alpha / 2)
-    se = 1 / np.sqrt(n_obs - 3)
+class TestFederatedPearsonCorrelation(FederatedAlgorithmTest):
+    def compute_centralized_result(self, X, y, **kwargs):
+        df = X
+        x_vars = kwargs["x_vars"]
+        y_vars = kwargs["y_vars"]
+        alpha = kwargs["alpha"]
 
-    for y_var in y_vars:
-        y = df[y_var].to_numpy(dtype=float)
-        row_corr = []
-        row_p = []
-        row_lo = []
-        row_hi = []
-        for x_var in x_vars:
-            x = df[x_var].to_numpy(dtype=float)
-            corr = float(np.corrcoef(x, y)[0, 1])
-            corr = float(np.clip(corr, -1.0, 1.0))
-            row_corr.append(corr)
-            if abs(corr) == 1.0:
-                p_val = 0.0
-            else:
-                p_val = float(st.pearsonr(x, y).pvalue)
-            row_p.append(p_val)
-            r_z = np.arctanh(corr)
-            lo_z, hi_z = r_z - z * se, r_z + z * se
-            ci_low, ci_high = np.tanh((lo_z, hi_z))
-            row_lo.append(float(ci_low))
-            row_hi.append(float(ci_high))
-        correlations.append(row_corr)
-        p_values.append(row_p)
-        ci_lo.append(row_lo)
-        ci_hi.append(row_hi)
+        n_obs = len(df)
+        correlations = []
+        p_values = []
+        ci_lo = []
+        ci_hi = []
+        z = st.norm.ppf(1 - alpha / 2)
+        se = 1 / np.sqrt(n_obs - 3)
 
-    return {
-        "n_obs": n_obs,
-        "correlations": correlations,
-        "p_values": p_values,
-        "ci_lo": ci_lo,
-        "ci_hi": ci_hi,
-    }
+        for y_var in y_vars:
+            y = df[y_var].to_numpy(dtype=float)
+            row_corr = []
+            row_p = []
+            row_lo = []
+            row_hi = []
+            for x_var in x_vars:
+                x = df[x_var].to_numpy(dtype=float)
+                corr = float(np.corrcoef(x, y)[0, 1])
+                corr = float(np.clip(corr, -1.0, 1.0))
+                row_corr.append(corr)
+                if abs(corr) == 1.0:
+                    p_val = 0.0
+                else:
+                    p_val = float(st.pearsonr(x, y).pvalue)
+                row_p.append(p_val)
+                r_z = np.arctanh(corr)
+                lo_z, hi_z = r_z - z * se, r_z + z * se
+                ci_low, ci_high = np.tanh((lo_z, hi_z))
+                row_lo.append(float(ci_low))
+                row_hi.append(float(ci_high))
+            correlations.append(row_corr)
+            p_values.append(row_p)
+            ci_lo.append(row_lo)
+            ci_hi.append(row_hi)
 
+        return {
+            "n_obs": n_obs,
+            "correlations": correlations,
+            "p_values": p_values,
+            "ci_lo": ci_lo,
+            "ci_hi": ci_hi,
+        }
 
-@pytest.mark.parametrize("case", TEST_CASES)
-def test_federated_pearson_correlation_matches_numpy_and_scipy(case):
-    df = pd.DataFrame(case["data"])
-    agg = DummyAggClient()
-    model = FederatedPearsonCorrelation(agg_client=agg)
+    def compute_federated_result(self, X, y, *, agg_client, **kwargs):
+        model = FederatedPearsonCorrelation(agg_client=agg_client)
+        return model.corrcoef(
+            data=X,
+            x_vars=kwargs["x_vars"],
+            y_vars=kwargs["y_vars"],
+            alpha=kwargs["alpha"],
+        )
 
-    result = model.corrcoef(
-        data=df,
-        x_vars=case["x_vars"],
-        y_vars=case["y_vars"],
-        alpha=case["alpha"],
-    )
+    def compare(self, federated_output, centralized_output, **kwargs):
+        assert federated_output.n_obs == centralized_output["n_obs"]
+        np.testing.assert_allclose(
+            np.asarray(federated_output.correlations),
+            np.asarray(centralized_output["correlations"]),
+            rtol=1e-7,
+            atol=1e-7,
+            equal_nan=True,
+        )
+        np.testing.assert_allclose(
+            np.asarray(federated_output.p_values),
+            np.asarray(centralized_output["p_values"]),
+            rtol=1e-7,
+            atol=1e-7,
+            equal_nan=True,
+        )
+        np.testing.assert_allclose(
+            np.asarray(federated_output.ci_lo),
+            np.asarray(centralized_output["ci_lo"]),
+            rtol=1e-7,
+            atol=1e-7,
+            equal_nan=True,
+        )
+        np.testing.assert_allclose(
+            np.asarray(federated_output.ci_hi),
+            np.asarray(centralized_output["ci_hi"]),
+            rtol=1e-7,
+            atol=1e-7,
+            equal_nan=True,
+        )
 
-    expected = _expected_results(df, case["x_vars"], case["y_vars"], case["alpha"])
+    @pytest.mark.parametrize("case", TEST_CASES)
+    def test_federated_algorithm_with_one_worker(self, case):
+        df = pd.DataFrame(case["data"])
+        self.run_comparison(
+            X=df,
+            y=np.zeros((df.shape[0],), dtype=float),
+            n_workers=1,
+            x_vars=case["x_vars"],
+            y_vars=case["y_vars"],
+            alpha=case["alpha"],
+        )
 
-    assert result.n_obs == expected["n_obs"]
-    np.testing.assert_allclose(
-        np.asarray(result.correlations),
-        np.asarray(expected["correlations"]),
-        rtol=1e-7,
-        atol=1e-7,
-        equal_nan=True,
-    )
-    np.testing.assert_allclose(
-        np.asarray(result.p_values),
-        np.asarray(expected["p_values"]),
-        rtol=1e-7,
-        atol=1e-7,
-        equal_nan=True,
-    )
-    np.testing.assert_allclose(
-        np.asarray(result.ci_lo),
-        np.asarray(expected["ci_lo"]),
-        rtol=1e-7,
-        atol=1e-7,
-        equal_nan=True,
-    )
-    np.testing.assert_allclose(
-        np.asarray(result.ci_hi),
-        np.asarray(expected["ci_hi"]),
-        rtol=1e-7,
-        atol=1e-7,
-        equal_nan=True,
-    )
+    @pytest.mark.parametrize("case", TEST_CASES)
+    def test_federated_algorithm_with_multiple_workers(self, case):
+        df = pd.DataFrame(case["data"])
+        self.run_comparison(
+            X=df,
+            y=np.zeros((df.shape[0],), dtype=float),
+            n_workers=3,
+            x_vars=case["x_vars"],
+            y_vars=case["y_vars"],
+            alpha=case["alpha"],
+        )

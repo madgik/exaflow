@@ -6,8 +6,8 @@ from statsmodels.stats.weightstats import DescrStatsW
 from exaflow.algorithms.federated.statistics.ttest_onesample import (
     FederatedTTestOneSample,
 )
-from tests.standalone_tests.federated_algorithms.utils.dummy_agg_client import (
-    DummyAggClient,
+from tests.standalone_tests.federated_algorithms.utils.federated_algorithm_test import (
+    FederatedAlgorithmTest,
 )
 
 TEST_CASES = [
@@ -74,72 +74,131 @@ TEST_CASES = [
 ]
 
 
-def _statsmodels_expected(sample, *, mu: float, alpha: float):
-    stats = DescrStatsW(sample)
-    t_stat, p_value, df = stats.ttest_mean(value=mu, alternative="two-sided")
-    ci_lower, ci_upper = stats.tconfint_mean(alpha=alpha, alternative="two-sided")
+class TestFederatedTTestOneSample(FederatedAlgorithmTest):
+    def compute_centralized_result(self, X, y, **kwargs):
+        sample = kwargs["sample"]
+        mu = kwargs["mu"]
+        alpha = kwargs["alpha"]
 
-    mean_val = float(stats.mean)
-    sd = float(np.std(sample, ddof=1))
-    se = sd / np.sqrt(len(sample))
-    cohens_d = (mean_val - mu) / sd
+        stats = DescrStatsW(sample)
+        t_stat, p_value, df = stats.ttest_mean(value=mu, alternative="two-sided")
+        ci_lower, ci_upper = stats.tconfint_mean(alpha=alpha, alternative="two-sided")
 
-    return {
-        "t_stat": float(t_stat),
-        "p_value": float(p_value),
-        "df": float(df),
-        "mean_diff": mean_val,
-        "se_diff": se,
-        "ci_lower": float(ci_lower),
-        "ci_upper": float(ci_upper),
-        "cohens_d": float(cohens_d),
-        "std": sd,
-        "n_obs": int(stats.nobs),
-    }
+        mean_val = float(stats.mean)
+        sd = float(np.std(sample, ddof=1))
+        se = sd / np.sqrt(len(sample))
+        cohens_d = (mean_val - mu) / sd
 
+        return {
+            "t_stat": float(t_stat),
+            "p_value": float(p_value),
+            "df": float(df),
+            "mean_diff": mean_val,
+            "se_diff": se,
+            "ci_lower": float(ci_lower),
+            "ci_upper": float(ci_upper),
+            "cohens_d": float(cohens_d),
+            "std": sd,
+            "n_obs": int(stats.nobs),
+        }
 
-@pytest.mark.parametrize("case", TEST_CASES, ids=[case["name"] for case in TEST_CASES])
-def test_federated_one_sample_ttest_matches_statsmodels(case):
-    sample = np.asarray(case["values"], dtype=float)
-    mu = case["mu"]
-    alpha = case["alpha"]
+    def compute_federated_result(self, X, y, *, agg_client, **kwargs):
+        ttest = FederatedTTestOneSample(agg_client)
+        return ttest.compute(
+            sample=X["value"],
+            mu=kwargs["mu"],
+            alpha=kwargs["alpha"],
+            alternative="two-sided",
+        )
 
-    df = pd.DataFrame({"value": sample})
+    def compare(self, federated_output, centralized_output, **kwargs):
+        np.testing.assert_allclose(
+            federated_output["n_obs"],
+            centralized_output["n_obs"],
+            rtol=1e-12,
+            atol=1e-12,
+        )
+        np.testing.assert_allclose(
+            federated_output["t_stat"],
+            centralized_output["t_stat"],
+            rtol=1e-7,
+            atol=1e-10,
+        )
+        np.testing.assert_allclose(
+            federated_output["p_value"],
+            centralized_output["p_value"],
+            rtol=1e-7,
+            atol=1e-10,
+        )
+        np.testing.assert_allclose(
+            federated_output["df"],
+            centralized_output["df"],
+            rtol=1e-12,
+            atol=1e-12,
+        )
+        np.testing.assert_allclose(
+            federated_output["mean_diff"],
+            centralized_output["mean_diff"],
+            rtol=1e-12,
+            atol=1e-12,
+        )
+        np.testing.assert_allclose(
+            federated_output["se_diff"],
+            centralized_output["se_diff"],
+            rtol=1e-7,
+            atol=1e-10,
+        )
+        np.testing.assert_allclose(
+            federated_output["std"],
+            centralized_output["std"],
+            rtol=1e-7,
+            atol=1e-10,
+        )
+        np.testing.assert_allclose(
+            federated_output["ci_lower"],
+            centralized_output["ci_lower"],
+            rtol=1e-7,
+            atol=1e-10,
+        )
+        np.testing.assert_allclose(
+            federated_output["ci_upper"],
+            centralized_output["ci_upper"],
+            rtol=1e-7,
+            atol=1e-10,
+        )
+        np.testing.assert_allclose(
+            federated_output["cohens_d"],
+            centralized_output["cohens_d"],
+            rtol=1e-7,
+            atol=1e-10,
+        )
 
-    agg_client = DummyAggClient()
-    ttest = FederatedTTestOneSample(agg_client)
-    result = ttest.compute(
-        sample=df["value"],
-        mu=mu,
-        alpha=alpha,
-        alternative="two-sided",
+    @pytest.mark.parametrize(
+        "case", TEST_CASES, ids=[case["name"] for case in TEST_CASES]
     )
+    def test_federated_algorithm_with_one_worker(self, case):
+        sample = np.asarray(case["values"], dtype=float)
+        df = pd.DataFrame({"value": sample})
+        self.run_comparison(
+            X=df,
+            y=np.zeros((df.shape[0],), dtype=float),
+            n_workers=1,
+            sample=sample,
+            mu=case["mu"],
+            alpha=case["alpha"],
+        )
 
-    expected = _statsmodels_expected(sample, mu=mu, alpha=alpha)
-
-    np.testing.assert_allclose(
-        result["n_obs"], expected["n_obs"], rtol=1e-12, atol=1e-12
+    @pytest.mark.parametrize(
+        "case", TEST_CASES, ids=[case["name"] for case in TEST_CASES]
     )
-    np.testing.assert_allclose(
-        result["t_stat"], expected["t_stat"], rtol=1e-7, atol=1e-10
-    )
-    np.testing.assert_allclose(
-        result["p_value"], expected["p_value"], rtol=1e-7, atol=1e-10
-    )
-    np.testing.assert_allclose(result["df"], expected["df"], rtol=1e-12, atol=1e-12)
-    np.testing.assert_allclose(
-        result["mean_diff"], expected["mean_diff"], rtol=1e-12, atol=1e-12
-    )
-    np.testing.assert_allclose(
-        result["se_diff"], expected["se_diff"], rtol=1e-7, atol=1e-10
-    )
-    np.testing.assert_allclose(result["std"], expected["std"], rtol=1e-7, atol=1e-10)
-    np.testing.assert_allclose(
-        result["ci_lower"], expected["ci_lower"], rtol=1e-7, atol=1e-10
-    )
-    np.testing.assert_allclose(
-        result["ci_upper"], expected["ci_upper"], rtol=1e-7, atol=1e-10
-    )
-    np.testing.assert_allclose(
-        result["cohens_d"], expected["cohens_d"], rtol=1e-7, atol=1e-10
-    )
+    def test_federated_algorithm_with_multiple_workers(self, case):
+        sample = np.asarray(case["values"], dtype=float)
+        df = pd.DataFrame({"value": sample})
+        self.run_comparison(
+            X=df,
+            y=np.zeros((df.shape[0],), dtype=float),
+            n_workers=3,
+            sample=sample,
+            mu=case["mu"],
+            alpha=case["alpha"],
+        )

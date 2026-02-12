@@ -5,7 +5,9 @@ import statsmodels.api as sm
 from statsmodels.formula.api import ols
 
 from exaflow.algorithms.federated.statistics.anova_twoway import FederatedAnovaTwoWay
-from tests.standalone_tests.federated_algorithms.utils import DummyAggClient
+from tests.standalone_tests.federated_algorithms.utils.federated_algorithm_test import (
+    FederatedAlgorithmTest,
+)
 
 TEST_CASES = [
     {
@@ -1051,44 +1053,108 @@ TEST_CASES = [
 ]
 
 
-@pytest.mark.parametrize("case", TEST_CASES)
-def test_federated_anova_twoway_matches_statsmodels(case):
-    levels_a = case["levels_a"]
-    levels_b = case["levels_b"]
-    sstype = case["sstype"]
-    df = pd.DataFrame(
-        {
-            "y": case["y"],
-            "A": pd.Categorical(case["A"], categories=levels_a),
-            "B": pd.Categorical(case["B"], categories=levels_b),
-        }
-    )
+class TestFederatedAnovaTwoWay(FederatedAlgorithmTest):
+    def _assert_mapping_close(self, left, right, *, atol=1e-8):
+        assert left.keys() == right.keys()
+        for key, left_value in left.items():
+            right_value = right[key]
+            if left_value is None or right_value is None:
+                assert left_value is right_value
+            elif isinstance(left_value, (int, float)):
+                assert np.isclose(left_value, right_value, atol=atol)
+            else:
+                assert left_value == right_value
 
-    agg_client = DummyAggClient()
-    model = FederatedAnovaTwoWay(agg_client=agg_client, sstype=sstype)
-    model.fit(
-        data=df,
-        y="y",
-        x1="A",
-        x2="B",
-        levels_a=levels_a,
-        levels_b=levels_b,
-    )
+    def _validate_federated_outputs(self, federated_outputs):
+        baseline = federated_outputs[0]
+        for output in federated_outputs[1:]:
+            assert output.terms_ == baseline.terms_
+            self._assert_mapping_close(output.sum_sq_, baseline.sum_sq_)
+            self._assert_mapping_close(output.df_, baseline.df_)
+            self._assert_mapping_close(output.f_stat_, baseline.f_stat_)
+            self._assert_mapping_close(output.f_pvalue_, baseline.f_pvalue_)
 
-    lm = ols("y ~ A * B", data=df).fit()
-    aov = sm.stats.anova_lm(lm, typ=sstype)
+    def compute_centralized_result(self, X, y, **kwargs):
+        sstype = kwargs["sstype"]
+        df = X
+        lm = ols("y ~ A * B", data=df).fit()
+        aov = sm.stats.anova_lm(lm, typ=sstype)
+        return aov
 
-    assert model.terms_ == ["A", "B", "A:B", "Residuals"]
+    def compute_federated_result(self, X, y, *, agg_client, **kwargs):
+        model = FederatedAnovaTwoWay(agg_client=agg_client, sstype=kwargs["sstype"])
+        model.fit(
+            data=X,
+            y="y",
+            x1="A",
+            x2="B",
+            levels_a=kwargs["levels_a"],
+            levels_b=kwargs["levels_b"],
+        )
+        return model
 
-    for term in ["A", "B", "A:B"]:
-        assert np.isclose(model.sum_sq_[term], aov.loc[term, "sum_sq"], atol=1e-8)
-        assert np.isclose(model.df_[term], aov.loc[term, "df"], atol=1e-8)
-        assert np.isclose(model.f_stat_[term], aov.loc[term, "F"], atol=1e-8)
-        assert np.isclose(model.f_pvalue_[term], aov.loc[term, "PR(>F)"], atol=1e-8)
+    def compare(self, federated_output, centralized_output, **kwargs):
+        aov = centralized_output
 
-    assert np.isclose(
-        model.sum_sq_["Residuals"], aov.loc["Residual", "sum_sq"], atol=1e-8
-    )
-    assert np.isclose(model.df_["Residuals"], aov.loc["Residual", "df"], atol=1e-8)
-    assert model.f_stat_["Residuals"] is None
-    assert model.f_pvalue_["Residuals"] is None
+        assert federated_output.terms_ == ["A", "B", "A:B", "Residuals"]
+
+        for term in ["A", "B", "A:B"]:
+            assert np.isclose(
+                federated_output.sum_sq_[term], aov.loc[term, "sum_sq"], atol=1e-8
+            )
+            assert np.isclose(
+                federated_output.df_[term], aov.loc[term, "df"], atol=1e-8
+            )
+            assert np.isclose(
+                federated_output.f_stat_[term], aov.loc[term, "F"], atol=1e-8
+            )
+            assert np.isclose(
+                federated_output.f_pvalue_[term], aov.loc[term, "PR(>F)"], atol=1e-8
+            )
+
+        assert np.isclose(
+            federated_output.sum_sq_["Residuals"],
+            aov.loc["Residual", "sum_sq"],
+            atol=1e-8,
+        )
+        assert np.isclose(
+            federated_output.df_["Residuals"], aov.loc["Residual", "df"], atol=1e-8
+        )
+        assert federated_output.f_stat_["Residuals"] is None
+        assert federated_output.f_pvalue_["Residuals"] is None
+
+    @pytest.mark.parametrize("case", TEST_CASES)
+    def test_federated_algorithm_with_one_worker(self, case):
+        df = pd.DataFrame(
+            {
+                "y": case["y"],
+                "A": pd.Categorical(case["A"], categories=case["levels_a"]),
+                "B": pd.Categorical(case["B"], categories=case["levels_b"]),
+            }
+        )
+        self.run_comparison(
+            X=df,
+            y=np.zeros((df.shape[0],), dtype=float),
+            n_workers=1,
+            levels_a=case["levels_a"],
+            levels_b=case["levels_b"],
+            sstype=case["sstype"],
+        )
+
+    @pytest.mark.parametrize("case", TEST_CASES)
+    def test_federated_algorithm_with_multiple_workers(self, case):
+        df = pd.DataFrame(
+            {
+                "y": case["y"],
+                "A": pd.Categorical(case["A"], categories=case["levels_a"]),
+                "B": pd.Categorical(case["B"], categories=case["levels_b"]),
+            }
+        )
+        self.run_comparison(
+            X=df,
+            y=np.zeros((df.shape[0],), dtype=float),
+            n_workers=3,
+            levels_a=case["levels_a"],
+            levels_b=case["levels_b"],
+            sstype=case["sstype"],
+        )

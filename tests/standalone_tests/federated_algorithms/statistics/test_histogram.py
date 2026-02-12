@@ -3,7 +3,9 @@ import pandas as pd
 import pytest
 
 from exaflow.algorithms.federated.statistics.histogram import FederatedHistogram
-from tests.standalone_tests.federated_algorithms.utils import DummyAggClient
+from tests.standalone_tests.federated_algorithms.utils.federated_algorithm_test import (
+    FederatedAlgorithmTest,
+)
 
 NUMERICAL_CASES = [
     {
@@ -59,54 +61,99 @@ NUMERICAL_CASES = [
 ]
 
 
-@pytest.mark.parametrize("case", NUMERICAL_CASES)
-def test_histogram_matches_numpy(case):
-    df = pd.DataFrame({"y": case["y"], "group": case["group"]})
-    metadata = {
-        "y": {"is_categorical": False},
-        "group": {
-            "is_categorical": True,
-            "enumerations": {"A": "A", "B": "B", "C": "C"},
-        },
-    }
+class TestFederatedHistogramNumerical(FederatedAlgorithmTest):
+    def compute_centralized_result(self, X, y, **kwargs):
+        df = X
+        bins = kwargs["bins"]
+        min_row_count = kwargs["min_row_count"]
 
-    bins = case["bins"]
-    min_row_count = 1
-
-    hist = FederatedHistogram(agg_client=DummyAggClient())
-    result = hist.hist(
-        data=df,
-        y_var="y",
-        x_vars=["group"],
-        metadata=metadata,
-        bins=bins,
-        min_row_count=min_row_count,
-    )
-
-    y_values = df["y"].to_numpy(dtype=float)
-    global_min = float(np.min(y_values))
-    global_max = float(np.max(y_values))
-    if global_min == global_max:
-        global_max = global_min + 1.0
-    bin_edges = np.linspace(global_min, global_max, bins + 1)
-    expected_counts, _ = np.histogram(y_values, bins=bin_edges)
-    expected_counts = [
-        count if count >= min_row_count else None for count in expected_counts.tolist()
-    ]
-
-    assert result.bins == pytest.approx(bin_edges.tolist())
-    assert result.counts == expected_counts
-
-    grouped = result.grouped["group"]
-    assert grouped.groups == ["A", "B", "C"]
-    for group, counts in zip(grouped.groups, grouped.counts):
-        subset = df.loc[df["group"] == group, "y"].to_numpy(dtype=float)
-        expected_group_counts, _ = np.histogram(subset, bins=bin_edges)
-        expected_group_counts = [
+        y_values = df["y"].to_numpy(dtype=float)
+        global_min = float(np.min(y_values))
+        global_max = float(np.max(y_values))
+        if global_min == global_max:
+            global_max = global_min + 1.0
+        bin_edges = np.linspace(global_min, global_max, bins + 1)
+        expected_counts, _ = np.histogram(y_values, bins=bin_edges)
+        expected_counts = [
             count if count >= min_row_count else None
-            for count in expected_group_counts.tolist()
+            for count in expected_counts.tolist()
         ]
-        assert counts == expected_group_counts
+
+        grouped_expected = []
+        for group in ["A", "B", "C"]:
+            subset = df.loc[df["group"] == group, "y"].to_numpy(dtype=float)
+            expected_group_counts, _ = np.histogram(subset, bins=bin_edges)
+            expected_group_counts = [
+                count if count >= min_row_count else None
+                for count in expected_group_counts.tolist()
+            ]
+            grouped_expected.append(expected_group_counts)
+
+        return {
+            "bin_edges": bin_edges.tolist(),
+            "counts": expected_counts,
+            "grouped_counts": grouped_expected,
+        }
+
+    def compute_federated_result(self, X, y, *, agg_client, **kwargs):
+        hist = FederatedHistogram(agg_client=agg_client)
+        return hist.hist(
+            data=X,
+            y_var="y",
+            x_vars=["group"],
+            metadata=kwargs["metadata"],
+            bins=kwargs["bins"],
+            min_row_count=kwargs["min_row_count"],
+        )
+
+    def compare(self, federated_output, centralized_output, **kwargs):
+        assert federated_output.bins == pytest.approx(centralized_output["bin_edges"])
+        assert federated_output.counts == centralized_output["counts"]
+
+        grouped = federated_output.grouped["group"]
+        assert grouped.groups == ["A", "B", "C"]
+        for counts, expected in zip(
+            grouped.counts, centralized_output["grouped_counts"]
+        ):
+            assert counts == expected
+
+    @pytest.mark.parametrize("case", NUMERICAL_CASES)
+    def test_federated_algorithm_with_one_worker(self, case):
+        df = pd.DataFrame({"y": case["y"], "group": case["group"]})
+        metadata = {
+            "y": {"is_categorical": False},
+            "group": {
+                "is_categorical": True,
+                "enumerations": {"A": "A", "B": "B", "C": "C"},
+            },
+        }
+        self.run_comparison(
+            X=df,
+            y=np.zeros((df.shape[0],), dtype=float),
+            n_workers=1,
+            bins=case["bins"],
+            min_row_count=1,
+            metadata=metadata,
+        )
+
+    @pytest.mark.parametrize("case", NUMERICAL_CASES)
+    def test_federated_algorithm_with_multiple_workers(self, case):
+        df = pd.DataFrame({"y": case["y"], "group": case["group"]})
+        metadata = {
+            "y": {"is_categorical": False},
+            "group": {
+                "is_categorical": True,
+                "enumerations": {"A": "A", "B": "B", "C": "C"},
+            },
+        }
+        self.run_comparison(
+            X=df,
+            y=np.zeros((df.shape[0],), dtype=float),
+            n_workers=3,
+            bins=case["bins"],
+            min_row_count=1,
+            metadata=metadata,
+        )
 
 
 CATEGORICAL_CASES = [
@@ -153,49 +200,99 @@ CATEGORICAL_CASES = [
 ]
 
 
-@pytest.mark.parametrize("case", CATEGORICAL_CASES)
-def test_histogram_categorical_matches_value_counts(case):
-    y_levels = ["low", "mid", "high"]
-    df = pd.DataFrame({"y": case["y"], "group": case["group"]})
-    metadata = {
-        "y": {
-            "is_categorical": True,
-            "enumerations": {level: level for level in y_levels},
-        },
-        "group": {
-            "is_categorical": True,
-            "enumerations": {"A": "A", "B": "B", "C": "C"},
-        },
-    }
+class TestFederatedHistogramCategorical(FederatedAlgorithmTest):
+    def compute_centralized_result(self, X, y, **kwargs):
+        df = X
+        y_levels = kwargs["y_levels"]
+        min_row_count = kwargs["min_row_count"]
 
-    min_row_count = 1
-
-    hist = FederatedHistogram(agg_client=DummyAggClient())
-    result = hist.hist(
-        data=df,
-        y_var="y",
-        x_vars=["group"],
-        metadata=metadata,
-        bins=10,
-        min_row_count=min_row_count,
-    )
-
-    expected_counts = [df["y"].value_counts().get(level, 0) for level in y_levels]
-    expected_counts = [
-        count if count >= min_row_count else None for count in expected_counts
-    ]
-
-    assert result.bins == y_levels
-    assert result.counts == expected_counts
-
-    grouped = result.grouped["group"]
-    assert grouped.groups == ["A", "B", "C"]
-    for group, counts in zip(grouped.groups, grouped.counts):
-        subset = df.loc[df["group"] == group, "y"]
-        expected_group_counts = [
-            subset.value_counts().get(level, 0) for level in y_levels
+        expected_counts = [df["y"].value_counts().get(level, 0) for level in y_levels]
+        expected_counts = [
+            count if count >= min_row_count else None for count in expected_counts
         ]
-        expected_group_counts = [
-            count if count >= min_row_count else None for count in expected_group_counts
-        ]
-        assert counts == expected_group_counts
+
+        grouped_expected = []
+        for group in ["A", "B", "C"]:
+            subset = df.loc[df["group"] == group, "y"]
+            expected_group_counts = [
+                subset.value_counts().get(level, 0) for level in y_levels
+            ]
+            expected_group_counts = [
+                count if count >= min_row_count else None
+                for count in expected_group_counts
+            ]
+            grouped_expected.append(expected_group_counts)
+
+        return {
+            "bins": y_levels,
+            "counts": expected_counts,
+            "grouped_counts": grouped_expected,
+        }
+
+    def compute_federated_result(self, X, y, *, agg_client, **kwargs):
+        hist = FederatedHistogram(agg_client=agg_client)
+        return hist.hist(
+            data=X,
+            y_var="y",
+            x_vars=["group"],
+            metadata=kwargs["metadata"],
+            bins=10,
+            min_row_count=kwargs["min_row_count"],
+        )
+
+    def compare(self, federated_output, centralized_output, **kwargs):
+        assert federated_output.bins == centralized_output["bins"]
+        assert federated_output.counts == centralized_output["counts"]
+
+        grouped = federated_output.grouped["group"]
+        assert grouped.groups == ["A", "B", "C"]
+        for counts, expected in zip(
+            grouped.counts, centralized_output["grouped_counts"]
+        ):
+            assert counts == expected
+
+    @pytest.mark.parametrize("case", CATEGORICAL_CASES)
+    def test_federated_algorithm_with_one_worker(self, case):
+        y_levels = ["low", "mid", "high"]
+        df = pd.DataFrame({"y": case["y"], "group": case["group"]})
+        metadata = {
+            "y": {
+                "is_categorical": True,
+                "enumerations": {level: level for level in y_levels},
+            },
+            "group": {
+                "is_categorical": True,
+                "enumerations": {"A": "A", "B": "B", "C": "C"},
+            },
+        }
+        self.run_comparison(
+            X=df,
+            y=np.zeros((df.shape[0],), dtype=float),
+            n_workers=1,
+            metadata=metadata,
+            y_levels=y_levels,
+            min_row_count=1,
+        )
+
+    @pytest.mark.parametrize("case", CATEGORICAL_CASES)
+    def test_federated_algorithm_with_multiple_workers(self, case):
+        y_levels = ["low", "mid", "high"]
+        df = pd.DataFrame({"y": case["y"], "group": case["group"]})
+        metadata = {
+            "y": {
+                "is_categorical": True,
+                "enumerations": {level: level for level in y_levels},
+            },
+            "group": {
+                "is_categorical": True,
+                "enumerations": {"A": "A", "B": "B", "C": "C"},
+            },
+        }
+        self.run_comparison(
+            X=df,
+            y=np.zeros((df.shape[0],), dtype=float),
+            n_workers=3,
+            metadata=metadata,
+            y_levels=y_levels,
+            min_row_count=1,
+        )

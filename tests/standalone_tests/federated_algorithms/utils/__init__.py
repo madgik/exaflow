@@ -1,5 +1,7 @@
-from tests.standalone_tests.federated_algorithms.utils.dummy_agg_client import (
-    DummyAggClient,
+from tests.standalone_tests.federated_algorithms.utils.federated_algorithm_test import (
+    FederatedAlgorithmTest,
 )
 
-__all__ = ["DummyAggClient"]
+__all__ = [
+    "FederatedAlgorithmTest",
+]

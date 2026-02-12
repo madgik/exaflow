@@ -7,8 +7,8 @@ from statsmodels.stats.weightstats import DescrStatsW
 from exaflow.algorithms.federated.statistics.ttest_independent import (
     FederatedTTestIndependent,
 )
-from tests.standalone_tests.federated_algorithms.utils.dummy_agg_client import (
-    DummyAggClient,
+from tests.standalone_tests.federated_algorithms.utils.federated_algorithm_test import (
+    FederatedAlgorithmTest,
 )
 
 TEST_CASES = [
@@ -95,87 +95,145 @@ TEST_CASES = [
 ]
 
 
-def _statsmodels_expected(sample_a, sample_b, *, alpha: float):
-    d1 = DescrStatsW(sample_a)
-    d2 = DescrStatsW(sample_b)
-    cm = CompareMeans(d1, d2)
+class TestFederatedTTestIndependent(FederatedAlgorithmTest):
+    def compute_centralized_result(self, X, y, **kwargs):
+        sample_a = kwargs["sample_a"]
+        sample_b = kwargs["sample_b"]
+        alpha = kwargs["alpha"]
 
-    t_stat, p_value, df = cm.ttest_ind(usevar="pooled", alternative="two-sided")
-    ci_lower, ci_upper = cm.tconfint_diff(
-        alpha=alpha, alternative="two-sided", usevar="pooled"
-    )
+        d1 = DescrStatsW(sample_a)
+        d2 = DescrStatsW(sample_b)
+        cm = CompareMeans(d1, d2)
 
-    mean_a = d1.mean
-    mean_b = d2.mean
-    mean_diff = mean_a - mean_b
+        t_stat, p_value, df = cm.ttest_ind(usevar="pooled", alternative="two-sided")
+        ci_lower, ci_upper = cm.tconfint_diff(
+            alpha=alpha, alternative="two-sided", usevar="pooled"
+        )
 
-    se_diff = cm.std_meandiff_pooledvar
+        mean_a = d1.mean
+        mean_b = d2.mean
+        mean_diff = mean_a - mean_b
 
-    n_a = len(sample_a)
-    n_b = len(sample_b)
-    var_a = np.var(sample_a, ddof=1)
-    var_b = np.var(sample_b, ddof=1)
-    pooled_var = ((n_a - 1) * var_a + (n_b - 1) * var_b) / (n_a + n_b - 2)
-    cohens_d = mean_diff / np.sqrt(pooled_var)
+        se_diff = cm.std_meandiff_pooledvar
 
-    return {
-        "t_stat": float(t_stat),
-        "p_value": float(p_value),
-        "df": float(df),
-        "mean_diff": float(mean_diff),
-        "se_diff": float(se_diff),
-        "ci_lower": float(ci_lower),
-        "ci_upper": float(ci_upper),
-        "cohens_d": float(cohens_d),
-    }
+        n_a = len(sample_a)
+        n_b = len(sample_b)
+        var_a = np.var(sample_a, ddof=1)
+        var_b = np.var(sample_b, ddof=1)
+        pooled_var = ((n_a - 1) * var_a + (n_b - 1) * var_b) / (n_a + n_b - 2)
+        cohens_d = mean_diff / np.sqrt(pooled_var)
 
-
-@pytest.mark.parametrize("case", TEST_CASES, ids=[case["name"] for case in TEST_CASES])
-def test_federated_independent_ttest_matches_statsmodels(case):
-    sample_a = np.asarray(case["group_a"], dtype=float)
-    sample_b = np.asarray(case["group_b"], dtype=float)
-    alpha = case["alpha"]
-
-    data = pd.DataFrame(
-        {
-            "group": ["A"] * len(sample_a) + ["B"] * len(sample_b),
-            "value": np.concatenate([sample_a, sample_b]),
+        return {
+            "t_stat": float(t_stat),
+            "p_value": float(p_value),
+            "df": float(df),
+            "mean_diff": float(mean_diff),
+            "se_diff": float(se_diff),
+            "ci_lower": float(ci_lower),
+            "ci_upper": float(ci_upper),
+            "cohens_d": float(cohens_d),
         }
-    )
 
-    agg_client = DummyAggClient()
-    ttest = FederatedTTestIndependent(agg_client)
-    result = ttest.compute(
-        data=data,
-        group_var="group",
-        value_var="value",
-        group_a="A",
-        group_b="B",
-        alpha=alpha,
-        alternative="two-sided",
-    )
+    def compute_federated_result(self, X, y, *, agg_client, **kwargs):
+        ttest = FederatedTTestIndependent(agg_client)
+        return ttest.compute(
+            data=X,
+            group_var="group",
+            value_var="value",
+            group_a="A",
+            group_b="B",
+            alpha=kwargs["alpha"],
+            alternative="two-sided",
+        )
 
-    expected = _statsmodels_expected(sample_a, sample_b, alpha=alpha)
+    def compare(self, federated_output, centralized_output, **kwargs):
+        np.testing.assert_allclose(
+            federated_output["t_stat"],
+            centralized_output["t_stat"],
+            rtol=1e-7,
+            atol=1e-10,
+        )
+        np.testing.assert_allclose(
+            federated_output["p_value"],
+            centralized_output["p_value"],
+            rtol=1e-7,
+            atol=1e-10,
+        )
+        np.testing.assert_allclose(
+            federated_output["df"],
+            centralized_output["df"],
+            rtol=1e-9,
+            atol=1e-12,
+        )
+        np.testing.assert_allclose(
+            federated_output["mean_diff"],
+            centralized_output["mean_diff"],
+            rtol=1e-12,
+            atol=1e-12,
+        )
+        np.testing.assert_allclose(
+            federated_output["se_diff"],
+            centralized_output["se_diff"],
+            rtol=1e-7,
+            atol=1e-10,
+        )
+        np.testing.assert_allclose(
+            federated_output["ci_lower"],
+            centralized_output["ci_lower"],
+            rtol=1e-7,
+            atol=1e-10,
+        )
+        np.testing.assert_allclose(
+            federated_output["ci_upper"],
+            centralized_output["ci_upper"],
+            rtol=1e-7,
+            atol=1e-10,
+        )
+        np.testing.assert_allclose(
+            federated_output["cohens_d"],
+            centralized_output["cohens_d"],
+            rtol=1e-7,
+            atol=1e-10,
+        )
 
-    np.testing.assert_allclose(
-        result["t_stat"], expected["t_stat"], rtol=1e-7, atol=1e-10
+    @pytest.mark.parametrize(
+        "case", TEST_CASES, ids=[case["name"] for case in TEST_CASES]
     )
-    np.testing.assert_allclose(
-        result["p_value"], expected["p_value"], rtol=1e-7, atol=1e-10
+    def test_federated_algorithm_with_one_worker(self, case):
+        sample_a = np.asarray(case["group_a"], dtype=float)
+        sample_b = np.asarray(case["group_b"], dtype=float)
+        data = pd.DataFrame(
+            {
+                "group": ["A"] * len(sample_a) + ["B"] * len(sample_b),
+                "value": np.concatenate([sample_a, sample_b]),
+            }
+        )
+        self.run_comparison(
+            X=data,
+            y=np.zeros((data.shape[0],), dtype=float),
+            n_workers=1,
+            alpha=case["alpha"],
+            sample_a=sample_a,
+            sample_b=sample_b,
+        )
+
+    @pytest.mark.parametrize(
+        "case", TEST_CASES, ids=[case["name"] for case in TEST_CASES]
     )
-    np.testing.assert_allclose(result["df"], expected["df"], rtol=1e-9, atol=1e-12)
-    np.testing.assert_allclose(
-        result["mean_diff"], expected["mean_diff"], rtol=1e-12, atol=1e-12
-    )
-    np.testing.assert_allclose(
-        result["se_diff"], expected["se_diff"], rtol=1e-7, atol=1e-10
-    )
-    np.testing.assert_allclose(
-        result["ci_lower"], expected["ci_lower"], rtol=1e-7, atol=1e-10
-    )
-    np.testing.assert_allclose(
-        result["ci_upper"], expected["ci_upper"], rtol=1e-7, atol=1e-10
-    )
-    np.testing.assert_allclose(
-        result["cohens_d"], expected["cohens_d"], rtol=1e-7, atol=1e-10
-    )
+    def test_federated_algorithm_with_multiple_workers(self, case):
+        sample_a = np.asarray(case["group_a"], dtype=float)
+        sample_b = np.asarray(case["group_b"], dtype=float)
+        data = pd.DataFrame(
+            {
+                "group": ["A"] * len(sample_a) + ["B"] * len(sample_b),
+                "value": np.concatenate([sample_a, sample_b]),
+            }
+        )
+        self.run_comparison(
+            X=data,
+            y=np.zeros((data.shape[0],), dtype=float),
+            n_workers=3,
+            alpha=case["alpha"],
+            sample_a=sample_a,
+            sample_b=sample_b,
+        )

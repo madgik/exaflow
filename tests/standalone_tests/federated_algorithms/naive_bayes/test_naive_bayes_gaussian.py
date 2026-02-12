@@ -1,73 +1,73 @@
 import numpy as np
+import pytest
 from sklearn.naive_bayes import GaussianNB
 
 from exaflow.algorithms.federated.naive_bayes import FederatedGaussianNB
-from tests.standalone_tests.federated_algorithms.utils import DummyAggClient
+from tests.standalone_tests.federated_algorithms.utils import FederatedAlgorithmTest
+
+TEST_CASES = [
+    (np.array([[0.0], [1.0], [0.1], [0.9]]), np.array([0, 1, 0, 1])),
+    (
+        np.array(
+            [
+                [0.0, 1.0],
+                [1.0, 0.0],
+                [0.2, 0.8],
+                [0.8, 0.2],
+            ]
+        ),
+        np.array([0, 1, 0, 1]),
+    ),
+    (
+        np.array([[0.0], [1.0], [2.0], [0.1], [1.1], [2.1]]),
+        np.array([0, 1, 2, 0, 1, 2]),
+    ),
+    (
+        np.array(
+            [
+                [0.0, 0.0],
+                [1.0, 1.0],
+                [2.0, 2.0],
+                [0.1, 0.1],
+                [1.1, 1.1],
+                [2.1, 2.1],
+            ]
+        ),
+        np.array([0, 1, 2, 0, 1, 2]),
+    ),
+    (np.array([[0.0], [0.1], [0.2], [1.0], [1.1]]), np.array([0, 0, 0, 1, 1])),
+]
 
 
-def _fit_predict_federated(X, y, labels):
-    agg_client = DummyAggClient()
-    model = FederatedGaussianNB(
-        x_vars=[f"x{i}" for i in range(X.shape[1])], labels=labels
-    )
-    results = model.fit(X, y, agg_client=agg_client)
-    return results.predict(X)
+class TestFederatedGaussianNB(FederatedAlgorithmTest):
+    def compute_centralized_result(self, X, y, **kwargs):
+        model = GaussianNB()
+        model.fit(X, y)
+        return {
+            "model": model,
+            "X": X,
+        }
 
+    def compute_federated_result(self, X, y, *, agg_client, **kwargs):
+        labels = kwargs["labels"]
+        model = FederatedGaussianNB(
+            x_vars=[f"x{i}" for i in range(X.shape[1])], labels=labels
+        )
+        return model.fit(X, y, agg_client=agg_client)
 
-def _fit_predict_sklearn(X, y):
-    model = GaussianNB()
-    model.fit(X, y)
-    return model.predict(X)
+    def compare(self, federated_output, centralized_output, **kwargs):
+        model = centralized_output["model"]
+        X = centralized_output["X"]
+        expected = model.predict(X)
+        actual = federated_output.predict(X)
+        assert np.array_equal(actual, expected)
 
+    @pytest.mark.parametrize("X, y", TEST_CASES)
+    def test_federated_algorithm_with_one_worker(self, X, y):
+        labels = sorted(np.unique(y).tolist())
+        self.run_comparison(X=X, y=y, n_workers=1, labels=labels)
 
-def _run_case(X, y):
-    labels = sorted(np.unique(y).tolist())
-    y_pred_fed = _fit_predict_federated(X, y, labels)
-    y_pred_skl = _fit_predict_sklearn(X, y)
-    assert y_pred_fed.tolist() == y_pred_skl.tolist()
-
-
-def test_gaussian_nb_binary_single_feature():
-    X = np.array([[0.0], [1.0], [0.1], [0.9]])
-    y = np.array([0, 1, 0, 1])
-    _run_case(X, y)
-
-
-def test_gaussian_nb_binary_two_features():
-    X = np.array(
-        [
-            [0.0, 1.0],
-            [1.0, 0.0],
-            [0.2, 0.8],
-            [0.8, 0.2],
-        ]
-    )
-    y = np.array([0, 1, 0, 1])
-    _run_case(X, y)
-
-
-def test_gaussian_nb_multiclass_single_feature():
-    X = np.array([[0.0], [1.0], [2.0], [0.1], [1.1], [2.1]])
-    y = np.array([0, 1, 2, 0, 1, 2])
-    _run_case(X, y)
-
-
-def test_gaussian_nb_multiclass_two_features():
-    X = np.array(
-        [
-            [0.0, 0.0],
-            [1.0, 1.0],
-            [2.0, 2.0],
-            [0.1, 0.1],
-            [1.1, 1.1],
-            [2.1, 2.1],
-        ]
-    )
-    y = np.array([0, 1, 2, 0, 1, 2])
-    _run_case(X, y)
-
-
-def test_gaussian_nb_imbalanced_classes():
-    X = np.array([[0.0], [0.1], [0.2], [1.0], [1.1]])
-    y = np.array([0, 0, 0, 1, 1])
-    _run_case(X, y)
+    @pytest.mark.parametrize("X, y", TEST_CASES)
+    def test_federated_algorithm_with_multiple_workers(self, X, y):
+        labels = sorted(np.unique(y).tolist())
+        self.run_comparison(X=X, y=y, n_workers=3, labels=labels)
