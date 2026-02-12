@@ -13,12 +13,8 @@ from exaflow.algorithms.federated.linear_model.logistic_regression import (
 )
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
-<<<<<<< HEAD
-=======
 from exaflow.algorithms.federated.utils import BadInputError
-from exaflow.algorithms.specifications import AlgorithmName
 from exaflow.worker_communication import BadUserInput
->>>>>>> 403ae0879 (fix: clean up conflict markers and redundant imports in logistic_regression.py)
 
 
 class LogisticRegressionSummary(BaseModel):
@@ -171,13 +167,16 @@ def logistic_regression_local_step(
         data[y_var], positive_class
     )
     y = data[y_var].eq(positive_class).to_numpy(dtype=float, copy=False)
-    results = pipeline.fit(
-        agg_client=agg_client,
-        data=data,
-        y=y,
-        categorical_vars=categorical_vars,
-        numerical_vars=numerical_vars,
-    )
+    try:
+        results = pipeline.fit(
+            agg_client=agg_client,
+            data=data,
+            y=y,
+            categorical_vars=categorical_vars,
+            numerical_vars=numerical_vars,
+        )
+    except BadInputError as exc:
+        raise BadUserInput(str(exc)) from exc
     feature_names = pipeline.get_feature_names_out(
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,
