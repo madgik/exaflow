@@ -63,6 +63,33 @@ def _collect_all_variables(metadata: dict) -> list[dict]:
     return _walk(metadata)
 
 
+_SQL_TYPE_TO_DUCKDB = {
+    "text": "VARCHAR",
+    "int": "INTEGER",
+    "real": "DOUBLE",
+}
+
+
+def _build_column_types(metadata: dict) -> dict[str, str]:
+    """Map each variable code to its DuckDB column type.
+
+    Categorical variables are always stored as VARCHAR regardless of their
+    declared ``sql_type`` so that nominal codes are never silently cast to
+    integers or floats by DuckDB's type inference.
+    """
+    column_types: dict[str, str] = {}
+    for var in _collect_all_variables(metadata):
+        code = var.get("code")
+        if not code:
+            continue
+        if var.get("isCategorical"):
+            column_types[code] = "VARCHAR"
+        else:
+            sql_type = var.get("sql_type", "text")
+            column_types[code] = _SQL_TYPE_TO_DUCKDB.get(sql_type, "VARCHAR")
+    return column_types
+
+
 def _load_variables_metadata(
     conn: duckdb.DuckDBPyConnection, table_prefix: str, metadata: dict
 ):
@@ -100,7 +127,10 @@ def _reformat_metadata(metadata: dict) -> dict:
 
 
 def _create_primary_data_table(
-    conn: duckdb.DuckDBPyConnection, table_prefix: str, csv_paths: list[Path]
+    conn: duckdb.DuckDBPyConnection,
+    table_prefix: str,
+    csv_paths: list[Path],
+    column_types: dict[str, str] | None = None,
 ):
     if not csv_paths:
         raise ValueError("No CSV files provided to create the primary data table.")
@@ -117,6 +147,12 @@ def _create_primary_data_table(
             if column not in combined_columns:
                 combined_columns.append(column)
 
+    # Include variables defined in metadata but absent from all CSVs.
+    if column_types:
+        for col in column_types:
+            if col not in combined_columns:
+                combined_columns.append(col)
+
     if not combined_columns:
         raise ValueError(
             "Unable to determine the column names for the provided CSV files."
@@ -126,16 +162,34 @@ def _create_primary_data_table(
     params: list[str] = []
     for csv_path in csv_paths:
         csv_columns = column_map[csv_path]
+
+        # Build a per-CSV types= clause.  DuckDB's types= parameter only
+        # accepts columns that actually exist in the CSV file, so we must
+        # restrict it to the intersection of csv_columns and column_types.
+        types_clause = ""
+        if column_types:
+            type_entries = []
+            for col in csv_columns:
+                if col in column_types:
+                    escaped = col.replace("'", "''")
+                    type_entries.append(f"'{escaped}': '{column_types[col]}'")
+            if type_entries:
+                types_clause = ", types={" + ", ".join(type_entries) + "}"
+
         select_fields = []
         for column in combined_columns:
             quoted_column = column.replace('"', '""')
             if column in csv_columns:
                 select_fields.append(f'"{quoted_column}"')
             else:
-                select_fields.append(f'NULL AS "{quoted_column}"')
+                # Use a typed NULL so the column has the correct DuckDB type.
+                col_type = (column_types or {}).get(column, "VARCHAR")
+                select_fields.append(f'CAST(NULL AS {col_type}) AS "{quoted_column}"')
 
         select_statements.append(
-            "SELECT " + ", ".join(select_fields) + " FROM read_csv_auto(?, HEADER=TRUE)"
+            "SELECT "
+            + ", ".join(select_fields)
+            + f" FROM read_csv_auto(?, HEADER=TRUE{types_clause})"
         )
         params.append(str(csv_path))
 
@@ -254,7 +308,8 @@ def load_all_csvs_from_data_folder(request_id: str) -> str:
             data_model_id += 1
             table_prefix = _sanitize_name(f"{code}:{version}")
 
-            _create_primary_data_table(conn, table_prefix, csv_paths)
+            col_types = _build_column_types(metadata)
+            _create_primary_data_table(conn, table_prefix, csv_paths, col_types)
             _load_variables_metadata(conn, table_prefix, metadata)
             properties = {}
             properties["cdes"] = metadata
