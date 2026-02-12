@@ -40,7 +40,7 @@ class AnovaTwoWay(Algorithm):
                 x=specs.InputDataSpecification(
                     label="Factors (independent)",
                     desc="Exactly two categorical (nominal) factors.",
-                    types=[specs.InputDataType.INT, specs.InputDataType.TEXT],
+                    types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=True,

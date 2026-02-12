@@ -13,6 +13,12 @@ from exaflow.algorithms.federated.linear_model.logistic_regression import (
 )
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
+<<<<<<< HEAD
+=======
+from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.specifications import AlgorithmName
+from exaflow.worker_communication import BadUserInput
+>>>>>>> 403ae0879 (fix: clean up conflict markers and redundant imports in logistic_regression.py)
 
 
 class LogisticRegressionSummary(BaseModel):
@@ -51,7 +57,7 @@ class LogisticRegression(Algorithm):
                 y=specs.InputDataSpecification(
                     label="Dependent variable (binary)",
                     desc="A unique nominal variable. The variable is converted to binary by assigning 1 to the positive class and 0 to all other classes.",
-                    types=[specs.InputDataType.INT, specs.InputDataType.TEXT],
+                    types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
@@ -62,7 +68,6 @@ class LogisticRegression(Algorithm):
                     desc="One or more covariates (numerical or categorical). Categorical variables are one-hot encoded.",
                     types=[
                         specs.InputDataType.REAL,
-                        specs.InputDataType.INT,
                         specs.InputDataType.TEXT,
                     ],
                     stattypes=[

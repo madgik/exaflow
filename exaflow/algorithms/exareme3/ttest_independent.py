@@ -40,7 +40,7 @@ class TTestIndependent(Algorithm):
                 x=specs.InputDataSpecification(
                     label="Grouping variable",
                     desc="A nominal variable.",
-                    types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                    types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
