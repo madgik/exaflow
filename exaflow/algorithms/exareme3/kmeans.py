@@ -26,7 +26,7 @@ class KMeans(Algorithm):
                 y=specs.InputDataSpecification(
                     label="y",
                     desc="data",
-                    types=[specs.InputDataType.REAL],
+                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=True,
