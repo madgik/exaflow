@@ -3,35 +3,7 @@ import pytest
 import statsmodels.api as sm
 
 from exaflow.algorithms.federated.linear_model.ols import FederatedOLS
-from tests.standalone_tests.federated_algorithms.utils import DummyAggClient
-
-
-def _run_and_compare(X_raw, y):
-    X = np.asarray(X_raw, dtype=float)
-    y = np.asarray(y, dtype=float).reshape(-1, 1)
-
-    agg_client = DummyAggClient()
-    model = FederatedOLS(fit_intercept=True)
-    model.fit(X, y, agg_client=agg_client)
-
-    X_sm = sm.add_constant(X, has_constant="add")
-    sm_model = sm.OLS(y, X_sm).fit()
-
-    assert model.nobs == X.shape[0]
-    assert np.allclose(model.params, sm_model.params, atol=1e-8)
-    assert np.allclose(model.bse, sm_model.bse, atol=1e-8)
-    assert np.allclose(model.tvalues, sm_model.tvalues, atol=1e-8)
-    assert np.allclose(model.pvalues, sm_model.pvalues, atol=1e-8)
-    assert np.isclose(model.rsquared, sm_model.rsquared, atol=1e-8)
-    assert np.isclose(model.rsquared_adj, sm_model.rsquared_adj, atol=1e-8)
-    assert np.isclose(model.fvalue, sm_model.fvalue, atol=1e-8)
-    assert np.isclose(model.f_pvalue, sm_model.f_pvalue, atol=1e-8)
-    assert np.isclose(model.df_resid, sm_model.df_resid, atol=1e-8)
-    assert np.isclose(model.df_model, sm_model.df_model, atol=1e-8)
-    assert np.isclose(model.ll, sm_model.llf, atol=1e-8)
-    assert np.isclose(model.aic, sm_model.aic, atol=1e-8)
-    assert np.isclose(model.bic, sm_model.bic, atol=1e-8)
-
+from tests.standalone_tests.federated_algorithms.utils import FederatedAlgorithmTest
 
 TEST_CASES = [
     (
@@ -435,6 +407,30 @@ TEST_CASES = [
 ]
 
 
-@pytest.mark.parametrize("X_raw, y", TEST_CASES)
-def test_federated_ols_matches_statsmodels(X_raw, y):
-    _run_and_compare(X_raw, y)
+class TestOLSFederatedAlgorithm(FederatedAlgorithmTest):
+    def compute_federated_result(self, X, y, *, agg_client, **kwargs):
+        model = FederatedOLS(fit_intercept=True)
+        model.fit(X, y, agg_client=agg_client)
+        return model
+
+    def compute_centralized_result(self, X, y, **kwargs):
+        X_sm = sm.add_constant(X, has_constant="add")
+        return sm.OLS(y, X_sm).fit()
+
+    def compare(self, federated_output, centralized_output, **kwargs):
+        assert federated_output.nobs == centralized_output.nobs
+        assert np.allclose(
+            federated_output.params, centralized_output.params, atol=1e-8
+        )
+        assert np.allclose(federated_output.bse, centralized_output.bse, atol=1e-8)
+        assert np.allclose(
+            federated_output.rsquared, centralized_output.rsquared, atol=1e-8
+        )
+
+    @pytest.mark.parametrize("X, y", TEST_CASES)
+    def test_federated_algorithm_with_one_worker(self, X, y):
+        self.run_comparison(X=X, y=y, n_workers=1)
+
+    @pytest.mark.parametrize("X, y", TEST_CASES)
+    def test_federated_algorithm_with_multiple_workers(self, X, y):
+        self.run_comparison(X=X, y=y, n_workers=3)

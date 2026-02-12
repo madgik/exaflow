@@ -1,63 +1,12 @@
 import numpy as np
 import pandas as pd
+import pytest
 import statsmodels.formula.api as smf
 
 from exaflow.algorithms.federated.linear_model.logistic_regression import (
     FederatedLogisticRegression,
 )
-from tests.standalone_tests.federated_algorithms.utils import DummyAggClient
-
-
-def _fit_model(X_raw, y):
-    X = np.asarray(X_raw, dtype=float)
-    y = np.asarray(y, dtype=float)
-
-    agg_client = DummyAggClient()
-    model = FederatedLogisticRegression(fit_intercept=True)
-    results = model.fit(X, y, agg_client=agg_client)
-    return results.summary()
-
-
-def _fit_statsmodels(X_raw, y):
-    X_raw = np.asarray(X_raw, dtype=float)
-    y = np.asarray(y, dtype=float).reshape(-1)
-
-    cols = [f"x{i}" for i in range(X_raw.shape[1])]
-    df = pd.DataFrame(X_raw, columns=cols)
-    df["y"] = y
-    formula = "y ~ " + " + ".join(cols)
-    start_params = np.zeros(len(cols) + 1, dtype=float)
-    model = smf.logit(formula, df).fit(
-        method="newton",
-        maxiter=200,
-        tol=1e-8,
-        start_params=start_params,
-        disp=False,
-    )
-
-    n_obs = int(model.nobs)
-    ll = float(model.llf)
-    ll0 = float(model.llnull)
-    r_squared_cs = 1.0 - np.exp(2.0 * (ll0 - ll) / n_obs)
-
-    return {
-        "n_obs": n_obs,
-        "coefficients": model.params.values.tolist(),
-        "stderr": model.bse.values.tolist(),
-        "lower_ci": model.conf_int()[0].values.tolist(),
-        "upper_ci": model.conf_int()[1].values.tolist(),
-        "z_scores": model.tvalues.values.tolist(),
-        "pvalues": model.pvalues.values.tolist(),
-        "df_model": int(model.df_model),
-        "df_resid": int(model.df_resid),
-        "r_squared_cs": r_squared_cs,
-        "r_squared_mcf": float(model.prsquared),
-        "ll0": ll0,
-        "ll": ll,
-        "aic": float(model.aic),
-        "bic": float(model.bic),
-    }
-
+from tests.standalone_tests.federated_algorithms.utils import FederatedAlgorithmTest
 
 TEST_CASES = [
     (
@@ -979,30 +928,101 @@ TEST_CASES = [
 ]
 
 
-def _assert_close(actual, expected):
-    atol = 1e-6
-    ci_atol = 1e-5
-    z_atol = 1e-5
+class TestFederatedLogisticRegression(FederatedAlgorithmTest):
+    def compute_centralized_result(self, X, y, **kwargs):
+        X = np.asarray(X, dtype=float)
+        y = np.asarray(y, dtype=float).reshape(-1)
 
-    assert actual["n_obs"] == expected["n_obs"]
-    assert np.allclose(actual["coefficients"], expected["coefficients"], atol=atol)
-    assert np.allclose(actual["stderr"], expected["stderr"], atol=atol)
-    assert np.allclose(actual["lower_ci"], expected["lower_ci"], atol=ci_atol)
-    assert np.allclose(actual["upper_ci"], expected["upper_ci"], atol=ci_atol)
-    assert np.allclose(actual["z_scores"], expected["z_scores"], atol=z_atol)
-    assert np.allclose(actual["pvalues"], expected["pvalues"], atol=atol)
-    assert actual["df_model"] == expected["df_model"]
-    assert actual["df_resid"] == expected["df_resid"]
-    assert np.isclose(actual["r_squared_cs"], expected["r_squared_cs"], atol=atol)
-    assert np.isclose(actual["r_squared_mcf"], expected["r_squared_mcf"], atol=atol)
-    assert np.isclose(actual["ll0"], expected["ll0"], atol=atol)
-    assert np.isclose(actual["ll"], expected["ll"], atol=atol)
-    assert np.isclose(actual["aic"], expected["aic"], atol=atol)
-    assert np.isclose(actual["bic"], expected["bic"], atol=atol)
+        cols = [f"x{i}" for i in range(X.shape[1])]
+        df = pd.DataFrame(X, columns=cols)
+        df["y"] = y
+        formula = "y ~ " + " + ".join(cols)
+        start_params = np.zeros(len(cols) + 1, dtype=float)
+        model = smf.logit(formula, df).fit(
+            method="newton",
+            maxiter=200,
+            tol=1e-8,
+            start_params=start_params,
+            disp=False,
+        )
 
+        n_obs = int(model.nobs)
+        ll = float(model.llf)
+        ll0 = float(model.llnull)
+        r_squared_cs = 1.0 - np.exp(2.0 * (ll0 - ll) / n_obs)
 
-def test_federated_logistic_regression_matches_statsmodels():
-    for X_raw, y in TEST_CASES:
-        summary = _fit_model(X_raw, y)
-        expected = _fit_statsmodels(X_raw, y)
-        _assert_close(summary, expected)
+        return {
+            "n_obs": n_obs,
+            "coefficients": model.params.values.tolist(),
+            "stderr": model.bse.values.tolist(),
+            "lower_ci": model.conf_int()[0].values.tolist(),
+            "upper_ci": model.conf_int()[1].values.tolist(),
+            "z_scores": model.tvalues.values.tolist(),
+            "pvalues": model.pvalues.values.tolist(),
+            "df_model": int(model.df_model),
+            "df_resid": int(model.df_resid),
+            "r_squared_cs": r_squared_cs,
+            "r_squared_mcf": float(model.prsquared),
+            "ll0": ll0,
+            "ll": ll,
+            "aic": float(model.aic),
+            "bic": float(model.bic),
+        }
+
+    def compute_federated_result(self, X, y, *, agg_client, **kwargs):
+        X = np.asarray(X, dtype=float)
+        y = np.asarray(y, dtype=float)
+        model = FederatedLogisticRegression(fit_intercept=True)
+        results = model.fit(X, y, agg_client=agg_client)
+        return results.summary()
+
+    def compare(self, federated_output, centralized_output, **kwargs):
+        atol = 1e-6
+        ci_atol = 1e-5
+        z_atol = 1e-5
+
+        assert federated_output["n_obs"] == centralized_output["n_obs"]
+        assert np.allclose(
+            federated_output["coefficients"],
+            centralized_output["coefficients"],
+            atol=atol,
+        )
+        assert np.allclose(
+            federated_output["stderr"], centralized_output["stderr"], atol=atol
+        )
+        assert np.allclose(
+            federated_output["lower_ci"], centralized_output["lower_ci"], atol=ci_atol
+        )
+        assert np.allclose(
+            federated_output["upper_ci"], centralized_output["upper_ci"], atol=ci_atol
+        )
+        assert np.allclose(
+            federated_output["z_scores"], centralized_output["z_scores"], atol=z_atol
+        )
+        assert np.allclose(
+            federated_output["pvalues"], centralized_output["pvalues"], atol=atol
+        )
+        assert federated_output["df_model"] == centralized_output["df_model"]
+        assert federated_output["df_resid"] == centralized_output["df_resid"]
+        assert np.isclose(
+            federated_output["r_squared_cs"],
+            centralized_output["r_squared_cs"],
+            atol=atol,
+        )
+        assert np.isclose(
+            federated_output["r_squared_mcf"],
+            centralized_output["r_squared_mcf"],
+            atol=atol,
+        )
+        assert np.isclose(federated_output["ll0"], centralized_output["ll0"], atol=atol)
+        assert np.isclose(federated_output["ll"], centralized_output["ll"], atol=atol)
+        assert np.isclose(federated_output["aic"], centralized_output["aic"], atol=atol)
+        assert np.isclose(federated_output["bic"], centralized_output["bic"], atol=atol)
+
+    @pytest.mark.parametrize("X, y", TEST_CASES)
+    def test_federated_algorithm_with_one_worker(self, X, y):
+        self.run_comparison(X=X, y=y, n_workers=1)
+
+    @pytest.mark.parametrize("X, y", TEST_CASES)
+    def test_federated_algorithm_with_multiple_workers(self, X, y):
+        self.run_comparison(X=X, y=y, n_workers=3)

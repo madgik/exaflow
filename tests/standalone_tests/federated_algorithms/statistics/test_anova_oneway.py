@@ -8,7 +8,9 @@ from statsmodels.formula.api import ols
 from statsmodels.stats.libqsturng import psturng
 
 from exaflow.algorithms.federated.statistics.anova_oneway import FederatedAnovaOneWay
-from tests.standalone_tests.federated_algorithms.utils import DummyAggClient
+from tests.standalone_tests.federated_algorithms.utils.federated_algorithm_test import (
+    FederatedAlgorithmTest,
+)
 
 TEST_CASES = [
     [
@@ -358,64 +360,154 @@ TEST_CASES = [
 ]
 
 
-@pytest.mark.parametrize("groups", TEST_CASES)
-def test_federated_anova_oneway_matches_statsmodels(groups):
-    categories = [f"g{i + 1}" for i in range(len(groups))]
-    agg_client = DummyAggClient()
-    model = FederatedAnovaOneWay(agg_client=agg_client)
-    model.fit(groups=groups, categories=categories)
+class TestFederatedAnovaOneWay(FederatedAlgorithmTest):
+    # Override splitting because inputs are a list of per-category groups.
+    # We need each worker to receive the same group list, but with each group
+    # containing only that worker's slice, matching the federated aggregation
+    # assumptions in FederatedAnovaOneWay.
+    def _split_inputs(self, X, y, n_workers: int):
+        groups = X
+        per_group_splits = [np.array_split(g, n_workers) for g in groups]
+        x_parts = [
+            [per_group_splits[g_idx][worker_idx] for g_idx in range(len(groups))]
+            for worker_idx in range(n_workers)
+        ]
+        y_parts = [None] * n_workers
+        return x_parts, y_parts, groups, None
 
-    values = np.concatenate(groups)
-    labels = np.concatenate([[name] * len(g) for name, g in zip(categories, groups)])
-    df = pd.DataFrame({"y": values, "x": labels})
+    # Override validation to compare stable scalar/model attributes only.
+    # Comparing full DataFrames (e.g., thsd_/table_) is brittle across threads
+    # due to ordering/dtype differences, while core ANOVA stats should match.
+    def _validate_federated_outputs(self, federated_outputs):
+        baseline = federated_outputs[0]
+        for output in federated_outputs[1:]:
+            assert np.isclose(output.df_within, baseline.df_within, atol=1e-8)
+            assert np.isclose(output.df_between, baseline.df_between, atol=1e-8)
+            assert np.isclose(output.ss_within, baseline.ss_within, atol=1e-8)
+            assert np.isclose(output.ss_between, baseline.ss_between, atol=1e-8)
+            assert np.isclose(output.ms_within, baseline.ms_within, atol=1e-8)
+            assert np.isclose(output.ms_between, baseline.ms_between, atol=1e-8)
+            assert np.isclose(output.fvalue, baseline.fvalue, atol=1e-8)
+            assert np.isclose(output.pvalue, baseline.pvalue, atol=1e-8)
+            assert output.nobs == baseline.nobs
+            assert output.categories_ == baseline.categories_
+            assert output.group_stats_index_ == baseline.group_stats_index_
+            assert np.allclose(output.means_, baseline.means_, atol=1e-8)
+            assert np.allclose(output.sample_stds_, baseline.sample_stds_, atol=1e-8)
+            assert np.allclose(
+                output.var_min_per_group_, baseline.var_min_per_group_, atol=1e-8
+            )
+            assert np.allclose(
+                output.var_max_per_group_, baseline.var_max_per_group_, atol=1e-8
+            )
 
-    lm = ols("y ~ x", data=df).fit()
-    aov = sm.stats.anova_lm(lm)
+    def compute_centralized_result(self, X, y, **kwargs):
+        groups = X
+        categories = kwargs["categories"]
 
-    assert np.isclose(model.df_within, aov["df"]["Residual"], atol=1e-8)
-    assert np.isclose(model.df_between, aov["df"]["x"], atol=1e-8)
-    assert np.isclose(model.ss_within, aov["sum_sq"]["Residual"], atol=1e-8)
-    assert np.isclose(model.ss_between, aov["sum_sq"]["x"], atol=1e-8)
-    assert np.isclose(model.ms_within, aov["mean_sq"]["Residual"], atol=1e-8)
-    assert np.isclose(model.ms_between, aov["mean_sq"]["x"], atol=1e-8)
-    assert np.isclose(model.fvalue, aov["F"]["x"], atol=1e-8)
-    assert np.isclose(model.pvalue, aov["PR(>F)"]["x"], atol=1e-8)
+        values = np.concatenate(groups)
+        labels = np.concatenate(
+            [[name] * len(g) for name, g in zip(categories, groups)]
+        )
+        df = pd.DataFrame({"y": values, "x": labels})
 
-    group_stats = df.groupby("x")["y"].agg(["count", "mean"]).reindex(categories)
-    gnobs = group_stats["count"].to_numpy(dtype=float)
-    gmeans = group_stats["mean"].to_numpy(dtype=float)
-    gvar = aov["mean_sq"]["Residual"] / gnobs
-    g1, g2 = np.array(list(itertools.combinations(np.arange(len(categories)), 2))).T
+        lm = ols("y ~ x", data=df).fit()
+        aov = sm.stats.anova_lm(lm)
 
-    mn = gmeans[g1] - gmeans[g2]
-    se = np.sqrt(gvar[g1] + gvar[g2])
-    tval = mn / se
-    pval = psturng(np.sqrt(2.0) * np.abs(tval), len(categories), aov["df"]["Residual"])
+        group_stats = df.groupby("x")["y"].agg(["count", "mean"]).reindex(categories)
+        gnobs = group_stats["count"].to_numpy(dtype=float)
+        gmeans = group_stats["mean"].to_numpy(dtype=float)
+        gvar = aov["mean_sq"]["Residual"] / gnobs
+        g1, g2 = np.array(list(itertools.combinations(np.arange(len(categories)), 2))).T
 
-    expected_tukey = {}
-    for idx, (i, j) in enumerate(zip(g1, g2)):
-        key = (categories[int(i)], categories[int(j)])
-        expected_tukey[key] = {
-            "meanA": gmeans[i],
-            "meanB": gmeans[j],
-            "diff": mn[idx],
-            "se": se[idx],
-            "t_stat": tval[idx],
-            "p_tuckey": float(pval[idx]),
+        mn = gmeans[g1] - gmeans[g2]
+        se = np.sqrt(gvar[g1] + gvar[g2])
+        tval = mn / se
+        pval = psturng(
+            np.sqrt(2.0) * np.abs(tval), len(categories), aov["df"]["Residual"]
+        )
+
+        expected_tukey = {}
+        for idx, (i, j) in enumerate(zip(g1, g2)):
+            key = (categories[int(i)], categories[int(j)])
+            expected_tukey[key] = {
+                "meanA": gmeans[i],
+                "meanB": gmeans[j],
+                "diff": mn[idx],
+                "se": se[idx],
+                "t_stat": tval[idx],
+                "p_tuckey": float(pval[idx]),
+            }
+
+        expected_mins = [float(np.min(g)) for g in groups]
+        expected_maxs = [float(np.max(g)) for g in groups]
+
+        return {
+            "aov": aov,
+            "expected_tukey": expected_tukey,
+            "expected_mins": expected_mins,
+            "expected_maxs": expected_maxs,
         }
 
-    for _, row in model.thsd_.iterrows():
-        key = (row["A"], row["B"])
-        expected = expected_tukey[key]
-        assert np.isclose(row["mean(A)"], expected["meanA"], atol=1e-8)
-        assert np.isclose(row["mean(B)"], expected["meanB"], atol=1e-8)
-        assert np.isclose(row["diff"], expected["diff"], atol=1e-8)
-        assert np.isclose(row["Std.Err."], expected["se"], atol=1e-8)
-        assert np.isclose(row["t value"], expected["t_stat"], atol=1e-8)
-        assert np.isclose(row["Pr(>|t|)"], expected["p_tuckey"], atol=1e-8)
+    def compute_federated_result(self, X, y, *, agg_client, **kwargs):
+        model = FederatedAnovaOneWay(agg_client=agg_client)
+        model.fit(groups=X, categories=kwargs["categories"])
+        return model
 
-    expected_mins = [float(np.min(g)) for g in groups]
-    assert np.allclose(model.var_min_per_group_, expected_mins, atol=1e-8)
+    def compare(self, federated_output, centralized_output, **kwargs):
+        aov = centralized_output["aov"]
+        expected_tukey = centralized_output["expected_tukey"]
 
-    expected_maxs = [float(np.max(g)) for g in groups]
-    assert np.allclose(model.var_max_per_group_, expected_maxs, atol=1e-8)
+        assert np.isclose(federated_output.df_within, aov["df"]["Residual"], atol=1e-8)
+        assert np.isclose(federated_output.df_between, aov["df"]["x"], atol=1e-8)
+        assert np.isclose(
+            federated_output.ss_within, aov["sum_sq"]["Residual"], atol=1e-8
+        )
+        assert np.isclose(federated_output.ss_between, aov["sum_sq"]["x"], atol=1e-8)
+        assert np.isclose(
+            federated_output.ms_within, aov["mean_sq"]["Residual"], atol=1e-8
+        )
+        assert np.isclose(federated_output.ms_between, aov["mean_sq"]["x"], atol=1e-8)
+        assert np.isclose(federated_output.fvalue, aov["F"]["x"], atol=1e-8)
+        assert np.isclose(federated_output.pvalue, aov["PR(>F)"]["x"], atol=1e-8)
+
+        for _, row in federated_output.thsd_.iterrows():
+            key = (row["A"], row["B"])
+            expected = expected_tukey[key]
+            assert np.isclose(row["mean(A)"], expected["meanA"], atol=1e-8)
+            assert np.isclose(row["mean(B)"], expected["meanB"], atol=1e-8)
+            assert np.isclose(row["diff"], expected["diff"], atol=1e-8)
+            assert np.isclose(row["Std.Err."], expected["se"], atol=1e-8)
+            assert np.isclose(row["t value"], expected["t_stat"], atol=1e-8)
+            assert np.isclose(row["Pr(>|t|)"], expected["p_tuckey"], atol=1e-8)
+
+        assert np.allclose(
+            federated_output.var_min_per_group_,
+            centralized_output["expected_mins"],
+            atol=1e-8,
+        )
+        assert np.allclose(
+            federated_output.var_max_per_group_,
+            centralized_output["expected_maxs"],
+            atol=1e-8,
+        )
+
+    @pytest.mark.parametrize("groups", TEST_CASES)
+    def test_federated_algorithm_with_one_worker(self, groups):
+        categories = [f"g{i + 1}" for i in range(len(groups))]
+        self.run_comparison(
+            X=groups,
+            y=None,
+            n_workers=1,
+            categories=categories,
+        )
+
+    @pytest.mark.parametrize("groups", TEST_CASES)
+    def test_federated_algorithm_with_multiple_workers(self, groups):
+        categories = [f"g{i + 1}" for i in range(len(groups))]
+        self.run_comparison(
+            X=groups,
+            y=None,
+            n_workers=3,
+            categories=categories,
+        )

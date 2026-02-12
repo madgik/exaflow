@@ -8,7 +8,13 @@ from statsmodels.stats.weightstats import DescrStatsW
 from exaflow.algorithms.federated.statistics.descriptive_stats import (
     FederatedDescriptiveStatistics,
 )
-from tests.standalone_tests.federated_algorithms.utils import DummyAggClient
+from tests.standalone_tests.federated_algorithms.utils import FederatedAlgorithmTest
+from tests.standalone_tests.federated_algorithms.utils.simulated_agg_client import (
+    AggregationCoordinator,
+)
+from tests.standalone_tests.federated_algorithms.utils.simulated_agg_client import (
+    SimulatedAggClient,
+)
 
 ALL_DATASET_LABEL = "all datasets"
 
@@ -299,37 +305,129 @@ def _nominal_close(actual, expected):
     assert actual["counts"] == expected["counts"]
 
 
-@pytest.mark.parametrize("case", TEST_CASES, ids=[c["name"] for c in TEST_CASES])
-def test_federated_descriptive_statistics_matches_statsmodels(case):
-    df = _build_dataframe(case)
-    describe = FederatedDescriptiveStatistics(agg_client=DummyAggClient())
-    result = describe.describe(
-        data=df,
-        numerical_vars=case["numerical_vars"],
-        nominal_vars=case["nominal_vars"],
-        min_row_count=case["min_row_count"],
-        nominal_levels=case["nominal_levels"],
-        dataset_col="dataset",
-    )
+class TestFederatedDescriptiveStatistics(FederatedAlgorithmTest):
+    def _split_inputs(self, X, y, n_workers: int):
+        try:
+            import pandas as pd
+        except ImportError:  # pragma: no cover - pandas required for this test
+            pd = None
 
-    varbased_map = {
-        (rec["variable"], rec["dataset"]): rec["data"] for rec in result.recs_varbased
-    }
-    global_map = {
-        (rec["variable"], rec["dataset"]): rec["data"] for rec in result.global_varbased
-    }
-    expected_varbased, expected_global = _expected_describe(df, case)
+        if pd is None or not isinstance(X, pd.DataFrame) or "dataset" not in X.columns:
+            return super()._split_inputs(X, y, n_workers)
 
-    assert set(varbased_map) == set(expected_varbased)
-    for key, expected in expected_varbased.items():
-        if key[0] in case["numerical_vars"]:
-            _numeric_close(varbased_map[key], expected, check_quantiles=True)
+        datasets = list(X["dataset"].unique())
+        x_parts = [
+            X[X["dataset"].isin(datasets[i::n_workers])] for i in range(n_workers)
+        ]
+        X_full = X
+
+        if isinstance(y, pd.Series):
+            y_parts = [y.loc[part.index] for part in x_parts]
+            y_full = y
         else:
-            _nominal_close(varbased_map[key], expected)
+            y_array = np.asarray(y)
+            y_parts = [y_array[part.index.to_numpy()] for part in x_parts]
+            y_full = y_array
 
-    assert set(global_map) == set(expected_global)
-    for key, expected in expected_global.items():
-        if key[0] in case["numerical_vars"]:
-            _numeric_close(global_map[key], expected, check_quantiles=False)
+        return x_parts, y_parts, X_full, y_full
+
+    def _validate_federated_outputs(self, federated_outputs):
+        def _normalize(result):
+            return {
+                "global_varbased": {
+                    (rec["variable"], rec["dataset"]): rec["data"]
+                    for rec in result.global_varbased
+                },
+            }
+
+        baseline = _normalize(federated_outputs[0])
+        for output in federated_outputs[1:]:
+            assert self._outputs_equal(baseline, _normalize(output))
+
+    def compute_centralized_result(self, X, y, **kwargs):
+        describe = FederatedDescriptiveStatistics(
+            agg_client=kwargs["centralized_agg_client"]
+        )
+        return describe.describe(
+            data=X,
+            numerical_vars=kwargs["case"]["numerical_vars"],
+            nominal_vars=kwargs["case"]["nominal_vars"],
+            min_row_count=kwargs["case"]["min_row_count"],
+            nominal_levels=kwargs["case"]["nominal_levels"],
+            dataset_col="dataset",
+        )
+
+    def compute_federated_result(self, X, y, *, agg_client, **kwargs):
+        describe = FederatedDescriptiveStatistics(agg_client=agg_client)
+        return describe.describe(
+            data=X,
+            numerical_vars=kwargs["case"]["numerical_vars"],
+            nominal_vars=kwargs["case"]["nominal_vars"],
+            min_row_count=kwargs["case"]["min_row_count"],
+            nominal_levels=kwargs["case"]["nominal_levels"],
+            dataset_col="dataset",
+        )
+
+    def compare(self, federated_output, centralized_output, **kwargs):
+        df = kwargs["X_full"]
+        case = kwargs["case"]
+
+        varbased_map = {
+            (rec["variable"], rec["dataset"]): rec["data"]
+            for rec in federated_output.recs_varbased
+        }
+        global_map = {
+            (rec["variable"], rec["dataset"]): rec["data"]
+            for rec in federated_output.global_varbased
+        }
+        expected_varbased, expected_global = _expected_describe(df, case)
+
+        if kwargs["n_workers"] == 1:
+            assert set(varbased_map) == set(expected_varbased)
+            varbased_expected = expected_varbased
         else:
-            _nominal_close(global_map[key], expected)
+            varbased_expected = {key: expected_varbased[key] for key in varbased_map}
+        for key, expected in varbased_expected.items():
+            if key[0] in case["numerical_vars"]:
+                _numeric_close(varbased_map[key], expected, check_quantiles=True)
+            else:
+                _nominal_close(varbased_map[key], expected)
+
+        assert set(global_map) == set(expected_global)
+        for key, expected in expected_global.items():
+            if key[0] in case["numerical_vars"]:
+                _numeric_close(global_map[key], expected, check_quantiles=False)
+            else:
+                _nominal_close(global_map[key], expected)
+
+    @pytest.mark.parametrize("case", TEST_CASES, ids=[c["name"] for c in TEST_CASES])
+    def test_federated_algorithm_with_one_worker(self, case):
+        df = _build_dataframe(case)
+        coordinator = AggregationCoordinator(n_workers=1)
+        centralized_agg_client = SimulatedAggClient(
+            worker_id=0, coordinator=coordinator
+        )
+        self.run_comparison(
+            X=df,
+            y=np.zeros((df.shape[0],), dtype=float),
+            n_workers=1,
+            case=case,
+            X_full=df,
+            centralized_agg_client=centralized_agg_client,
+        )
+
+    @pytest.mark.parametrize("case", TEST_CASES, ids=[c["name"] for c in TEST_CASES])
+    def test_federated_algorithm_with_multiple_workers(self, case):
+        df = _build_dataframe(case)
+        coordinator = AggregationCoordinator(n_workers=1)
+        centralized_agg_client = SimulatedAggClient(
+            worker_id=0, coordinator=coordinator
+        )
+        self.run_comparison(
+            X=df,
+            y=np.zeros((df.shape[0],), dtype=float),
+            n_workers=3,
+            case=case,
+            X_full=df,
+            centralized_agg_client=centralized_agg_client,
+        )
