@@ -47,7 +47,7 @@ class AnovaOneWay(Algorithm):
                 x=InputDataSpecification(
                     label="Factor (independent)",
                     desc="Single categorical (nominal) factor defining the groups.",
-                    types=[InputDataType.INT, InputDataType.TEXT],
+                    types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,

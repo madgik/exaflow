@@ -33,7 +33,7 @@ class NaiveBayesCategorical(Algorithm):
                 y=specs.InputDataSpecification(
                     label="Variable (dependent)",
                     desc="A unique nominal variable.",
-                    types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                    types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
@@ -42,7 +42,7 @@ class NaiveBayesCategorical(Algorithm):
                 x=specs.InputDataSpecification(
                     label="Covariates (independent)",
                     desc="One or more nominal variables.",
-                    types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                    types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=True,
