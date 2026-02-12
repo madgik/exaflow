@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import csv
 import json
 from collections import OrderedDict
 from pathlib import Path
@@ -198,14 +197,14 @@ def _create_primary_data_table(
 
 
 def _read_csv_columns(csv_path: Path) -> list[str]:
-    with csv_path.open(newline="") as csv_file:
-        reader = csv.reader(csv_file)
-        try:
-            header = next(reader)
-        except StopIteration:
-            header = None
-
-    return header or []
+    # Use DuckDB's sniffer to automatically detect delimiters (e.g. semicolon)
+    # limit=0 reads only the header/schema without scanning the whole file
+    try:
+        rel = duckdb.read_csv(str(csv_path), header=True)
+        return rel.columns
+    except Exception:
+        # Fallback or empty if file is unreadable/empty
+        return []
 
 
 def _read_data_model_csvs(data_model_dir: Path) -> list[Path]:
@@ -215,24 +214,33 @@ def _read_data_model_csvs(data_model_dir: Path) -> list[Path]:
 
 
 def _dataset_codes_from_csv(csv_path: Path) -> set[str]:
-    with csv_path.open(newline="") as csv_file:
-        reader = csv.DictReader(csv_file)
-        fieldnames = reader.fieldnames or []
-        if "dataset" not in fieldnames:
+    # Use DuckDB to handle various delimiters (comma, semicolon) and read only the 'dataset' column
+    try:
+        # Check if 'dataset' column exists first using the schema
+        # We can reuse the sniffing logic via read_csv just for headers/types if needed,
+        # but a simple query is more direct. However, if the column doesn't exist, it throws.
+        # So first sniff columns.
+        columns = _read_csv_columns(csv_path)
+        if "dataset" not in columns:
             LOGGER.warning(
                 "CSV file %s is missing a 'dataset' column. Skipping it when deriving assigned datasets.",
                 csv_path,
             )
             return set()
 
-        dataset_codes: set[str] = set()
-        for row in reader:
-            value = (row.get("dataset") or "").strip()
-            if value:
-                dataset_codes.add(value)
+        # Extract unique dataset codes
+        query = f"SELECT DISTINCT dataset FROM read_csv_auto('{csv_path}', HEADER=TRUE)"
+        results = duckdb.query(query).fetchall()
 
-    if dataset_codes:
-        return dataset_codes
+        # Filter out empty/None values and strip strings
+        dataset_codes = {str(row[0]).strip() for row in results if row[0]}
+
+        if dataset_codes:
+            return dataset_codes
+
+    except Exception as e:
+        LOGGER.warning(f"Failed to read dataset codes from {csv_path}: {e}")
+        return set()
 
     LOGGER.warning(
         "CSV file %s does not contain any non-empty 'dataset' values.", csv_path
