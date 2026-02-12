@@ -47,7 +47,7 @@ class LinearRegression(Algorithm):
                 y=specs.InputDataSpecification(
                     label="Outcome (dependent)",
                     desc="Single numerical outcome variable.",
-                    types=[specs.InputDataType.REAL],
+                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=False,
