@@ -377,7 +377,7 @@ class TestFederatedAnovaOneWay(FederatedAlgorithmTest):
 
     # Override validation to compare stable scalar/model attributes only.
     # Comparing full DataFrames (e.g., thsd_/table_) is brittle across threads
-    # due to ordering/dtype differences, while core ANOVA stats should match.
+    # due to ordering/dtype differences, while utils ANOVA stats should match.
     def _validate_federated_outputs(self, federated_outputs):
         baseline = federated_outputs[0]
         for output in federated_outputs[1:]:
