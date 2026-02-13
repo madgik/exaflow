@@ -4,10 +4,10 @@ from typing import Union
 
 from pydantic import BaseModel
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated import FederatedDescriptiveStatistics
-from exaflow.algorithms.specifications import AlgorithmName
 
 HistogramBin = Union[float, str]
 
@@ -24,7 +24,61 @@ class HistogramResult(BaseModel):
     histogram: List[HistogramResultItem]
 
 
-class Histogram(Algorithm, algname=AlgorithmName.HISTOGRAM):
+class Histogram(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name="histogram",
+            desc="Federated histogram with optional grouping and privacy masking.",
+            label="Histogram",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="Target variable",
+                    desc="Numerical or categorical variable to bin into a histogram.",
+                    types=[
+                        specs.InputDataType.REAL,
+                        specs.InputDataType.INT,
+                        specs.InputDataType.TEXT,
+                    ],
+                    stattypes=[
+                        specs.InputDataStatType.NUMERICAL,
+                        specs.InputDataStatType.NOMINAL,
+                    ],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                x=specs.InputDataSpecification(
+                    label="Grouping variables",
+                    desc="Optional categorical variables used to produce grouped histograms.",
+                    types=[specs.InputDataType.INT, specs.InputDataType.TEXT],
+                    stattypes=[specs.InputDataStatType.NOMINAL],
+                    required=False,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                validation=None,
+            ),
+            parameters={
+                "bins": specs.ParameterSpecification(
+                    label="Number of bins",
+                    desc="Bin count for numerical histograms (ignored for categorical targets).",
+                    types=[specs.ParameterType.INT],
+                    required=False,
+                    multiple=False,
+                    default=20,
+                    enums=None,
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=1,
+                    max=100,
+                ),
+            },
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     def run(self):
         y_var = self.inputdata.y[0]
         x_vars = self.inputdata.x or []

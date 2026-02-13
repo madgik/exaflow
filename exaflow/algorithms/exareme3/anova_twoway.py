@@ -3,11 +3,11 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.anova_twoway import FederatedAnovaTwoWay
 from exaflow.algorithms.federated.utils import BadInputError
-from exaflow.algorithms.specifications import AlgorithmName
 from exaflow.worker_communication import BadUserInput
 
 
@@ -19,7 +19,54 @@ class AnovaResult(BaseModel):
     f_pvalue: List[Optional[float]]
 
 
-class AnovaTwoWay(Algorithm, algname=AlgorithmName.ANOVA_TWOWAY):
+class AnovaTwoWay(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name="anova_twoway",
+            desc="Federated two-way (factorial) ANOVA for hypothesis testing with two categorical factors, including main effects and interaction (Type I or II sums of squares).",
+            label="Two-way ANOVA (OLS)",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="Outcome (dependent)",
+                    desc="Single numerical outcome variable.",
+                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NUMERICAL],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                x=specs.InputDataSpecification(
+                    label="Factors (independent)",
+                    desc="Exactly two categorical (nominal) factors.",
+                    types=[specs.InputDataType.INT, specs.InputDataType.TEXT],
+                    stattypes=[specs.InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                validation=None,
+            ),
+            parameters={
+                "sstype": specs.ParameterSpecification(
+                    label="Sum of squares type",
+                    desc="Sum of squares type: 1 (Type I, sequential) or 2 (Type II, marginal).",
+                    types=[specs.ParameterType.INT],
+                    required=True,
+                    multiple=False,
+                    default="2",
+                    enums=None,
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=1,
+                    max=2,
+                ),
+            },
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     def run(self):
         y = self.inputdata.y[0]
         xs = self.inputdata.x

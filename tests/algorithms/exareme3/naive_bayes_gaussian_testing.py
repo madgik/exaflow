@@ -4,6 +4,7 @@ from typing import List
 
 from pydantic import BaseModel
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.naive_bayes import FederatedGaussianNB
@@ -21,7 +22,40 @@ def _prepare_dataframe(data, x_vars: List[str], y_var: str):
     return data[cols].copy()
 
 
-class GaussianNBTestingPredict(Algorithm, algname=ALGNAME_PRED):
+class GaussianNBTestingPredict(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name=ALGNAME_PRED,
+            desc="Uses Bayes' theorem to calculate the probability of each class given a set of numerical features assuming independence between features. It then classifies data points ba sed on the class with the highest probability.",
+            label="Gaussian Naive Bayes classifier with cross-validation",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="Variable (dependent)",
+                    desc="A unique nominal variable.",
+                    types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                x=specs.InputDataSpecification(
+                    label="Covariates (independent)",
+                    desc="One or more numerical variables.",
+                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NUMERICAL],
+                    required=True,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                validation=None,
+            ),
+            parameters={},
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     class Result(BaseModel):
         predictions: Dict[str, int]
 

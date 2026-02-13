@@ -2,10 +2,10 @@ from typing import List
 
 from pydantic import BaseModel
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.cluster.kmeans import FederatedKMeans
-from exaflow.algorithms.specifications import AlgorithmName
 
 
 class KMeansResult(BaseModel):
@@ -14,7 +14,72 @@ class KMeansResult(BaseModel):
     centers: List[List[float]]
 
 
-class KMeans(Algorithm, algname=AlgorithmName.KMEANS):
+class KMeans(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name="kmeans",
+            desc="Secure federated K-Means clustering with an aggregation-server-backed initialization",
+            label="Federated K-Means",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="y",
+                    desc="data",
+                    types=[specs.InputDataType.REAL],
+                    stattypes=[specs.InputDataStatType.NUMERICAL],
+                    required=True,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                x=None,
+                validation=None,
+            ),
+            parameters={
+                "k": specs.ParameterSpecification(
+                    label="k",
+                    desc="k",
+                    types=[specs.ParameterType.INT],
+                    required=True,
+                    multiple=False,
+                    default=4,
+                    enums=None,
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=1,
+                    max=100,
+                ),
+                "maxiter": specs.ParameterSpecification(
+                    label="maxiter",
+                    desc="Maximum number of iterations",
+                    types=[specs.ParameterType.INT],
+                    required=True,
+                    multiple=False,
+                    default=1,
+                    enums=None,
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=1,
+                    max=100,
+                ),
+                "tol": specs.ParameterSpecification(
+                    label="tol",
+                    desc="Tolerance",
+                    types=[specs.ParameterType.REAL],
+                    required=True,
+                    multiple=False,
+                    default=0.01,
+                    enums=None,
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=0.0,
+                    max=1.0,
+                ),
+            },
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     def run(self):
         n_clusters = int(self.get_parameter("k"))
 

@@ -2,6 +2,7 @@ from typing import List
 
 from pydantic import BaseModel
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.compose.column_transformer import (
@@ -10,7 +11,6 @@ from exaflow.algorithms.federated.compose.column_transformer import (
 from exaflow.algorithms.federated.linear_model.ols import FederatedOLS
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
-from exaflow.algorithms.specifications import AlgorithmName
 
 
 class LinearRegressionResult(BaseModel):
@@ -35,7 +35,47 @@ class LinearRegressionResult(BaseModel):
     upper_ci: List[float]
 
 
-class LinearRegression(Algorithm, algname=AlgorithmName.LINEAR_REGRESSION):
+class LinearRegression(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name="linear_regression",
+            desc="Federated ordinary least squares (OLS) linear regression with global coefficients, standard errors, t-tests, p-values, confidence intervals, and fit statistics.",
+            label="Linear Regression (OLS)",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="Outcome (dependent)",
+                    desc="Single numerical outcome variable.",
+                    types=[specs.InputDataType.REAL],
+                    stattypes=[specs.InputDataStatType.NUMERICAL],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                x=specs.InputDataSpecification(
+                    label="Covariates (independent)",
+                    desc="One or more variables (numerical or categorical). Categorical covariates are dummy-encoded.",
+                    types=[
+                        specs.InputDataType.REAL,
+                        specs.InputDataType.INT,
+                        specs.InputDataType.TEXT,
+                    ],
+                    stattypes=[
+                        specs.InputDataStatType.NUMERICAL,
+                        specs.InputDataStatType.NOMINAL,
+                    ],
+                    required=True,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                validation=None,
+            ),
+            parameters=None,
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     def run(self):
         y_var = self.inputdata.y[0]
         categorical_vars = [

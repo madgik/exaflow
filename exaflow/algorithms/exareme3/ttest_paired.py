@@ -1,9 +1,9 @@
 from pydantic import BaseModel
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.ttest_paired import FederatedTTestPaired
-from exaflow.algorithms.specifications import AlgorithmName
 
 
 class TTestPairedResult(BaseModel):
@@ -17,7 +17,70 @@ class TTestPairedResult(BaseModel):
     cohens_d: float
 
 
-class TTestPaired(Algorithm, algname=AlgorithmName.TTEST_PAIRED):
+class TTestPaired(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name="ttest_paired",
+            desc="Federated Student's paired t-test compares the mean of within-subject differences between two related measurements (df = n - 1). Cohen's d is computed from the paired differences.",
+            label="Student's Paired T-Test",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="Measurement 1",
+                    desc="First numeric measurement (paired with Measurement 2).",
+                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NUMERICAL],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                x=specs.InputDataSpecification(
+                    label="Measurement 2",
+                    desc="Second numeric measurement (paired with Measurement 1).",
+                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NUMERICAL],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                validation=None,
+            ),
+            parameters={
+                "alt_hypothesis": specs.ParameterSpecification(
+                    label="Alternative Hypothesis",
+                    desc="Specifies the alternative hypothesis for the mean difference (two-sided, less, or greater).",
+                    types=[specs.ParameterType.TEXT],
+                    required=True,
+                    multiple=False,
+                    default="two-sided",
+                    enums=specs.ParameterEnumSpecification(
+                        type=specs.ParameterEnumType.LIST,
+                        source=["two-sided", "less", "greater"],
+                    ),
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=None,
+                    max=None,
+                ),
+                "alpha": specs.ParameterSpecification(
+                    label="Alpha",
+                    desc="The significance level.",
+                    types=[specs.ParameterType.REAL],
+                    required=True,
+                    multiple=False,
+                    default=0.05,
+                    enums=None,
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=0.0,
+                    max=1.0,
+                ),
+            },
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     def run(self):
         alpha = self.get_parameter("alpha")
         alternative = self.get_parameter("alt_hypothesis")

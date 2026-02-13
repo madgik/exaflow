@@ -1,5 +1,6 @@
 import numpy as np
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.naive_bayes_common import NBResult
 from exaflow.algorithms.exareme3.naive_bayes_common import make_naive_bayes_result
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
@@ -21,13 +22,59 @@ from exaflow.algorithms.federated.model_selection.cross_validation.scorer_multic
 )
 from exaflow.algorithms.federated.naive_bayes import FederatedGaussianNB
 from exaflow.algorithms.federated.utils import BadInputError
-from exaflow.algorithms.specifications import AlgorithmName
 from exaflow.worker_communication import BadUserInput
 
 VAR_SMOOTHING = 1e-9  # same as original GaussianNB _fit_global
 
 
-class NaiveBayesGaussianCV(Algorithm, algname=AlgorithmName.NAIVE_BAYES_GAUSSIAN_CV):
+class NaiveBayesGaussianCV(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name="naive_bayes_gaussian_cv",
+            desc="Federated Gaussian Naive Bayes with K-fold cross-validation. Features are treated as numerical; missing values are not imputed.",
+            label="Gaussian Naive Bayes (K-fold CV)",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="Variable (dependent)",
+                    desc="A unique nominal variable.",
+                    types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                x=specs.InputDataSpecification(
+                    label="Covariates (independent)",
+                    desc="One or more numerical variables.",
+                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NUMERICAL],
+                    required=True,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                validation=None,
+            ),
+            parameters={
+                "n_splits": specs.ParameterSpecification(
+                    label="Number of splits",
+                    desc="Number of splits for cross-validation.",
+                    types=[specs.ParameterType.INT],
+                    required=True,
+                    multiple=False,
+                    default=5,
+                    enums=None,
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=2,
+                    max=20,
+                ),
+            },
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     def run(self) -> NBResult:
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)

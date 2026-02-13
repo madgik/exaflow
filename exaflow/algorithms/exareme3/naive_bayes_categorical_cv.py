@@ -3,6 +3,7 @@ from typing import List
 
 import numpy as np
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.naive_bayes_common import make_naive_bayes_result
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
@@ -25,13 +26,57 @@ from exaflow.algorithms.federated.naive_bayes import FederatedCategoricalNB
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOrdinalEncoder
 from exaflow.algorithms.federated.utils import BadInputError
-from exaflow.algorithms.specifications import AlgorithmName
 from exaflow.worker_communication import BadUserInput
 
 
-class NaiveBayesCategorical(
-    Algorithm, algname=AlgorithmName.NAIVE_BAYES_CATEGORICAL_CV
-):
+class NaiveBayesCategorical(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name="naive_bayes_categorical_cv",
+            desc="Federated categorical Naive Bayes with K-fold cross-validation. Features are ordinal-encoded using metadata category order; unknown categories are rejected. Class labels are discovered during training and aggregated securely across workers.",
+            label="Categorical Naive Bayes (K-fold CV)",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="Variable (dependent)",
+                    desc="A unique nominal variable.",
+                    types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                x=specs.InputDataSpecification(
+                    label="Covariates (independent)",
+                    desc="One or more nominal variables.",
+                    types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                validation=None,
+            ),
+            parameters={
+                "n_splits": specs.ParameterSpecification(
+                    label="Number of splits",
+                    desc="Number of splits for cross-validation.",
+                    types=[specs.ParameterType.INT],
+                    required=True,
+                    multiple=False,
+                    default=5,
+                    enums=None,
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=2,
+                    max=20,
+                ),
+            },
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     def run(self):
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)

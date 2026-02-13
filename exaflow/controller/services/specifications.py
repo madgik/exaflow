@@ -1,14 +1,14 @@
 import json
 import logging
-import warnings
 from pathlib import Path
 from typing import Dict
 from typing import List
 from typing import Type
 from typing import Union
 
-from exaflow import EXAREME3_ALGORITHM_FOLDERS
 from exaflow import FLOWER_ALGORITHM_FOLDERS
+from exaflow import exareme3_algorithm_classes
+from exaflow import exareme3_transformer_classes
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import AlgorithmType
 from exaflow.algorithms.specifications import ComponentType
@@ -19,12 +19,8 @@ from exaflow.controller import config as ctrl_config
 logger = logging.getLogger(__name__)
 
 
-def find_spec_paths() -> List[Path]:
-    folders = (
-        FLOWER_ALGORITHM_FOLDERS,
-        EXAREME3_ALGORITHM_FOLDERS,
-    )
-    paths = (p.strip() for folder in folders for p in folder.split(","))
+def find_spec_paths(folders: str) -> List[Path]:
+    paths = (p.strip() for p in folders.split(","))
     return [Path(p) for p in paths if p]
 
 
@@ -56,15 +52,45 @@ class Specifications:
         self._filter_specifications()
 
     def _load_specifications(self) -> None:
-        for folder in find_spec_paths():
+        self._load_exareme3_specifications()
+        self._load_flower_specifications()
+
+    def _load_exareme3_specifications(self) -> None:
+        self._load_exareme3_algorithm_specifications()
+        self._load_exareme3_transformer_specifications()
+
+    def _load_exareme3_algorithm_specifications(self) -> None:
+        for algorithm_name, algorithm_cls in exareme3_algorithm_classes.items():
+            spec = algorithm_cls.get_specification()
+            if spec.name != algorithm_name:
+                raise ValueError(
+                    f"Algorithm class key '{algorithm_name}' does not match specification name '{spec.name}'."
+                )
+            self._add_specification(spec, f"algorithm class '{algorithm_name}'")
+
+    def _load_exareme3_transformer_specifications(self) -> None:
+        for transformer_name, transformer_cls in exareme3_transformer_classes.items():
+            spec = transformer_cls.get_specification()
+            if spec.name != transformer_name:
+                raise ValueError(
+                    f"Transformer class key '{transformer_name}' does not match specification name '{spec.name}'."
+                )
+            self._add_specification(spec, f"transformer class '{transformer_name}'")
+
+    def _load_flower_specifications(self) -> None:
+        for folder in find_spec_paths(FLOWER_ALGORITHM_FOLDERS):
             for file in folder.glob("*.json"):
                 raw = load_json_file(file)
                 spec_cls = self._choose_spec_class(raw)
-                spec = spec_cls.parse_obj(raw)
-                name = spec.name
-                if name in self._all_specs:
-                    raise ValueError(f"Duplicate spec '{name}' in {file}")
-                self._all_specs[name] = spec
+                if spec_cls is not AlgorithmSpecification:
+                    continue
+                spec = AlgorithmSpecification.parse_obj(raw)
+                self._add_specification(spec, str(file))
+
+    def _add_specification(self, spec: SpecType, source: str) -> None:
+        if spec.name in self._all_specs:
+            raise ValueError(f"Duplicate spec '{spec.name}' in {source}")
+        self._all_specs[spec.name] = spec
 
     def _filter_specifications(self) -> None:
         for spec in self._all_specs.values():

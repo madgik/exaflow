@@ -20,7 +20,7 @@ ______________________________________________________________________
   | --- | --- |
   | `exaflow/controller/quart` | HTTP endpoints; `endpoints.py` drives `/algorithms`. |
   | `exaflow/controller/services/exareme3` | Controller-side strategy + worker task abstractions. |
-  | `exaflow/algorithms/exareme3` | Algorithm implementations and JSON specs. |
+  | `exaflow/algorithms/exareme3` | Algorithm + transformer implementations and in-code specs (`get_specification`). |
   | `exaflow/worker` | gRPC server, DuckDB loader, UDF runner. |
   | `exaflow/aggregation_server` | Optional microservice providing SUM/MIN/MAX aggregation. |
   | `tasks.py` | `invoke` tasks for configs, data seeding, service lifecycle. |
@@ -52,9 +52,13 @@ The pipeline below is what you usually need to reference/debug.
 
    - Algorithm classes are discovered by importing modules from
      `EXAREME3_ALGORITHM_FOLDERS` (defaults to `./exaflow/algorithms/exareme3`) and
-     collecting `Algorithm` subclasses (`exaflow/__init__.py`).
-     Each algorithm has a matching JSON spec describing required inputs/parameters
-     (`exaflow/algorithms/exareme3/*.json`).
+     collecting `Algorithm` / `Transformer` subclasses (`exaflow/__init__.py`).
+   - Exareme3 specifications are defined in code:
+     - Algorithms implement `@classmethod get_specification() -> AlgorithmSpecification`.
+     - Transformers implement `@classmethod get_specification() -> TransformerSpecification`.
+     - `exaflow.exareme3_algorithm_classes` and `exaflow.exareme3_transformer_classes` are keyed by `spec.name`.
+   - Module importing is designed to be idempotent even when `EXAREME3_ALGORITHM_FOLDERS`
+     points at non-package folders (to avoid double-executing modules and duplicate UDF registrations).
    - Strategy creates the algorithm class, passing:
      - `Inputdata` payload (datasets, vars, parameters)
      - `ExaflowAlgorithmFlowEngineInterface` (see below)
@@ -100,17 +104,18 @@ ______________________________________________________________________
 
 ## Working on Algorithms
 
-- **Specs:** Algorithm metadata shipped to clients lives in `exaflow/algorithms/exareme3/*.json`.
-  Update both spec and implementation when adding parameters or outputs.
+- **Specs (Exareme3):** Algorithm + transformer metadata shipped to clients is defined in code via
+  `get_specification()` returning `AlgorithmSpecification` / `TransformerSpecification`
+  (`exaflow/algorithms/specifications.py`). Update the specification method and implementation together.
 - **Implementations:** `exaflow/algorithms/exareme3/*.py` typically define:
-  - `ALGORITHM_SPEC` loading the JSON file.
-  - A class derived from a base (e.g., `Algorithm` in `algorithm.py`) exposing `run`.
+  - A class derived from `Algorithm` (or `Transformer` for preprocessing) exposing `run` (or transformer helpers).
+  - `@classmethod get_specification()` returning the typed spec object (prefer `from exaflow.algorithms import specifications as specs`).
   - UDF helpers decorated with `@exareme3_udf`.
 - **Data helpers:** `metrics.py` and `library/` hold reusable computations;
   prefer extending them before inlining SQL.
 - **Controller integration:** Ensure the algorithm module lives in
   `EXAREME3_ALGORITHM_FOLDERS` (default `./exaflow/algorithms/exareme3`) so
-  `exareme3_algorithm_classes` can discover it.
+  `exareme3_algorithm_classes` / `exareme3_transformer_classes` can discover it.
 
 ______________________________________________________________________
 

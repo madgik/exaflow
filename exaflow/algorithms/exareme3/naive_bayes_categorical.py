@@ -3,12 +3,12 @@ from typing import List
 
 from pydantic import BaseModel
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.naive_bayes import FederatedCategoricalNB
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOrdinalEncoder
-from exaflow.algorithms.specifications import AlgorithmName
 
 
 class NaiveBayesCategoricalResult(BaseModel):
@@ -21,7 +21,40 @@ class NaiveBayesCategoricalResult(BaseModel):
     feature_names: List[str]
 
 
-class NaiveBayesCategorical(Algorithm, algname=AlgorithmName.NAIVE_BAYES_CATEGORICAL):
+class NaiveBayesCategorical(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name="naive_bayes_categorical",
+            desc="Federated categorical Naive Bayes. Features are ordinal-encoded using metadata category order; unknown categories are rejected. Class labels are discovered during training and aggregated securely across workers.",
+            label="Categorical Naive Bayes",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="Variable (dependent)",
+                    desc="A unique nominal variable.",
+                    types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                x=specs.InputDataSpecification(
+                    label="Covariates (independent)",
+                    desc="One or more nominal variables.",
+                    types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                validation=None,
+            ),
+            parameters=None,
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     def run(self):
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)

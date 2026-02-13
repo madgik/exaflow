@@ -2,10 +2,10 @@ from typing import List
 
 from pydantic import BaseModel
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.naive_bayes import FederatedGaussianNB
-from exaflow.algorithms.specifications import AlgorithmName
 
 
 class NaiveBayesGaussianResult(BaseModel):
@@ -17,7 +17,40 @@ class NaiveBayesGaussianResult(BaseModel):
     feature_names: List[str]
 
 
-class NaiveBayesGaussian(Algorithm, algname=AlgorithmName.NAIVE_BAYES_GAUSSIAN):
+class NaiveBayesGaussian(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name="naive_bayes_gaussian",
+            desc="Federated Gaussian Naive Bayes. Features are treated as numerical; missing values are not imputed.",
+            label="Gaussian Naive Bayes",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="Variable (dependent)",
+                    desc="A unique nominal variable.",
+                    types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                x=specs.InputDataSpecification(
+                    label="Covariates (independent)",
+                    desc="One or more numerical variables.",
+                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NUMERICAL],
+                    required=True,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                validation=None,
+            ),
+            parameters=None,
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     def run(self) -> NaiveBayesGaussianResult:
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)

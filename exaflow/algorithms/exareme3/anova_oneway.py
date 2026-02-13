@@ -9,7 +9,13 @@ from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.anova_oneway import FederatedAnovaOneWay
 from exaflow.algorithms.federated.utils import BadInputError
-from exaflow.algorithms.specifications import AlgorithmName
+from exaflow.algorithms.specifications import AlgorithmSpecification
+from exaflow.algorithms.specifications import AlgorithmType
+from exaflow.algorithms.specifications import ComponentType
+from exaflow.algorithms.specifications import InputDataSpecification
+from exaflow.algorithms.specifications import InputDataSpecifications
+from exaflow.algorithms.specifications import InputDataStatType
+from exaflow.algorithms.specifications import InputDataType
 from exaflow.worker_communication import BadUserInput
 
 
@@ -20,7 +26,40 @@ class AnovaResult(BaseModel):
     ci_info: Dict
 
 
-class AnovaOneWay(Algorithm, algname=AlgorithmName.ANOVA_ONEWAY):
+class AnovaOneWay(Algorithm):
+    @classmethod
+    def get_specification(cls) -> AlgorithmSpecification:
+        return AlgorithmSpecification(
+            name="anova_oneway",
+            desc="Federated one-way ANOVA for hypothesis testing across groups with Tukey HSD pairwise comparisons and group min/max summaries.",
+            label="One-way ANOVA",
+            enabled=True,
+            inputdata=InputDataSpecifications(
+                y=InputDataSpecification(
+                    label="Outcome (dependent)",
+                    desc="Single continuous outcome variable.",
+                    types=[InputDataType.REAL, InputDataType.INT],
+                    stattypes=[InputDataStatType.NUMERICAL],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                x=InputDataSpecification(
+                    label="Factor (independent)",
+                    desc="Single categorical (nominal) factor defining the groups.",
+                    types=[InputDataType.INT, InputDataType.TEXT],
+                    stattypes=[InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                validation=None,
+            ),
+            parameters=None,
+            type=AlgorithmType.EXAREME3,
+            components=[ComponentType.AGGREGATION_SERVER],
+        )
+
     def run(self):
         """
         Exaflow implementation of one-way ANOVA with Tukey HSD, matching the

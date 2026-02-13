@@ -6,12 +6,12 @@ from typing import Union
 import pandas as pd
 from pydantic import BaseModel
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.descriptive_stats import (
     FederatedDescriptiveStatistics,
 )
-from exaflow.algorithms.specifications import AlgorithmName
 
 DATASET_VAR_NAME = "dataset"
 
@@ -58,7 +58,54 @@ class Result(BaseModel):
     model_based: List[Variable]
 
 
-class Describe(Algorithm, algname=AlgorithmName.DESCRIBE):
+class Describe(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name="describe",
+            desc="Federated descriptive statistics mirroring statsmodels Describe: per-dataset records plus aggregation server-backed global summaries.",
+            label="Descriptive stats (Describe)",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="y",
+                    desc="y",
+                    types=[
+                        specs.InputDataType.INT,
+                        specs.InputDataType.REAL,
+                        specs.InputDataType.TEXT,
+                    ],
+                    stattypes=[
+                        specs.InputDataStatType.NUMERICAL,
+                        specs.InputDataStatType.NOMINAL,
+                    ],
+                    required=True,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                x=specs.InputDataSpecification(
+                    label="x",
+                    desc="x",
+                    types=[
+                        specs.InputDataType.INT,
+                        specs.InputDataType.REAL,
+                        specs.InputDataType.TEXT,
+                    ],
+                    stattypes=[
+                        specs.InputDataStatType.NUMERICAL,
+                        specs.InputDataStatType.NOMINAL,
+                    ],
+                    required=False,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                validation=None,
+            ),
+            parameters=None,
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     @property
     def drop_na_rows(self) -> bool:
         return False

@@ -1,11 +1,11 @@
 from pydantic import BaseModel
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.ttest_independent import (
     FederatedTTestIndependent,
 )
-from exaflow.algorithms.specifications import AlgorithmName
 
 
 class TTestIndependentResult(BaseModel):
@@ -19,7 +19,102 @@ class TTestIndependentResult(BaseModel):
     cohens_d: float
 
 
-class TTestIndependent(Algorithm, algname=AlgorithmName.TTEST_INDEPENDENT):
+class TTestIndependent(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name="ttest_independent",
+            desc="Federated Student's independent t-test for the difference in means between two independent groups (pooled variance; df = n_a + n_b - 2). Reports confidence intervals and Cohen's d (pooled SD).",
+            label="Student's Independent T-Test",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="Variable of interest",
+                    desc="A numerical variable.",
+                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NUMERICAL],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                x=specs.InputDataSpecification(
+                    label="Grouping variable",
+                    desc="A nominal variable.",
+                    types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                validation=None,
+            ),
+            parameters={
+                "alt_hypothesis": specs.ParameterSpecification(
+                    label="Alternative Hypothesis",
+                    desc="Specifies whether group A is different from, greater than, or less than group B.",
+                    types=[specs.ParameterType.TEXT],
+                    required=True,
+                    multiple=False,
+                    default="two-sided",
+                    enums=specs.ParameterEnumSpecification(
+                        type=specs.ParameterEnumType.LIST,
+                        source=["two-sided", "less", "greater"],
+                    ),
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=None,
+                    max=None,
+                ),
+                "alpha": specs.ParameterSpecification(
+                    label="Alpha",
+                    desc="The significance level.",
+                    types=[specs.ParameterType.REAL],
+                    required=True,
+                    multiple=False,
+                    default=0.05,
+                    enums=None,
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=0.0,
+                    max=1.0,
+                ),
+                "groupA": specs.ParameterSpecification(
+                    label="Group A",
+                    desc="Category of the grouping variable used as group A.",
+                    types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
+                    required=True,
+                    multiple=False,
+                    default=None,
+                    enums=specs.ParameterEnumSpecification(
+                        type=specs.ParameterEnumType.INPUT_VAR_CDE_ENUMS,
+                        source=["x"],
+                    ),
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=None,
+                    max=None,
+                ),
+                "groupB": specs.ParameterSpecification(
+                    label="Group B",
+                    desc="Category of the grouping variable used as group B.",
+                    types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
+                    required=True,
+                    multiple=False,
+                    default=None,
+                    enums=specs.ParameterEnumSpecification(
+                        type=specs.ParameterEnumType.INPUT_VAR_CDE_ENUMS,
+                        source=["x"],
+                    ),
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=None,
+                    max=None,
+                ),
+            },
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     def run(self):
         alpha = self.get_parameter("alpha")
         alternative = self.get_parameter("alt_hypothesis")

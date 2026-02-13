@@ -1,3 +1,4 @@
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.worker_communication import ColumnDataFloat
@@ -7,7 +8,32 @@ from exaflow.worker_communication import TabularDataResult
 ALGORITHM_NAME = "standard_deviation"
 
 
-class StandardDeviationAlgorithm(Algorithm, algname=ALGORITHM_NAME):
+class StandardDeviationAlgorithm(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name=ALGORITHM_NAME,
+            desc="Standard Deviation of a column",
+            label="Standard Deviation",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="column",
+                    desc="Column",
+                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NUMERICAL],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                x=None,
+                validation=None,
+            ),
+            parameters=None,
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     def run(self):
         # This call runs the local UDF on all workers.
         # They all execute the aggregation server calls so each one returns the same final standard deviation.
