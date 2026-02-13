@@ -4,9 +4,9 @@ import numpy as np
 from pydantic import BaseModel
 from sklearn.svm import SVC
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.specifications import AlgorithmName
 from exaflow.worker_communication import BadUserInput
 
 
@@ -17,7 +17,67 @@ class SVMResult(BaseModel):
     intercept: float
 
 
-class LinearSVM(Algorithm, algname=AlgorithmName.LINEAR_SVM):
+class LinearSVM(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name="linear_svm",
+            desc="Federated linear SVM trained locally and averaged across workers (coefficients and intercept).",
+            label="Linear SVM",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="Target classes",
+                    desc="Nominal target variable defining the classes.",
+                    types=[specs.InputDataType.TEXT],
+                    stattypes=[specs.InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                x=specs.InputDataSpecification(
+                    label="Features",
+                    desc="Numerical covariates used to train the linear SVM.",
+                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NUMERICAL],
+                    required=True,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                validation=None,
+            ),
+            parameters={
+                "gamma": specs.ParameterSpecification(
+                    label="Gamma",
+                    desc="Gamma parameter passed to scikit-learn's SVC (linear kernel).",
+                    types=[specs.ParameterType.REAL],
+                    required=True,
+                    multiple=False,
+                    default=0.1,
+                    enums=None,
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=0.0,
+                    max=1.0,
+                ),
+                "C": specs.ParameterSpecification(
+                    label="C",
+                    desc="Regularization parameter (penalty for misclassification).",
+                    types=[specs.ParameterType.REAL],
+                    required=True,
+                    multiple=False,
+                    default=1.0,
+                    enums=None,
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=0.0,
+                    max=1.0,
+                ),
+            },
+            type=specs.AlgorithmType.EXAREME3,
+            components=[],
+        )
+
     def run(self):
         y_var = self.inputdata.y[0]
         x_vars = self.inputdata.x

@@ -9,6 +9,9 @@ from types import ModuleType
 from typing import Dict
 
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm as ExaflowAlgorithm
+from exaflow.algorithms.exareme3.utils.transformer import (
+    Transformer as ExaflowTransformer,
+)
 from exaflow.datatypes import DType
 from exaflow.utils import AttrDict
 
@@ -21,6 +24,7 @@ __all__ = [
     "EXAREME3_ALGORITHM_FOLDERS_ENV_VARIABLE",
     "EXAREME3_ALGORITHM_FOLDERS",
     "exareme3_algorithm_classes",
+    "exareme3_transformer_classes",
 ]
 
 
@@ -70,6 +74,7 @@ def import_algorithm_modules(algorithm_folders: str) -> Dict[str, ModuleType]:
         ]
         modules = {}
         for algorithm_name, module_path in zip(algorithm_names, algorithm_module_paths):
+            module_path = os.path.abspath(module_path)
             import_path, package_root = _resolve_package_import(module_path)
             module_obj = None
 
@@ -82,11 +87,18 @@ def import_algorithm_modules(algorithm_folders: str) -> Dict[str, ModuleType]:
                     module_obj = None
 
             if module_obj is None:
-                spec = importlib.util.spec_from_file_location(
-                    algorithm_name, module_path
-                )
-                module_obj = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module_obj)
+                # When loading from non-package folders we must ensure we don't
+                # re-exec the same module path, otherwise decorators may
+                # double-register (e.g. @exareme3_udf) and crash startup.
+                if module_path in _MODULES_BY_ABSPATH:
+                    module_obj = _MODULES_BY_ABSPATH[module_path]
+                else:
+                    spec = importlib.util.spec_from_file_location(
+                        algorithm_name, module_path
+                    )
+                    module_obj = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module_obj)
+                    _MODULES_BY_ABSPATH[module_path] = module_obj
 
             modules[algorithm_name] = module_obj
         all_modules.update(modules)
@@ -135,10 +147,33 @@ EXAREME3_ALGORITHM_FOLDERS = os.getenv(
     EXAREME3_ALGORITHM_FOLDERS_ENV_VARIABLE, "./exaflow/algorithms/exareme3"
 )
 
+_MODULES_BY_ABSPATH: Dict[str, ModuleType] = {}
+_EXAREME3_MODULES_LOADED = False
+
+
+def _ensure_exareme3_modules_loaded() -> None:
+    global _EXAREME3_MODULES_LOADED
+    if _EXAREME3_MODULES_LOADED:
+        return
+    import_algorithm_modules(EXAREME3_ALGORITHM_FOLDERS)
+    _EXAREME3_MODULES_LOADED = True
+
 
 def get_exareme3_algorithm_classes() -> Dict[str, type]:
-    import_algorithm_modules(EXAREME3_ALGORITHM_FOLDERS)
-    return {cls.algname: cls for cls in ExaflowAlgorithm.__subclasses__()}
+    _ensure_exareme3_modules_loaded()
+    return {
+        cls.get_specification().name: cls for cls in ExaflowAlgorithm.__subclasses__()
+    }
 
 
 exareme3_algorithm_classes = get_exareme3_algorithm_classes()
+
+
+def get_exareme3_transformer_classes() -> Dict[str, type]:
+    _ensure_exareme3_modules_loaded()
+    return {
+        cls.get_specification().name: cls for cls in ExaflowTransformer.__subclasses__()
+    }
+
+
+exareme3_transformer_classes = get_exareme3_transformer_classes()

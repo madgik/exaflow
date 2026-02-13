@@ -4,7 +4,8 @@
 
 - Base class: `exaflow/algorithms/exareme3/utils/algorithm.py` -> `Algorithm`
 
-  - `algname` must match `"name"` in the `<algorithm>.json` spec.
+  - Each algorithm must implement `@classmethod get_specification()` and return a
+    `AlgorithmSpecification` (see `exaflow/algorithms/specifications.py`).
   - Constructor receives `inputdata`, `metadata`, `parameters`, and the engine.
   - Use `self.run_local_udf(func=..., kw_args=...)` to execute UDFs on workers.
   - Override these properties when needed:
@@ -12,12 +13,36 @@
     - `check_min_rows` (default `True`) to skip the privacy minimum-row check.
     - `add_dataset_variable` (default `False`) to include the dataset column.
 
+- Transformer base class: `exaflow/algorithms/exareme3/utils/transformer.py` -> `Transformer`
+
+  - Each transformer must implement `@classmethod get_specification()` and return a
+    `TransformerSpecification` (see `exaflow/algorithms/specifications.py`).
+
 - Input payloads:
 
   - `inputdata` is the Pydantic model in
     `exaflow/algorithms/utils/inputdata_utils.Inputdata`.
   - `metadata` is `dict[var] -> {is_categorical: bool, enumerations: {...}}`.
-  - `parameters` is a plain dict from the JSON spec.
+  - `parameters` is a plain dict validated against the specification.
+
+## Specifications
+
+- Prefer using the enums and models from `exaflow/algorithms/specifications.py`
+  to build the specification objects. A common pattern is:
+
+  - `from exaflow.algorithms import specifications as specs`
+  - `return specs.AlgorithmSpecification(...)`
+
+## Discovery and loading
+
+- The controller discovers Exareme3 algorithms/transformers by importing the
+  modules under `EXAREME3_ALGORITHM_FOLDERS` and collecting subclasses of the
+  base classes.
+
+- Class maps are keyed by the specification name:
+
+  - `exaflow.exareme3_algorithm_classes[AlgorithmSpecification.name] -> class`
+  - `exaflow.exareme3_transformer_classes[TransformerSpecification.name] -> class`
 
 ## UDFs, registry, and aggregation
 

@@ -1,11 +1,11 @@
 from pydantic import BaseModel
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.ttest_onesample import (
     FederatedTTestOneSample,
 )
-from exaflow.algorithms.specifications import AlgorithmName
 
 
 class TTestOneSampleResult(BaseModel):
@@ -21,7 +21,75 @@ class TTestOneSampleResult(BaseModel):
     cohens_d: float
 
 
-class TTestOneSample(Algorithm, algname=AlgorithmName.TTEST_ONESAMPLE):
+class TTestOneSample(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name="ttest_onesample",
+            desc="Federated Student's one-sample t-test compares the mean of a numeric sample to a specified value (mu). It reports confidence intervals and Cohen's d, with df = n - 1.",
+            label="Student's One-Sample T-Test",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="Variable",
+                    desc="Numeric variable of interest.",
+                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NUMERICAL],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                x=None,
+                validation=None,
+            ),
+            parameters={
+                "alt_hypothesis": specs.ParameterSpecification(
+                    label="Alternative Hypothesis",
+                    desc="Specifies the alternative hypothesis (two-sided, less, or greater).",
+                    types=[specs.ParameterType.TEXT],
+                    required=True,
+                    multiple=False,
+                    default="two-sided",
+                    enums=specs.ParameterEnumSpecification(
+                        type=specs.ParameterEnumType.LIST,
+                        source=["two-sided", "less", "greater"],
+                    ),
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=None,
+                    max=None,
+                ),
+                "alpha": specs.ParameterSpecification(
+                    label="Alpha",
+                    desc="The significance level. The probability of rejecting the null hypothesis when it is true.",
+                    types=[specs.ParameterType.REAL],
+                    required=True,
+                    multiple=False,
+                    default=0.05,
+                    enums=None,
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=0.0,
+                    max=1.0,
+                ),
+                "mu": specs.ParameterSpecification(
+                    label="Population mean",
+                    desc="Null hypothesis mean value (mu0).",
+                    types=[specs.ParameterType.REAL],
+                    required=True,
+                    multiple=False,
+                    default=0.0,
+                    enums=None,
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=-10.0,
+                    max=10.0,
+                ),
+            },
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     def run(self):
         alpha = self.get_parameter("alpha")
         alternative = self.get_parameter("alt_hypothesis")

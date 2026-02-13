@@ -4,10 +4,10 @@ from typing import List
 import numpy as np
 from pydantic import BaseModel
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.decomposition.pca import FederatedPCA
-from exaflow.algorithms.specifications import AlgorithmName
 from exaflow.worker_communication import BadUserInput
 
 
@@ -18,7 +18,46 @@ class PCAResult(BaseModel):
     eigenvectors: List[List[float]]
 
 
-class PCAWithTransformation(Algorithm, algname=AlgorithmName.PCA_WITH_TRANSFORMATION):
+class PCAWithTransformation(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name="pca_with_transformation",
+            desc="Computes the principal components of a set of correlated variables. The principal components can then be used to represent the original data with reduced dimensions.",
+            label="Principal Component Analysis (PCA)",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="Variables",
+                    desc="A list of numerical variables.",
+                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NUMERICAL],
+                    required=True,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                x=None,
+                validation=None,
+            ),
+            parameters={
+                "data_transformation": specs.ParameterSpecification(
+                    label="Data Transformation",
+                    desc="Transform a column with on of the given methods (log, exp, center, standardize) to reduce skewness of a distribution towards normalcy.",
+                    types=[specs.ParameterType.DICT],
+                    required=False,
+                    multiple=False,
+                    default=None,
+                    enums=None,
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=None,
+                    max=None,
+                ),
+            },
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     def run(self):
         data_transformation: Dict = self.get_parameter("data_transformation")
 

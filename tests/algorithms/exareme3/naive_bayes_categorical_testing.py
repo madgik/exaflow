@@ -1,9 +1,9 @@
 from collections import Counter
 from typing import Dict
-from typing import List
 
 from pydantic import BaseModel
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.naive_bayes import FederatedCategoricalNB
@@ -15,15 +15,43 @@ from exaflow.worker_communication import BadUserInput
 ALGNAME_PRED = "test_nb_categorical_predict"
 
 
-def _sorted_categories(metadata: dict, variables: List[str]) -> Dict[str, List[str]]:
-    return {
-        var: list(sorted(metadata[var]["enumerations"].keys())) for var in variables
-    }
+class Result(BaseModel):
+    predictions: Dict[str, int]
 
 
-class CategoricalNBTestingPredict(Algorithm, algname=ALGNAME_PRED):
-    class Result(BaseModel):
-        predictions: Dict[str, int]
+class CategoricalNBTestingPredict(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name=ALGNAME_PRED,
+            desc="Uses Bayes' theorem to calculate the probability of each class given a set of nominal features assuming independence between features. It then classifies data points based on the class with the highest probability.",
+            label="Categorical Naive Bayes classifier with cross-validation",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="Variable (dependent)",
+                    desc="A unique nominal variable.",
+                    types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                x=specs.InputDataSpecification(
+                    label="Covariates (independent)",
+                    desc="One or more nominal variables.",
+                    types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                validation=None,
+            ),
+            parameters={},
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
 
     def run(self):
         if not self.inputdata.y or not self.inputdata.x:
@@ -31,7 +59,10 @@ class CategoricalNBTestingPredict(Algorithm, algname=ALGNAME_PRED):
 
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)
-        categories = _sorted_categories(self.metadata, x_vars + [y_var])
+        categories = {
+            var: list(sorted(self.metadata[var]["enumerations"].keys()))
+            for var in x_vars + [y_var]
+        }
 
         udf_results = self.run_local_udf(
             func=categorical_nb_predict_udf,
@@ -46,7 +77,7 @@ class CategoricalNBTestingPredict(Algorithm, algname=ALGNAME_PRED):
         for worker_res in udf_results:
             total.update(worker_res["predictions"])
 
-        return self.Result(predictions=dict(total))
+        return Result(predictions=dict(total))
 
 
 def _prepare_dataframe(data, x_vars, y_var):

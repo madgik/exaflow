@@ -1,16 +1,17 @@
+import inspect
+import json
 from abc import ABC
 from abc import abstractmethod
+from pathlib import Path
 from typing import Any
 from typing import Dict
 from typing import Optional
 
-from exaflow.algorithms.specifications import AlgorithmName
+from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 
 
 class Algorithm(ABC):
-    algname: AlgorithmName
-
     def __init__(
         self,
         *,
@@ -23,10 +24,6 @@ class Algorithm(ABC):
         self._metadata: dict = metadata
         self._inputdata: Inputdata = inputdata
         self._parameters: dict = parameters if parameters is not None else {}
-
-    def __init_subclass__(cls, algname: str, **kwargs):
-        super().__init_subclass__(**kwargs)
-        cls.algname = algname
 
     @property
     def metadata(self) -> dict:
@@ -76,3 +73,23 @@ class Algorithm(ABC):
             self.add_dataset_variable,
             kw_args,
         )
+
+    @classmethod
+    def get_specification(cls) -> AlgorithmSpecification:
+        algorithm_path = Path(inspect.getfile(cls)).resolve()
+        algorithm_folder = algorithm_path.parent
+
+        candidate_paths = [algorithm_folder / f"{algorithm_path.stem}.json"]
+        specification_path = next(
+            (path for path in candidate_paths if path.exists()), None
+        )
+        if specification_path is None:
+            expected = ", ".join(str(path) for path in candidate_paths)
+            raise FileNotFoundError(
+                f"Specification JSON not found for '{cls.__name__}'. Expected one of: {expected}"
+            )
+
+        with specification_path.open("r", encoding="utf-8") as fp:
+            specification = json.load(fp)
+
+        return AlgorithmSpecification.parse_obj(specification)

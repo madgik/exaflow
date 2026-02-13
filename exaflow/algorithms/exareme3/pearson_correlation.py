@@ -2,10 +2,10 @@ from typing import Sequence
 
 from pydantic import BaseModel
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated import FederatedDescriptiveStatistics
-from exaflow.algorithms.specifications import AlgorithmName
 
 
 class PearsonResult(BaseModel):
@@ -17,7 +17,54 @@ class PearsonResult(BaseModel):
     ci_lo: dict
 
 
-class PearsonCorrelation(Algorithm, algname=AlgorithmName.PEARSON_CORRELATION):
+class PearsonCorrelation(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name="pearson_correlation",
+            desc="Federated Pearson correlation with p-values and confidence intervals. Computes correlations for all pairs between variables and optional covariates.",
+            label="Pearson Correlation",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="Variables",
+                    desc="Numerical variables for the primary axis of the correlation matrix.",
+                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NUMERICAL],
+                    required=True,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                x=specs.InputDataSpecification(
+                    label="Covariates (optional)",
+                    desc="Optional numerical variables for the secondary axis. If empty, uses the same variables.",
+                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NUMERICAL],
+                    required=False,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                validation=None,
+            ),
+            parameters={
+                "alpha": specs.ParameterSpecification(
+                    label="Confidence level",
+                    desc="Confidence level used to compute correlation coefficient intervals.",
+                    types=[specs.ParameterType.REAL],
+                    required=True,
+                    multiple=False,
+                    default=0.95,
+                    enums=None,
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=0.0,
+                    max=1.0,
+                ),
+            },
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     def run(self):
         alpha = self.get_parameter("alpha")
         if self.inputdata.x:

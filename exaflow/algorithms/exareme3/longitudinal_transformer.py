@@ -6,9 +6,87 @@ from typing import List
 
 import pandas as pd
 
+from exaflow.algorithms import specifications as specs
+from exaflow.algorithms.exareme3.utils.transformer import Transformer
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.algorithms.utils.pandas_utils import convert_to_pandas_dataframe
 from exaflow.worker_communication import BadUserInput
+
+
+class LongitudinalTransformer(Transformer):
+    @classmethod
+    def get_specification(cls) -> specs.TransformerSpecification:
+        return specs.TransformerSpecification(
+            name="longitudinal_transformer",
+            desc="Longitudinal transformation between two visits.",
+            label="Longitudinal Transformer",
+            enabled=True,
+            parameters={
+                "visit1": specs.ParameterSpecification(
+                    label="1st Visit",
+                    desc="The earlier visit identifier.",
+                    types=[specs.ParameterType.TEXT],
+                    required=True,
+                    multiple=False,
+                    default=None,
+                    enums=specs.ParameterEnumSpecification(
+                        type=specs.ParameterEnumType.FIXED_VAR_CDE_ENUMS,
+                        source=["visitid"],
+                    ),
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=None,
+                    max=None,
+                ),
+                "visit2": specs.ParameterSpecification(
+                    label="2nd Visit",
+                    desc="The later visit identifier.",
+                    types=[specs.ParameterType.TEXT],
+                    required=True,
+                    multiple=False,
+                    default=None,
+                    enums=specs.ParameterEnumSpecification(
+                        type=specs.ParameterEnumType.FIXED_VAR_CDE_ENUMS,
+                        source=["visitid"],
+                    ),
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=None,
+                    max=None,
+                ),
+                "strategies": specs.ParameterSpecification(
+                    label="Strategies",
+                    desc="Select a strategy for each variable.",
+                    types=[specs.ParameterType.DICT],
+                    required=True,
+                    multiple=False,
+                    default=None,
+                    enums=None,
+                    dict_keys_enums=specs.ParameterEnumSpecification(
+                        type=specs.ParameterEnumType.INPUT_VAR_NAMES,
+                        source=["x", "y"],
+                    ),
+                    dict_values_enums=specs.ParameterEnumSpecification(
+                        type=specs.ParameterEnumType.LIST,
+                        source=["diff", "first", "second"],
+                    ),
+                    min=None,
+                    max=None,
+                ),
+            },
+            compatible_algorithms=[
+                "anova_oneway",
+                "anova_twoway",
+                "linear_regression",
+                "linear_regression_cv",
+                "logistic_regression",
+                "logistic_regression_cv",
+                "naive_bayes_gaussian_cv",
+                "naive_bayes_categorical_cv",
+            ],
+            type=specs.TransformerType.EXAREME3_TRANSFORMER,
+            components=[],
+        )
 
 
 def _validate_strategies(

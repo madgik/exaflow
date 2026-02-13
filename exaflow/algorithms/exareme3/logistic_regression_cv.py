@@ -7,6 +7,7 @@ import numpy as np
 import sklearn.metrics as skm
 from pydantic import BaseModel
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.compose.column_transformer import (
@@ -30,7 +31,6 @@ from exaflow.algorithms.federated.model_selection.cross_validation.splitter_kfol
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
 from exaflow.algorithms.federated.utils import BadInputError
-from exaflow.algorithms.specifications import AlgorithmName
 from exaflow.worker_communication import BadUserInput
 
 
@@ -84,7 +84,77 @@ class BasicMetrics(NamedTuple):
     fscore: float
 
 
-class LogisticRegressionCV(Algorithm, algname=AlgorithmName.LOGISTIC_REGRESSION_CV):
+class LogisticRegressionCV(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name="logistic_regression_cv",
+            desc="Federated K-fold cross-validation for logistic regression with one-hot encoded categorical covariates.",
+            label="Logistic Regression Cross-validation",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="Dependent variable (binary)",
+                    desc="A unique nominal variable. The variable is converted to binary by assigning 1 to the positive class and 0 to all other classes. ",
+                    types=[specs.InputDataType.INT, specs.InputDataType.TEXT],
+                    stattypes=[specs.InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                x=specs.InputDataSpecification(
+                    label="Covariates (independent)",
+                    desc="One or more covariates (numerical or categorical). Categorical variables are one-hot encoded.",
+                    types=[
+                        specs.InputDataType.REAL,
+                        specs.InputDataType.INT,
+                        specs.InputDataType.TEXT,
+                    ],
+                    stattypes=[
+                        specs.InputDataStatType.NUMERICAL,
+                        specs.InputDataStatType.NOMINAL,
+                    ],
+                    required=True,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                validation=None,
+            ),
+            parameters={
+                "positive_class": specs.ParameterSpecification(
+                    label="Positive class (y=1)",
+                    desc="Positive class of y. All other classes are considered negative.",
+                    types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
+                    required=True,
+                    multiple=False,
+                    default=None,
+                    enums=specs.ParameterEnumSpecification(
+                        type=specs.ParameterEnumType.INPUT_VAR_CDE_ENUMS,
+                        source=["y"],
+                    ),
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=None,
+                    max=None,
+                ),
+                "n_splits": specs.ParameterSpecification(
+                    label="Number of folds",
+                    desc="Number of folds for K-fold cross-validation.",
+                    types=[specs.ParameterType.INT],
+                    required=True,
+                    multiple=False,
+                    default=5,
+                    enums=None,
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=2,
+                    max=20,
+                ),
+            },
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     def run(self):
         positive_class = self.get_parameter("positive_class")
         n_splits = self.get_parameter("n_splits")

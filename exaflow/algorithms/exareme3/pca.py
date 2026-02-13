@@ -2,10 +2,10 @@ from typing import List
 
 from pydantic import BaseModel
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.decomposition.pca import FederatedPCA
-from exaflow.algorithms.specifications import AlgorithmName
 
 
 class PCAResult(BaseModel):
@@ -15,7 +15,32 @@ class PCAResult(BaseModel):
     eigenvectors: List[List[float]]
 
 
-class PCA(Algorithm, algname=AlgorithmName.PCA):
+class PCA(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name="pca",
+            desc="Federated PCA that computes eigenvalues and eigenvectors from aggregated covariances to summarize multivariate structure.",
+            label="Principal Component Analysis",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="Variables (features)",
+                    desc="List of numerical variables used to compute the covariance matrix.",
+                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NUMERICAL],
+                    required=True,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                x=None,
+                validation=None,
+            ),
+            parameters=None,
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     def run(self):
         results = self.run_local_udf(
             func=local_step,

@@ -2,6 +2,7 @@ from typing import List
 
 from pydantic import BaseModel
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.compose.column_transformer import (
@@ -12,7 +13,6 @@ from exaflow.algorithms.federated.linear_model.logistic_regression import (
 )
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
-from exaflow.algorithms.specifications import AlgorithmName
 
 
 class LogisticRegressionSummary(BaseModel):
@@ -39,7 +39,64 @@ class LogisticRegressionResult(BaseModel):
     summary: LogisticRegressionSummary
 
 
-class LogisticRegression(Algorithm, algname=AlgorithmName.LOGISTIC_REGRESSION):
+class LogisticRegression(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name="logistic_regression",
+            desc="Federated logistic regression for a binary outcome, with one-hot encoding for categorical covariates.",
+            label="Logistic Regression",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="Dependent variable (binary)",
+                    desc="A unique nominal variable. The variable is converted to binary by assigning 1 to the positive class and 0 to all other classes.",
+                    types=[specs.InputDataType.INT, specs.InputDataType.TEXT],
+                    stattypes=[specs.InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                x=specs.InputDataSpecification(
+                    label="Covariates (independent)",
+                    desc="One or more covariates (numerical or categorical). Categorical variables are one-hot encoded.",
+                    types=[
+                        specs.InputDataType.REAL,
+                        specs.InputDataType.INT,
+                        specs.InputDataType.TEXT,
+                    ],
+                    stattypes=[
+                        specs.InputDataStatType.NUMERICAL,
+                        specs.InputDataStatType.NOMINAL,
+                    ],
+                    required=True,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                validation=None,
+            ),
+            parameters={
+                "positive_class": specs.ParameterSpecification(
+                    label="Positive class (y=1)",
+                    desc="Positive class of y. All other classes are considered negative.",
+                    types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
+                    required=True,
+                    multiple=False,
+                    default=None,
+                    enums=specs.ParameterEnumSpecification(
+                        type=specs.ParameterEnumType.INPUT_VAR_CDE_ENUMS,
+                        source=["y"],
+                    ),
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=None,
+                    max=None,
+                ),
+            },
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     def run(self):
         positive_class = self.get_parameter("positive_class")
         y_var = self.inputdata.y[0]

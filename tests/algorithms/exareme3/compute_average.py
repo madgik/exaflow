@@ -1,3 +1,4 @@
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.worker_communication import ColumnDataFloat
@@ -7,7 +8,32 @@ from exaflow.worker_communication import TabularDataResult
 ALGORITHM_NAME = "compute_average"
 
 
-class ComputeAverage(Algorithm, algname=ALGORITHM_NAME):
+class ComputeAverage(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name=ALGORITHM_NAME,
+            desc="Compute the average value of a column",
+            label="Compute Average",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="column",
+                    desc="Column",
+                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                    stattypes=[specs.InputDataStatType.NUMERICAL],
+                    required=True,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                x=None,
+                validation=False,
+            ),
+            parameters={},
+            type=specs.AlgorithmType.EXAREME3,
+            components=[],
+        )
+
     def run(self):
         local_results = self.run_local_udf(
             func=local_step,

@@ -4,6 +4,7 @@ from typing import NamedTuple
 import numpy as np
 from pydantic import BaseModel
 
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated import FederatedOLS
@@ -22,7 +23,6 @@ from exaflow.algorithms.federated.model_selection.cross_validation.splitter_kfol
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
 from exaflow.algorithms.federated.utils import BadInputError
-from exaflow.algorithms.specifications import AlgorithmName
 from exaflow.worker_communication import BadUserInput
 
 ALPHA = 0.05
@@ -43,7 +43,61 @@ class LinearRegressionCVResult(BaseModel):
     f_stat: BasicStats
 
 
-class LinearRegressionCV(Algorithm, algname=AlgorithmName.LINEAR_REGRESSION_CV):
+class LinearRegressionCV(Algorithm):
+    @classmethod
+    def get_specification(cls) -> specs.AlgorithmSpecification:
+        return specs.AlgorithmSpecification(
+            name="linear_regression_cv",
+            desc="Evaluates a federated linear regression model using K-fold cross-validation. Each fold trains a global model and reports metrics over the held-out data.",
+            label="Linear Regression (K-Fold CV)",
+            enabled=True,
+            inputdata=specs.InputDataSpecifications(
+                y=specs.InputDataSpecification(
+                    label="Dependent Variable",
+                    desc="Single numerical target variable.",
+                    types=[specs.InputDataType.REAL],
+                    stattypes=[specs.InputDataStatType.NUMERICAL],
+                    required=True,
+                    multiple=False,
+                    enumslen=None,
+                ),
+                x=specs.InputDataSpecification(
+                    label="Independent Variables",
+                    desc="One or more predictors (numerical or nominal). Nominal variables are one-hot encoded with a global schema across workers.",
+                    types=[
+                        specs.InputDataType.REAL,
+                        specs.InputDataType.INT,
+                        specs.InputDataType.TEXT,
+                    ],
+                    stattypes=[
+                        specs.InputDataStatType.NUMERICAL,
+                        specs.InputDataStatType.NOMINAL,
+                    ],
+                    required=True,
+                    multiple=True,
+                    enumslen=None,
+                ),
+                validation=None,
+            ),
+            parameters={
+                "n_splits": specs.ParameterSpecification(
+                    label="Number of Folds",
+                    desc="Number of folds for K-fold cross-validation.",
+                    types=[specs.ParameterType.INT],
+                    required=True,
+                    multiple=False,
+                    default=5,
+                    enums=None,
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=2,
+                    max=20,
+                ),
+            },
+            type=specs.AlgorithmType.EXAREME3,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
+
     def run(self):
         y_var = self.inputdata.y[0]
         n_splits = int(self.get_parameter("n_splits"))
