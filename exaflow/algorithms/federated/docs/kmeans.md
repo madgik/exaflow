@@ -1,6 +1,4 @@
-# Cluster Algorithms
-
-## KMeans (FederatedKMeans)
+﻿## KMeans (FederatedKMeans)
 
 ### Name
 
@@ -73,3 +71,4 @@ Avoid / be careful when:
 | Initialization   | K-means++    | Random uniform      |
 | Empty clusters   | Various      | Reset to zero       |
 | Convergence      | Exact        | Exact (Frob. norm)  |
+

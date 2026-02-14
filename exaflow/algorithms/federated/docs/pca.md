@@ -1,6 +1,4 @@
-# Decomposition Algorithms
-
-## Principal Component Analysis (FederatedPCA)
+﻿## Principal Component Analysis (FederatedPCA)
 
 ### Name
 
@@ -79,3 +77,4 @@ Avoid / be careful when:
 | Eigenvectors (components)  | Exact        | Exact            |
 | Explained variance         | Exact        | Exact            |
 | Transformation             | Exact        | Exact            |
+
