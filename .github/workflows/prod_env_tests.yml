@@ -14,23 +14,23 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.10"
 
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
-          version: 1.8.2
+          version: 2.3.2
           virtualenvs-create: true
           virtualenvs-in-project: true
 
       - name: Load cached venv
         id: cached-poetry-dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
@@ -75,7 +75,7 @@ jobs:
           done
 
       - name: Load Docker buildx cache
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ hashFiles('exaflow/**') }}
@@ -83,7 +83,7 @@ jobs:
             ${{ runner.os }}-buildx-
 
       - name: Build and push images with bake
-        uses: docker/bake-action@v5
+        uses: docker/bake-action@v6
         with:
           files: .github/workflows/docker-bake.hcl
           targets: default
@@ -103,9 +103,9 @@ jobs:
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
       - name: Install Helm
-        uses: azure/setup-helm@v3
+        uses: azure/setup-helm@v4
         with:
-          version: 3.9.1
+          version: 4.1.1
         id: install
 
       - name: Taint Nodes
@@ -213,17 +213,17 @@ jobs:
         run: kubectl logs -l nodeType=localworker -c worker --tail -1
 
       - name: Controller logs (post run)
-        uses: webiny/action-post-run@3.0.0
+        uses: webiny/action-post-run@3.1.0
         with:
           run: kubectl logs -l app=exaflow-controller --tail -1
 
       - name: Globalnode logs (post run)
-        uses: webiny/action-post-run@3.0.0
+        uses: webiny/action-post-run@3.1.0
         with:
           run: kubectl logs -l nodeType=globalworker -c worker --tail -1
 
       - name: Localnode logs (post run)
-        uses: webiny/action-post-run@3.0.0
+        uses: webiny/action-post-run@3.1.0
         with:
           run: kubectl logs -l nodeType=localworker -c worker --tail -1
 

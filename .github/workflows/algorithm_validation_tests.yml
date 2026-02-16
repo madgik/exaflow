@@ -11,23 +11,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: "3.10"
 
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
-          version: 1.8.2
+          version: 2.3.2
           virtualenvs-create: true
           virtualenvs-in-project: true
 
       - name: Load cached venv
         id: cached-poetry-dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
@@ -55,17 +55,17 @@ jobs:
         run: cat /tmp/exaflow/localworker1.out
 
       - name: Controller logs (post run)
-        uses: webiny/action-post-run@3.0.0
+        uses: webiny/action-post-run@3.1.0
         with:
           run: cat /tmp/exaflow/controller.out
 
       - name: Globalworker logs (post run)
-        uses: webiny/action-post-run@3.0.0
+        uses: webiny/action-post-run@3.1.0
         with:
           run: cat /tmp/exaflow/globalworker.out
 
       - name: Localworker logs (post run)
-        uses: webiny/action-post-run@3.0.0
+        uses: webiny/action-post-run@3.1.0
         with:
           run: cat /tmp/exaflow/localworker1.out
 
@@ -120,23 +120,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.10"
 
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
-          version: 1.8.2
+          version: 2.3.2
           virtualenvs-create: true
           virtualenvs-in-project: true
 
       - name: Load cached venv
         id: cached-poetry-dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
@@ -167,17 +167,17 @@ jobs:
         run: cat /tmp/exaflow/localworker1.out
 
       - name: Controller logs (post run)
-        uses: webiny/action-post-run@3.0.0
+        uses: webiny/action-post-run@3.1.0
         with:
           run: cat /tmp/exaflow/controller.out
 
       - name: Globalworker logs (post run)
-        uses: webiny/action-post-run@3.0.0
+        uses: webiny/action-post-run@3.1.0
         with:
           run: cat /tmp/exaflow/globalworker.out
 
       - name: Localworker logs (post run)
-        uses: webiny/action-post-run@3.0.0
+        uses: webiny/action-post-run@3.1.0
         with:
           run: cat /tmp/exaflow/localworker1.out
 
