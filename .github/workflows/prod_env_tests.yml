@@ -231,10 +231,10 @@ jobs:
         run: sleep 5
 
       - name: Run Worker Landscape Aggregator update
-        run: curl -X POST "http://172.17.0.1:5000/wla"
+        run: curl -X POST "http://172.17.0.1:5100/wla"
 
       - name: Run Healthcheck
-        run: curl "http://172.17.0.1:5000/healthcheck"
+        run: curl "http://172.17.0.1:5100/healthcheck"
 
       - name: Run production env tests
         run: poetry run pytest tests/prod_env_tests --verbosity=4
