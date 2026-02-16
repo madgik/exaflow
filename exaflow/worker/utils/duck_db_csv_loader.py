@@ -129,10 +129,12 @@ def _create_primary_data_table(
     conn: duckdb.DuckDBPyConnection,
     table_prefix: str,
     csv_paths: list[Path],
-    column_types: dict[str, str] | None = None,
+    metadata: dict | None = None,
 ):
     if not csv_paths:
         raise ValueError("No CSV files provided to create the primary data table.")
+
+    column_types = _build_column_types(metadata) if metadata else None
 
     table_name = f"{table_prefix}__primary_data"
     conn.execute(f'DROP TABLE IF EXISTS "{table_name}"')
@@ -316,8 +318,7 @@ def load_all_csvs_from_data_folder(request_id: str) -> str:
             data_model_id += 1
             table_prefix = _sanitize_name(f"{code}:{version}")
 
-            col_types = _build_column_types(metadata)
-            _create_primary_data_table(conn, table_prefix, csv_paths, col_types)
+            _create_primary_data_table(conn, table_prefix, csv_paths, metadata)
             _load_variables_metadata(conn, table_prefix, metadata)
             properties = {}
             properties["cdes"] = metadata

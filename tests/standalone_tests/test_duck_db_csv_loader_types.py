@@ -69,10 +69,8 @@ def test_build_column_types_maps_categorical_to_varchar():
 
 
 def test_create_primary_data_table_enforces_types(tmp_csv):
-    col_types = _build_column_types(METADATA)
-
     with duckdb.connect(":memory:") as conn:
-        _create_primary_data_table(conn, "test", [tmp_csv], col_types)
+        _create_primary_data_table(conn, "test", [tmp_csv], METADATA)
 
         # Check column types
         schema = conn.execute(
@@ -98,10 +96,9 @@ def test_create_primary_data_table_enforces_types(tmp_csv):
 
 def test_metadata_only_columns_are_null(tmp_csv):
     """Columns defined in metadata but missing from CSVs should appear as NULL."""
-    col_types = _build_column_types(METADATA)
 
     with duckdb.connect(":memory:") as conn:
-        _create_primary_data_table(conn, "test", [tmp_csv], col_types)
+        _create_primary_data_table(conn, "test", [tmp_csv], METADATA)
 
         values = conn.execute('SELECT "diagnosis" FROM "test__primary_data"').fetchall()
         assert len(values) == 3

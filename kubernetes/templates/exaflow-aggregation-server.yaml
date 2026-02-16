@@ -16,8 +16,10 @@ spec:
       labels:
         app: exaflow-aggregation-server
     spec:
+      {{- if not .Values.managed_cluster }}
       nodeSelector:
         master: "true"
+      {{- end }}
       containers:
         - name: aggregation-server
           image: "{{ .Values.exaflow_images.repository }}/exaflow_aggregation_server:{{ .Values.exaflow_images.version }}"
