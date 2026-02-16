@@ -157,7 +157,7 @@ from argparse import ArgumentParser
 
 import requests
 
-ALGORITHMS_URL = "http://127.0.0.1:5000/algorithms/"
+ALGORITHMS_URL = "http://127.0.0.1:5100/algorithms/"
 
 
 def parse_argv(argv):
