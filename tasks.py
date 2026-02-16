@@ -389,7 +389,7 @@ def create_duckdb(c, worker):
 
 @task
 def update_wla(c):
-    url = "http://localhost:5100/wla"
+    url = f"http://localhost:{get_controller_port()}/wla"
     try:
         response = requests.post(url, timeout=10)
     except requests.RequestException as exc:
@@ -705,14 +705,59 @@ def start_aggregation_server(c, detached: bool = False):
 @task
 def kill_controller(c):
     """Kill the controller service."""
-    HYPERCORN_PROCESS_NAME = "[f]rom multiprocessing.spawn import spawn_main;"
-    res = run(c, f"ps aux | grep '{HYPERCORN_PROCESS_NAME}'", warn=True, show_ok=False)
-    if res.ok:
+    controller_port = get_controller_port()
+    lsof_res = run(
+        c,
+        f"lsof -nP -iTCP:{controller_port} -sTCP:LISTEN",
+        warn=True,
+        show_ok=False,
+    )
+    pids_to_kill = set()
+    non_controller_listeners = []
+    if lsof_res.ok and lsof_res.stdout.strip():
+        for line in lsof_res.stdout.strip().splitlines()[1:]:
+            parts = line.split()
+            if len(parts) < 2:
+                continue
+            command = parts[0].lower()
+            pid = parts[1]
+            if command in ("python", "hypercorn"):
+                pids_to_kill.add(pid)
+            else:
+                non_controller_listeners.append((parts[0], pid))
+
+    if pids_to_kill:
         message("Killing previous Hypercorn instances...", Level.HEADER)
-        cmd = f"ps aux | grep '{HYPERCORN_PROCESS_NAME}' | awk '{{ print $2}}' | xargs kill -9 && sleep 5"
-        run(c, cmd)
-    else:
-        message("No hypercorn instance found", Level.HEADER)
+        pids = " ".join(sorted(pids_to_kill))
+        cmd = f"kill -9 {pids} && sleep 1"
+        run(c, cmd, warn=True)
+        return
+
+    # Fallback for controllers that may not expose a listening socket yet.
+    hypercorn_process_patterns = (
+        "hypercorn --config python:exaflow.controller.quart.hypercorn_config",
+        "exaflow.controller.quart.app:app",
+    )
+    for process_pattern in hypercorn_process_patterns:
+        res = run(c, f"pgrep -f '{process_pattern}'", warn=True, show_ok=False)
+        if res.ok and res.stdout.strip():
+            pids = " ".join(res.stdout.strip().splitlines())
+            message("Killing previous Hypercorn instances...", Level.HEADER)
+            cmd = f"kill -9 {pids} && sleep 1"
+            run(c, cmd, warn=True)
+            return
+
+    if non_controller_listeners:
+        listeners = ", ".join(
+            f"{command}(pid={pid})" for command, pid in non_controller_listeners
+        )
+        message(
+            f"No controller process found. Port {controller_port} is used by: {listeners}",
+            Level.WARNING,
+        )
+        return
+
+    message("No hypercorn instance found", Level.HEADER)
 
 
 @task
@@ -737,6 +782,7 @@ def start_controller(
     kill_controller(c)
     message("Starting Controller...", Level.HEADER)
     controller_config_file = CONTROLLER_CONFIG_DIR / "controller.toml"
+    controller_port = get_controller_port()
 
     # Build a dictionary of environment variables for the controller
     env_vars = {
@@ -751,13 +797,13 @@ def start_controller(
         if detached:
             cmd = (
                 f"PYTHONPATH={PROJECT_ROOT} poetry run hypercorn --config python:exaflow.controller.quart.hypercorn_config "
-                f"-b 0.0.0.0:5100 exaflow.controller.quart.app:app >> {outpath} 2>&1"
+                f"-b 0.0.0.0:{controller_port} exaflow.controller.quart.app:app >> {outpath} 2>&1"
             )
             run(c, cmd, wait=False)
         else:
             cmd = (
                 f"PYTHONPATH={PROJECT_ROOT} poetry run hypercorn --config python:exaflow.controller.quart.hypercorn_config "
-                f"-b 0.0.0.0:5100 exaflow.controller.quart.app:app"
+                f"-b 0.0.0.0:{controller_port} exaflow.controller.quart.app:app"
             )
             run(c, cmd, attach_=True)
 
@@ -1234,6 +1280,13 @@ def get_deployment_config(config, subconfig=None):
         if subconfig:
             return toml.load(fp)[config][subconfig]
         return toml.load(fp)[config]
+
+
+def get_controller_port(default=5000):
+    try:
+        return int(get_deployment_config("controller", "port"))
+    except (FileNotFoundError, KeyError, TypeError, ValueError):
+        return default
 
 
 def get_worker_ids(all_=False, worker=None):
