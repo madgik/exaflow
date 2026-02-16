@@ -8,7 +8,7 @@ nodes:
 - role: control-plane
   extraPortMappings:
   - containerPort: 30000
-    hostPort: 5000
+    hostPort: 5100
   extraMounts:
   - hostPath: ./tests/prod_env_tests/deployment_configs/kind_configuration/master/hostname
     containerPath: /etc/hostname

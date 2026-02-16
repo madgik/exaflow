@@ -22,7 +22,7 @@ log_level = "INFO"
 framework_log_level ="INFO"
 
 [controller]
-port = 5000
+port = 5100
 
 [[workers]]
 id = "globalworker"
@@ -389,7 +389,7 @@ def create_duckdb(c, worker):
 
 @task
 def update_wla(c):
-    url = "http://localhost:5000/wla"
+    url = "http://localhost:5100/wla"
     try:
         response = requests.post(url, timeout=10)
     except requests.RequestException as exc:
@@ -751,13 +751,13 @@ def start_controller(
         if detached:
             cmd = (
                 f"PYTHONPATH={PROJECT_ROOT} poetry run hypercorn --config python:exaflow.controller.quart.hypercorn_config "
-                f"-b 0.0.0.0:5000 exaflow.controller.quart.app:app >> {outpath} 2>&1"
+                f"-b 0.0.0.0:5100 exaflow.controller.quart.app:app >> {outpath} 2>&1"
             )
             run(c, cmd, wait=False)
         else:
             cmd = (
                 f"PYTHONPATH={PROJECT_ROOT} poetry run hypercorn --config python:exaflow.controller.quart.hypercorn_config "
-                f"-b 0.0.0.0:5000 exaflow.controller.quart.app:app"
+                f"-b 0.0.0.0:5100 exaflow.controller.quart.app:app"
             )
             run(c, cmd, attach_=True)
 
