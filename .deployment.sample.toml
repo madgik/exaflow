@@ -1,4 +1,4 @@
-ip = "127.0.0.1""
+ip = "127.0.0.1"
 federation = "dementia"
 log_level = "DEBUG"
 framework_log_level ="INFO"
