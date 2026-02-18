@@ -296,3 +296,31 @@ class TestFederatedHistogramCategorical(FederatedAlgorithmTest):
             y_levels=y_levels,
             min_row_count=1,
         )
+
+    @pytest.mark.parametrize("n_workers", [1, 3])
+    def test_numeric_like_enum_codes_are_counted_by_label(self, n_workers):
+        y_levels = ["0", "1", "9"]
+        df = pd.DataFrame(
+            {
+                "y": ["1", "1", "1", "1", "1", "1"],
+                "group": ["A", "A", "B", "B", "C", "C"],
+            }
+        )
+        metadata = {
+            "y": {
+                "is_categorical": True,
+                "enumerations": {"0": "No", "1": "Yes", "9": "Unknown"},
+            },
+            "group": {
+                "is_categorical": True,
+                "enumerations": {"A": "A", "B": "B", "C": "C"},
+            },
+        }
+        self.run_comparison(
+            X=df,
+            y=np.zeros((df.shape[0],), dtype=float),
+            n_workers=n_workers,
+            metadata=metadata,
+            y_levels=y_levels,
+            min_row_count=1,
+        )
