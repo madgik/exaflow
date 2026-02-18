@@ -85,7 +85,9 @@ class FederatedHistogram:
         )
 
     def _value_counts(self, series: pd.Series, categories) -> List[int]:
-        counts = series.value_counts()
+        # Use a plain dict to avoid pandas Series.get positional fallback on
+        # integer-like keys (e.g. key=0 on index ["1"] returning first element).
+        counts = series.value_counts().to_dict()
         resolved = []
         for cat in categories:
             count = counts.get(cat, 0)
@@ -94,7 +96,7 @@ class FederatedHistogram:
             resolved.append(int(count))
         return resolved
 
-    def _value_counts_numeric_fallback(self, counts, cat: str) -> int:
+    def _value_counts_numeric_fallback(self, counts: Dict, cat: str) -> int:
         for caster in (float, int):
             try:
                 coerced = caster(cat)
