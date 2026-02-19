@@ -43,7 +43,8 @@ pyarrow = "~22.0"
 
 [tool.poetry.group.flower.dependencies]
 flwr = "~1.23"
-xgboost-cpu = "~2.1"
+xgboost = {version = "~2.1", markers = "sys_platform == 'darwin'"}
+xgboost-cpu = {version = "~2.1", markers = "sys_platform != 'darwin'"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "~8.4"
