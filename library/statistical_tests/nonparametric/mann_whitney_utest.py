@@ -1,11 +1,11 @@
 import numpy as np
 from scipy.stats import norm
 
-from library.utils.interfaces.statistical_function import StatisticalFunction
-from library.utils.aggregators.numpy_aggregator import NumpyAggregator
+from library.descriptive_stats.histogram import FedHistogramSimple
+from library.utils.interfaces.statistical_function import NumpyStatisticalFunction
 
 
-class MannWhitneyUTest(StatisticalFunction):
+class MannWhitneyUTest(NumpyStatisticalFunction):
     """
     Histogram-based implementation of the Mann-Whitney U test.
 
@@ -40,18 +40,16 @@ class MannWhitneyUTest(StatisticalFunction):
             dict: Contains 'statistic', 'p_value', 'U1', 'U2', 'z_score',
                   'sigma', 'mu', and 'tie_correction'.
         """
-        agg = NumpyAggregator(self.client)
         x = np.asarray(x)
         y = np.asarray(y)
-        n1 = agg.global_count(x)
-        n2 = agg.global_count(y)
+        n1 = self.aggregator.global_count(x)
+        n2 = self.aggregator.global_count(y)
 
         # Rank the data
         ranks_x, ranks_y, counts = self.rank(x, y, num_bins)
 
         # Calculate U descriptive_stats using different formulas
         u_1 = np.sum(ranks_x) - n1 * (n1 + 1) / 2
-        u_2 = np.sum(ranks_y) - n2 * (n2 + 1) / 2
 
         # Scipy's formula: U = n1*n2 + n2*(n2+1)/2 - sum(ranks_y)
         u_stat = n1 * n2 + n2 * (n2 + 1) / 2 - np.sum(ranks_y)
@@ -97,12 +95,11 @@ class MannWhitneyUTest(StatisticalFunction):
 
 
     def rank(self,x, y, num_bins):
-        agg = NumpyAggregator(self.client)
         # Rank the data
-        overall_min = min([agg.global_min(x)[0], agg.global_min(y)[0]])
-        overall_max = max([agg.global_max(x)[0], agg.global_max(y)[0]])
+        overall_min = min([self.aggregator.global_min(x)[0], self.aggregator.global_min(y)[0]])
+        overall_max = max([self.aggregator.global_max(x)[0], self.aggregator.global_max(y)[0]])
         # Federated Histogram
-        histogram = StandardHistogram(self.client)
+        histogram = FedHistogramSimple(self.aggregator)
         #
         counts_x,bin_edges_x =histogram.numerical_histogram(x, num_bins, value_range=(overall_min, overall_max))
         counts_y, bin_edges_y = histogram.numerical_histogram(y, num_bins, value_range=(overall_min, overall_max))
