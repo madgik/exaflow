@@ -62,18 +62,13 @@ if __name__ == "__main__":
     ]
 
     for factor in ['Sex','Pclass','Embarked']:
-        for outcome in [ 'Survived']:
+        for outcome in [ 'Survived','Embarked']:
             print(f"\n******** Testing {factor} vs {outcome} ********")
 
             # Pre-calculating categories as required by the current ChiSquared implementation
-            factor_categories = df[factor].dropna().unique()
-            outcome_categories = df[outcome].dropna().unique()
-
             ChiSquaredTest.run_test(
                 dataset=TitanicDataset(),
                 factor=factor,
-                factor_categories=factor_categories,
                 outcome=outcome,
-                outcome_categories=outcome_categories,
                 client_count=3
             )

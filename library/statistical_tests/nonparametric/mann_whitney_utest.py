@@ -40,8 +40,20 @@ class MannWhitneyUTest(NumpyStatisticalFunction):
             dict: Contains 'statistic', 'p_value', 'U1', 'U2', 'z_score',
                   'sigma', 'mu', and 'tie_correction'.
         """
-        x = np.asarray(x)
-        y = np.asarray(y)
+        # Check if inputs are numpy arrays
+        if not isinstance(x, np.ndarray):
+            raise TypeError(f"x must be a numpy array, got {type(x).__name__}")
+        if not isinstance(y, np.ndarray):
+            raise TypeError(f"y must be a numpy array, got {type(y).__name__}")
+
+        # Check if arrays are 1D
+        if x.ndim != 1:
+            raise ValueError(f"x must be a 1D array, got shape {x.shape}")
+        if y.ndim != 1:
+            raise ValueError(f"y must be a 1D array, got shape {y.shape}")
+
+
+
         n1 = self.aggregator.global_count(x)
         n2 = self.aggregator.global_count(y)
 
@@ -96,8 +108,8 @@ class MannWhitneyUTest(NumpyStatisticalFunction):
 
     def rank(self,x, y, num_bins):
         # Rank the data
-        overall_min = min([self.aggregator.global_min(x)[0], self.aggregator.global_min(y)[0]])
-        overall_max = max([self.aggregator.global_max(x)[0], self.aggregator.global_max(y)[0]])
+        overall_min = min([self.aggregator.global_min(x), self.aggregator.global_min(y)])
+        overall_max = max([self.aggregator.global_max(x), self.aggregator.global_max(y)])
         # Federated Histogram
         histogram = FedHistogramSimple(self.aggregator)
         #

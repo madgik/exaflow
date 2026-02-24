@@ -6,10 +6,11 @@ from library.utils.interfaces.statistical_function import  NumpyStatisticalFunct
 
 class FisherExact(NumpyStatisticalFunction):
 
-    def compute(self, dataset, *, factor,factor_categories, outcome, outcome_categories):
-        cross_tab_table = CrossTab(self.aggregator).compute(dataset, column1=factor,
-                                                        column1_categories=factor_categories,
+    def compute(self, dataset, factor, outcome, *, factor_categories=None, outcome_categories=None):
+        cross_tab_table = CrossTab(self.aggregator).compute(dataset,
+                                                        column1=factor,
                                                         column2=outcome,
-                                                        column2_categories=outcome_categories)
-        odds_ratio, p_value = fisher_exact(cross_tab_table)
-        return odds_ratio, p_value
+                                                        column1_categories=factor_categories,
+                                                        column2_categories=outcome_categories,
+                                                        dropna=True)
+        return fisher_exact(cross_tab_table)
