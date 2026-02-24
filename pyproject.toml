@@ -71,6 +71,7 @@ pytest-subtests = "~0.14"
 freezegun = "~1.5"
 hypothesis = "~6.135"
 pytest-rerunfailures = "~15.1"
+tableone = "~0.9.6"
 
 [tool.pytest.ini_options]
 markers = [

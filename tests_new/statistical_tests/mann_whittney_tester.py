@@ -41,6 +41,5 @@ class MannWhitneyTester(FederationTester):
             print(e)
             raise e
 
-
 if __name__ == "__main__":
     MannWhitneyTester.run_test(dataset=MannWhittneyDataset(), x='x', y='y',client_count=1)

@@ -81,6 +81,11 @@ class AlgorithmName(str, Enum):
     TTEST_INDEPENDENT = "ttest_independent"
     TTEST_ONESAMPLE = "ttest_onesample"
     TTEST_PAIRED = "ttest_paired"
+    CROSS_TAB = "cross_tab"
+    CHI_SQUARED = "chi_squared"
+    FISHER_EXACT = "fisher_exact"
+    MANN_WHITNEY_U = "mann_whitney_u"
+    MEDIAN = "median"
 
     def __str__(self) -> str:
         return str.__str__(self)
