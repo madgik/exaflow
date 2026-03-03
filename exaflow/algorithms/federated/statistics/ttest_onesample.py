@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import scipy.stats as st
 
+from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils import to_numpy
 
 
@@ -40,7 +41,7 @@ class FederatedTTestOneSample:
         total_diff_sqrd_x = float(np.asarray(total_diff_sqrd_x_arr).reshape(-1)[0])
 
         if total_n_obs <= 1:
-            raise ValueError("Not enough observations for one-sample t-test.")
+            raise BadInputError("Not enough observations for one-sample t-test.")
 
         smpl_mean = total_sum_x / total_n_obs
         sd = np.sqrt(
