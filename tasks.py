@@ -817,6 +817,7 @@ def deploy(
     flower_algorithm_folders=None,
     exareme3_algorithm_folders=None,
     smpc=None,
+    no_structure_data=False,
 ):
     """
     Install dependencies, (re)create all the containers and (re)start all the api.
@@ -827,6 +828,7 @@ def deploy(
     :param flower_algorithm_folders: Used from the api. If not provided, it looks in the `DEPLOYMENT_CONFIG_FILE`.
     :param exareme3_algorithm_folders: Used from the api. If not provided, it looks in the `DEPLOYMENT_CONFIG_FILE`.
     :param smpc: Deploy the SMPC cluster as well. If not provided, it looks in the `DEPLOYMENT_CONFIG_FILE`.
+    :param no_structure_data: Do not structure data on the folder `tests/test_data/.data_paths`.
     """
 
     if not log_level:
@@ -865,7 +867,9 @@ def deploy(
         with open(worker_config_file) as fp:
             worker_config = toml.load(fp)
         worker_ids.append(worker_config["identifier"])
-    _structure_data()
+
+    if not no_structure_data:
+        _structure_data()
 
     worker_ids.sort()  # Sorting the ids protects removing a similarly named id, localworker1 would remove localworker10.
     if start_aggregation_server_:
