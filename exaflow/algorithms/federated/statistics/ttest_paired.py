@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import scipy.stats as st
 
+from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils import to_numpy
 
 
@@ -21,7 +22,7 @@ class FederatedTTestPaired:
         sample_x = to_numpy(sample_x).reshape(-1)
         sample_y = to_numpy(sample_y).reshape(-1)
         if sample_x.shape != sample_y.shape:
-            raise ValueError("Paired samples must have the same length.")
+            raise BadInputError("Paired samples must have the same length.")
 
         n_obs = sample_x.size
         diff = sample_x - sample_y
@@ -54,7 +55,7 @@ class FederatedTTestPaired:
         total_y_sq = float(np.asarray(total_y_sq_arr).reshape(-1)[0])
 
         if total_n_obs <= 1:
-            raise ValueError("Not enough observations for paired t-test.")
+            raise BadInputError("Not enough observations for paired t-test.")
 
         mean_x = total_sum_x / total_n_obs
         mean_y = total_sum_y / total_n_obs
