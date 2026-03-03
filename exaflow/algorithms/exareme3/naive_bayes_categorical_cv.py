@@ -26,7 +26,6 @@ from exaflow.algorithms.federated.naive_bayes import FederatedCategoricalNB
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOrdinalEncoder
 from exaflow.algorithms.federated.utils import BadInputError
-from exaflow.worker_communication import BadUserInput
 
 
 class NaiveBayesCategorical(Algorithm):
@@ -178,17 +177,14 @@ def naive_bayes_categorical_cv_local_step(
         scorer=scorer,
     )
 
-    try:
-        metrics = cross_validator.evaluate(
-            None,
-            y,
-            data=data_valid,
-            categorical_vars=x_vars,
-            numerical_vars=[],
-            agg_client=agg_client,
-        )
-    except BadInputError as exc:
-        raise BadUserInput(str(exc))
+    metrics = cross_validator.evaluate(
+        None,
+        y,
+        data=data_valid,
+        categorical_vars=x_vars,
+        numerical_vars=[],
+        agg_client=agg_client,
+    )
     confmats_global = [np.asarray(cm, dtype=float) for cm in metrics["confmat"]]
     n_obs_per_fold = [int(v) for v in metrics["n_obs"]]
 

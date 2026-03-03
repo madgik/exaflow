@@ -7,6 +7,7 @@ from exaflow.algorithms.exareme3.longitudinal_transformer import (
     apply_longitudinal_transformation,
 )
 from exaflow.algorithms.exareme3.utils.registry import exareme3_registry
+from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.algorithms.utils.pandas_utils import convert_to_pandas_dataframe
 from exaflow.worker import config as worker_config
@@ -14,6 +15,7 @@ from exaflow.worker.exareme3.lazy_aggregation import lazy_agg
 from exaflow.worker.exareme3.udf.udf_db import load_algorithm_arrow_table
 from exaflow.worker.utils.logger import get_logger
 from exaflow.worker.utils.logger import initialise_logger
+from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import InsufficientDataError
 
 
@@ -108,6 +110,12 @@ def run_udf(
         kw_args["data"] = data
         result = udf(**kw_args)
         return result
+    except BadInputError as e:
+        logger = get_logger()
+        logger.info(
+            f"Bad input while calling udf. (request_id={request_id})(udf={udf_registry_key})(error={e})"
+        )
+        raise BadUserInput(str(e)) from e
     except TypeError as e:
         logger = get_logger()
         logger.error(

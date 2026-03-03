@@ -13,8 +13,6 @@ from exaflow.algorithms.federated.linear_model.logistic_regression import (
 )
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
-from exaflow.algorithms.federated.utils import BadInputError
-from exaflow.worker_communication import BadUserInput
 
 
 class LogisticRegressionSummary(BaseModel):
@@ -63,6 +61,7 @@ class LogisticRegression(Algorithm):
                     label="Covariates (independent)",
                     desc="One or more covariates (numerical or categorical). Categorical variables are one-hot encoded.",
                     types=[
+                        specs.InputDataType.INT,
                         specs.InputDataType.REAL,
                         specs.InputDataType.TEXT,
                     ],
@@ -167,16 +166,13 @@ def logistic_regression_local_step(
         data[y_var], positive_class
     )
     y = data[y_var].eq(positive_class).to_numpy(dtype=float, copy=False)
-    try:
-        results = pipeline.fit(
-            agg_client=agg_client,
-            data=data,
-            y=y,
-            categorical_vars=categorical_vars,
-            numerical_vars=numerical_vars,
-        )
-    except BadInputError as exc:
-        raise BadUserInput(str(exc)) from exc
+    results = pipeline.fit(
+        agg_client=agg_client,
+        data=data,
+        y=y,
+        categorical_vars=categorical_vars,
+        numerical_vars=numerical_vars,
+    )
     feature_names = pipeline.get_feature_names_out(
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,

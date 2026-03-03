@@ -22,7 +22,6 @@ from exaflow.algorithms.federated.model_selection.cross_validation.scorer_multic
 )
 from exaflow.algorithms.federated.naive_bayes import FederatedGaussianNB
 from exaflow.algorithms.federated.utils import BadInputError
-from exaflow.worker_communication import BadUserInput
 
 VAR_SMOOTHING = 1e-9  # same as original GaussianNB _fit_global
 
@@ -158,10 +157,7 @@ def gaussian_nb_cv_local_step(
         scorer=scorer,
     )
 
-    try:
-        metrics = cross_validator.evaluate(X, y, agg_client=agg_client)
-    except BadInputError as exc:
-        raise BadUserInput(str(exc))
+    metrics = cross_validator.evaluate(X, y, agg_client=agg_client)
 
     confmats_global = [np.asarray(cm, dtype=float) for cm in metrics["confmat"]]
     n_obs_per_fold = [int(v) for v in metrics["n_obs"]]

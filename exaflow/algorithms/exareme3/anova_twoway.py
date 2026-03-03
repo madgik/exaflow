@@ -7,7 +7,6 @@ from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.anova_twoway import FederatedAnovaTwoWay
-from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.worker_communication import BadUserInput
 
 
@@ -106,17 +105,14 @@ class AnovaTwoWay(Algorithm):
 @exareme3_udf(with_aggregation_server=True)
 def anova_twoway_local_step(agg_client, data, x1, x2, y, levels_a, levels_b, sstype):
     model = FederatedAnovaTwoWay(agg_client=agg_client, sstype=sstype)
-    try:
-        model.fit(
-            data=data,
-            y=y,
-            x1=x1,
-            x2=x2,
-            levels_a=levels_a,
-            levels_b=levels_b,
-        )
-    except BadInputError as exc:
-        raise BadUserInput(str(exc))
+    model.fit(
+        data=data,
+        y=y,
+        x1=x1,
+        x2=x2,
+        levels_a=levels_a,
+        levels_b=levels_b,
+    )
 
     terms = model.terms_
     return {

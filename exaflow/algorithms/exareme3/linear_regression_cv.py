@@ -22,8 +22,6 @@ from exaflow.algorithms.federated.model_selection.cross_validation.splitter_kfol
 )
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
-from exaflow.algorithms.federated.utils import BadInputError
-from exaflow.worker_communication import BadUserInput
 
 ALPHA = 0.05
 
@@ -55,7 +53,7 @@ class LinearRegressionCV(Algorithm):
                 y=specs.InputDataSpecification(
                     label="Dependent Variable",
                     desc="Single numerical target variable.",
-                    types=[specs.InputDataType.REAL],
+                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=False,
@@ -183,17 +181,14 @@ def linear_regression_cv_local_step(
         splitter=splitter,
         scorer=FederatedRegressionScorer(),
     )
-    try:
-        metrics = cross_validator.evaluate(
-            None,
-            y,
-            data=data,
-            categorical_vars=categorical_vars,
-            numerical_vars=numerical_vars,
-            agg_client=agg_client,
-        )
-    except BadInputError as exc:
-        raise BadUserInput(str(exc))
+    metrics = cross_validator.evaluate(
+        None,
+        y,
+        data=data,
+        categorical_vars=categorical_vars,
+        numerical_vars=numerical_vars,
+        agg_client=agg_client,
+    )
 
     # Get global feature names
     feature_transformer = FederatedColumnTransformer(
