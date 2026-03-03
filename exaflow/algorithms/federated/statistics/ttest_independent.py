@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import scipy.stats as st
 
+from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils import to_numpy
 
 
@@ -70,11 +71,11 @@ class FederatedTTestIndependent:
         sq_sum_a, sq_sum_b = np.asarray(sq_sums_arr, dtype=float).reshape(-1)
 
         if n_a_total < 1:
-            raise ValueError("Group A has no data.")
+            raise BadInputError("Group A has no data.")
         if n_b_total < 1:
-            raise ValueError("Group B has no data.")
+            raise BadInputError("Group B has no data.")
         if n_a_total + n_b_total <= 2:
-            raise ValueError("Not enough observations for independent t-test.")
+            raise BadInputError("Not enough observations for independent t-test.")
 
         mean_a = sum_a_total / n_a_total
         mean_b = sum_b_total / n_b_total
