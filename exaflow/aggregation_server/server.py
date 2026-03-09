@@ -393,11 +393,10 @@ class AggregationServer(AggregationServerServicer):
                 agg_ctx.ensure_step(request.step, request.operations, context)
                 agg_ctx.store_vectors(
                     request,
-                    lambda tensor,
-                    vectors,
-                    aggregation_type,
-                    request_id=request.request_id: self._decode_vector(
-                        tensor, vectors, aggregation_type, request_id
+                    lambda tensor, vectors, aggregation_type, request_id=request.request_id: (
+                        self._decode_vector(
+                            tensor, vectors, aggregation_type, request_id
+                        )
                     ),
                 )
 

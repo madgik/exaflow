@@ -11,14 +11,17 @@ FILTER_OPERATORS = {
     "less_or_equal": lambda column, value: f"{column} <= {value}",
     "greater_or_equal": lambda column, value: f"{column} >= {value}",
     "between": lambda column, values: f"{column} BETWEEN {values[0]} AND {values[1]}",
-    "not_between": lambda column,
-    value: f"NOT {column} BETWEEN {value[0]} AND {value[1]}",
+    "not_between": lambda column, value: (
+        f"NOT {column} BETWEEN {value[0]} AND {value[1]}"
+    ),
     "is_null": lambda column, value: f"{column} IS NULL",
     "is_not_null": lambda column, value: f"{column} IS NOT NULL",
-    "in": lambda column,
-    values: f"{column} IN ({','.join(str(value) for value in values)})",
-    "not_in": lambda column,
-    values: f"{column} NOT IN ({','.join(str(value) for value in values)})",
+    "in": lambda column, values: (
+        f"{column} IN ({','.join(str(value) for value in values)})"
+    ),
+    "not_in": lambda column, values: (
+        f"{column} NOT IN ({','.join(str(value) for value in values)})"
+    ),
 }
 
 __all__ = ["build_filter_clause", "validate_filter", "FilterError"]

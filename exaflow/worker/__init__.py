@@ -1,5 +1,5 @@
 import os
-from importlib.resources import open_text
+from importlib.resources import open_binary
 from pathlib import Path
 
 import envtoml
@@ -72,10 +72,10 @@ def _ensure_log_levels(cfg: AttrDict) -> None:
 
 
 if config_file := os.getenv("EXAFLOW_WORKER_CONFIG_FILE"):
-    with open(config_file) as fp:
+    with open(config_file, "rb") as fp:
         config = AttrDict(envtoml.load(fp))
 else:
-    with open_text(worker, "config.toml") as fp:
+    with open_binary(worker, "config.toml") as fp:
         config = AttrDict(envtoml.load(fp))
 
 _ensure_duckdb_config(config)
