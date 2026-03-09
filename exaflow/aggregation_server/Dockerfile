@@ -3,7 +3,7 @@ FROM python:3.10.18-slim-bullseye AS builder
 ENV PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
     PIP_DEFAULT_TIMEOUT=100 \
-    POETRY_VERSION=1.8.2 \
+    POETRY_VERSION=2.3.2 \
     POETRY_NO_INTERACTION=1 \
     POETRY_HOME="/opt/poetry"
 

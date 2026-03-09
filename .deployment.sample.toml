@@ -10,7 +10,7 @@ worker_landscape_aggregator_update_interval = 3000
 worker_tasks_timeout = 20
 
 [flower]
-enabled = true
+enabled = false
 execution_timeout = 60
 server_port = 8080
 
