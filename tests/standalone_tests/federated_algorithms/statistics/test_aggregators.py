@@ -1,7 +1,9 @@
 import numpy as np
 import pytest
 
-from exaflow.algorithms.federated.utils.aggregators import NumpyAggregator
+from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
+    NumpyAggregator,
+)
 from tests.standalone_tests.federated_algorithms.utils.federated_algorithm_test import (
     FederatedAlgorithmTest,
 )
