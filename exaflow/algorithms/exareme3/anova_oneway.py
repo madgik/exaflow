@@ -66,7 +66,7 @@ class AnovaOneWay(Algorithm):
         """
         y_var_name = self.inputdata.y[0]
         x_var_name = self.inputdata.x[0]
-        covar_enums = self.metadata[x_var_name].get("enumerations")
+        covar_enums = _ordered_enum_codes(self.metadata[x_var_name])
 
         # Run a single distributed ANOVA UDF
         udf_results = self.run_local_udf(
@@ -130,6 +130,13 @@ class AnovaOneWay(Algorithm):
             min_max_per_group=min_max_per_group,
             ci_info=ci_info,
         )
+
+
+def _ordered_enum_codes(metadata_entry: Dict) -> List[str]:
+    enums = metadata_entry.get("enumerations") or {}
+    if isinstance(enums, dict):
+        return list(enums.keys())
+    return list(enums)
 
 
 @exareme3_udf(with_aggregation_server=True)
