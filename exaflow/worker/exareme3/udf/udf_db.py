@@ -78,9 +78,8 @@ def _fetch_with_duckdb(
         where_sql = " WHERE " + " AND ".join(f"({clause})" for clause in where_clauses)
 
     query = f"SELECT {select_columns} FROM {table_name}{where_sql}"
-    # Use the same DuckDB connection configuration as the data loader to avoid
-    # "different configuration" errors when both run concurrently.
-    with duckdb.connect(worker_config.duckdb.path, read_only=False) as conn:
+
+    with duckdb.connect(worker_config.duckdb.path, read_only=True) as conn:
         # Use fetch_arrow_table for zero-copy loading
         arrow_table = conn.execute(query).fetch_arrow_table()
 
