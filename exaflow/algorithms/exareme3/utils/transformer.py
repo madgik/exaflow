@@ -25,4 +25,4 @@ class Transformer(ABC):
         with specification_path.open("r", encoding="utf-8") as fp:
             specification = json.load(fp)
 
-        return TransformerSpecification.parse_obj(specification)
+        return TransformerSpecification.model_validate(specification)

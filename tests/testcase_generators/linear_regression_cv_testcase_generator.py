@@ -73,7 +73,7 @@ class LinearRegressionTestCaseGenerator(TestCaseGenerator):
         if result_has_nan(result):
             return  # Some results have nans, not sure why but discard
 
-        return result.dict()
+        return result.model_dump()
 
 
 def result_has_nan(result):

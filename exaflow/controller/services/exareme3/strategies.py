@@ -25,7 +25,9 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
     _global_worker_tasks_handler: Exareme3TasksHandler
 
     async def execute(self) -> str:
-        inputdata = Inputdata.parse_raw(self._algorithm_request_dto.inputdata.json())
+        inputdata = Inputdata.model_validate(
+            self._algorithm_request_dto.inputdata.model_dump()
+        )
         variable_names = (inputdata.x or []) + (inputdata.y or [])
         metadata = self._controller.worker_landscape_aggregator.get_metadata(
             data_model=inputdata.data_model,
@@ -74,7 +76,7 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
         self._logger.info(
             f"Execution completed: {self._algorithm_name} ({self._request_id})"
         )
-        return result.json()
+        return result.model_dump_json()
 
 
 class Exareme3WithAggregationServerStrategy(Exareme3Strategy):

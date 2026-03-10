@@ -9,8 +9,9 @@ from typing import Optional
 from typing import Union
 
 from pydantic import BaseModel
+from pydantic import ConfigDict
 from pydantic import Field
-from pydantic import validator
+from pydantic import field_validator
 
 from exaflow import DType
 
@@ -86,8 +87,7 @@ class WorkerRole(str, Enum):
 
 
 class ImmutableBaseModel(BaseModel, ABC):
-    class Config:
-        allow_mutation = False
+    model_config = ConfigDict(frozen=True)
 
 
 class WorkerInfo(BaseModel):
@@ -107,7 +107,8 @@ class DatasetProperties(ImmutableBaseModel):
     tags: List
     properties: Dict[str, List[str]]
 
-    @validator("properties")
+    @field_validator("properties")
+    @classmethod
     def validate_variables(cls, properties: Dict[str, List[str]]):
         variables = properties.get("variables")
         if not isinstance(variables, list):
@@ -159,11 +160,8 @@ class CommonDataElement(ImmutableBaseModel):
 
 
 class CommonDataElements(BaseModel):
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
     values: Dict[str, CommonDataElement]
-
-    class Config:
-        allow_mutation = False
-        arbitrary_types_allowed = True
 
     def __eq__(self, other):
         """
@@ -206,14 +204,15 @@ class ColumnData(ImmutableBaseModel):
     data: List[Any]
     type: DType
 
-    @validator("type")
+    @field_validator("type")
+    @classmethod
     def validate_type(cls, tp):
         if cls.__name__ == "ColumnData":
             raise TypeError(
                 "ColumnData should not be instantiated. "
                 "Use ColumnDataInt, ColumnDataStr, ColumnDataFloat, ColumnDataJSON  or ColumnDataBinary instead."
             )
-        column_type = cls.__fields__["type"].default
+        column_type = cls.model_fields["type"].default
         if tp != column_type:
             raise ValueError(
                 f"Objects of type {cls.__name__} have a fixed type {column_type}, "
@@ -224,17 +223,17 @@ class ColumnData(ImmutableBaseModel):
 
 class ColumnDataInt(ColumnData):
     data: List[Union[None, int]]
-    type = DType.INT
+    type: DType = DType.INT
 
 
 class ColumnDataStr(ColumnData):
     data: List[Union[None, str]]
-    type = DType.STR
+    type: DType = DType.STR
 
 
 class ColumnDataFloat(ColumnData):
     data: List[Union[None, float]]
-    type = DType.FLOAT
+    type: DType = DType.FLOAT
 
 
 class TabularDataResult(ImmutableBaseModel):

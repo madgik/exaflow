@@ -21,7 +21,7 @@ def test_tabular_data_result():
         ],
     }
 
-    assert result.dict() == expected_dict
+    assert result.model_dump() == expected_dict
 
 
 def test_tabular_data_result_to_json():
@@ -31,4 +31,4 @@ def test_tabular_data_result_to_json():
         ColumnDataInt(name="int", data=[3, 30]),
     ]
     result = TabularDataResult(title="The Title", columns=columns)
-    assert TabularDataResult.parse_raw(result.json()) == result
+    assert TabularDataResult.model_validate_json(result.model_dump_json()) == result

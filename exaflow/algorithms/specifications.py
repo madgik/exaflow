@@ -6,7 +6,9 @@ from typing import List
 from typing import Optional
 
 from pydantic import BaseModel
-from pydantic import root_validator
+from pydantic import ConfigDict
+from pydantic import Field
+from pydantic import model_validator
 
 
 @unique
@@ -96,8 +98,7 @@ class ComponentType(str, Enum):
 
 
 class ImmutableBaseModel(BaseModel):
-    class Config:
-        allow_mutation = False
+    model_config = ConfigDict(frozen=True)
 
 
 class InputDataSpecification(ImmutableBaseModel):
@@ -107,13 +108,13 @@ class InputDataSpecification(ImmutableBaseModel):
     stattypes: List[InputDataStatType]
     required: bool
     multiple: bool
-    enumslen: Optional[int]
+    enumslen: Optional[int] = None
 
 
 class InputDataSpecifications(ImmutableBaseModel):
     y: InputDataSpecification
-    x: Optional[InputDataSpecification]
-    validation: Optional[bool]
+    x: Optional[InputDataSpecification] = None
+    validation: Optional[bool] = None
 
 
 class ParameterEnumSpecification(ImmutableBaseModel):
@@ -127,12 +128,12 @@ class ParameterSpecification(ImmutableBaseModel):
     types: List[ParameterType]
     required: bool
     multiple: bool
-    default: Any
-    enums: Optional[ParameterEnumSpecification]
-    dict_keys_enums: Optional[ParameterEnumSpecification]
-    dict_values_enums: Optional[ParameterEnumSpecification]
-    min: Optional[float]
-    max: Optional[float]
+    default: Any = None
+    enums: Optional[ParameterEnumSpecification] = None
+    dict_keys_enums: Optional[ParameterEnumSpecification] = None
+    dict_values_enums: Optional[ParameterEnumSpecification] = None
+    min: Optional[float] = None
+    max: Optional[float] = None
 
 
 def _validate_parameter_with_enums_type_fixed_var_CDE_enums(param_value, cls_values):
@@ -241,16 +242,20 @@ def _validate_parameter_type_dict_enums(param_value, cls_values):
 
 
 class WorkflowStepSpecification(ImmutableBaseModel):
-    @root_validator
-    def validate_parameters(cls, cls_values):
-        if not cls_values["parameters"]:
-            return cls_values
+    @model_validator(mode="after")
+    def validate_parameters(self):
+        if not self.parameters:
+            return self
 
-        for param_value in cls_values["parameters"].values():
+        cls_values = {
+            "label": self.label,
+            "inputdata": getattr(self, "inputdata", None),
+        }
+        for param_value in self.parameters.values():
             _validate_parameter_enums(param_value, cls_values)
             _validate_parameter_type_dict(param_value, cls_values)
             _validate_parameter_type_dict_enums(param_value, cls_values)
-        return cls_values
+        return self
 
 
 class AlgorithmSpecification(WorkflowStepSpecification):
@@ -259,9 +264,9 @@ class AlgorithmSpecification(WorkflowStepSpecification):
     label: str
     enabled: bool
     inputdata: InputDataSpecifications
-    parameters: Optional[Dict[str, ParameterSpecification]]
-    type: AlgorithmType
-    components: List[ComponentType]
+    parameters: Optional[Dict[str, ParameterSpecification]] = None
+    type: AlgorithmType = AlgorithmType.EXAREME3
+    components: List[ComponentType] = Field(default_factory=list)
 
 
 class TransformerSpecification(WorkflowStepSpecification):
@@ -269,7 +274,7 @@ class TransformerSpecification(WorkflowStepSpecification):
     desc: str
     label: str
     enabled: bool
-    parameters: Optional[Dict[str, ParameterSpecification]]
-    compatible_algorithms: Optional[List[str]]
-    type: TransformerType
-    components: List[ComponentType]
+    parameters: Optional[Dict[str, ParameterSpecification]] = None
+    compatible_algorithms: Optional[List[str]] = None
+    type: TransformerType = TransformerType.EXAREME3_TRANSFORMER
+    components: List[ComponentType] = Field(default_factory=list)

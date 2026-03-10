@@ -5,6 +5,8 @@ from typing import List
 from typing import Optional
 
 from pydantic import BaseModel
+from pydantic import ConfigDict
+from pydantic import RootModel
 
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import AlgorithmType
@@ -24,8 +26,7 @@ from exaflow.controller.services.specifications import specifications
 
 
 class ImmutableBaseModel(BaseModel, ABC):
-    class Config:
-        allow_mutation = False
+    model_config = ConfigDict(frozen=True)
 
 
 class InputDataSpecificationDTO(ImmutableBaseModel):
@@ -34,8 +35,8 @@ class InputDataSpecificationDTO(ImmutableBaseModel):
     types: List[InputDataType]
     required: bool
     multiple: bool
-    stattypes: Optional[List[InputDataStatType]]
-    enumslen: Optional[int]
+    stattypes: Optional[List[InputDataStatType]] = None
+    enumslen: Optional[int] = None
 
 
 class InputDataSpecificationsDTO(ImmutableBaseModel):
@@ -43,8 +44,8 @@ class InputDataSpecificationsDTO(ImmutableBaseModel):
     datasets: InputDataSpecificationDTO
     filter: InputDataSpecificationDTO
     y: InputDataSpecificationDTO
-    x: Optional[InputDataSpecificationDTO]
-    validation_datasets: Optional[InputDataSpecificationDTO]
+    x: Optional[InputDataSpecificationDTO] = None
+    validation_datasets: Optional[InputDataSpecificationDTO] = None
 
 
 class ParameterEnumSpecificationDTO(ImmutableBaseModel):
@@ -58,19 +59,19 @@ class ParameterSpecificationDTO(ImmutableBaseModel):
     types: List[ParameterType]
     required: bool
     multiple: bool
-    default: Any
-    enums: Optional[ParameterEnumSpecificationDTO]
-    dict_keys_enums: Optional[ParameterEnumSpecificationDTO]
-    dict_values_enums: Optional[ParameterEnumSpecificationDTO]
-    min: Optional[float]
-    max: Optional[float]
+    default: Any = None
+    enums: Optional[ParameterEnumSpecificationDTO] = None
+    dict_keys_enums: Optional[ParameterEnumSpecificationDTO] = None
+    dict_values_enums: Optional[ParameterEnumSpecificationDTO] = None
+    min: Optional[float] = None
+    max: Optional[float] = None
 
 
 class TransformerSpecificationDTO(ImmutableBaseModel):
     name: str
     desc: str
     label: str
-    parameters: Optional[Dict[str, ParameterSpecificationDTO]]
+    parameters: Optional[Dict[str, ParameterSpecificationDTO]] = None
 
 
 class AlgorithmSpecificationDTO(ImmutableBaseModel):
@@ -78,18 +79,18 @@ class AlgorithmSpecificationDTO(ImmutableBaseModel):
     desc: str
     label: str
     inputdata: InputDataSpecificationsDTO
-    parameters: Optional[Dict[str, ParameterSpecificationDTO]]
-    preprocessing: Optional[List[TransformerSpecificationDTO]]
-    flags: Optional[List[str]]
+    parameters: Optional[Dict[str, ParameterSpecificationDTO]] = None
+    preprocessing: Optional[List[TransformerSpecificationDTO]] = None
+    flags: Optional[List[str]] = None
     type: AlgorithmType
 
 
-class AlgorithmSpecificationsDTO(ImmutableBaseModel):
-    __root__: List[AlgorithmSpecificationDTO]
+class AlgorithmSpecificationsDTO(RootModel[List[AlgorithmSpecificationDTO]]):
+    pass
 
 
-class TransformerSpecificationsDTO(ImmutableBaseModel):
-    __root__: List[TransformerSpecificationDTO]
+class TransformerSpecificationsDTO(RootModel[List[TransformerSpecificationDTO]]):
+    pass
 
 
 def _convert_inputdata_specification_to_dto(self: InputDataSpecification):
@@ -273,7 +274,7 @@ def _get_algorithm_specifications_dtos(
     transformers_specs: List[TransformerSpecification],
 ) -> AlgorithmSpecificationsDTO:
     return AlgorithmSpecificationsDTO(
-        __root__=[
+        root=[
             _convert_algorithm_specification_to_dto(spec, transformers_specs)
             for spec in algorithms_specs
         ]
