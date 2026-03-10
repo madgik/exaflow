@@ -727,20 +727,20 @@ files = [
 
 [[package]]
 name = "hypercorn"
-version = "0.17.3"
+version = "0.18.0"
 description = "A ASGI Server based on Hyper libraries and inspired by Gunicorn"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.10"
 groups = ["controller"]
 files = [
-    {file = "hypercorn-0.17.3-py3-none-any.whl", hash = "sha256:059215dec34537f9d40a69258d323f56344805efb462959e727152b0aa504547"},
-    {file = "hypercorn-0.17.3.tar.gz", hash = "sha256:1b37802ee3ac52d2d85270700d565787ab16cf19e1462ccfa9f089ca17574165"},
+    {file = "hypercorn-0.18.0-py3-none-any.whl", hash = "sha256:225e268f2c1c2f28f6d8f6db8f40cb8c992963610c5725e13ccfcddccb24b1cd"},
+    {file = "hypercorn-0.18.0.tar.gz", hash = "sha256:d63267548939c46b0247dc8e5b45a9947590e35e64ee73a23c074aa3cf88e9da"},
 ]
 
 [package.dependencies]
 exceptiongroup = {version = ">=1.1.0", markers = "python_version < \"3.11\""}
 h11 = "*"
-h2 = ">=3.1.0"
+h2 = ">=4.3.0"
 priority = "*"
 taskgroup = {version = "*", markers = "python_version < \"3.11\""}
 tomli = {version = "*", markers = "python_version < \"3.11\""}
@@ -749,9 +749,9 @@ wsproto = ">=0.14.0"
 
 [package.extras]
 docs = ["pydata_sphinx_theme", "sphinxcontrib_mermaid"]
-h3 = ["aioquic (>=0.9.0,<1.0)"]
-trio = ["trio (>=0.22.0)"]
-uvloop = ["uvloop (>=0.18) ; platform_system != \"Windows\""]
+h3 = ["aioquic (>=0.9.0)"]
+trio = ["trio"]
+uvloop = ["uvloop"]
 
 [[package]]
 name = "hyperframe"
@@ -2135,4 +2135,4 @@ h11 = ">=0.16.0,<1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.11"
-content-hash = "b801036f19361c17dd2efd6ca42429ec8cf057d69b4bf6b2bccc001a7053febb"
+content-hash = "1a17e9ee731a6e02901d6955aa475f0e8ac225defe0e9f700f301caa7e3e0916"
