@@ -7,7 +7,6 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 import scipy.stats as st
-from patsy import dmatrix
 
 from exaflow.algorithms.federated.linear_model.ols import FederatedOLS
 from exaflow.algorithms.federated.utils import BadInputError
@@ -128,20 +127,9 @@ class FederatedAnovaTwoWay:
         levels_a: List,
         levels_b: List,
     ) -> Dict[str, Dict[str, float]]:
-        levels_a_repr = repr(list(levels_a))
-        levels_b_repr = repr(list(levels_b))
-        formulas = {
-            "const": "1",
-            "a": f"C({x1}, levels={levels_a_repr})",
-            "b": f"C({x2}, levels={levels_b_repr})",
-            "ab": f"C({x1}, levels={levels_a_repr}) + C({x2}, levels={levels_b_repr})",
-            "full": f"C({x1}, levels={levels_a_repr}) * C({x2}, levels={levels_b_repr})",
-        }
-
-        design_frames = {
-            name: dmatrix(formula, df, return_type="dataframe")
-            for name, formula in formulas.items()
-        }
+        design_frames = self._build_design_frames(
+            df=df, x1=x1, x2=x2, levels_a=levels_a, levels_b=levels_b
+        )
         ref_index = next(iter(design_frames.values())).index
         y_vector = df.loc[ref_index, y].to_numpy(dtype=float).reshape(-1, 1)
         design_mats = {
@@ -158,6 +146,53 @@ class FederatedAnovaTwoWay:
             }
 
         return {name: _fit_model(X) for name, X in design_mats.items()}
+
+    def _build_design_frames(
+        self,
+        *,
+        df: pd.DataFrame,
+        x1: str,
+        x2: str,
+        levels_a: List,
+        levels_b: List,
+    ) -> Dict[str, pd.DataFrame]:
+        """Build the ANOVA design matrices previously produced via ``patsy.dmatrix``."""
+        index = df.index
+        intercept = pd.DataFrame(
+            {"Intercept": np.ones(len(df), dtype=float)}, index=index
+        )
+
+        main_a = self._build_treatment_dummies(df[x1], x1, levels_a)
+        main_b = self._build_treatment_dummies(df[x2], x2, levels_b)
+        interaction = self._build_interactions(main_a, main_b)
+
+        design_frames = {
+            "const": intercept,
+            "a": pd.concat([intercept, main_a], axis=1),
+            "b": pd.concat([intercept, main_b], axis=1),
+            "ab": pd.concat([intercept, main_a, main_b], axis=1),
+            "full": pd.concat([intercept, main_a, main_b, interaction], axis=1),
+        }
+        return design_frames
+
+    @staticmethod
+    def _build_treatment_dummies(
+        series: pd.Series, variable_name: str, levels: List
+    ) -> pd.DataFrame:
+        dummies = pd.get_dummies(series, prefix="", prefix_sep="")
+        columns = list(levels)[1:]
+        dummies = dummies.reindex(columns=columns, fill_value=0)
+        dummies = dummies.astype(float)
+        dummies.columns = [f"{variable_name}[T.{level}]" for level in columns]
+        return dummies
+
+    @staticmethod
+    def _build_interactions(main_a: pd.DataFrame, main_b: pd.DataFrame) -> pd.DataFrame:
+        interactions = {}
+        for a_name, a_values in main_a.items():
+            for b_name, b_values in main_b.items():
+                interactions[f"{a_name}:{b_name}"] = a_values * b_values
+        return pd.DataFrame(interactions, index=main_a.index, dtype=float)
 
     def _compute_anova_table(
         self,
