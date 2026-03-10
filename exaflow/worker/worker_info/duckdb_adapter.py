@@ -12,7 +12,7 @@ _duckdb_path.parent.mkdir(parents=True, exist_ok=True)
 
 
 def execute_and_fetchall(query: str) -> List:
-    with duckdb.connect(str(_duckdb_path), read_only=False) as conn:
+    with duckdb.connect(str(_duckdb_path), read_only=True) as conn:
         cursor = conn.cursor()
         try:
             cursor.execute(query)

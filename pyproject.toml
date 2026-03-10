@@ -30,7 +30,7 @@ asgiref = "~3.11"
 dnspython = "~2.8"
 
 [tool.poetry.group.worker.dependencies]
-duckdb = "~1.1"
+duckdb = "~1.5"
 psutil = "~7.2"
 grpcio-health-checking = "~1.78"
 
