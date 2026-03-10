@@ -26,7 +26,6 @@ patsy = "~0.5"
 [tool.poetry.group.controller.dependencies]
 hypercorn = "~0.18"
 Quart = "~0.20"
-asgiref = "~3.11"
 dnspython = "~2.8"
 
 [tool.poetry.group.worker.dependencies]
