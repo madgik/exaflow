@@ -25,24 +25,6 @@ files = [
 ]
 
 [[package]]
-name = "asgiref"
-version = "3.11.1"
-description = "ASGI specs, helper code, and adapters"
-optional = false
-python-versions = ">=3.9"
-groups = ["controller"]
-files = [
-    {file = "asgiref-3.11.1-py3-none-any.whl", hash = "sha256:e8667a091e69529631969fd45dc268fa79b99c92c5fcdda727757e52146ec133"},
-    {file = "asgiref-3.11.1.tar.gz", hash = "sha256:5f184dc43b7e763efe848065441eac62229c9f7b0475f41f80e207a114eda4ce"},
-]
-
-[package.dependencies]
-typing_extensions = {version = ">=4", markers = "python_version < \"3.11\""}
-
-[package.extras]
-tests = ["mypy (>=1.14.0)", "pytest", "pytest-asyncio"]
-
-[[package]]
 name = "attrs"
 version = "25.4.0"
 description = "Classes Without Boilerplate"
@@ -2264,4 +2246,4 @@ h11 = ">=0.16.0,<1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.11"
-content-hash = "dd634576365b480d061ebef1755346df143fc3044368184d6edc103c5537e24f"
+content-hash = "5dc590838f8514f38f7a7feb1f0c5c170acacafa4b1ae967d71810b365870f5b"
