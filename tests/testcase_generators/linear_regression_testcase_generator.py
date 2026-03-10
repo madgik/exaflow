@@ -45,7 +45,7 @@ class LinearRegressionTestCaseGenerator(TestCaseGenerator):
             lower_ci=model.conf_int().to_numpy().T.tolist()[0],
             upper_ci=model.conf_int().to_numpy().T.tolist()[1],
         )
-        return result.dict()
+        return result.model_dump()
 
 
 if __name__ == "__main__":

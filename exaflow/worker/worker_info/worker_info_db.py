@@ -79,7 +79,7 @@ def _extract_variables_from_properties(properties_json) -> List[str]:
         return []
 
     try:
-        dataset_properties = DatasetProperties.parse_raw(properties_json)
+        dataset_properties = DatasetProperties.model_validate_json(properties_json)
     except (TypeError, ValidationError):
         warnings.warn(
             "Failed to parse dataset properties JSON; returning empty variables list.",
@@ -168,7 +168,8 @@ def get_data_model_cdes(data_model: str) -> CommonDataElements:
     cdes_rows = metadata_db.execute_and_fetchall(query)
     cdes = CommonDataElements(
         values={
-            code: CommonDataElement.parse_raw(metadata) for code, metadata in cdes_rows
+            code: CommonDataElement.model_validate_json(metadata)
+            for code, metadata in cdes_rows
         }
     )
 

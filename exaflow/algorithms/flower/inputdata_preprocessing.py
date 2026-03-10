@@ -58,7 +58,7 @@ def get_input() -> Inputdata:
     response = requests.get(INPUT_URL)
     if response.status_code != 200:
         error_handling(response.text)
-    inputdata = Inputdata.parse_raw(response.text)
+    inputdata = Inputdata.model_validate_json(response.text)
     return inputdata
 
 

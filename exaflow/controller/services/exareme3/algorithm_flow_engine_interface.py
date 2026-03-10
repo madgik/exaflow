@@ -54,7 +54,7 @@ class Exareme3AlgorithmFlowEngineInterface:
             kw_args["metadata"] = add_ordered_enums(kw_args["metadata"])
 
         system_args = dict()
-        system_args["inputdata"] = self._inputdata.json()
+        system_args["inputdata"] = self._inputdata.model_dump_json()
         system_args["metadata"] = self._metadata
         system_args["drop_na"] = drop_na
         system_args["check_min_rows"] = check_min_rows

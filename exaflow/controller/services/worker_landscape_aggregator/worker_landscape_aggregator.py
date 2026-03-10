@@ -12,6 +12,8 @@ from typing import Optional
 from typing import Tuple
 
 from pydantic import BaseModel
+from pydantic import ConfigDict
+from pydantic import Field
 
 from exaflow.controller import DeploymentType
 from exaflow.controller.federation_info_logs import log_datamodel_added
@@ -41,8 +43,7 @@ LONGITUDINAL = "longitudinal"
 
 
 class ImmutableBaseModel(BaseModel, ABC):
-    class Config:
-        allow_mutation = False
+    model_config = ConfigDict(frozen=True)
 
 
 def _get_worker_socket_addr(worker_info: WorkerInfo):
@@ -60,7 +61,9 @@ class DataModelsCDES(ImmutableBaseModel):
     Values are CommonDataElements.
     """
 
-    data_models_cdes: Optional[Dict[str, CommonDataElements]] = {}
+    data_models_cdes: Optional[Dict[str, CommonDataElements]] = Field(
+        default_factory=dict
+    )
 
 
 class DataModelsAttributes(ImmutableBaseModel):
@@ -70,7 +73,9 @@ class DataModelsAttributes(ImmutableBaseModel):
     Values are DataModelAttributes.
     """
 
-    data_models_attributes: Optional[Dict[str, DataModelAttributes]] = {}
+    data_models_attributes: Optional[Dict[str, DataModelAttributes]] = Field(
+        default_factory=dict
+    )
 
 
 class DatasetsLocations(ImmutableBaseModel):
@@ -80,7 +85,9 @@ class DatasetsLocations(ImmutableBaseModel):
     Values are Dictionaries of datasets and their locations.
     """
 
-    datasets_locations: Optional[Dict[str, Dict[str, str]]] = {}
+    datasets_locations: Optional[Dict[str, Dict[str, str]]] = Field(
+        default_factory=dict
+    )
 
 
 class DatasetsVariables(ImmutableBaseModel):
@@ -90,18 +97,23 @@ class DatasetsVariables(ImmutableBaseModel):
     Values are dictionaries where the keys are dataset codes and the values are lists of variables.
     """
 
-    datasets_variables: Optional[Dict[str, Dict[str, List[str]]]] = {}
+    datasets_variables: Optional[Dict[str, Dict[str, List[str]]]] = Field(
+        default_factory=dict
+    )
 
 
 class DataModelRegistry(ImmutableBaseModel):
-    data_models_attributes: Optional[DataModelsAttributes] = DataModelsAttributes()
-    data_models_cdes: Optional[DataModelsCDES] = DataModelsCDES()
-    datasets_locations: Optional[DatasetsLocations] = DatasetsLocations()
-    datasets_variables: Optional[DatasetsVariables] = DatasetsVariables()
-
-    class Config:
-        allow_mutation = False
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+    data_models_attributes: Optional[DataModelsAttributes] = Field(
+        default_factory=DataModelsAttributes
+    )
+    data_models_cdes: Optional[DataModelsCDES] = Field(default_factory=DataModelsCDES)
+    datasets_locations: Optional[DatasetsLocations] = Field(
+        default_factory=DatasetsLocations
+    )
+    datasets_variables: Optional[DatasetsVariables] = Field(
+        default_factory=DatasetsVariables
+    )
 
     def is_longitudinal(self, data_model: str) -> bool:
         return (
@@ -209,22 +221,18 @@ class WorkerRegistry(ImmutableBaseModel):
         else:
             super().__init__()
 
-    global_workers: List[WorkerInfo] = []
-    local_workers: List[WorkerInfo] = []
-    workers_per_id: Dict[str, WorkerInfo] = {}
-
-    class Config:
-        allow_mutation = False
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+    global_workers: List[WorkerInfo] = Field(default_factory=list)
+    local_workers: List[WorkerInfo] = Field(default_factory=list)
+    workers_per_id: Dict[str, WorkerInfo] = Field(default_factory=dict)
 
 
 class _wlaRegistries(ImmutableBaseModel):
-    worker_registry: Optional[WorkerRegistry] = WorkerRegistry()
-    data_model_registry: Optional[DataModelRegistry] = DataModelRegistry()
-
-    class Config:
-        allow_mutation = False
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+    worker_registry: Optional[WorkerRegistry] = Field(default_factory=WorkerRegistry)
+    data_model_registry: Optional[DataModelRegistry] = Field(
+        default_factory=DataModelRegistry
+    )
 
 
 class DataModelMetadata(ImmutableBaseModel):
@@ -233,8 +241,8 @@ class DataModelMetadata(ImmutableBaseModel):
     """
 
     dataset_infos: List[DatasetInfo]
-    cdes: Optional[CommonDataElements]
-    attributes: Optional[DataModelAttributes]
+    cdes: Optional[CommonDataElements] = None
+    attributes: Optional[DataModelAttributes] = None
 
 
 class DataModelsMetadata(ImmutableBaseModel):
@@ -500,7 +508,7 @@ class WorkerLandscapeAggregator:
     def get_metadata(self, data_model: str, variable_names: List[str]):
         common_data_elements = self.get_cdes(data_model)
         metadata = {
-            variable_name: cde.dict()
+            variable_name: cde.model_dump()
             for variable_name, cde in common_data_elements.items()
             if variable_name in variable_names
         }

@@ -56,7 +56,7 @@ class DesciptiveStatistics(TestCaseGenerator):
 
         result = Result(variable_based=result_varbased, model_based=result_modbased)
 
-        return result.dict()
+        return result.model_dump()
 
 
 def get_numerical_records(data, numerical_vars, dataset):
