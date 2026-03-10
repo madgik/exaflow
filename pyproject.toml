@@ -30,8 +30,8 @@ asgiref = "~3.11"
 dnspython = "~2.8"
 
 [tool.poetry.group.worker.dependencies]
-psutil = "~5.9"
 duckdb = "~1.1"
+psutil = "~7.2"
 grpcio-health-checking = "~1.78"
 
 [tool.poetry.group.aggregation-server.dependencies]
@@ -58,7 +58,6 @@ pre-commit = "~4.5"
 coverage = {extras = ["toml"], version = "^7.9.2"}
 grpcio-tools = "~1.78"
 tqdm = "~4.67"
-psutil = "~5.9"
 
 [tool.pytest.ini_options]
 markers = [
