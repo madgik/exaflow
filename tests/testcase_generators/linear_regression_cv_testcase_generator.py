@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import patsy
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from sklearn.base import BaseEstimator
@@ -58,8 +57,10 @@ class LinearRegressionTestCaseGenerator(TestCaseGenerator):
                 model, X, y, cv=n_splits, scoring="neg_mean_absolute_error"
             )
             maes = np.array([-e for e in neg_maes])
-        except patsy.PatsyError:
-            return  # Discard test case if patsy cannot parse formula
+        except Exception as exc:
+            if exc.__class__.__name__ != "PatsyError":
+                raise
+            return  # Discard test case if the formula parser cannot parse formula
 
         result = CVLinearRegressionResult(
             dependent_var=yname,

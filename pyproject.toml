@@ -21,7 +21,6 @@ pyarrow = "~23.0"
 grpcio = "~1.78"
 protobuf = "~6.31"
 requests = "~2.32"
-patsy = "~0.5"
 
 [tool.poetry.group.controller.dependencies]
 hypercorn = "~0.18"
