@@ -92,4 +92,4 @@ class Algorithm(ABC):
         with specification_path.open("r", encoding="utf-8") as fp:
             specification = json.load(fp)
 
-        return AlgorithmSpecification.parse_obj(specification)
+        return AlgorithmSpecification.model_validate(specification)

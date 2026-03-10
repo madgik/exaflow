@@ -14,8 +14,8 @@ HistogramBin = Union[float, str]
 
 class HistogramResultItem(BaseModel):
     var: str
-    grouping_var: Optional[str]
-    grouping_enum: Optional[str]
+    grouping_var: Optional[str] = None
+    grouping_enum: Optional[str] = None
     bins: List[HistogramBin]
     counts: List[Optional[int]]
 

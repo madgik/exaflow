@@ -84,7 +84,7 @@ class Specifications:
                 spec_cls = self._choose_spec_class(raw)
                 if spec_cls is not AlgorithmSpecification:
                     continue
-                spec = AlgorithmSpecification.parse_obj(raw)
+                spec = AlgorithmSpecification.model_validate(raw)
                 self._add_specification(spec, str(file))
 
     def _add_specification(self, spec: SpecType, source: str) -> None:

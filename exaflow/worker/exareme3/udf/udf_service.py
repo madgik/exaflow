@@ -59,7 +59,7 @@ def run_udf(
         agg_dns = worker_config.aggregation_server.dns
         agg_client = AggregationClient(request_id, aggregator_dns=agg_dns)
 
-    inputdata = Inputdata.parse_raw(system_args.get("inputdata"))
+    inputdata = Inputdata.model_validate_json(system_args.get("inputdata"))
     # GRPC will mess with the order of dict when sending from controller to worker we need a list with the order to we can re-arrange them properly
     metadata = enforce_enum_order(system_args["metadata"])
     if (

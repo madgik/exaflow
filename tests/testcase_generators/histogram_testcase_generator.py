@@ -256,7 +256,7 @@ class HistogramTestcaseGenerator(TestCaseGenerator):
                         return_list.append(curr_group_histogram)
 
         ret_val = HistogramResult1(histogram=return_list)
-        return json.loads(ret_val.json())
+        return json.loads(ret_val.model_dump_json())
 
 
 if __name__ == "__main__":

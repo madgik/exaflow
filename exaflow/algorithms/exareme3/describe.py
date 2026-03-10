@@ -20,13 +20,13 @@ class NumericalDescriptiveStats(BaseModel):
     num_dtps: int
     num_na: int
     num_total: int
-    mean: Optional[float]
-    std: Optional[float]
-    min: Optional[float]
-    q1: Optional[float]
-    q2: Optional[float]
-    q3: Optional[float]
-    max: Optional[float]
+    mean: Optional[float] = None
+    std: Optional[float] = None
+    min: Optional[float] = None
+    q1: Optional[float] = None
+    q2: Optional[float] = None
+    q3: Optional[float] = None
+    max: Optional[float] = None
 
 
 class NominalDescriptiveStats(BaseModel):

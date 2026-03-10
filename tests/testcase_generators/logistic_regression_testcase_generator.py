@@ -85,7 +85,7 @@ class LogisticRegressionTestCaseGenerator(TestCaseGenerator):
             coefficients=model.params.tolist(),
         )
 
-        return summary.dict()
+        return summary.model_dump()
 
 
 if __name__ == "__main__":

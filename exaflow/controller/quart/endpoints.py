@@ -66,7 +66,7 @@ async def get_cdes_metadata() -> dict:
     cdes_per_data_model = get_worker_landscape_aggregator().get_cdes_per_data_model()
     return {
         data_model: {
-            column: metadata.dict() for column, metadata in cdes.values.items()
+            column: metadata.model_dump() for column, metadata in cdes.values.items()
         }
         for data_model, cdes in cdes_per_data_model.data_models_cdes.items()
     }
@@ -76,14 +76,14 @@ async def get_cdes_metadata() -> dict:
 async def get_data_models_attributes() -> dict:
     data_model_attrs = get_worker_landscape_aggregator().get_data_models_attributes()
     return {
-        data_model: data_model_metadata.dict()
+        data_model: data_model_metadata.model_dump()
         for data_model, data_model_metadata in data_model_attrs.items()
     }
 
 
 @algorithms.route("/algorithms", methods=["GET"])
 async def get_algorithms() -> str:
-    return algorithm_specifications_dtos.json()
+    return algorithm_specifications_dtos.model_dump_json()
 
 
 @algorithms.route("/wla", methods=["POST"])
@@ -102,8 +102,8 @@ async def healthcheck() -> str:
 async def run_algorithm(algorithm_name: str) -> str:
     request_body = await request.json
     try:
-        algorithm_request_dto = AlgorithmRequestDTO.parse_obj(request_body)
-    except pydantic.error_wrappers.ValidationError as pydantic_error:
+        algorithm_request_dto = AlgorithmRequestDTO.model_validate(request_body)
+    except pydantic.ValidationError as pydantic_error:
         error_msg = (
             f"Algorithm execution request malformed:"
             f"\nrequest received:{request_body}"

@@ -39,14 +39,14 @@ class SMPCResponseStatus(enum.Enum):
 
 
 class DPRequestData(BaseModel):
-    c: Optional[float]  # Differential Privacy - sensitivity
-    e: Optional[float]  # Differential Privacy - privacy budget
+    c: Optional[float] = None  # Differential Privacy - sensitivity
+    e: Optional[float] = None  # Differential Privacy - privacy budget
 
 
 class SMPCRequestData(BaseModel):
     computationType: SMPCRequestType
     clients: List[str]
-    dp: Optional[DPRequestData]
+    dp: Optional[DPRequestData] = None
 
 
 class DifferentialPrivacyParams(BaseModel):
@@ -137,7 +137,7 @@ def trigger_smpc(
     logger.debug(f"{payload=}")
     response = requests.post(
         url=request_url,
-        data=payload.json(),
+        data=payload.model_dump_json(),
         headers=request_headers,
     )
     if response.status_code != 200:

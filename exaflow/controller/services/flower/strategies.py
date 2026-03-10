@@ -37,7 +37,7 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
                 )
 
             self._controller.flower_execution_info.set_inputdata(
-                inputdata=self._algorithm_request_dto.inputdata.dict()
+                inputdata=self._algorithm_request_dto.inputdata.model_dump()
             )
             server_pid = None
             clients_pids = {}
