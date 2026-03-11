@@ -14,6 +14,11 @@
 - [LOGISTIC_REGRESSION](docs/logistic_regression.md)
 - [OLS](docs/ols.md)
 
+## mixed_effects
+- [LMM](docs/lmm.md)
+- [GLMM_BINARY](docs/glmm_binary.md)
+- [GLMM_ORDINAL](docs/glmm_ordinal.md)
+
 ## model_selection
 - [CROSS_VALIDATOR](docs/cross_validator.md)
 - [KFOLD_SPLITTER](docs/kfold_splitter.md)
