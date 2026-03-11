@@ -1,7 +1,7 @@
 import os
 from enum import Enum
 from enum import unique
-from importlib.resources import open_text
+from importlib.resources import files
 
 import envtoml
 
@@ -20,10 +20,11 @@ class DeploymentType(str, Enum):
 # Initializing the configurations from the config file
 config = None
 if config_file := os.getenv("EXAFLOW_CONTROLLER_CONFIG_FILE"):
-    with open(config_file) as fp:
+    with open(config_file, "rb") as fp:
         config = AttrDict(envtoml.load(fp))
 else:
-    with open_text(controller, "config.toml") as fp:
+    config_path = files(controller).joinpath("config.toml")
+    with config_path.open("rb") as fp:
         config = AttrDict(envtoml.load(fp))
 
 worker_landscape_aggregator = None

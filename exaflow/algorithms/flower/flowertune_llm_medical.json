@@ -1,0 +1,27 @@
+{
+  "name": "flowertune_llm_medical",
+  "desc": "Federated LLM fine-tuning contract wiring for simulation-first orchestration.",
+  "label": "FlowerTune LLM Medical",
+  "enabled": true,
+  "type": "flower",
+  "components": ["FLOWER"],
+  "inputdata": {
+    "y": {
+      "label": "Variable (dependent)",
+      "desc": "Target variable placeholder for compatibility.",
+      "types": ["text", "int"],
+      "stattypes": ["nominal"],
+      "required": false,
+      "multiple": false
+    },
+    "x": {
+      "label": "Covariates (independent)",
+      "desc": "Feature variables placeholder for compatibility.",
+      "types": ["real", "int", "text"],
+      "stattypes": ["numerical", "nominal"],
+      "required": false,
+      "multiple": true
+    },
+    "validation": false
+  }
+}

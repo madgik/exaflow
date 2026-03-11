@@ -2,6 +2,7 @@ from logging.config import dictConfig
 
 import pydantic
 from quart import Blueprint
+from quart import abort
 from quart import jsonify
 from quart import request
 
@@ -127,7 +128,54 @@ async def run_algorithm(algorithm_name: str) -> str:
 
 @algorithms.route("/flower/input", methods=["GET"])
 async def get_flower_input() -> dict:
+    request_id = request.args.get("request_id")
+    if not get_flower_controller().flower_execution_info.validate_execution_scope(
+        request_id
+    ):
+        abort(400, description="Flower request scope mismatch.")
     return get_flower_controller().flower_execution_info.get_inputdata()
+
+
+@algorithms.route("/flower/parameters", methods=["GET"])
+async def get_flower_parameters() -> dict:
+    request_id = request.args.get("request_id")
+    if not get_flower_controller().flower_execution_info.validate_execution_scope(
+        request_id
+    ):
+        abort(400, description="Flower request scope mismatch.")
+    return get_flower_controller().flower_execution_info.get_parameters()
+
+
+@algorithms.route("/flower/run_env", methods=["GET"])
+async def get_flower_run_env() -> dict:
+    request_id = request.args.get("request_id")
+    if not get_flower_controller().flower_execution_info.validate_execution_scope(
+        request_id
+    ):
+        abort(400, description="Flower request scope mismatch.")
+    return get_flower_controller().flower_execution_info.get_run_env()
+
+
+@algorithms.route("/flower/events", methods=["GET"])
+async def get_flower_events() -> dict:
+    request_id = request.args.get("request_id")
+    if not get_flower_controller().flower_execution_info.validate_execution_scope(
+        request_id
+    ):
+        abort(400, description="Flower request scope mismatch.")
+    return {"events": get_flower_controller().flower_execution_info.get_events()}
+
+
+@algorithms.route("/flower/event", methods=["POST"])
+async def add_flower_event():
+    request_id = request.args.get("request_id")
+    if not get_flower_controller().flower_execution_info.validate_execution_scope(
+        request_id
+    ):
+        abort(400, description="Flower request scope mismatch.")
+    request_body = await request.json
+    await get_flower_controller().flower_execution_info.add_event(event=request_body)
+    return jsonify({"message": "Event added successfully"}), 200
 
 
 @algorithms.route("/flower/result", methods=["POST"])

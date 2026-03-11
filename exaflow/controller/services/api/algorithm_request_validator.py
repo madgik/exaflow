@@ -4,6 +4,9 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
+from pydantic import ValidationError
+
+from exaflow.algorithms.flower.flowertune_llm_medical.run_config import parse_run_config
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import InputDataSpecification
 from exaflow.algorithms.specifications import InputDataSpecifications
@@ -45,6 +48,16 @@ def validate_algorithm_request(
 ):
     algorithm_specs = _get_algorithm_specs(algorithm_name, algorithms_specs)
 
+    if _skip_wla_validation_for_flowertune_simulation(
+        algorithm_name=algorithm_name,
+        parameters=algorithm_request_dto.parameters,
+    ):
+        _validate_custom_algorithm_contracts(
+            algorithm_name=algorithm_name,
+            parameters=algorithm_request_dto.parameters,
+        )
+        return
+
     (
         training_datasets,
         validation_datasets,
@@ -73,6 +86,16 @@ def _get_algorithm_specs(
     if algorithm_name not in algorithms_specs.keys():
         raise BadRequest(f"Algorithm '{algorithm_name}' does not exist.")
     return algorithms_specs[algorithm_name]
+
+
+def _skip_wla_validation_for_flowertune_simulation(
+    algorithm_name: str, parameters: Optional[Dict[str, Any]]
+) -> bool:
+    if algorithm_name != "flowertune_llm_medical":
+        return False
+
+    runtime = (parameters or {}).get("runtime", "")
+    return str(runtime).lower() == "simulation"
 
 
 def _validate_algorithm_request_body(
@@ -113,6 +136,22 @@ def _validate_algorithm_request_body(
         transformers_specs=transformers_specs,
         data_model_cdes=data_model_cdes,
     )
+    _validate_custom_algorithm_contracts(
+        algorithm_name=algorithm_specs.name,
+        parameters=algorithm_request_dto.parameters,
+    )
+
+
+def _validate_custom_algorithm_contracts(
+    algorithm_name: str, parameters: Optional[Dict[str, Any]]
+):
+    if algorithm_name != "flowertune_llm_medical":
+        return
+
+    try:
+        parse_run_config(parameters or {})
+    except ValidationError as exc:
+        raise BadUserInput(f"Invalid RunConfig for '{algorithm_name}': {exc}") from exc
 
 
 def _validate_inputdata(

@@ -25,6 +25,11 @@ class Result:
 class FlowerIORegistry:
     def __init__(self, timeout, logger):
         self._inputdata: Optional[dict] = None
+        self._parameters: Optional[dict] = None
+        self._run_env: Optional[dict] = None
+        self._events: Optional[list] = None
+        self._request_id: Optional[str] = None
+        self._algorithm_name: Optional[str] = None
         self._result: Optional[Result] = None
         self.result_ready: Optional[asyncio.Event] = None
         self._logger = logger
@@ -34,6 +39,11 @@ class FlowerIORegistry:
     def _reset_sync(self):
         """Synchronously resets the algorithm execution info to initial state."""
         self._inputdata = {}
+        self._parameters = {}
+        self._run_env = {}
+        self._events = []
+        self._request_id = None
+        self._algorithm_name = None
         self._result = Result(content={}, status=Status.RUNNING)
         self.result_ready = asyncio.Event()
         self._logger.debug("Algorithm reset: input data cleared, status set to RUNNING")
@@ -83,3 +93,51 @@ class FlowerIORegistry:
         """Returns the current input data."""
         self._logger.debug(f"Input data retrieved: {self._inputdata}")
         return self._inputdata
+
+    def set_parameters(self, parameters: dict):
+        """Sets validated algorithm parameters for Flower processes."""
+        self._parameters = parameters or {}
+        self._logger.debug("Flower parameters updated.")
+
+    def get_parameters(self) -> dict:
+        """Returns current algorithm parameters."""
+        self._logger.debug("Flower parameters retrieved.")
+        return self._parameters
+
+    def set_run_env(self, run_env: dict):
+        """Sets computed runtime env overrides for Flower processes."""
+        self._run_env = run_env or {}
+        self._logger.debug("Flower run env updated.")
+
+    def get_run_env(self) -> dict:
+        """Returns current runtime env overrides."""
+        self._logger.debug("Flower run env retrieved.")
+        return self._run_env
+
+    async def add_event(self, event: Dict[str, Any]):
+        """Adds a runtime event payload (e.g. round_event)."""
+        self._events.append(event)
+        self._logger.debug("Flower event appended. total_events=%s", len(self._events))
+
+    def get_events(self) -> list:
+        """Returns runtime events for the active execution."""
+        return list(self._events or [])
+
+    def set_execution_context(self, request_id: str, algorithm_name: str):
+        """Sets active execution context for scoped Flower access."""
+        self._request_id = request_id
+        self._algorithm_name = algorithm_name
+        self._logger.debug(
+            "Flower execution context set. request_id=%s algorithm=%s",
+            request_id,
+            algorithm_name,
+        )
+
+    def validate_execution_scope(self, request_id: Optional[str]) -> bool:
+        """Validates that the caller request id matches the active Flower execution."""
+        if request_id is None:
+            # Backward-compatible access for existing Flower algorithms.
+            return True
+        if not self._request_id:
+            return False
+        return request_id == self._request_id
