@@ -1,4 +1,4 @@
-﻿"""Flower strategy helpers for flowertune_llm_medical Phase 1 runtime."""
+"""Flower strategy helpers for flowertune_llm_medical Phase 1 runtime."""
 
 from __future__ import annotations
 
@@ -36,7 +36,14 @@ class StrategyState:
 class ContractFedAvg(FedAvg):
     """FedAvg strategy that records summary stats and checkpoints."""
 
-    def __init__(self, state: StrategyState, checkpoint_every_n_rounds: int, artifact_dir: str, *args, **kwargs):
+    def __init__(
+        self,
+        state: StrategyState,
+        checkpoint_every_n_rounds: int,
+        artifact_dir: str,
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.state = state
         self.checkpoint_every_n_rounds = checkpoint_every_n_rounds

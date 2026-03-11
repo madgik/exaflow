@@ -1,4 +1,4 @@
-﻿"""MetricsOut validation for flowertune_llm_medical final summary payloads."""
+"""MetricsOut validation for flowertune_llm_medical final summary payloads."""
 
 from __future__ import annotations
 

@@ -151,3 +151,10 @@ pyrightconfig.json
 /tests/test_data/.data_paths/
 /logs/
 poetry.toml
+
+# Project specific
+/runs/
+/.venv-play/
+/controller.local.toml
+/localworkers_config.json
+/status.txt

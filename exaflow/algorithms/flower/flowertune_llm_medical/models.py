@@ -1,4 +1,4 @@
-﻿"""Model backend implementations for flowertune_llm_medical."""
+"""Model backend implementations for flowertune_llm_medical."""
 
 from __future__ import annotations
 

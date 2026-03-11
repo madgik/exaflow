@@ -1,4 +1,4 @@
-﻿"""Dataset adapter for flowertune_llm_medical Phase 1 runtime."""
+"""Dataset adapter for flowertune_llm_medical Phase 1 runtime."""
 
 from __future__ import annotations
 
@@ -83,7 +83,9 @@ def load_partition(
             full_df = pd.concat(frames, ignore_index=True)
 
             y_col = y_vars[0]
-            missing_cols = [col for col in [*x_vars, y_col] if col not in full_df.columns]
+            missing_cols = [
+                col for col in [*x_vars, y_col] if col not in full_df.columns
+            ]
             if missing_cols:
                 raise DatasetLoadError(
                     f"Dataset columns not found in CSV input: {missing_cols}"
@@ -92,8 +94,8 @@ def load_partition(
             features = _to_numeric_frame(full_df[x_vars].copy())
             target_raw = full_df[y_col]
             if target_raw.dtype == "object":
-                target = (
-                    target_raw.astype("category").cat.codes.to_numpy(dtype=np.float32)
+                target = target_raw.astype("category").cat.codes.to_numpy(
+                    dtype=np.float32
                 )
             else:
                 target = target_raw.to_numpy(dtype=np.float32)
@@ -131,7 +133,9 @@ def load_text_partition(
             frames = [pd.read_csv(path) for path in csv_paths]
             full_df = pd.concat(frames, ignore_index=True)
             y_col = y_vars[0]
-            missing_cols = [col for col in [*x_vars, y_col] if col not in full_df.columns]
+            missing_cols = [
+                col for col in [*x_vars, y_col] if col not in full_df.columns
+            ]
             if missing_cols:
                 raise DatasetLoadError(
                     f"Dataset columns not found in CSV input: {missing_cols}"

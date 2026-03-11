@@ -1,4 +1,4 @@
-﻿"""Controller I/O helpers for flowertune_llm_medical."""
+"""Controller I/O helpers for flowertune_llm_medical."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ from typing import Any
 from typing import Dict
 
 import requests
-
 
 CONTROLLER_IP = os.getenv("CONTROLLER_IP", "127.0.0.1")
 CONTROLLER_PORT = os.getenv("CONTROLLER_PORT", "5000")
@@ -34,7 +33,11 @@ def get_inputdata() -> Dict[str, Any]:
 
 def get_parameters() -> Dict[str, Any]:
     request_id = os.getenv("REQUEST_ID")
-    url = PARAMETERS_URL if not request_id else f"{PARAMETERS_URL}?request_id={request_id}"
+    url = (
+        PARAMETERS_URL
+        if not request_id
+        else f"{PARAMETERS_URL}?request_id={request_id}"
+    )
     return _get_json(url)
 
 

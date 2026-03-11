@@ -1,4 +1,4 @@
-﻿"""RunConfig validation and env mapping for flowertune_llm_medical."""
+"""RunConfig validation and env mapping for flowertune_llm_medical."""
 
 from __future__ import annotations
 

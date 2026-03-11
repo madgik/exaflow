@@ -15,16 +15,12 @@ from exaflow.algorithms.flower.flowertune_llm_medical.metrics_out import (
     validate_round_event_payload,
 )
 from exaflow.algorithms.flower.flowertune_llm_medical.models import ModelLoadError
-from exaflow.algorithms.flower.flowertune_llm_medical.models import (
-    create_backend_model,
-)
+from exaflow.algorithms.flower.flowertune_llm_medical.models import create_backend_model
 from exaflow.algorithms.flower.flowertune_llm_medical.models import preflight_backend
 from exaflow.algorithms.flower.flowertune_llm_medical.run_config import (
     build_env_mapping,
 )
-from exaflow.algorithms.flower.flowertune_llm_medical.run_config import (
-    parse_run_config,
-)
+from exaflow.algorithms.flower.flowertune_llm_medical.run_config import parse_run_config
 from exaflow.algorithms.flower.flowertune_llm_medical.run_config import (
     serialize_run_config,
 )
@@ -119,9 +115,7 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
                     self._algorithm_request_dto.parameters,
                     [h.worker_id for h in self._local_worker_tasks_handlers],
                 )
-                result = (
-                    await self._controller.flower_execution_info.get_result_with_timeout()
-                )
+                result = await self._controller.flower_execution_info.get_result_with_timeout()
 
                 self._logger.info(
                     f"Finished execution -> {self._algorithm_name} with {self._request_id}"
@@ -174,7 +168,8 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
                     lora_r=run_config.peft.r or 4,
                     lora_alpha=run_config.peft.alpha or 8,
                     lora_dropout=run_config.peft.dropout or 0.0,
-                    target_modules=run_config.peft.target_modules or ["q_proj", "v_proj"],
+                    target_modules=run_config.peft.target_modules
+                    or ["q_proj", "v_proj"],
                 )
             else:
                 client_partitions = []
@@ -197,7 +192,8 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
                     lora_r=run_config.peft.r or 4,
                     lora_alpha=run_config.peft.alpha or 8,
                     lora_dropout=run_config.peft.dropout or 0.0,
-                    target_modules=run_config.peft.target_modules or ["q_proj", "v_proj"],
+                    target_modules=run_config.peft.target_modules
+                    or ["q_proj", "v_proj"],
                 )
 
             global_params = template.get_parameters()
@@ -221,7 +217,8 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
                         lora_r=run_config.peft.r or 4,
                         lora_alpha=run_config.peft.alpha or 8,
                         lora_dropout=run_config.peft.dropout or 0.0,
-                        target_modules=run_config.peft.target_modules or ["q_proj", "v_proj"],
+                        target_modules=run_config.peft.target_modules
+                        or ["q_proj", "v_proj"],
                     )
                     model.set_parameters(global_params)
 
@@ -229,7 +226,9 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
                         x_train, y_train, x_val, y_val = client_partitions[cid]
                         model.fit_round(x_train, y_train, local_steps)
                         metrics = model.evaluate_round(x_val, y_val)
-                        local_updates.append((model.get_parameters(), max(1, len(y_train))))
+                        local_updates.append(
+                            (model.get_parameters(), max(1, len(y_train)))
+                        )
                         round_eval.append((metrics, max(1, len(y_val))))
                     else:
                         train_texts, val_texts = client_partitions[cid]
@@ -243,14 +242,12 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
                 global_params = self._weighted_average_parameters(local_updates)
 
                 total_eval = sum(n for _, n in round_eval)
-                agg_loss = (
-                    sum(m.get("loss", 0.0) * n for m, n in round_eval)
-                    / max(1, total_eval)
+                agg_loss = sum(m.get("loss", 0.0) * n for m, n in round_eval) / max(
+                    1, total_eval
                 )
-                agg_perplexity = (
-                    sum(m.get("perplexity", 1.0) * n for m, n in round_eval)
-                    / max(1, total_eval)
-                )
+                agg_perplexity = sum(
+                    m.get("perplexity", 1.0) * n for m, n in round_eval
+                ) / max(1, total_eval)
                 final_metrics = {
                     "loss": float(agg_loss),
                     "perplexity": float(agg_perplexity),
@@ -262,7 +259,9 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
 
                 checkpoint_ref = None
                 if rnd % run_config.artifacts.checkpoint_every_n_rounds == 0:
-                    checkpoint_ref = self._save_checkpoint(artifact_dir, rnd, global_params)
+                    checkpoint_ref = self._save_checkpoint(
+                        artifact_dir, rnd, global_params
+                    )
                     checkpoint_refs.append(checkpoint_ref)
 
                 round_event = {
@@ -289,7 +288,9 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
                 validate_round_event_payload(round_event)
                 await self._controller.flower_execution_info.add_event(round_event)
 
-            final_checkpoint_ref = self._save_final_checkpoint(artifact_dir, global_params)
+            final_checkpoint_ref = self._save_final_checkpoint(
+                artifact_dir, global_params
+            )
 
             result = {
                 "schema_version": "1.1",
@@ -326,7 +327,10 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
                 run_config,
                 code="MODEL_LOAD_ERROR",
                 message="Model backend preflight failed.",
-                details={"exception": str(exc), "backend": run_config.model.backend.value},
+                details={
+                    "exception": str(exc),
+                    "backend": run_config.model.backend.value,
+                },
             )
         except Exception as exc:  # noqa: BLE001
             return await self._set_failure_summary(
@@ -336,7 +340,9 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
                 details={"exception": str(exc)},
             )
 
-    async def _set_failure_summary(self, run_config, *, code: str, message: str, details: dict):
+    async def _set_failure_summary(
+        self, run_config, *, code: str, message: str, details: dict
+    ):
         requested_metrics = [m.value for m in run_config.evaluation.metrics]
         result = {
             "schema_version": "1.1",
@@ -359,7 +365,9 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
         return result
 
     @staticmethod
-    def _weighted_average_parameters(parameter_sets: List[Tuple[List[np.ndarray], int]]) -> List[np.ndarray]:
+    def _weighted_average_parameters(
+        parameter_sets: List[Tuple[List[np.ndarray], int]],
+    ) -> List[np.ndarray]:
         total_examples = sum(num_examples for _, num_examples in parameter_sets)
         if total_examples <= 0:
             raise ValueError("Cannot aggregate parameters with zero examples")
@@ -374,17 +382,23 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
         return avg_params
 
     @staticmethod
-    def _save_checkpoint(artifact_dir: str, rnd: int, parameters: List[np.ndarray]) -> str:
+    def _save_checkpoint(
+        artifact_dir: str, rnd: int, parameters: List[np.ndarray]
+    ) -> str:
         os.makedirs(artifact_dir, exist_ok=True)
         ckpt_path = os.path.join(artifact_dir, f"round_{rnd:03d}.npz")
-        np.savez(ckpt_path, **{f"tensor_{i:04d}": arr for i, arr in enumerate(parameters)})
+        np.savez(
+            ckpt_path, **{f"tensor_{i:04d}": arr for i, arr in enumerate(parameters)}
+        )
         return ckpt_path
 
     @staticmethod
     def _save_final_checkpoint(artifact_dir: str, parameters: List[np.ndarray]) -> str:
         os.makedirs(artifact_dir, exist_ok=True)
         ckpt_path = os.path.join(artifact_dir, "final_model.npz")
-        np.savez(ckpt_path, **{f"tensor_{i:04d}": arr for i, arr in enumerate(parameters)})
+        np.savez(
+            ckpt_path, **{f"tensor_{i:04d}": arr for i, arr in enumerate(parameters)}
+        )
         return ckpt_path
 
     def _safe_worker_call(self, action_desc, func, *args, **kwargs):

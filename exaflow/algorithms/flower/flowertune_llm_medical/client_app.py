@@ -1,4 +1,4 @@
-﻿"""Flower ClientApp runtime for flowertune_llm_medical Phase 1."""
+"""Flower ClientApp runtime for flowertune_llm_medical Phase 1."""
 
 from __future__ import annotations
 
@@ -13,13 +13,13 @@ import numpy as np
 from flwr.common import NDArrays
 
 from exaflow.algorithms.flower.flowertune_llm_medical.controller_io import get_inputdata
-from exaflow.algorithms.flower.flowertune_llm_medical.controller_io import get_parameters
+from exaflow.algorithms.flower.flowertune_llm_medical.controller_io import (
+    get_parameters,
+)
 from exaflow.algorithms.flower.flowertune_llm_medical.controller_io import get_run_env
 from exaflow.algorithms.flower.flowertune_llm_medical.dataset import load_partition
 from exaflow.algorithms.flower.flowertune_llm_medical.dataset import load_text_partition
-from exaflow.algorithms.flower.flowertune_llm_medical.models import (
-    create_backend_model,
-)
+from exaflow.algorithms.flower.flowertune_llm_medical.models import create_backend_model
 from exaflow.algorithms.flower.flowertune_llm_medical.run_config import parse_run_config
 
 
@@ -31,7 +31,9 @@ def _parse_env_json_list(name: str):
 
 
 class FederatedClient(fl.client.NumPyClient):
-    def __init__(self, model, train_data, eval_data, num_train, num_val, requested_metrics):
+    def __init__(
+        self, model, train_data, eval_data, num_train, num_val, requested_metrics
+    ):
         self.model = model
         self.train_data = train_data
         self.eval_data = eval_data

@@ -20,9 +20,7 @@ if __package__ in (None, ""):
 
 from exaflow.algorithms.flower.flowertune_llm_medical.dataset import load_partition
 from exaflow.algorithms.flower.flowertune_llm_medical.models import ModelLoadError
-from exaflow.algorithms.flower.flowertune_llm_medical.models import (
-    create_backend_model,
-)
+from exaflow.algorithms.flower.flowertune_llm_medical.models import create_backend_model
 from exaflow.algorithms.flower.flowertune_llm_medical.models import preflight_backend
 from exaflow.algorithms.flower.flowertune_llm_medical.run_config import parse_run_config
 
@@ -194,9 +192,7 @@ def run_play_mode(args) -> int:
             best_loss = agg_loss
             best_round = rnd
 
-        print(
-            f"[ROUND {rnd}] aggregate loss={agg_loss:.6f} perplexity={agg_ppl:.6f}"
-        )
+        print(f"[ROUND {rnd}] aggregate loss={agg_loss:.6f} perplexity={agg_ppl:.6f}")
 
     ckpt_path = _save_play_checkpoint(
         Path(config.artifacts.artifact_dir) / "play_final_model.npz", global_params
