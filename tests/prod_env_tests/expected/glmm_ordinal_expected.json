@@ -1,0 +1,21 @@
+{
+    "test_cases": [
+        {
+            "input": {
+                "inputdata": {
+                    "y": ["updrshy"],
+                    "x": ["subjectageyears", "updrstotal", "dataset"],
+                    "data_model": "dementia:0.1",
+                    "datasets": ["ppmi0", "ppmi1", "ppmi2"],
+                    "filters": null
+                },
+                "parameters": {
+                    "grouping_var": "dataset",
+                    "category_order": ["1", "2", "3", "4", "5"]
+                },
+                "test_case_num": 0
+            },
+            "output": {}
+        }
+    ]
+}
