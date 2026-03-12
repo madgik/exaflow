@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "exadata-validator"
+version = "0.0.1"
+description = "Validate data-model folders using DuckDB."
+authors = ["Exaflow Team"]
+readme = "README.md"
+packages = [
+    { include = "validator" },
+]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.11"
+click = "~8.1"
+duckdb = "~1.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "~8.4"
+
+[tool.poetry.scripts]
+exadata-validator = "validator.commands:entry"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["poetry-core>=1.8.0"]
+build-backend = "poetry.core.masonry.api"

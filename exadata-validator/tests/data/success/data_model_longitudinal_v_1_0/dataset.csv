@@ -1,0 +1,4 @@
+subjectid,visitid,dataset
+"subjectid1","BL","dataset_longitudinal"
+"subjectid2","FL1","dataset_longitudinal"
+"subjectid2","FL2","dataset_longitudinal"
