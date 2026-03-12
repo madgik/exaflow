@@ -1,0 +1,6 @@
+row_id,var1,var3,dataset,non_existing_col
+1,l1,,valid_dataset,1
+2,l2,22,valid_dataset,2
+3,l1,23,valid_dataset,3
+4,l1,24,valid_dataset,4
+5,l2,25,valid_dataset,5

@@ -1,0 +1,88 @@
+{
+        "code": "data_model1",
+        "label": "The Data Model",
+        "version": "1.0",
+        "variables": [
+            {
+                "isCategorical": false,
+                "code": "var1",
+                "sql_type": "text",
+                "description": "",
+                "label": "Variable 1",
+                "methodology": "",
+                "type": "nominal"
+            },
+            {
+                "isCategorical": false,
+                "label": "subjectcode",
+                "code": "subjectcode",
+                "sql_type": "text",
+                "description": "",
+                "methodology": "",
+                "type": "nominal"
+            },
+            {
+                "isCategorical": true,
+                "code": "var2",
+                "sql_type": "text",
+                "description": "",
+                "enumerations": [
+                    {"code": "l10", "label": "Level10"},
+                    {"code": "l20", "label": "Level20"}
+                ],
+                "label": "Variable 2",
+                "methodology": "",
+                "type": "nominal"
+            },
+            {
+                "isCategorical": true,
+                "code": "dataset",
+                "sql_type": "text",
+                "description": "",
+                "enumerations": [
+                    {"code": "dataset10", "label": "Dataset 10"},
+                    {"code": "dataset20", "label": "Dataset 20"}
+                ],
+                "label": "Dataset",
+                "methodology": "",
+                "type": "nominal"
+            }
+        ],
+        "groups": [
+            {
+                "name": "group",
+                "label": "The Group",
+                "variables": [
+                    {
+                        "isCategorical": false,
+                        "code": "var3",
+                        "sql_type": "real",
+                        "minValue": 0,
+                        "maxValue": 100,
+                        "description": "",
+                        "label": "Variable 3",
+                        "methodology": "",
+                        "type": "nominal"
+                    }
+                ],
+                "groups": [
+                    {
+                        "name": "inner_group",
+                        "label": "The Inner Group",
+                        "variables": [
+                            {
+                                "isCategorical": false,
+                                "code": "var4",
+                                "sql_type": "int",
+                                "units": "years",
+                                "description": "",
+                                "label": "Variable 4",
+                                "methodology": "",
+                                "type": "nominal"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }

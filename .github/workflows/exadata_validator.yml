@@ -1,0 +1,60 @@
+name: Exadata Validator
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "exadata-validator/**"
+      - ".github/workflows/exadata_validator.yml"
+  pull_request:
+    branches: [master]
+    paths:
+      - "exadata-validator/**"
+      - ".github/workflows/exadata_validator.yml"
+
+jobs:
+  test_build_and_smoke_test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: exadata-validator
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 2.3.2
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Load cached venv
+        uses: actions/cache@v5
+        with:
+          path: exadata-validator/.venv
+          key: exadata-validator-venv-${{ runner.os }}-${{ hashFiles('exadata-validator/poetry.lock') }}
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Run validator tests
+        run: poetry run pytest -q
+
+      - name: Build validator package
+        run: poetry build
+
+      - name: Smoke test installed wheel
+        run: |
+          python -m venv /tmp/exadata-validator-smoke
+          source /tmp/exadata-validator-smoke/bin/activate
+          pip install --upgrade pip
+          pip install dist/exadata_validator-*.whl
+          exadata-validator validate-data-model tests/data/success/data_model1_v_1_0
+          python -m validator validate-data-model tests/data/success/data_model_longitudinal_v_1_0

@@ -1,0 +1,45 @@
+{
+        "code": "data_model_longitudinal",
+        "label": "The Data Model Longitudinal",
+        "version": "1.0",
+        "longitudinal": true,
+        "variables": [
+            {
+                "isCategorical": true,
+                "code": "dataset",
+                "sql_type": "text",
+                "description": "",
+                "enumerations": [
+                    {"code": "dataset_longitudinal", "label": "Dataset Longitudinal"}
+                ],
+                "label": "Dataset",
+                "methodology": "",
+                "type": "nominal"
+            },
+            {
+                "isCategorical": false,
+                "code": "subjectid",
+                "sql_type": "text",
+                "description": "",
+                "label": "subjectid",
+                "methodology": "",
+                "type": "nominal"
+            },
+            {
+                "isCategorical": true,
+                "label": "visitid",
+                "code": "visitid",
+                "sql_type": "text",
+                "enumerations": [
+                    {"code": "BL", "label": "Base line"},
+                    {"code": "FL1", "label": "Follow up 1"},
+                    {"code": "FL2", "label": "Follow up 2"}
+                ],
+                "description": "",
+                "methodology": "",
+                "type": "nominal"
+            }
+        ],
+        "groups": [
+        ]
+    }
