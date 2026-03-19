@@ -85,20 +85,12 @@ class LinearSVM(Algorithm):
         gamma = self.get_parameter("gamma")
         C = self.get_parameter("C")
 
-        # Validate that y has at least two levels using metadata enumerations
-        y_enums = self.metadata.get(y_var).get("enumerations")
-        y_levels = list(y_enums.keys())
-        if len(y_levels) < 2:
-            raise BadUserInput(
-                f"The variable {y_var} has less than 2 levels and SVM cannot be "
-                "performed. Please choose another variable."
-            )
-
         udf_results = self.run_local_udf(
             func=linear_svm_local_step,
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
+                "metadata": self.metadata,
                 "gamma": float(gamma),
                 "C": float(C),
             },
@@ -125,13 +117,21 @@ class LinearSVM(Algorithm):
 
 
 @exareme3_udf()
-def linear_svm_local_step(data, y_var, x_vars, gamma, C):
+def linear_svm_local_step(data, y_var, x_vars, metadata, gamma, C):
     """
     Train a linear SVM locally and return local model summaries for global aggregation.
     """
     # Keep only required columns and drop rows with missing values
     cols = list(dict.fromkeys(list(x_vars) + [y_var]))
     data = data[cols].dropna()
+
+    y_enums = (metadata.get(y_var) or {}).get("enumerations") or {}
+    y_levels = list(y_enums.keys())
+    if len(y_levels) < 2:
+        raise BadUserInput(
+            f"The variable {y_var} has less than 2 levels and SVM cannot be "
+            "performed. Please choose another variable."
+        )
 
     n_features = len(x_vars)
     if n_features == 0:

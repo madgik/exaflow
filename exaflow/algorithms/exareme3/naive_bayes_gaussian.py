@@ -55,14 +55,12 @@ class NaiveBayesGaussian(Algorithm):
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)
 
-        labels = sorted(self.metadata[y_var]["enumerations"].keys())
-
         udf_results = self.run_local_udf(
             func=naive_bayes_gaussian_local_step,
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
-                "labels": labels,
+                "metadata": self.metadata,
             },
         )
 
@@ -76,8 +74,10 @@ def naive_bayes_gaussian_local_step(
     data,
     y_var,
     x_vars,
-    labels,
+    metadata,
 ):
+    labels = sorted((metadata[y_var].get("enumerations") or {}).keys())
+
     X = data[x_vars].to_numpy(dtype=float, copy=False)
     y = data[y_var].to_numpy()
 
