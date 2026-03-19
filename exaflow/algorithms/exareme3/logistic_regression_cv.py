@@ -157,13 +157,7 @@ class LogisticRegressionCV(Algorithm):
         positive_class = self.get_parameter("positive_class")
         n_splits = self.get_parameter("n_splits")
         y_var = self.inputdata.y[0]
-
-        categorical_vars = [
-            var for var in self.inputdata.x if self.metadata[var]["is_categorical"]
-        ]
-        numerical_vars = [
-            var for var in self.inputdata.x if not self.metadata[var]["is_categorical"]
-        ]
+        x_vars = list(self.inputdata.x)
 
         # Run distributed logistic CV
         udf_results = self.run_local_udf(
@@ -171,8 +165,8 @@ class LogisticRegressionCV(Algorithm):
             kw_args={
                 "y_var": y_var,
                 "positive_class": positive_class,
-                "categorical_vars": categorical_vars,
-                "numerical_vars": numerical_vars,
+                "x_vars": x_vars,
+                "metadata": self.metadata,
                 "n_splits": n_splits,
             },
         )
@@ -232,8 +226,8 @@ def logistic_regression_cv_local_step(
     data,
     y_var,
     positive_class,
-    categorical_vars,
-    numerical_vars,
+    x_vars,
+    metadata,
     n_splits,
 ):
     """
@@ -246,6 +240,8 @@ def logistic_regression_cv_local_step(
     - Approximate ROC curve on a fixed grid of thresholds via aggregated counts.
     """
     n_splits = int(n_splits)
+    categorical_vars = [var for var in x_vars if metadata[var]["is_categorical"]]
+    numerical_vars = [var for var in x_vars if not metadata[var]["is_categorical"]]
 
     cv_pipeline = FederatedPipeline(
         [

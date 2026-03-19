@@ -75,27 +75,13 @@ class AnovaTwoWay(Algorithm):
 
         sstype = self.get_parameter("sstype")
 
-        levels_a = list(self.metadata[x1]["enumerations"])
-        levels_b = list(self.metadata[x2]["enumerations"])
-        if len(levels_a) < 2:
-            raise BadUserInput(
-                f"The variable {x1} has less than 2 levels and Anova cannot be "
-                "performed. Please choose another variable."
-            )
-        if len(levels_b) < 2:
-            raise BadUserInput(
-                f"The variable {x2} has less than 2 levels and Anova cannot be "
-                "performed. Please choose another variable."
-            )
-
         results = self.run_local_udf(
             func=anova_twoway_local_step,
             kw_args={
                 "x1": x1,
                 "x2": x2,
                 "y": y,
-                "levels_a": levels_a,
-                "levels_b": levels_b,
+                "metadata": self.metadata,
                 "sstype": sstype,
             },
         )
@@ -103,7 +89,20 @@ class AnovaTwoWay(Algorithm):
 
 
 @exareme3_udf(with_aggregation_server=True)
-def anova_twoway_local_step(agg_client, data, x1, x2, y, levels_a, levels_b, sstype):
+def anova_twoway_local_step(agg_client, data, x1, x2, y, metadata, sstype):
+    levels_a = list((metadata[x1].get("enumerations") or {}).keys())
+    levels_b = list((metadata[x2].get("enumerations") or {}).keys())
+    if len(levels_a) < 2:
+        raise BadUserInput(
+            f"The variable {x1} has less than 2 levels and Anova cannot be "
+            "performed. Please choose another variable."
+        )
+    if len(levels_b) < 2:
+        raise BadUserInput(
+            f"The variable {x2} has less than 2 levels and Anova cannot be "
+            "performed. Please choose another variable."
+        )
+
     model = FederatedAnovaTwoWay(agg_client=agg_client, sstype=sstype)
     model.fit(
         data=data,

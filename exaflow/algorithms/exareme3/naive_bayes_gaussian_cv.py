@@ -79,22 +79,19 @@ class NaiveBayesGaussianCV(Algorithm):
         x_vars = list(self.inputdata.x)
         n_splits = self.get_parameter("n_splits")
 
-        # Sorted class labels to match sklearn/original implementation
-        label_dict = self.metadata[y_var]["enumerations"]
-        labels = sorted(label_dict.keys())
-
         # Run CV UDF (with aggregation server)
         udf_results = self.run_local_udf(
             func=gaussian_nb_cv_local_step,
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
-                "labels": labels,
+                "metadata": self.metadata,
                 "n_splits": int(n_splits),
             },
         )
 
         metrics = udf_results[0]  # identical on all workers
+        labels = metrics["labels"]
 
         confmats = [np.asarray(cm, dtype=float) for cm in metrics["confmats"]]
         n_obs = [int(v) for v in metrics["n_obs"]]
@@ -121,16 +118,17 @@ def gaussian_nb_cv_local_step(
     data,
     y_var,
     x_vars,
-    labels,
+    metadata,
     n_splits,
 ):
     """
     Exaflow UDF that performs K-fold cross-validation for Gaussian Naive Bayes.
     """
     n_splits = int(n_splits)
+    labels = sorted((metadata[y_var].get("enumerations") or {}).keys())
     class_labels = list(labels)
     if not class_labels:
-        return {"confmats": [], "n_obs": []}
+        return {"labels": [], "confmats": [], "n_obs": []}
 
     valid_mask = data[y_var].notna().to_numpy()
     data_valid = data.loc[valid_mask]
@@ -163,6 +161,7 @@ def gaussian_nb_cv_local_step(
     n_obs_per_fold = [int(v) for v in metrics["n_obs"]]
 
     return {
+        "labels": class_labels,
         "confmats": [cm.tolist() for cm in confmats_global],
         "n_obs": n_obs_per_fold,
     }

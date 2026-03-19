@@ -81,19 +81,12 @@ class NaiveBayesCategorical(Algorithm):
         x_vars = list(self.inputdata.x)
         n_splits = self.get_parameter("n_splits")
 
-        # Build sorted category lists to match sklearn / original implementation
-        all_vars = x_vars + [y_var]
-        categories: Dict[str, List[str]] = {
-            var: list(sorted(self.metadata[var]["enumerations"].keys()))
-            for var in all_vars
-        }
-
         udf_results = self.run_local_udf(
             func=naive_bayes_categorical_cv_local_step,
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
-                "categories": categories,
+                "metadata": self.metadata,
                 "n_splits": int(n_splits),
             },
         )
@@ -122,7 +115,7 @@ def naive_bayes_categorical_cv_local_step(
     data,
     y_var,
     x_vars,
-    categories,
+    metadata,
     n_splits,
 ):
     """
@@ -131,6 +124,10 @@ def naive_bayes_categorical_cv_local_step(
     """
 
     n_splits = int(n_splits)
+    categories: Dict[str, List[str]] = {
+        var: list(sorted((metadata[var].get("enumerations") or {}).keys()))
+        for var in x_vars + [y_var]
+    }
 
     labels = list(categories[y_var])
     if not labels:

@@ -88,14 +88,12 @@ class Histogram(Algorithm):
         if bins is None:
             bins = default_bins
 
-        metadata_subset = {var: self.metadata[var] for var in {y_var, *x_vars}}
-
         results = self.run_local_udf(
             func=local_step,
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
-                "metadata": metadata_subset,
+                "metadata": self.metadata,
                 "bins": bins,
             },
         )
@@ -134,13 +132,14 @@ class Histogram(Algorithm):
 def local_step(agg_client, data, y_var, x_vars, metadata, bins):
     from exaflow.worker import config as worker_config
 
+    metadata_subset = {var: metadata[var] for var in {y_var, *x_vars}}
     min_row_count = worker_config.privacy.minimum_row_count
     descriptive_stats = FederatedDescriptiveStatistics(agg_client=agg_client)
     result = descriptive_stats.hist(
         data=data,
         y_var=y_var,
         x_vars=x_vars,
-        metadata=metadata,
+        metadata=metadata_subset,
         bins=bins,
         min_row_count=min_row_count,
     )
