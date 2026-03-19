@@ -6,6 +6,7 @@ import pandas as pd
 from pydantic import BaseModel
 
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
+from exaflow.algorithms.exareme3.utils.metadata_enums import get_enum_codes
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.anova_oneway import FederatedAnovaOneWay
 from exaflow.algorithms.specifications import AlgorithmSpecification
@@ -131,16 +132,9 @@ class AnovaOneWay(Algorithm):
         )
 
 
-def _ordered_enum_codes(metadata_entry: Dict) -> List[str]:
-    enums = metadata_entry.get("enumerations") or {}
-    if isinstance(enums, dict):
-        return list(enums.keys())
-    return list(enums)
-
-
 @exareme3_udf(with_aggregation_server=True)
 def anova_oneway_local_step(agg_client, data, x_var, y_var, metadata):
-    covar_enums = _ordered_enum_codes(metadata[x_var])
+    covar_enums = get_enum_codes(metadata, x_var)
 
     # --- Local stats like original local1, but force 1D arrays ---
     y_col = data[y_var]

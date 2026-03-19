@@ -3,22 +3,13 @@ from concurrent.futures import as_completed
 from typing import List
 from typing import Optional
 
+from exaflow.algorithms.exareme3.utils.metadata_enums import add_ordered_enums
 from exaflow.algorithms.exareme3.utils.registry import get_udf_registry_key
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.controller import logger as ctrl_logger
 from exaflow.controller.services.exareme3.tasks_handler import Exareme3TasksHandler
 from exaflow.worker_communication import InsufficientDataError
 from exaflow.worker_communication import RunUdfSystemArgs
-
-
-def add_ordered_enums(data_dict):
-    for key, field in data_dict.items():
-        if field.get("is_categorical") and "enumerations" in field:
-            # extract the codes (keys of the enumerations dict)
-            ordered = list(field["enumerations"].keys())
-            # add to the same dictionary
-            field["ordered_enums"] = ordered
-    return data_dict
 
 
 class Exareme3AlgorithmFlowEngineInterface:
@@ -53,10 +44,11 @@ class Exareme3AlgorithmFlowEngineInterface:
 
         if "metadata" in kw_args:
             kw_args["metadata"] = add_ordered_enums(kw_args["metadata"])
+        system_metadata = add_ordered_enums(self._metadata)
 
         system_args = RunUdfSystemArgs(
             inputdata=self._inputdata,
-            metadata=self._metadata,
+            metadata=system_metadata,
             drop_na=drop_na,
             check_min_rows=check_min_rows,
             add_dataset_variable=add_dataset_variable,
