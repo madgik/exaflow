@@ -69,16 +69,15 @@ class AnovaOneWay(Algorithm):
         x_var_name = self.inputdata.x[0]
 
         # Run a single distributed ANOVA UDF
-        udf_results = self.run_local_udf(
-            func=anova_oneway_local_step,
+        result = self.run_local_udf(
+            func=local_step,
             kw_args={
                 "x_var": x_var_name,
                 "y_var": y_var_name,
                 "metadata": self.metadata,
             },
+            identical_results=True,
         )
-
-        result = udf_results[0]
 
         anova_result = {
             "n_obs": result["n_obs"],
@@ -133,7 +132,7 @@ class AnovaOneWay(Algorithm):
 
 
 @exareme3_udf(with_aggregation_server=True)
-def anova_oneway_local_step(agg_client, data, x_var, y_var, metadata):
+def local_step(agg_client, data, x_var, y_var, metadata):
     covar_enums = get_enum_codes(metadata, x_var)
 
     # --- Local stats like original local1, but force 1D arrays ---

@@ -121,7 +121,7 @@ class TTestIndependent(Algorithm):
         group_a = self.get_parameter("groupA")
         group_b = self.get_parameter("groupB")
 
-        results = self.run_local_udf(
+        result = self.run_local_udf(
             func=local_step,
             kw_args={
                 "group_var": self.inputdata.x[0],
@@ -131,9 +131,8 @@ class TTestIndependent(Algorithm):
                 "group_a": group_a,
                 "group_b": group_b,
             },
+            identical_results=True,
         )
-
-        result = results[0]
         return TTestIndependentResult(
             t_stat=result["t_stat"],
             df=result["df"],

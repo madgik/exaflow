@@ -82,17 +82,16 @@ class NaiveBayesCategorical(Algorithm):
         x_vars = list(self.inputdata.x)
         n_splits = self.get_parameter("n_splits")
 
-        udf_results = self.run_local_udf(
-            func=naive_bayes_categorical_cv_local_step,
+        metrics = self.run_local_udf(
+            func=local_step,
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
                 "metadata": self.metadata,
                 "n_splits": int(n_splits),
             },
+            identical_results=True,
         )
-
-        metrics = udf_results[0]  # identical on all workers
 
         labels = metrics["labels"]
         confmats = [np.asarray(cm, dtype=float) for cm in metrics["confmats"]]
@@ -111,7 +110,7 @@ class NaiveBayesCategorical(Algorithm):
 
 
 @exareme3_udf(with_aggregation_server=True)
-def naive_bayes_categorical_cv_local_step(
+def local_step(
     agg_client,
     data,
     y_var,

@@ -160,8 +160,8 @@ class LogisticRegressionCV(Algorithm):
         x_vars = list(self.inputdata.x)
 
         # Run distributed logistic CV
-        udf_results = self.run_local_udf(
-            func=logistic_regression_cv_local_step,
+        metrics = self.run_local_udf(
+            func=local_step,
             kw_args={
                 "y_var": y_var,
                 "positive_class": positive_class,
@@ -169,9 +169,8 @@ class LogisticRegressionCV(Algorithm):
                 "metadata": self.metadata,
                 "n_splits": n_splits,
             },
+            identical_results=True,
         )
-
-        metrics = udf_results[0]
         indep_var_names = metrics["feature_names"]
 
         n_obs_train = [int(v) for v in metrics["n_obs"]]
@@ -221,7 +220,7 @@ class LogisticRegressionCV(Algorithm):
 
 
 @exareme3_udf(with_aggregation_server=True)
-def logistic_regression_cv_local_step(
+def local_step(
     agg_client,
     data,
     y_var,

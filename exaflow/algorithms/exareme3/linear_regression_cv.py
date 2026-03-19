@@ -101,18 +101,16 @@ class LinearRegressionCV(Algorithm):
         n_splits = int(self.get_parameter("n_splits"))
         x_vars = list(self.inputdata.x)
 
-        udf_results = self.run_local_udf(
-            func=linear_regression_cv_local_step,
+        metrics = self.run_local_udf(
+            func=local_step,
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
                 "metadata": self.metadata,
                 "n_splits": n_splits,
             },
+            identical_results=True,
         )
-
-        # All workers should return identical global metrics; take the first
-        metrics = udf_results[0]
         indep_var_names = metrics["feature_names"]
 
         rmse = np.asarray(metrics["rmse"], dtype=float)
@@ -138,7 +136,7 @@ class LinearRegressionCV(Algorithm):
 
 
 @exareme3_udf(with_aggregation_server=True)
-def linear_regression_cv_local_step(
+def local_step(
     agg_client,
     data,
     y_var,

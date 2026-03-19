@@ -102,17 +102,16 @@ class LogisticRegression(Algorithm):
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)
 
-        udf_results = self.run_local_udf(
-            func=logistic_regression_local_step,
+        model_stats = self.run_local_udf(
+            func=local_step,
             kw_args={
                 "positive_class": positive_class,
                 "y_var": y_var,
                 "x_vars": x_vars,
                 "metadata": self.metadata,
             },
+            identical_results=True,
         )
-
-        model_stats = udf_results[0]
         summary = LogisticRegressionSummary(
             n_obs=model_stats["n_obs"],
             coefficients=model_stats["coefficients"],
@@ -139,7 +138,7 @@ class LogisticRegression(Algorithm):
 
 
 @exareme3_udf(with_aggregation_server=True)
-def logistic_regression_local_step(
+def local_step(
     agg_client,
     data,
     positive_class,

@@ -86,7 +86,7 @@ class LinearSVM(Algorithm):
         C = self.get_parameter("C")
 
         udf_results = self.run_local_udf(
-            func=linear_svm_local_step,
+            func=local_step,
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
@@ -117,7 +117,7 @@ class LinearSVM(Algorithm):
 
 
 @exareme3_udf()
-def linear_svm_local_step(data, y_var, x_vars, metadata, gamma, C):
+def local_step(data, y_var, x_vars, metadata, gamma, C):
     """
     Train a linear SVM locally and return local model summaries for global aggregation.
     """
