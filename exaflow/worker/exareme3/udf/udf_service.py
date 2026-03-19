@@ -61,7 +61,6 @@ def run_udf(
 
     inputdata = system_args.inputdata
     # GRPC will mess with the order of dict when sending from controller to worker we need a list with the order to we can re-arrange them properly
-    metadata = enforce_enum_order(system_args.metadata)
     if (
         "metadata" in kw_args
     ):  # TODO We should not expect the metadata hard coded in a specific name, try to remove
