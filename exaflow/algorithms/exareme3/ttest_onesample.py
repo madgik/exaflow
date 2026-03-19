@@ -95,7 +95,7 @@ class TTestOneSample(Algorithm):
         alternative = self.get_parameter("alt_hypothesis")
         mu = self.get_parameter("mu")
 
-        results = self.run_local_udf(
+        result = self.run_local_udf(
             func=local_step,
             kw_args={
                 "y_var": self.inputdata.y[0],
@@ -103,8 +103,8 @@ class TTestOneSample(Algorithm):
                 "alternative": alternative,
                 "mu": mu,
             },
+            identical_results=True,
         )
-        result = results[0]
         return TTestOneSampleResult(
             n_obs=result["n_obs"],
             std=result["std"],

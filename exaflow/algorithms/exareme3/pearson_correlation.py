@@ -71,15 +71,15 @@ class PearsonCorrelation(Algorithm):
             x_vars = self.inputdata.x
         else:
             x_vars = self.inputdata.y
-        results = self.run_local_udf(
+        result = self.run_local_udf(
             func=local_step,
             kw_args={
                 "y_vars": self.inputdata.y,
                 "x_vars": x_vars,
                 "alpha": alpha,
             },
+            identical_results=True,
         )
-        result = results[0]
 
         x_vars = self.inputdata.x or self.inputdata.y
         y_vars = self.inputdata.y
