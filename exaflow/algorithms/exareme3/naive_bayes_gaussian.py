@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
+from exaflow.algorithms.exareme3.utils.metadata_enums import get_enum_codes
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.naive_bayes import FederatedGaussianNB
 
@@ -76,7 +77,7 @@ def naive_bayes_gaussian_local_step(
     x_vars,
     metadata,
 ):
-    labels = sorted((metadata[y_var].get("enumerations") or {}).keys())
+    labels = sorted(get_enum_codes(metadata, y_var))
 
     X = data[x_vars].to_numpy(dtype=float, copy=False)
     y = data[y_var].to_numpy()

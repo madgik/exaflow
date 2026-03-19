@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
+from exaflow.algorithms.exareme3.utils.metadata_enums import get_enum_codes
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.naive_bayes import FederatedCategoricalNB
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
@@ -81,8 +82,7 @@ def naive_bayes_categorical_local_step(
     metadata,
 ):
     categories: Dict[str, List[str]] = {
-        var: list(sorted((metadata[var].get("enumerations") or {}).keys()))
-        for var in x_vars + [y_var]
+        var: sorted(get_enum_codes(metadata, var)) for var in x_vars + [y_var]
     }
 
     y = data[y_var].to_numpy()

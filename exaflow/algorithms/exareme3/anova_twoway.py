@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
+from exaflow.algorithms.exareme3.utils.metadata_enums import get_enum_codes
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.anova_twoway import FederatedAnovaTwoWay
 from exaflow.worker_communication import BadUserInput
@@ -90,8 +91,8 @@ class AnovaTwoWay(Algorithm):
 
 @exareme3_udf(with_aggregation_server=True)
 def anova_twoway_local_step(agg_client, data, x1, x2, y, metadata, sstype):
-    levels_a = list((metadata[x1].get("enumerations") or {}).keys())
-    levels_b = list((metadata[x2].get("enumerations") or {}).keys())
+    levels_a = get_enum_codes(metadata, x1)
+    levels_b = get_enum_codes(metadata, x2)
     if len(levels_a) < 2:
         raise BadUserInput(
             f"The variable {x1} has less than 2 levels and Anova cannot be "
