@@ -8,6 +8,7 @@ from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.controller import logger as ctrl_logger
 from exaflow.controller.services.exareme3.tasks_handler import Exareme3TasksHandler
 from exaflow.worker_communication import InsufficientDataError
+from exaflow.worker_communication import RunUdfSystemArgs
 
 
 def add_ordered_enums(data_dict):
@@ -53,14 +54,14 @@ class Exareme3AlgorithmFlowEngineInterface:
         if "metadata" in kw_args:
             kw_args["metadata"] = add_ordered_enums(kw_args["metadata"])
 
-        system_args = dict()
-        system_args["inputdata"] = self._inputdata.model_dump_json()
-        system_args["metadata"] = self._metadata
-        system_args["drop_na"] = drop_na
-        system_args["check_min_rows"] = check_min_rows
-        system_args["add_dataset_variable"] = add_dataset_variable
-        if self._preprocessing:
-            system_args["preprocessing"] = self._preprocessing
+        system_args = RunUdfSystemArgs(
+            inputdata=self._inputdata,
+            metadata=self._metadata,
+            drop_na=drop_na,
+            check_min_rows=check_min_rows,
+            add_dataset_variable=add_dataset_variable,
+            preprocessing=self._preprocessing,
+        )
 
         executor = ThreadPoolExecutor(max_workers=len(self._tasks_handlers))
         future_to_index = {}

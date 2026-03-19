@@ -24,6 +24,7 @@ from exaflow.worker_communication import CommonDataElements
 from exaflow.worker_communication import DataModelAttributes
 from exaflow.worker_communication import DatasetsInfoPerDataModel
 from exaflow.worker_communication import InsufficientDataError
+from exaflow.worker_communication import RunUdfSystemArgs
 from exaflow.worker_communication import WorkerInfo
 
 LOGGER = logging.getLogger("WorkerGrpcServer")
@@ -282,7 +283,9 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
     def RunUdf(self, request, context):
         try:
             kw_args = _struct_to_dict(request.kw_args)
-            system_args = _struct_to_dict(request.system_args)
+            system_args = RunUdfSystemArgs.model_validate(
+                _struct_to_dict(request.system_args)
+            )
             result = udf_service.run_udf(
                 request_id=request.request_id,
                 udf_registry_key=request.udf_registry_key,

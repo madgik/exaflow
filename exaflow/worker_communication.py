@@ -14,6 +14,7 @@ from pydantic import Field
 from pydantic import field_validator
 
 from exaflow import DType
+from exaflow.algorithms.utils.inputdata_utils import Inputdata
 
 
 class RequestIDNotFound(Exception):
@@ -194,6 +195,15 @@ class CommonDataElements(BaseModel):
             return False
 
         return True
+
+
+class RunUdfSystemArgs(BaseModel):
+    inputdata: Inputdata
+    metadata: Dict[str, Any]
+    drop_na: bool
+    check_min_rows: bool
+    add_dataset_variable: bool
+    preprocessing: Optional[Dict[str, Any]] = None
 
 
 # ~~~~~~~~~~~~~~~~~~~ Table Data DTOs ~~~~~~~~~~~~~~~~~~~~~~ #
