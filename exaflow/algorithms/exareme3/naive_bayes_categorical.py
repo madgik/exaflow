@@ -60,21 +60,20 @@ class NaiveBayesCategorical(Algorithm):
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)
 
-        udf_results = self.run_local_udf(
-            func=naive_bayes_categorical_local_step,
+        params = self.run_local_udf(
+            func=local_step,
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
                 "metadata": self.metadata,
             },
+            identical_results=True,
         )
-
-        params = udf_results[0]
         return NaiveBayesCategoricalResult(**params)
 
 
 @exareme3_udf(with_aggregation_server=True)
-def naive_bayes_categorical_local_step(
+def local_step(
     agg_client,
     data,
     y_var,

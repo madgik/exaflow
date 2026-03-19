@@ -76,8 +76,8 @@ class AnovaTwoWay(Algorithm):
 
         sstype = self.get_parameter("sstype")
 
-        results = self.run_local_udf(
-            func=anova_twoway_local_step,
+        result = self.run_local_udf(
+            func=local_step,
             kw_args={
                 "x1": x1,
                 "x2": x2,
@@ -85,12 +85,13 @@ class AnovaTwoWay(Algorithm):
                 "metadata": self.metadata,
                 "sstype": sstype,
             },
+            identical_results=True,
         )
-        return AnovaResult(**results[0])
+        return AnovaResult(**result)
 
 
 @exareme3_udf(with_aggregation_server=True)
-def anova_twoway_local_step(agg_client, data, x1, x2, y, metadata, sstype):
+def local_step(agg_client, data, x1, x2, y, metadata, sstype):
     levels_a = get_enum_codes(metadata, x1)
     levels_b = get_enum_codes(metadata, x2)
     if len(levels_a) < 2:

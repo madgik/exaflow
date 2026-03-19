@@ -62,12 +62,13 @@ class PCAWithTransformation(Algorithm):
         data_transformation: Dict = self.get_parameter("data_transformation")
 
         try:
-            results = self.run_local_udf(
-                func=pca_with_transformation_local_step,
+            result = self.run_local_udf(
+                func=local_step,
                 kw_args={
                     "y_vars": self.inputdata.y,
                     "data_transformation": data_transformation,
                 },
+                identical_results=True,
             )
         except Exception as ex:
             msg = str(ex)
@@ -80,7 +81,6 @@ class PCAWithTransformation(Algorithm):
                 raise BadUserInput(msg)
             raise
 
-        result = results[0]
         return PCAResult(
             title="Eigenvalues and Eigenvectors",
             n_obs=result["n_obs"],
@@ -90,7 +90,7 @@ class PCAWithTransformation(Algorithm):
 
 
 @exareme3_udf(with_aggregation_server=True)
-def pca_with_transformation_local_step(
+def local_step(
     agg_client,
     data,
     y_vars,

@@ -86,16 +86,15 @@ class KMeans(Algorithm):
         tol = float(self.get_parameter("tol", 1e-4))
         maxiter = int(self.get_parameter("maxiter", 100))
 
-        results = self.run_local_udf(
+        result = self.run_local_udf(
             func=local_step,
             kw_args={
                 "n_clusters": n_clusters,
                 "tol": tol,
                 "maxiter": maxiter,
             },
+            identical_results=True,
         )
-
-        result = results[0]
         n_obs = int(result["n_obs"])
         centers = result["centers"]
 

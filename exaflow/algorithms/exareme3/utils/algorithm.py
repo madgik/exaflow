@@ -1,10 +1,12 @@
 import inspect
 import json
+import math
 from abc import ABC
 from abc import abstractmethod
 from pathlib import Path
 from typing import Any
 from typing import Dict
+from typing import List
 from typing import Optional
 
 from exaflow.algorithms.specifications import AlgorithmSpecification
@@ -65,14 +67,27 @@ class Algorithm(ABC):
     def run(self):
         pass
 
-    def run_local_udf(self, func, kw_args):
-        return self._engine.run_udf(
+    def run_local_udf(self, func, kw_args, *, identical_results: bool = False):
+        results: List[Dict[str, Any]] = self._engine.run_udf(
             func,
             self.drop_na_rows,
             self.check_min_rows,
             self.add_dataset_variable,
             kw_args,
         )
+        if not identical_results:
+            return results
+        if not results:
+            raise RuntimeError("UDF returned no results.")
+
+        first = results[0]
+        for idx, result in enumerate(results[1:], start=1):
+            if not _values_equal(result, first):
+                raise RuntimeError(
+                    f"Inconsistent UDF responses for '{func.__name__}': "
+                    f"worker result at index {idx} differs from index 0."
+                )
+        return first
 
     @classmethod
     def get_specification(cls) -> AlgorithmSpecification:
@@ -93,3 +108,27 @@ class Algorithm(ABC):
             specification = json.load(fp)
 
         return AlgorithmSpecification.model_validate(specification)
+
+
+def _is_nan(value: Any) -> bool:
+    try:
+        return math.isnan(value)
+    except (TypeError, ValueError):
+        return False
+
+
+def _values_equal(left: Any, right: Any) -> bool:
+    if _is_nan(left) and _is_nan(right):
+        return True
+
+    if isinstance(left, dict) and isinstance(right, dict):
+        if set(left.keys()) != set(right.keys()):
+            return False
+        return all(_values_equal(left[key], right[key]) for key in left)
+
+    if isinstance(left, (list, tuple)) and isinstance(right, (list, tuple)):
+        if len(left) != len(right):
+            return False
+        return all(_values_equal(lv, rv) for lv, rv in zip(left, right))
+
+    return left == right

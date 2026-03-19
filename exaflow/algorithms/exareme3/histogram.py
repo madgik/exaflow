@@ -88,7 +88,7 @@ class Histogram(Algorithm):
         if bins is None:
             bins = default_bins
 
-        results = self.run_local_udf(
+        payload = self.run_local_udf(
             func=local_step,
             kw_args={
                 "y_var": y_var,
@@ -96,8 +96,8 @@ class Histogram(Algorithm):
                 "metadata": self.metadata,
                 "bins": bins,
             },
+            identical_results=True,
         )
-        payload = results[0]
 
         histograms: List[HistogramResultItem] = []
         base_bins = payload["bins"]

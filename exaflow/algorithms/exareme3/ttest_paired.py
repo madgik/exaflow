@@ -85,7 +85,7 @@ class TTestPaired(Algorithm):
         alpha = self.get_parameter("alpha")
         alternative = self.get_parameter("alt_hypothesis")
 
-        results = self.run_local_udf(
+        result = self.run_local_udf(
             func=local_step,
             kw_args={
                 "x_var": self.inputdata.x[0],
@@ -93,8 +93,8 @@ class TTestPaired(Algorithm):
                 "alpha": alpha,
                 "alternative": alternative,
             },
+            identical_results=True,
         )
-        result = results[0]
         return TTestPairedResult(
             t_stat=result["t_stat"],
             df=result["df"],

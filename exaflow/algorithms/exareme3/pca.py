@@ -42,13 +42,13 @@ class PCA(Algorithm):
         )
 
     def run(self):
-        results = self.run_local_udf(
+        result = self.run_local_udf(
             func=local_step,
             kw_args={
                 "y_vars": self.inputdata.y,
             },
+            identical_results=True,
         )
-        result = results[0]
         n_obs = result["n_obs"]
         eigenvalues = result["eigenvalues"]
         eigenvectors = result["eigenvectors"]
