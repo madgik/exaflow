@@ -6,6 +6,7 @@ from exaflow.aggregation_clients.exareme3_udf_aggregation_client import (
 from exaflow.algorithms.exareme3.longitudinal_transformer import (
     apply_longitudinal_transformation,
 )
+from exaflow.algorithms.exareme3.utils.metadata_enums import enforce_enum_order
 from exaflow.algorithms.exareme3.utils.registry import exareme3_registry
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.utils.pandas_utils import convert_to_pandas_dataframe
@@ -17,25 +18,6 @@ from exaflow.worker.utils.logger import initialise_logger
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import InsufficientDataError
 from exaflow.worker_communication import RunUdfSystemArgs
-
-
-def enforce_enum_order(data_dict):
-    for key, field in data_dict.items():
-        if field.get("enumerations"):
-            ordered = field.get("ordered_enums")
-
-            # Only process if ordered_enums exists
-            if ordered and "enumerations" in field:
-                enums = field["enumerations"]
-
-                # Rebuild the enumerations dict using the list order
-                new_enums = {code: enums[code] for code in ordered if code in enums}
-
-                field["enumerations"] = new_enums
-
-                # Remove the ordered_enums entry
-                del field["ordered_enums"]
-    return data_dict
 
 
 @initialise_logger
@@ -60,10 +42,11 @@ def run_udf(
         agg_client = AggregationClient(request_id, aggregator_dns=agg_dns)
 
     inputdata = system_args.inputdata
-    # GRPC will mess with the order of dict when sending from controller to worker we need a list with the order to we can re-arrange them properly
     if (
-        "metadata" in kw_args
-    ):  # TODO We should not expect the metadata hard coded in a specific name, try to remove
+        "metadata"
+        in kw_args  # TODO We should not expect the metadata hard coded in a specific name, try to remove
+    ):
+        # GRPC will mess with the order of dict when sending from controller to worker we need a list with the order to we can re-arrange them properly
         kw_args["metadata"] = enforce_enum_order(kw_args["metadata"])
 
     preprocessing = system_args.preprocessing

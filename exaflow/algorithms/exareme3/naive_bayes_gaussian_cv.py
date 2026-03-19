@@ -4,6 +4,7 @@ from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.naive_bayes_common import NBResult
 from exaflow.algorithms.exareme3.naive_bayes_common import make_naive_bayes_result
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
+from exaflow.algorithms.exareme3.utils.metadata_enums import get_enum_codes
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.model_selection.cross_validation import (
     FederatedCrossValidator,
@@ -125,7 +126,7 @@ def gaussian_nb_cv_local_step(
     Exaflow UDF that performs K-fold cross-validation for Gaussian Naive Bayes.
     """
     n_splits = int(n_splits)
-    labels = sorted((metadata[y_var].get("enumerations") or {}).keys())
+    labels = sorted(get_enum_codes(metadata, y_var))
     class_labels = list(labels)
     if not class_labels:
         return {"labels": [], "confmats": [], "n_obs": []}

@@ -6,6 +6,7 @@ import numpy as np
 from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.naive_bayes_common import make_naive_bayes_result
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
+from exaflow.algorithms.exareme3.utils.metadata_enums import get_enum_codes
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.model_selection.cross_validation import (
     FederatedCrossValidator,
@@ -125,8 +126,7 @@ def naive_bayes_categorical_cv_local_step(
 
     n_splits = int(n_splits)
     categories: Dict[str, List[str]] = {
-        var: list(sorted((metadata[var].get("enumerations") or {}).keys()))
-        for var in x_vars + [y_var]
+        var: sorted(get_enum_codes(metadata, var)) for var in x_vars + [y_var]
     }
 
     labels = list(categories[y_var])
