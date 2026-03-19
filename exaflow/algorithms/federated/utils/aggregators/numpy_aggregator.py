@@ -23,7 +23,10 @@ class NumpyAggregator:
         self.client = client
 
     def fed_union(self, categories: np.ndarray):
-        """Compute the union of categories across all federated clients. Does not compute NaN.
+        """Compute the union of categories across all federated clients.
+
+        NaN (for numeric arrays) and None (for object arrays) are preserved:
+        if any client has a NaN/None value, the global union will contain it.
 
         Args:
             categories: A numpy array of categories to be united with
@@ -31,85 +34,123 @@ class NumpyAggregator:
 
         Returns:
             A numpy array containing the union of all categories from
-            all clients, with duplicates removed.
+            all clients, with duplicates removed (NaN/None included).
         """
         if np.issubdtype(categories.dtype, np.number):
-            categories = categories[~np.isnan(categories)]
+            has_nan = bool(np.any(np.isnan(categories)))
+            unique_vals = np.unique(categories[~np.isnan(categories)])
+            result = self.client.union(unique_vals)
+            if has_nan:
+                result = np.concatenate([result, [np.nan]])
+            return result
         else:
-            categories = np.unique(categories[categories != None])
-        return self.client.union(categories)
+            has_none = bool(np.any(categories == None))  # noqa: E711
+            unique_vals = np.unique(categories[categories != None])  # noqa: E711
+            result = self.client.union(unique_vals)
+            if has_none:
+                result = np.concatenate([result, [None]])
+            return result
 
     def fed_avg(self, array: np.ndarray):
-        """Compute the federated average of an array across all clients.
+        """Compute the federated average of an array across all clients, ignoring NaN.
+
+        NaN positions are excluded from the average; a position returns NaN only
+        when every client has NaN there.
 
         Args:
             array: The numpy array to be averaged across all clients.
 
         Returns:
             A numpy array with the same shape as input, containing the
-            element-wise average across all clients' arrays.
-
-        Note:
-            Internally flattens the array for transmission and appends
-            a count (1) for proper averaging.
+            element-wise nanmean across all clients' arrays.
         """
-        global_weight = self.client.sum(np.sum(1))
-        return self.client.sum(array / global_weight)
+        nan_mask = np.isnan(array)
+        filled = np.where(nan_mask, 0.0, array)
+        valid_count = self.client.sum((~nan_mask).astype(float))
+        total_sum = self.client.sum(filled)
+        return np.where(valid_count == 0, np.nan, total_sum / valid_count)
 
     def fed_weighted_avg(self, array: np.ndarray, weight: float) -> np.ndarray:
-        """Compute federated weighted average of an array across all clients.
+        """Compute federated weighted average of an array across all clients, ignoring NaN.
+
+        NaN positions contribute neither to the numerator nor denominator; a
+        position returns NaN only when every client has NaN there.
 
         Args:
             array: The numpy array to be averaged across all clients.
-            weight: The weight (typically sample count) for this client's array.
-                   Weights from all clients will be summed for normalization.
+            weight: The scalar weight for this client's contribution.
 
         Returns:
             A numpy array with the same shape as input, containing the
-            element-wise weighted average across all clients' arrays.
-
-        Note:
-            - Follows the formula: sum(weight_i * array_i) / sum(weights)
-            - Internally flattens the array for transmission
-            - The weight should typically be positive
-            - If all weights are 1, this is equivalent to fed_avg()
+            element-wise weighted nanmean across all clients' arrays.
         """
-        global_weight = self.client.sum(np.sum(weight))
-        return self.client.sum((array * weight) / global_weight)
+        nan_mask = np.isnan(array)
+        filled = np.where(nan_mask, 0.0, array)
+        effective_weight = np.where(nan_mask, 0.0, float(weight))
+        global_weight = self.client.sum(effective_weight)
+        weighted_sum = self.client.sum(filled * effective_weight)
+        return np.where(global_weight == 0, np.nan, weighted_sum / global_weight)
 
     def fed_sum(self, array: np.ndarray):
-        """Compute the federated sum of an array across all clients.
+        """Compute the federated sum of an array across all clients, ignoring NaN.
+
+        Each worker's NaN values are treated as 0 for the sum. A position in the
+        result is NaN only when *all* workers have NaN at that position.
 
         Args:
             array: The numpy array to be summed across all clients.
 
         Returns:
             A numpy array with the same shape as input, containing the
-            element-wise sum across all clients' arrays.
+            element-wise nansum across all clients' arrays, with NaN where
+            every client had NaN.
         """
-        return self.client.sum(array)
+        nan_mask = np.isnan(array)
+        filled = np.where(nan_mask, 0.0, array)
+        global_sum = self.client.sum(filled)
+        global_valid_count = self.client.sum((~nan_mask).astype(float))
+        return np.where(global_valid_count == 0, np.nan, global_sum)
 
     def fed_min(self, array: np.ndarray):
-        return self.client.min(array)
+        """Federated element-wise minimum, ignoring NaN.
+
+        NaN positions are replaced with +inf before aggregation so they do not
+        win the min; a position returns NaN only when every client had NaN there
+        (global min = +inf is converted back to NaN).
+        """
+        filled = np.where(np.isnan(array), np.inf, array)
+        result = self.client.min(filled)
+        return np.where(np.isposinf(result), np.nan, result)
 
     def fed_max(self, array: np.ndarray):
-        return self.client.max(array)
+        """Federated element-wise maximum, ignoring NaN.
+
+        NaN positions are replaced with -inf before aggregation; a position
+        returns NaN only when every client had NaN there (global max = -inf is
+        converted back to NaN).
+        """
+        filled = np.where(np.isnan(array), -np.inf, array)
+        result = self.client.max(filled)
+        return np.where(np.isneginf(result), np.nan, result)
 
     def global_sum(self, array: np.ndarray):
-        """Compute sum along axis=0 and then federated sum across clients.
+        """Compute nansum along axis=0 and then federated sum across clients.
+
+        NaN values are excluded from the sum; a column returns NaN only when
+        every observation across all clients is NaN.
 
         Args:
             array: The numpy array to be summed (along axis=0 first).
 
         Returns:
             A numpy array with reduced dimensions (axis=0 removed),
-            containing the federated sum of all clients' sums.
-
-        Note:
-            This is different from fed_sum as it first reduces the array
-            by summing along axis=0 before federated aggregation.
+            containing the federated nansum of all clients' arrays.
         """
-        return self.client.sum(np.sum(array, axis=0))
+        local_sum = np.nansum(array, axis=0).astype(float)
+        local_valid = np.sum(~np.isnan(array), axis=0).astype(float)
+        total_sum = self.client.sum(local_sum)
+        total_valid = self.client.sum(local_valid)
+        return np.where(total_valid == 0, np.nan, total_sum)
 
     def global_count(self, array: np.ndarray):
         """Compute the federated count of samples across all clients.
@@ -126,44 +167,61 @@ class NumpyAggregator:
         return self.client.sum(np.sum(~np.isnan(array), axis=0))
 
     def global_avg(self, array: np.ndarray):
-        """Compute federated average of array sums across clients.
+        """Compute federated nanmean across all clients, ignoring NaN.
+
+        NaN values are excluded from both numerator and denominator; a column
+        returns NaN only when every observation across all clients is NaN.
 
         Args:
-            array: The numpy array to be processed (summed along axis=0 first).
+            array: The numpy array to be averaged (along axis=0 across clients).
 
         Returns:
             A numpy array with reduced dimensions (axis=0 removed),
-            containing the federated average across all clients.
-
-        Note:
-            Similar to global_sum but divides by total sample count.
-            More efficient than fed_avg for large arrays as it reduces first.
+            containing the federated nanmean across all clients.
         """
-        return self.global_sum(array) / self.global_count(array)
+        local_sum = np.nansum(array, axis=0).astype(float)
+        local_count = np.sum(~np.isnan(array), axis=0).astype(float)
+        total_sum = self.client.sum(local_sum)
+        total_count = self.client.sum(local_count)
+        return np.where(total_count == 0, np.nan, total_sum / total_count)
 
     def global_min(self, array: np.ndarray):
-        """Compute min along axis=0 and then federated min across clients.
+        """Compute nanmin along axis=0 and then federated min across clients.
+
+        NaN positions are replaced with +inf locally so they don't win the min;
+        a column returns NaN only when every observation across all clients is NaN.
 
         Args:
             array: The numpy array to find minimum values from.
 
         Returns:
             A numpy array with reduced dimensions (axis=0 removed),
-            containing the element-wise minimum across all clients.
+            containing the element-wise nanmin across all clients.
         """
-        return self.client.min(np.min(array, axis=0))
+        local_min = np.nanmin(
+            np.where(np.isnan(array), np.inf, array), axis=0
+        )
+        result = self.client.min(local_min)
+        return np.where(np.isposinf(result), np.nan, result)
 
     def global_max(self, array: np.ndarray):
-        """Compute max along axis=0 and then federated max across clients.
+        """Compute nanmax along axis=0 and then federated max across clients.
+
+        NaN positions are replaced with -inf locally so they don't win the max;
+        a column returns NaN only when every observation across all clients is NaN.
 
         Args:
             array: The numpy array to find maximum values from.
 
         Returns:
             A numpy array with reduced dimensions (axis=0 removed),
-            containing the element-wise maximum across all clients.
+            containing the element-wise nanmax across all clients.
         """
-        return self.client.max(np.max(array, axis=0))
+        local_max = np.nanmax(
+            np.where(np.isnan(array), -np.inf, array), axis=0
+        )
+        result = self.client.max(local_max)
+        return np.where(np.isneginf(result), np.nan, result)
 
 
 class NumpyUnaryAggregationFunction(ABC):
