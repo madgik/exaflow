@@ -9,8 +9,8 @@ from types import ModuleType
 from typing import Dict
 
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm as ExaflowAlgorithm
-from exaflow.algorithms.exareme3.utils.transformer import (
-    Transformer as ExaflowTransformer,
+from exaflow.algorithms.exareme3.utils.preprocessing_step import (
+    PreprocessingStep as ExaflowPreprocessingStep,
 )
 from exaflow.datatypes import DType
 from exaflow.utils import AttrDict
@@ -172,7 +172,8 @@ exareme3_algorithm_classes = get_exareme3_algorithm_classes()
 def get_exareme3_transformer_classes() -> Dict[str, type]:
     _ensure_exareme3_modules_loaded()
     return {
-        cls.get_specification().name: cls for cls in ExaflowTransformer.__subclasses__()
+        cls.get_specification().name: cls
+        for cls in ExaflowPreprocessingStep.__subclasses__()
     }
 
 

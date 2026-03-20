@@ -4,9 +4,7 @@ from exaflow import exareme3_algorithm_classes
 from exaflow.aggregation_clients.controller_aggregation_client import (
     ControllerAggregationClient,
 )
-from exaflow.algorithms.exareme3.longitudinal_transformer import (
-    prepare_longitudinal_transformation,
-)
+from exaflow.algorithms.exareme3.longitudinal_transformer import LongitudinalTransformer
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.controller import config as controller_config
 from exaflow.controller.federation_info_logs import log_experiment_execution
@@ -35,18 +33,15 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
         )
 
         preprocessing = self._algorithm_request_dto.preprocessing or {}
-        preprocessing_payload = None
+        transformed_inputdata = inputdata
         if "longitudinal_transformer" in preprocessing:
-            (
-                transformed_inputdata,
-                metadata,
-                prep_payload,
-            ) = prepare_longitudinal_transformation(
-                inputdata, metadata, preprocessing["longitudinal_transformer"]
+            transformer = LongitudinalTransformer(
+                inputdata=inputdata,
+                metadata=metadata,
+                params=preprocessing["longitudinal_transformer"],
             )
-            preprocessing_payload = {"longitudinal_transformer": prep_payload}
-        else:
-            transformed_inputdata = inputdata
+            transformer.validate()
+            transformed_inputdata = transformer.transform_inputdata()
 
         engine = Exareme3AlgorithmFlowEngineInterface(
             request_id=self._request_id,
@@ -54,7 +49,7 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
             tasks_handlers=self._local_worker_tasks_handlers,
             inputdata=inputdata,
             metadata=metadata,
-            preprocessing=preprocessing_payload,
+            preprocessing=preprocessing,
         )
         algorithm_cls = exareme3_algorithm_classes[self._algorithm_name]
         algorithm = algorithm_cls(

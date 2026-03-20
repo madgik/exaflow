@@ -8,6 +8,8 @@ from typing import Set
 import pandas as pd
 from pydantic import BaseModel
 
+from exaflow.column_names import DATASET_COL
+
 
 class Inputdata(BaseModel):
     data_model: str
@@ -101,7 +103,7 @@ def _apply_inputdata(
     all_datasets = inputdata.datasets + (
         inputdata.validation_datasets if inputdata.validation_datasets else []
     )
-    df = df[df["dataset"].isin(all_datasets)]
+    df = df[df[DATASET_COL].isin(all_datasets)]
 
     x_columns = inputdata.x if inputdata.x is not None else []
     y_columns = inputdata.y if inputdata.y is not None else []
@@ -112,7 +114,7 @@ def _apply_inputdata(
     if not columns:
         raise ValueError("Both 'x' and 'y' columns are missing or empty in inputdata.")
 
-    dataset_column = "dataset"
+    dataset_column = DATASET_COL
     select_columns = columns + (
         [dataset_column] if dataset_column in df.columns else []
     )

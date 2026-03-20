@@ -15,6 +15,7 @@ from pydantic import field_validator
 
 from exaflow import DType
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
+from exaflow.column_names import DATASET_COL
 
 
 class RequestIDNotFound(Exception):
@@ -182,7 +183,7 @@ class CommonDataElements(BaseModel):
     def _are_equal_dataset_cdes(
         self, cde1: CommonDataElement, cde2: CommonDataElement
     ) -> bool:
-        if cde1.code != "dataset" or cde2.code != "dataset":
+        if cde1.code != DATASET_COL or cde2.code != DATASET_COL:
             return False
 
         if (

@@ -2,18 +2,47 @@ from __future__ import annotations
 
 from copy import deepcopy
 from typing import Dict
+from typing import Iterable
 from typing import List
 
 import pandas as pd
 
 from exaflow.algorithms import specifications as specs
-from exaflow.algorithms.exareme3.utils.transformer import Transformer
+from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.algorithms.utils.pandas_utils import convert_to_pandas_dataframe
+from exaflow.column_names import DATASET_COL
+from exaflow.column_names import SUBJECT_ID_COL
+from exaflow.column_names import VISIT_ID_COL
 from exaflow.worker_communication import BadUserInput
 
+STRATEGY_FIRST = "first"
+STRATEGY_SECOND = "second"
+STRATEGY_DIFF = "diff"
+VALID_STRATEGIES = {STRATEGY_FIRST, STRATEGY_SECOND, STRATEGY_DIFF}
 
-class LongitudinalTransformer(Transformer):
+DIFF_SUFFIX = "_diff"
+VISIT1_VALUE_SUFFIX = "_v1"
+VISIT2_VALUE_SUFFIX = "_v2"
+
+
+class LongitudinalTransformer(PreprocessingStep):
+    def __init__(
+        self,
+        *,
+        inputdata: Inputdata,
+        metadata: Dict[str, dict],
+        params: Dict[str, object],
+    ):
+        super().__init__(inputdata=inputdata, metadata=metadata, params=params)
+        self._visit1: str = ""
+        self._visit2: str = ""
+        self._strategies: Dict[str, str] = {}
+        self._raw_x: List[str] = []
+        self._raw_y: List[str] = []
+        self._transformed_x: List[str] = []
+        self._transformed_y: List[str] = []
+
     @classmethod
     def get_specification(cls) -> specs.TransformerSpecification:
         return specs.TransformerSpecification(
@@ -31,7 +60,7 @@ class LongitudinalTransformer(Transformer):
                     default=None,
                     enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.FIXED_VAR_CDE_ENUMS,
-                        source=["visitid"],
+                        source=[VISIT_ID_COL],
                     ),
                     dict_keys_enums=None,
                     dict_values_enums=None,
@@ -47,7 +76,7 @@ class LongitudinalTransformer(Transformer):
                     default=None,
                     enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.FIXED_VAR_CDE_ENUMS,
-                        source=["visitid"],
+                        source=[VISIT_ID_COL],
                     ),
                     dict_keys_enums=None,
                     dict_values_enums=None,
@@ -68,7 +97,7 @@ class LongitudinalTransformer(Transformer):
                     ),
                     dict_values_enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.LIST,
-                        source=["diff", "first", "second"],
+                        source=[STRATEGY_DIFF, STRATEGY_FIRST, STRATEGY_SECOND],
                     ),
                     min=None,
                     max=None,
@@ -88,122 +117,149 @@ class LongitudinalTransformer(Transformer):
             components=[],
         )
 
+    @classmethod
+    def required_input_variables(cls) -> List[str]:
+        return [DATASET_COL, SUBJECT_ID_COL, VISIT_ID_COL]
 
-def _validate_strategies(
-    raw_x: List[str], raw_y: List[str], strategies: Dict[str, str]
-):
-    requested_vars = set(raw_x + raw_y)
-    missing_or_extra = set(strategies.keys()) ^ requested_vars
-    if missing_or_extra:
-        raise BadUserInput(
-            "A strategy must be provided for every variable in x and y, "
-            "and only for those variables."
-        )
+    def validate(self) -> None:
+        self._parse_and_validate_params()
+        self._validated = True
 
+    def _parse_and_validate_params(self) -> None:
+        visit1 = self._params.get("visit1")
+        visit2 = self._params.get("visit2")
+        strategies = self._params.get("strategies", {})
 
-def _validate_diff_not_nominal(strategies: Dict[str, str], metadata: Dict[str, dict]):
-    for name, strategy in strategies.items():
-        if strategy == "diff" and metadata.get(name, {}).get("is_categorical"):
+        if not visit1 or not visit2:
+            raise BadUserInput("Both 'visit1' and 'visit2' parameters are required.")
+        if visit1 == visit2:
+            raise BadUserInput("'visit1' and 'visit2' must be different.")
+        if not isinstance(strategies, dict):
+            raise BadUserInput("'strategies' must be a dictionary.")
+
+        raw_x = list(self._inputdata.x or [])
+        raw_y = list(self._inputdata.y or [])
+        requested_vars = set(raw_x + raw_y)
+        provided_vars = set(strategies.keys())
+
+        missing = sorted(requested_vars - provided_vars)
+        extra = sorted(provided_vars - requested_vars)
+        if missing or extra:
+            details = []
+            if missing:
+                details.append(f"missing: {missing}")
+            if extra:
+                details.append(f"extra: {extra}")
             raise BadUserInput(
-                f"Cannot take the difference for the nominal variable '{name}'."
+                "A strategy must be provided exactly for the variables in x and y "
+                f"({' ; '.join(details)})."
             )
 
-
-def _rename_variables(raw_vars: List[str], strategies: Dict[str, str]) -> List[str]:
-    return [
-        f"{name}_diff" if strategies.get(name) == "diff" else name for name in raw_vars
-    ]
-
-
-def prepare_longitudinal_transformation(
-    inputdata: Inputdata, metadata: Dict[str, dict], params: Dict[str, object]
-) -> tuple[Inputdata, Dict[str, dict], Dict[str, object]]:
-    visit1 = params.get("visit1")
-    visit2 = params.get("visit2")
-    strategies = params.get("strategies", {})
-    raw_x = inputdata.x or []
-    raw_y = inputdata.y or []
-
-    if not visit1 or not visit2:
-        raise BadUserInput("Both 'visit1' and 'visit2' parameters are required.")
-
-    _validate_strategies(raw_x, raw_y, strategies)
-    _validate_diff_not_nominal(strategies, metadata)
-
-    transformed_x = _rename_variables(raw_x, strategies)
-    transformed_y = _rename_variables(raw_y, strategies)
-    transformed_inputdata = inputdata.copy(
-        update={"x": transformed_x, "y": transformed_y}
-    )
-
-    transformed_metadata = deepcopy(metadata)
-    for varname, strategy in strategies.items():
-        if strategy == "diff":
-            transformed_metadata[f"{varname}_diff"] = transformed_metadata.pop(varname)
-
-    preprocessing_payload = {
-        "visit1": visit1,
-        "visit2": visit2,
-        "strategies": strategies,
-        "raw_x": raw_x,
-        "raw_y": raw_y,
-        "transformed_x": transformed_x,
-        "transformed_y": transformed_y,
-    }
-
-    return transformed_inputdata, transformed_metadata, preprocessing_payload
-
-
-def _build_empty_result(columns: List[str]) -> pd.DataFrame:
-    return pd.DataFrame(columns=columns)
-
-
-def apply_longitudinal_transformation(
-    df: pd.DataFrame, payload: Dict[str, object]
-) -> pd.DataFrame:
-    df = convert_to_pandas_dataframe(df)
-    visit1 = payload["visit1"]
-    visit2 = payload["visit2"]
-    strategies: Dict[str, str] = payload["strategies"]  # type: ignore[assignment]
-    raw_x: List[str] = payload.get("raw_x", [])  # type: ignore[assignment]
-    raw_y: List[str] = payload.get("raw_y", [])  # type: ignore[assignment]
-    transformed_x: List[str] = payload.get("transformed_x", [])  # type: ignore[assignment]
-    transformed_y: List[str] = payload.get("transformed_y", [])  # type: ignore[assignment]
-
-    required_columns = set(raw_x + raw_y + ["subjectid", "visitid"])
-    missing = required_columns - set(df.columns)
-    if missing:
-        raise BadUserInput(
-            f"Missing required columns for longitudinal transformation: {sorted(missing)}"
-        )
-
-    df = df[df["visitid"].isin([visit1, visit2])]
-    key_cols = ["subjectid"]
-    if "dataset" in df.columns:
-        key_cols.append("dataset")
-
-    left = df[df["visitid"] == visit1]
-    right = df[df["visitid"] == visit2]
-    merged = left.merge(right, on=key_cols, suffixes=("_v1", "_v2"), how="inner")
-    result = merged[key_cols].copy()
-
-    for varname, strategy in strategies.items():
-        v1 = merged[f"{varname}_v1"]
-        v2 = merged[f"{varname}_v2"]
-        if strategy == "first":
-            result[varname] = v1
-        elif strategy == "second":
-            result[varname] = v2
-        elif strategy == "diff":
-            result[f"{varname}_diff"] = v2 - v1
-        else:
+        invalid_values = {
+            name: value
+            for name, value in strategies.items()
+            if value not in VALID_STRATEGIES
+        }
+        if invalid_values:
             raise BadUserInput(
-                f"Unknown strategy '{strategy}' for variable '{varname}'."
+                "Invalid strategy values provided: "
+                f"{invalid_values}. Allowed values are: {sorted(VALID_STRATEGIES)}."
             )
 
-    # Keep only the transformed columns (plus any keys) to mirror the requested inputdata.
-    desired_columns = []
-    for col in key_cols + transformed_x + transformed_y:
-        if col not in desired_columns:
-            desired_columns.append(col)
-    return result[[col for col in desired_columns if col in result.columns]]
+        typed_strategies = dict(strategies)
+        self._validate_diff_not_nominal(strategies=typed_strategies)
+        self._visit1 = str(visit1)
+        self._visit2 = str(visit2)
+        self._strategies = typed_strategies
+        self._raw_x = raw_x
+        self._raw_y = raw_y
+        self._transformed_x = [
+            _output_name(name, self._strategies[name]) for name in raw_x
+        ]
+        self._transformed_y = [
+            _output_name(name, self._strategies[name]) for name in raw_y
+        ]
+
+    def transform_inputdata(self) -> Inputdata:
+        self._ensure_validated()
+        return self._inputdata.model_copy(
+            update={"x": self._transformed_x, "y": self._transformed_y}
+        )
+
+    def transform_metadata(self) -> Dict[str, dict]:
+        self._ensure_validated()
+        transformed_metadata = deepcopy(self._metadata)
+        for varname, strategy in self._strategies.items():
+            if strategy == STRATEGY_DIFF:
+                source_metadata = transformed_metadata.pop(varname, None)
+                if source_metadata is not None:
+                    transformed_metadata[_output_name(varname, strategy)] = (
+                        source_metadata
+                    )
+        return transformed_metadata
+
+    def transform_data(self, *, data: pd.DataFrame) -> pd.DataFrame:
+        self._ensure_validated()
+        df = convert_to_pandas_dataframe(data)
+        missing_columns = self._required_longitudinal_columns() - set(df.columns)
+        if missing_columns:
+            raise BadUserInput(
+                "Missing required columns for longitudinal transformation: "
+                f"{sorted(missing_columns)}"
+            )
+
+        df = df[df[VISIT_ID_COL].isin([self._visit1, self._visit2])]
+        key_cols = [SUBJECT_ID_COL]
+        if DATASET_COL in df.columns:
+            key_cols.append(DATASET_COL)
+
+        left = df[df[VISIT_ID_COL] == self._visit1]
+        right = df[df[VISIT_ID_COL] == self._visit2]
+        merged = left.merge(
+            right,
+            on=key_cols,
+            suffixes=(VISIT1_VALUE_SUFFIX, VISIT2_VALUE_SUFFIX),
+            how="inner",
+        )
+        result = merged[key_cols].copy()
+
+        strategy_dispatch = {
+            STRATEGY_FIRST: lambda series_v1, series_v2: series_v1,
+            STRATEGY_SECOND: lambda series_v1, series_v2: series_v2,
+            STRATEGY_DIFF: lambda series_v1, series_v2: series_v2 - series_v1,
+        }
+        for varname, strategy in self._strategies.items():
+            value_visit1 = merged[f"{varname}{VISIT1_VALUE_SUFFIX}"]
+            value_visit2 = merged[f"{varname}{VISIT2_VALUE_SUFFIX}"]
+            result[_output_name(varname, strategy)] = strategy_dispatch[strategy](
+                value_visit1, value_visit2
+            )
+
+        desired_columns = _deduplicate_preserve_order(
+            key_cols + self._transformed_x + self._transformed_y
+        )
+        return result[[col for col in desired_columns if col in result.columns]]
+
+    def _ensure_validated(self) -> None:
+        if not self._validated:
+            raise RuntimeError("validate() must be called before transform methods.")
+
+    def _required_longitudinal_columns(self) -> set[str]:
+        return set(self._raw_x + self._raw_y + [SUBJECT_ID_COL, VISIT_ID_COL])
+
+    def _validate_diff_not_nominal(self, *, strategies: Dict[str, str]) -> None:
+        for name, strategy in strategies.items():
+            if strategy == STRATEGY_DIFF and self._metadata.get(name, {}).get(
+                "is_categorical"
+            ):
+                raise BadUserInput(
+                    f"Cannot take the difference for the nominal variable '{name}'."
+                )
+
+
+def _output_name(varname: str, strategy: str) -> str:
+    return f"{varname}{DIFF_SUFFIX}" if strategy == STRATEGY_DIFF else varname
+
+
+def _deduplicate_preserve_order(values: Iterable[str]) -> List[str]:
+    return list(dict.fromkeys(values))
