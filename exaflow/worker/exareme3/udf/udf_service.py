@@ -4,9 +4,7 @@ from typing import Optional
 from exaflow.aggregation_clients.exareme3_udf_aggregation_client import (
     Exareme3UDFAggregationClient as AggregationClient,
 )
-from exaflow.algorithms.exareme3.longitudinal_transformer import (
-    apply_longitudinal_transformation,
-)
+from exaflow.algorithms.exareme3.longitudinal_transformer import LongitudinalTransformer
 from exaflow.algorithms.exareme3.utils.metadata_enums import enforce_enum_order
 from exaflow.algorithms.exareme3.utils.registry import exareme3_registry
 from exaflow.algorithms.federated.utils import BadInputError
@@ -43,21 +41,17 @@ def run_udf(
         agg_client = AggregationClient(request_id, aggregator_dns=agg_dns)
 
     preprocessing = system_args.preprocessing
+    metadata = enforce_enum_order(system_args.metadata)
     include_dataset = False
     extra_columns = set()
     if preprocessing and "longitudinal_transformer" in preprocessing:
-        include_dataset = True
-        extra_columns.update(
-            preprocessing["longitudinal_transformer"].get("raw_x", [])
-            + preprocessing["longitudinal_transformer"].get("raw_y", [])
-        )
-        extra_columns.update({"subjectid", "visitid"})
+        extra_columns.update(LongitudinalTransformer.required_input_variables())
 
     data = load_algorithm_arrow_table(
         system_args.inputdata,
         dropna=system_args.drop_na,
         include_dataset=(include_dataset or system_args.add_dataset_variable),
-        extra_columns=extra_columns if extra_columns else None,
+        extra_columns=extra_columns,
     )
 
     if system_args.check_min_rows:
@@ -75,17 +69,20 @@ def run_udf(
 
     data = convert_to_pandas_dataframe(data)
     if preprocessing and "longitudinal_transformer" in preprocessing:
-        data = apply_longitudinal_transformation(
-            data, preprocessing["longitudinal_transformer"]
+        transformer = LongitudinalTransformer(
+            inputdata=system_args.inputdata,
+            metadata=metadata,
+            params=preprocessing["longitudinal_transformer"],
         )
+        transformer.validate()
+        data, metadata = transformer.transform_data_and_metadata(data=data)
 
     try:
         if agg_client:
             kw_args["agg_client"] = agg_client
         kw_args["data"] = data
         if "metadata" in inspect.signature(udf).parameters:
-            # gRPC map serialization can perturb enum key order; restore canonical order.
-            kw_args["metadata"] = enforce_enum_order(system_args.metadata)
+            kw_args["metadata"] = metadata
         result = udf(**kw_args)
         return result
     except BadInputError as e:

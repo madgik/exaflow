@@ -15,6 +15,7 @@ from exaflow.algorithms.federated.statistics.pearson_correlation import (
 from exaflow.algorithms.federated.statistics.pearson_correlation import (
     PearsonCorrelationResult,
 )
+from exaflow.column_names import DATASET_COL
 
 
 class FederatedDescriptiveStatistics:
@@ -50,7 +51,7 @@ class FederatedDescriptiveStatistics:
         nominal_vars: List[str],
         min_row_count: int,
         nominal_levels: Dict[str, List],
-        dataset_col: str = "dataset",
+        dataset_col: str = DATASET_COL,
     ) -> DescribeResult:
         return self._describe.describe(
             data=data,
