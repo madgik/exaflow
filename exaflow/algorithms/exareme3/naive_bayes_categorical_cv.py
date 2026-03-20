@@ -87,7 +87,6 @@ class NaiveBayesCategorical(Algorithm):
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
-                "metadata": self.metadata,
                 "n_splits": int(n_splits),
             },
             identical_results=True,

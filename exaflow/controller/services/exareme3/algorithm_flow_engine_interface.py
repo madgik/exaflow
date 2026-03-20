@@ -42,13 +42,9 @@ class Exareme3AlgorithmFlowEngineInterface:
 
         udf_registry_key = get_udf_registry_key(func)
 
-        if "metadata" in kw_args:
-            kw_args["metadata"] = add_ordered_enums(kw_args["metadata"])
-        system_metadata = add_ordered_enums(self._metadata)
-
         system_args = RunUdfSystemArgs(
             inputdata=self._inputdata,
-            metadata=system_metadata,
+            metadata=add_ordered_enums(self._metadata),
             drop_na=drop_na,
             check_min_rows=check_min_rows,
             add_dataset_variable=add_dataset_variable,

@@ -93,7 +93,6 @@ class Histogram(Algorithm):
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
-                "metadata": self.metadata,
                 "bins": bins,
             },
             identical_results=True,

@@ -108,7 +108,6 @@ class LogisticRegression(Algorithm):
                 "positive_class": positive_class,
                 "y_var": y_var,
                 "x_vars": x_vars,
-                "metadata": self.metadata,
             },
             identical_results=True,
         )

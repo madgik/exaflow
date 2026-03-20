@@ -60,7 +60,6 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
         algorithm = algorithm_cls(
             engine=engine,
             inputdata=transformed_inputdata,
-            metadata=metadata,
             parameters=self._algorithm_request_dto.parameters,
         )
         log_experiment_execution(
