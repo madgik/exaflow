@@ -6,15 +6,12 @@ from pydantic import BaseModel
 
 from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
+from exaflow.algorithms.exareme3.utils.metadata_enums import get_enum_codes
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.naive_bayes import FederatedGaussianNB
 from exaflow.worker_communication import BadUserInput
 
 ALGNAME_PRED = "test_nb_gaussian_predict"
-
-
-def _sorted_labels(metadata: dict, y_var: str) -> List[str]:
-    return sorted(metadata[y_var]["enumerations"].keys())
 
 
 def _prepare_dataframe(data, x_vars: List[str], y_var: str):
@@ -65,14 +62,12 @@ class GaussianNBTestingPredict(Algorithm):
 
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)
-        labels = _sorted_labels(self.metadata, y_var)
 
         udf_results = self.run_local_udf(
             func=gaussian_nb_predict_udf,
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
-                "labels": labels,
             },
         )
 
@@ -89,9 +84,10 @@ def gaussian_nb_predict_udf(
     data,
     y_var,
     x_vars,
-    labels,
+    metadata,
 ):
     df = _prepare_dataframe(data, x_vars, y_var)
+    labels = sorted(get_enum_codes(metadata, y_var))
 
     X = df[x_vars].to_numpy(dtype=float, copy=False)
     y = df[y_var].to_numpy()

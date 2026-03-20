@@ -90,7 +90,6 @@ class LinearSVM(Algorithm):
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
-                "metadata": self.metadata,
                 "gamma": float(gamma),
                 "C": float(C),
             },

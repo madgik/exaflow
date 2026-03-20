@@ -85,7 +85,6 @@ class LinearRegression(Algorithm):
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
-                "metadata": self.metadata,
             },
             identical_results=True,
         )

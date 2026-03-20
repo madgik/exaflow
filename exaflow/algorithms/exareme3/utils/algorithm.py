@@ -18,18 +18,12 @@ class Algorithm(ABC):
         self,
         *,
         engine,
-        metadata: dict,
         inputdata: Inputdata,
         parameters: Optional[Dict[str, Any]] = None,
     ):
         self._engine = engine
-        self._metadata: dict = metadata
         self._inputdata: Inputdata = inputdata
         self._parameters: dict = parameters if parameters is not None else {}
-
-    @property
-    def metadata(self) -> dict:
-        return self._metadata
 
     @property
     def inputdata(self) -> Inputdata:
