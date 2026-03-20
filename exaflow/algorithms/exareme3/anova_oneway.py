@@ -74,7 +74,6 @@ class AnovaOneWay(Algorithm):
             kw_args={
                 "x_var": x_var_name,
                 "y_var": y_var_name,
-                "metadata": self.metadata,
             },
             identical_results=True,
         )

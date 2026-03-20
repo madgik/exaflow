@@ -1,3 +1,4 @@
+import inspect
 from typing import Optional
 
 from exaflow.aggregation_clients.exareme3_udf_aggregation_client import (
@@ -41,14 +42,6 @@ def run_udf(
         agg_dns = worker_config.aggregation_server.dns
         agg_client = AggregationClient(request_id, aggregator_dns=agg_dns)
 
-    inputdata = system_args.inputdata
-    if (
-        "metadata"
-        in kw_args  # TODO We should not expect the metadata hard coded in a specific name, try to remove
-    ):
-        # GRPC will mess with the order of dict when sending from controller to worker we need a list with the order to we can re-arrange them properly
-        kw_args["metadata"] = enforce_enum_order(kw_args["metadata"])
-
     preprocessing = system_args.preprocessing
     include_dataset = False
     extra_columns = set()
@@ -61,7 +54,7 @@ def run_udf(
         extra_columns.update({"subjectid", "visitid"})
 
     data = load_algorithm_arrow_table(
-        inputdata,
+        system_args.inputdata,
         dropna=system_args.drop_na,
         include_dataset=(include_dataset or system_args.add_dataset_variable),
         extra_columns=extra_columns if extra_columns else None,
@@ -90,6 +83,9 @@ def run_udf(
         if agg_client:
             kw_args["agg_client"] = agg_client
         kw_args["data"] = data
+        if "metadata" in inspect.signature(udf).parameters:
+            # gRPC map serialization can perturb enum key order; restore canonical order.
+            kw_args["metadata"] = enforce_enum_order(system_args.metadata)
         result = udf(**kw_args)
         return result
     except BadInputError as e:

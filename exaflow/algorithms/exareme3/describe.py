@@ -127,7 +127,6 @@ class Describe(Algorithm):
             func=local_step,
             kw_args={
                 "variable_names": variable_names,
-                "metadata": self.metadata,
             },
         )
 

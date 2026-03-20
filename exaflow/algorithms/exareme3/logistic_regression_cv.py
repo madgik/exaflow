@@ -166,7 +166,6 @@ class LogisticRegressionCV(Algorithm):
                 "y_var": y_var,
                 "positive_class": positive_class,
                 "x_vars": x_vars,
-                "metadata": self.metadata,
                 "n_splits": n_splits,
             },
             identical_results=True,

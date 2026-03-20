@@ -82,7 +82,6 @@ class AnovaTwoWay(Algorithm):
                 "x1": x1,
                 "x2": x2,
                 "y": y,
-                "metadata": self.metadata,
                 "sstype": sstype,
             },
             identical_results=True,

@@ -59,17 +59,12 @@ class CategoricalNBTestingPredict(Algorithm):
 
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)
-        categories = {
-            var: list(sorted(self.metadata[var]["enumerations"].keys()))
-            for var in x_vars + [y_var]
-        }
 
         udf_results = self.run_local_udf(
             func=categorical_nb_predict_udf,
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
-                "categories": categories,
             },
         )
 
@@ -93,9 +88,13 @@ def categorical_nb_predict_udf(
     data,
     y_var,
     x_vars,
-    categories,
+    metadata,
 ):
     df = _prepare_dataframe(data, x_vars, y_var)
+    categories = {
+        var: list(sorted(metadata[var]["enumerations"].keys()))
+        for var in x_vars + [y_var]
+    }
 
     encoder = FederatedOrdinalEncoder(
         categories=categories,
