@@ -12,8 +12,9 @@ from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.descriptive_stats import (
     FederatedDescriptiveStatistics,
 )
+from exaflow.column_names import DATASET_COL
 
-DATASET_VAR_NAME = "dataset"
+DATASET_VAR_NAME = DATASET_COL
 
 
 class NumericalDescriptiveStats(BaseModel):

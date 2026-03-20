@@ -6,6 +6,7 @@ from typing import Set
 import pyarrow as pa
 
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
+from exaflow.column_names import DATASET_COL
 from exaflow.data_filters import build_filter_clause
 
 
@@ -38,7 +39,7 @@ def load_algorithm_arrow_table(
     """
     required_columns: Set[str] = set(inputdata.x or []) | set(inputdata.y or [])
     if include_dataset:
-        required_columns.add("dataset")
+        required_columns.add(DATASET_COL)
     if extra_columns:
         required_columns.update(extra_columns)
 
@@ -62,7 +63,7 @@ def _fetch_with_duckdb(
 
     where_clauses = []
     datasets_clause = ", ".join(quote_literal(value) for value in datasets)
-    where_clauses.append(f"{quote_identifier('dataset')} IN ({datasets_clause})")
+    where_clauses.append(f"{quote_identifier(DATASET_COL)} IN ({datasets_clause})")
 
     if inputdata.filters:
         where_clauses.append(build_filter_clause(inputdata.filters))

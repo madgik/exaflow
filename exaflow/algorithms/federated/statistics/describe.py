@@ -8,6 +8,8 @@ from typing import List
 import numpy as np
 import pandas as pd
 
+from exaflow.column_names import DATASET_COL
+
 
 class DescribeResult:
     def __init__(
@@ -52,7 +54,7 @@ class FederatedDescribe:
         nominal_vars: List[str],
         min_row_count: int,
         nominal_levels: Dict[str, List],
-        dataset_col: str = "dataset",
+        dataset_col: str = DATASET_COL,
     ) -> DescribeResult:
         datasets: Iterable[str]
         if dataset_col in data.columns:
