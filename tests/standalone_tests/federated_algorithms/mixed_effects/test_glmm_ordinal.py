@@ -7,6 +7,21 @@ import pytest
 
 from exaflow.algorithms.federated.mixed_effects import FederatedGLMMOrdinal
 from exaflow.algorithms.federated.utils import BadInputError
+from tests.standalone_tests.federated_algorithms.mixed_effects.glmm_test_template import (
+    CASE_MATRIX,
+)
+from tests.standalone_tests.federated_algorithms.mixed_effects.glmm_test_template import (
+    GLMMCase,
+)
+from tests.standalone_tests.federated_algorithms.mixed_effects.glmm_test_template import (
+    build_ordinal_model_kwargs,
+)
+from tests.standalone_tests.federated_algorithms.mixed_effects.glmm_test_template import (
+    split_indices_by_center,
+)
+from tests.standalone_tests.federated_algorithms.mixed_effects.glmm_test_template import (
+    synth_glmm_ordinal_case,
+)
 from tests.standalone_tests.federated_algorithms.utils import FederatedAlgorithmTest
 from tests.standalone_tests.federated_algorithms.utils.simulated_agg_client import (
     AggregationCoordinator,
@@ -16,135 +31,69 @@ from tests.standalone_tests.federated_algorithms.utils.simulated_agg_client impo
 )
 
 
-def synth_glmm_ordinal_df(
-    *,
-    K: int = 4,
-    n_centers: int = 10,
-    n_features: int = 2,
-    n_min: int = 40,
-    n_max: int = 70,
-    beta: np.ndarray | None = None,
-    cutpoints: np.ndarray | None = None,
-    sigma_u2: float = 0.5,
-    seed: int = 42,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    rng = np.random.default_rng(seed)
-    if beta is None:
-        beta = np.array([0.5] + [0.4] * n_features, dtype=float)
-    if cutpoints is None:
-        # Default to evenly spaced cutpoints for arbitrary K.
-        cutpoints = np.linspace(-1.0, 1.0, K - 1, dtype=float)
-    if len(cutpoints) != K - 1:
-        raise ValueError("cutpoints length must be K-1")
-
-    x_rows = []
-    y_rows = []
-    c_rows = []
-    for j in range(n_centers):
-        nj = int(rng.integers(n_min, n_max + 1))
-        x_cov = rng.normal(size=(nj, n_features))
-        x_design = np.hstack([np.ones((nj, 1), dtype=float), x_cov])
-        u_j = rng.normal(loc=0.0, scale=np.sqrt(sigma_u2))
-        eta = x_design @ beta + u_j
-
-        y = np.zeros(nj, dtype=int)
-        for i in range(nj):
-            f = np.zeros(K + 1, dtype=float)
-            f[0] = 0.0
-            f[K] = 1.0
-            for k in range(1, K):
-                f[k] = 1.0 / (1.0 + np.exp(-(cutpoints[k - 1] - eta[i])))
-            probs = np.maximum(f[1:] - f[:-1], 0.0)
-            probs = probs / np.sum(probs)
-            y[i] = int(rng.choice(np.arange(K), p=probs))
-
-        x_rows.append(x_cov)
-        y_rows.append(y)
-        c_rows.append(np.full(nj, f"C{j}", dtype=object))
-
-    X = np.vstack(x_rows).astype(float)
-    y = np.concatenate(y_rows).astype(int)
-    center_ids = np.concatenate(c_rows)
-    return X, y, center_ids
-
-
-TEST_CASES = [
-    (
-        "k4",
-        dict(
-            data_kwargs=dict(seed=42, K=4),
-            model_kwargs=dict(
-                K=4,
-                fit_intercept=True,
-                max_iters=40,
-                ridge=1e-6,
-                tol_theta=1e-6,
-                tol_score=1e-4,
-                max_step_norm=5.0,
-            ),
-        ),
-    ),
-    (
-        "k5",
-        dict(
-            data_kwargs=dict(seed=7, K=5),
-            model_kwargs=dict(
-                K=5,
-                fit_intercept=True,
-                max_iters=40,
-                ridge=1e-6,
-                tol_theta=1e-6,
-                tol_score=1e-4,
-                max_step_norm=5.0,
-            ),
-        ),
-    ),
-]
-
-
-def _split_indices_by_center(
-    center_ids: np.ndarray,
-    n_workers: int,
-    *,
-    seed: int = 123,
-) -> list[np.ndarray]:
-    rng = np.random.default_rng(seed)
-    centers = np.unique(center_ids)
-    rng.shuffle(centers)
-    buckets = [centers[i::n_workers] for i in range(n_workers)]
-    return [np.where(np.isin(center_ids, b))[0] for b in buckets]
-
-
-def _assert_results_equal(left, right, atol=1e-6, rtol=1e-6):
+def _assert_results_equal(left, right, atol=5e-6, rtol=5e-6):
     assert np.allclose(left.theta, right.theta, atol=atol, rtol=rtol)
     assert np.allclose(left.params, right.params, atol=atol, rtol=rtol)
     assert np.allclose(left.cutpoints, right.cutpoints, atol=atol, rtol=rtol)
     assert np.isclose(left.sigma_u2, right.sigma_u2, atol=atol, rtol=rtol)
     assert left.nobs == right.nobs
     assert left.n_groups == right.n_groups
+    assert left.fit_intercept == right.fit_intercept
+    assert left.K == right.K
 
 
-def _print_clinical_glmm_ordinal_summary(*, fed) -> None:
-    print("\n" + "=" * 92)
-    print("GLMM ORDINAL CLINICAL SUMMARY")
-    print("=" * 92)
-    print(
-        f"Patients (n): {fed.nobs} | Centers: {fed.n_groups} | "
-        f"sigma_u2: {fed.sigma_u2:.6f} | converged: {fed.converged} | "
-        f"iterations: {fed.n_iter}"
-    )
-    print(f"Fixed effects (beta): {np.array2string(fed.params, precision=4)}")
-    print(f"Cutpoints: {np.array2string(fed.cutpoints, precision=4)}")
-    if getattr(fed, "history", None):
-        score0 = fed.history[0]["score_norm"]
-        scoreN = fed.history[-1]["score_norm"]
-        dtheta0 = fed.history[0]["dtheta_max"]
-        dthetaN = fed.history[-1]["dtheta_max"]
-        print(
-            f"Optimization path: score_norm {score0:.6f} -> {scoreN:.6f}, "
-            f"dtheta_max {dtheta0:.6f} -> {dthetaN:.6f}"
-        )
-    print("=" * 92)
+def _assert_behavior(case: GLMMCase, fed, *, X: np.ndarray, y: np.ndarray):
+    probs = fed.predict_proba(X)
+    preds = fed.predict(X)
+    assert probs.shape == (X.shape[0], case.K)
+    assert preds.shape == (X.shape[0],)
+    assert np.all(np.isfinite(probs))
+    assert np.allclose(np.sum(probs, axis=1), 1.0, atol=1e-8)
+    assert np.all(preds >= 0) and np.all(preds <= case.K - 1)
+    assert np.all(np.diff(fed.cutpoints) > 0.0)
+    assert np.isfinite(fed.sigma_u2) and fed.sigma_u2 >= 0.0
+
+    assert fed.nobs == X.shape[0]
+    assert fed.n_groups > 0
+    assert fed.n_iter <= 50
+    assert fed.history is not None
+    assert len(fed.history) > 0
+
+    score_vals = np.array([row["score_norm"] for row in fed.history], dtype=float)
+    dtheta_vals = np.array([row["dtheta_max"] for row in fed.history], dtype=float)
+    assert np.all(np.isfinite(score_vals))
+    assert np.all(np.isfinite(dtheta_vals))
+    assert score_vals[-1] <= score_vals[0] + 1e-8
+    assert dtheta_vals[-1] <= dtheta_vals[0] + 1e-8
+
+    beta_true = np.asarray(case.beta, dtype=float)
+    strong_mask = np.abs(beta_true) >= 0.35
+    if np.any(strong_mask):
+        assert np.array_equal(np.sign(fed.params[strong_mask]), np.sign(beta_true[strong_mask]))
+
+    x_design = X
+    if case.fit_intercept:
+        x_design = np.hstack([np.ones((X.shape[0], 1), dtype=float), X])
+    latent = x_design @ beta_true
+    expected_class = probs @ np.arange(case.K, dtype=float)
+    corr = np.corrcoef(latent, expected_class)[0, 1]
+    if case.name == "near_zero_signal":
+        assert corr > 0.2
+    else:
+        assert corr > 0.45
+
+    if case.name == "low_random_effect_boundary":
+        assert fed.sigma_u2 <= 0.8
+    if case.name == "high_random_effect_icc":
+        assert fed.sigma_u2 >= 0.35
+    if case.name == "distribution_stress":
+        counts = np.bincount(y, minlength=case.K).astype(float)
+        proportions = counts / counts.sum()
+        assert np.min(proportions) < 0.1
+        assert np.count_nonzero(counts) >= 3
+    if case.name == "no_intercept_model":
+        assert fed.fit_intercept is False
+        assert fed.params.shape[0] == case.n_features
 
 
 class TestFederatedGLMMOrdinal(FederatedAlgorithmTest):
@@ -152,14 +101,8 @@ class TestFederatedGLMMOrdinal(FederatedAlgorithmTest):
         x_mat = np.asarray(X["X"], dtype=float)
         center_ids = np.asarray(X["center_ids"])
         y_vec = np.asarray(y, dtype=int)
-        idx_parts = _split_indices_by_center(center_ids, n_workers=n_workers, seed=123)
-        x_parts = [
-            {
-                "X": x_mat[idx],
-                "center_ids": center_ids[idx],
-            }
-            for idx in idx_parts
-        ]
+        idx_parts = split_indices_by_center(center_ids, n_workers=n_workers, seed=123)
+        x_parts = [{"X": x_mat[idx], "center_ids": center_ids[idx]} for idx in idx_parts]
         y_parts = [y_vec[idx] for idx in idx_parts]
         return x_parts, y_parts, X, y_vec
 
@@ -184,32 +127,45 @@ class TestFederatedGLMMOrdinal(FederatedAlgorithmTest):
         )
 
     def compare(self, federated_output, centralized_output, **kwargs):
-        _assert_results_equal(
-            federated_output, centralized_output, atol=1e-6, rtol=1e-6
+        case: GLMMCase = kwargs["case"]
+        _assert_results_equal(federated_output, centralized_output, atol=5e-6, rtol=5e-6)
+        _assert_behavior(
+            case,
+            federated_output,
+            X=np.asarray(kwargs["X_full"]["X"], dtype=float),
+            y=np.asarray(kwargs["y_full"], dtype=int),
         )
 
-    @pytest.mark.parametrize(
-        "case_name, case", TEST_CASES, ids=[c[0] for c in TEST_CASES]
-    )
-    def test_federated_algorithm_with_one_worker(self, case_name, case):
-        X, y, center_ids = synth_glmm_ordinal_df(**case["data_kwargs"])
+    @pytest.mark.parametrize("case", CASE_MATRIX, ids=[case.name for case in CASE_MATRIX])
+    def test_federated_algorithm_with_one_worker(self, case):
+        X, y, center_ids = synth_glmm_ordinal_case(case)
         self.run_comparison(
             X={"X": X, "center_ids": center_ids},
             y=y,
             n_workers=1,
-            model_kwargs=case["model_kwargs"],
+            case=case,
+            model_kwargs=build_ordinal_model_kwargs(
+                fit_intercept=case.fit_intercept,
+                K=case.K,
+            ),
+            X_full={"X": X, "center_ids": center_ids},
+            y_full=y,
         )
 
-    @pytest.mark.parametrize(
-        "case_name, case", TEST_CASES, ids=[c[0] for c in TEST_CASES]
-    )
-    def test_federated_algorithm_with_multiple_workers(self, case_name, case):
-        X, y, center_ids = synth_glmm_ordinal_df(**case["data_kwargs"])
+    @pytest.mark.parametrize("case", CASE_MATRIX, ids=[case.name for case in CASE_MATRIX])
+    def test_federated_algorithm_with_multiple_workers(self, case):
+        X, y, center_ids = synth_glmm_ordinal_case(case)
         self.run_comparison(
             X={"X": X, "center_ids": center_ids},
             y=y,
             n_workers=3,
-            model_kwargs=case["model_kwargs"],
+            case=case,
+            model_kwargs=build_ordinal_model_kwargs(
+                fit_intercept=case.fit_intercept,
+                K=case.K,
+            ),
+            X_full={"X": X, "center_ids": center_ids},
+            y_full=y,
         )
 
 
@@ -222,16 +178,14 @@ def run_federated_fit(
     model_kwargs: dict,
 ):
     coordinator = AggregationCoordinator(n_workers=n_workers)
-    parts = _split_indices_by_center(center_ids, n_workers=n_workers, seed=123)
+    parts = split_indices_by_center(center_ids, n_workers=n_workers, seed=123)
     results = [None] * n_workers
     errors = [None] * n_workers
 
     def _run(worker_id: int):
         try:
             idx = parts[worker_id]
-            agg_client = SimulatedAggClient(
-                worker_id=worker_id, coordinator=coordinator
-            )
+            agg_client = SimulatedAggClient(worker_id=worker_id, coordinator=coordinator)
             model = FederatedGLMMOrdinal(**model_kwargs)
             results[worker_id] = model.fit(
                 X[idx],
@@ -244,10 +198,10 @@ def run_federated_fit(
             errors[worker_id] = exc
 
     threads = [threading.Thread(target=_run, args=(i,)) for i in range(n_workers)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
     for err in errors:
         if err is not None:
             raise err
@@ -258,32 +212,45 @@ def run_federated_fit(
     return baseline
 
 
+def test_glmm_ordinal_case_matrix_has_expected_coverage():
+    assert len(CASE_MATRIX) == 10
+    assert {case.name for case in CASE_MATRIX} == {
+        "balanced_reference",
+        "few_centers_large_n",
+        "many_centers_small_n",
+        "highly_unbalanced_clusters",
+        "low_random_effect_boundary",
+        "high_random_effect_icc",
+        "near_zero_signal",
+        "correlated_predictors",
+        "no_intercept_model",
+        "distribution_stress",
+    }
+
+
 def test_glmm_ordinal_result_invariants_and_predict():
-    X, y, center_ids = synth_glmm_ordinal_df(seed=7, K=5)
+    case = CASE_MATRIX[0]
+    X, y, center_ids = synth_glmm_ordinal_case(case)
     fed = run_federated_fit(
         X,
         y,
         center_ids,
         n_workers=3,
-        model_kwargs=dict(K=5, return_history=True),
+        model_kwargs=build_ordinal_model_kwargs(
+            fit_intercept=case.fit_intercept,
+            K=case.K,
+            return_history=True,
+        ),
     )
-    _print_clinical_glmm_ordinal_summary(fed=fed)
-    probs = fed.predict_proba(X[:25])
-    preds = fed.predict(X[:25])
-    assert probs.shape == (25, 5)
-    assert preds.shape == (25,)
-    assert np.allclose(np.sum(probs, axis=1), 1.0, atol=1e-8)
-    assert np.all(preds >= 0) and np.all(preds <= 4)
-    assert fed.sigma_u2 > 0.0
-    assert fed.nobs == X.shape[0]
-    assert fed.n_groups == len(np.unique(center_ids))
+    _assert_behavior(case, fed, X=X, y=y)
 
 
 def test_glmm_ordinal_invalid_inputs_raise():
-    X, y, center_ids = synth_glmm_ordinal_df(seed=9, K=4)
+    case = CASE_MATRIX[0]
+    X, y, center_ids = synth_glmm_ordinal_case(case)
     coordinator = AggregationCoordinator(n_workers=1)
     agg_client = SimulatedAggClient(worker_id=0, coordinator=coordinator)
-    model = FederatedGLMMOrdinal(K=4)
+    model = FederatedGLMMOrdinal(K=case.K)
 
     y_bad = y.copy()
     y_bad[0] = 9

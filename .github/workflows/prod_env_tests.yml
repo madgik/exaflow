@@ -209,13 +209,13 @@ jobs:
           kubectl get pods -l nodeType=localworker -o wide
 
       - name: Controller logs
-        run: kubectl logs -l app=exaflow-controller --tail=300
+        run: bash -lc "kubectl logs -l app=exaflow-controller --tail=300 || true"
 
       - name: Globalnode logs
-        run: kubectl logs -l nodeType=globalworker -c worker --tail=300
+        run: bash -lc "kubectl logs -l nodeType=globalworker -c worker --tail=300 || true"
 
       - name: Localnode logs
-        run: kubectl logs -l nodeType=localworker -c worker --tail=300
+        run: bash -lc "kubectl logs -l nodeType=localworker -c worker --tail=300 || true"
 
       - name: Localnode crash diagnostics
         if: always()
@@ -232,17 +232,17 @@ jobs:
       - name: Controller logs (post run)
         uses: webiny/action-post-run@3.0.0
         with:
-          run: kubectl logs -l app=exaflow-controller --tail=300
+          run: bash -lc "kubectl logs -l app=exaflow-controller --tail=300 || true"
 
       - name: Globalnode logs (post run)
         uses: webiny/action-post-run@3.0.0
         with:
-          run: kubectl logs -l nodeType=globalworker -c worker --tail=300
+          run: bash -lc "kubectl logs -l nodeType=globalworker -c worker --tail=300 || true"
 
       - name: Localnode logs (post run)
         uses: webiny/action-post-run@3.0.0
         with:
-          run: kubectl logs -l nodeType=localworker -c worker --tail=300
+          run: bash -lc "kubectl logs -l nodeType=localworker -c worker --tail=300 || true"
 
       - name: Wait before WLA update
         run: sleep 5
