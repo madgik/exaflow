@@ -14,7 +14,6 @@ from exaflow.algorithms.federated.linear_model.logistic_regression import (
     FederatedLogisticRegression,
 )
 from exaflow.algorithms.federated.mixed_effects import FederatedGLMMBinary
-from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
 
 
@@ -150,26 +149,30 @@ def glmm_binary_local_step(
         [("cat", FederatedOneHotEncoder(), categorical_vars)],
         remainder="passthrough",
     )
-    pipeline = FederatedPipeline(
-        [
-            ("features", transformer),
-            ("model", FederatedGLMMBinary(fit_intercept=True)),
-        ]
+    transformer.fit(
+        agg_client=agg_client,
+        data=data,
+        categorical_vars=categorical_vars,
+        numerical_vars=numerical_vars,
     )
     positive_class = FederatedLogisticRegression.coerce_positive_class(
         data[y_var], positive_class
     )
     y = data[y_var].eq(positive_class).to_numpy(dtype=float, copy=False)
     center_ids = get_group_ids(data, grouping_var)
-    results = pipeline.fit(
-        agg_client=agg_client,
-        data=data,
-        y=y,
-        center_ids=center_ids,
+    X = transformer.transform(
+        data,
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,
     )
-    feature_names = pipeline.get_feature_names_out(
+    model = FederatedGLMMBinary(fit_intercept=True)
+    results = model.fit(
+        X,
+        y,
+        agg_client=agg_client,
+        center_ids=center_ids,
+    )
+    feature_names = transformer.get_feature_names_out(
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,
     )

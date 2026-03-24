@@ -3,15 +3,15 @@
         {
             "input": {
                 "inputdata": {
-                    "y": ["updrshy"],
-                    "x": ["subjectageyears", "updrstotal", "dataset"],
+                    "y": ["agegroup"],
+                    "x": ["lefthippocampus", "leftamygdala", "dataset"],
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2"],
+                    "datasets": ["ppmi0", "ppmi1", "ppmi2", "desd-synthdata1"],
                     "filters": null
                 },
                 "parameters": {
                     "grouping_var": "dataset",
-                    "category_order": ["1", "2", "3", "4", "5"]
+                    "category_order": ["-50y", "50-59y", "60-69y", "70-79y", "+80y"]
                 },
                 "test_case_num": 0
             },

@@ -169,7 +169,9 @@ class TestFederatedGLMMBinary(FederatedAlgorithmTest):
             federated_output, centralized_output, atol=1e-8, rtol=1e-8
         )
 
-    @pytest.mark.parametrize("case_name, case", TEST_CASES, ids=[c[0] for c in TEST_CASES])
+    @pytest.mark.parametrize(
+        "case_name, case", TEST_CASES, ids=[c[0] for c in TEST_CASES]
+    )
     def test_federated_algorithm_with_one_worker(self, case_name, case):
         X, y, center_ids = synth_glmm_binary_df(**case["data_kwargs"])
         self.run_comparison(
@@ -179,7 +181,9 @@ class TestFederatedGLMMBinary(FederatedAlgorithmTest):
             model_kwargs=case["model_kwargs"],
         )
 
-    @pytest.mark.parametrize("case_name, case", TEST_CASES, ids=[c[0] for c in TEST_CASES])
+    @pytest.mark.parametrize(
+        "case_name, case", TEST_CASES, ids=[c[0] for c in TEST_CASES]
+    )
     def test_federated_algorithm_with_multiple_workers(self, case_name, case):
         X, y, center_ids = synth_glmm_binary_df(**case["data_kwargs"])
         self.run_comparison(

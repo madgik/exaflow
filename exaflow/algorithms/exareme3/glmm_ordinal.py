@@ -12,7 +12,6 @@ from exaflow.algorithms.federated.compose.column_transformer import (
     FederatedColumnTransformer,
 )
 from exaflow.algorithms.federated.mixed_effects import FederatedGLMMOrdinal
-from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
 
 
@@ -149,23 +148,27 @@ def glmm_ordinal_local_step(
         [("cat", FederatedOneHotEncoder(), categorical_vars)],
         remainder="passthrough",
     )
-    y, category_order = encode_ordinal_response(data[y_var], category_order)
-    pipeline = FederatedPipeline(
-        [
-            ("features", transformer),
-            ("model", FederatedGLMMOrdinal(K=len(category_order), fit_intercept=True)),
-        ]
-    )
-    center_ids = get_group_ids(data, grouping_var)
-    results = pipeline.fit(
+    transformer.fit(
         agg_client=agg_client,
         data=data,
-        y=y,
-        center_ids=center_ids,
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,
     )
-    feature_names = pipeline.get_feature_names_out(
+    y, category_order = encode_ordinal_response(data[y_var], category_order)
+    center_ids = get_group_ids(data, grouping_var)
+    X = transformer.transform(
+        data,
+        categorical_vars=categorical_vars,
+        numerical_vars=numerical_vars,
+    )
+    model = FederatedGLMMOrdinal(K=len(category_order), fit_intercept=True)
+    results = model.fit(
+        X,
+        y,
+        agg_client=agg_client,
+        center_ids=center_ids,
+    )
+    feature_names = transformer.get_feature_names_out(
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,
     )

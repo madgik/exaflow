@@ -11,7 +11,6 @@ from exaflow.algorithms.federated.compose.column_transformer import (
     FederatedColumnTransformer,
 )
 from exaflow.algorithms.federated.mixed_effects import FederatedLMM
-from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
 
 
@@ -150,23 +149,27 @@ def lmm_local_step(
         [("cat", FederatedOneHotEncoder(), categorical_vars)],
         remainder="passthrough",
     )
-    pipeline = FederatedPipeline(
-        [
-            ("features", transformer),
-            ("model", FederatedLMM(fit_intercept=True)),
-        ]
-    )
-    y = data[y_var].to_numpy(dtype=float, copy=False)
-    center_ids = get_group_ids(data, grouping_var)
-    results = pipeline.fit(
+    transformer.fit(
         agg_client=agg_client,
         data=data,
-        y=y,
-        center_ids=center_ids,
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,
     )
-    feature_names = pipeline.get_feature_names_out(
+    y = data[y_var].to_numpy(dtype=float, copy=False)
+    center_ids = get_group_ids(data, grouping_var)
+    X = transformer.transform(
+        data,
+        categorical_vars=categorical_vars,
+        numerical_vars=numerical_vars,
+    )
+    model = FederatedLMM(fit_intercept=True)
+    results = model.fit(
+        X,
+        y,
+        agg_client=agg_client,
+        center_ids=center_ids,
+    )
+    feature_names = transformer.get_feature_names_out(
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,
     )

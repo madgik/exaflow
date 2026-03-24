@@ -325,7 +325,9 @@ class TestFederatedLMM(FederatedAlgorithmTest):
             )
             return
 
-        beta_sm, sigma2_sm, sigma_u2_sm, _, pvalues_sm, ci_sm, ll_sm = centralized_output
+        beta_sm, sigma2_sm, sigma_u2_sm, _, pvalues_sm, ci_sm, ll_sm = (
+            centralized_output
+        )
         n_features = int(federated_output.params.shape[0] - 1)
         feature_names = ["Intercept"] + [f"x{i + 1}" for i in range(n_features)]
         _print_clinical_lmm_summary(
@@ -356,8 +358,7 @@ class TestFederatedLMM(FederatedAlgorithmTest):
             )
             assert np.isfinite(federated_output.sigma2) and federated_output.sigma2 > 0
             assert (
-                np.isfinite(federated_output.sigma_u2)
-                and federated_output.sigma_u2 > 0
+                np.isfinite(federated_output.sigma_u2) and federated_output.sigma_u2 > 0
             )
         assert federated_output.history is not None
         assert len(federated_output.history) > 0
@@ -367,7 +368,9 @@ class TestFederatedLMM(FederatedAlgorithmTest):
         assert np.all(np.isfinite(ll_vals))
         assert np.all(np.diff(ll_vals) >= -1e-8)
 
-    @pytest.mark.parametrize("case_name, case", TEST_CASES, ids=[c[0] for c in TEST_CASES])
+    @pytest.mark.parametrize(
+        "case_name, case", TEST_CASES, ids=[c[0] for c in TEST_CASES]
+    )
     def test_federated_algorithm_with_one_worker(self, case_name, case):
         X, y, center_ids = case["data_fn"](**case["data_kwargs"])
         self.run_comparison(
@@ -378,7 +381,9 @@ class TestFederatedLMM(FederatedAlgorithmTest):
             compare_against_statsmodels=case["compare_against_statsmodels"],
         )
 
-    @pytest.mark.parametrize("case_name, case", TEST_CASES, ids=[c[0] for c in TEST_CASES])
+    @pytest.mark.parametrize(
+        "case_name, case", TEST_CASES, ids=[c[0] for c in TEST_CASES]
+    )
     def test_federated_algorithm_with_multiple_workers(self, case_name, case):
         X, y, center_ids = case["data_fn"](**case["data_kwargs"])
         self.run_comparison(

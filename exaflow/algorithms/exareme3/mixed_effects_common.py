@@ -35,7 +35,9 @@ def get_group_ids(data, grouping_var: str) -> np.ndarray:
     return data[grouping_var].astype(str).to_numpy(copy=False)
 
 
-def encode_ordinal_response(series, category_order: list[str | int]) -> tuple[np.ndarray, list[str]]:
+def encode_ordinal_response(
+    series, category_order: list[str | int]
+) -> tuple[np.ndarray, list[str]]:
     if not isinstance(category_order, list) or len(category_order) < 2:
         raise BadUserInput(
             "Parameter 'category_order' must be a list with at least two ordered categories."
