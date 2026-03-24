@@ -160,7 +160,9 @@ class _GLMMAggregator:
     ) -> np.ndarray:
         theta = np.asarray(theta, dtype=float).reshape(-1)
         h_sym = 0.5 * (self.h + self.h.T)
-        h_r = h_sym + float(ridge) * np.eye(self.q, dtype=float)
+        eye = np.eye(self.q, dtype=float)
+        ridge = float(max(ridge, 0.0))
+        h_r = h_sym + ridge * eye
         delta = None
         for _ in range(max_tries):
             try:
@@ -168,9 +170,11 @@ class _GLMMAggregator:
                 break
             except np.linalg.LinAlgError:
                 ridge *= 10.0
-                h_r = h_sym + float(ridge) * np.eye(self.q, dtype=float)
+                h_r = h_sym + ridge * eye
         if delta is None:
-            raise np.linalg.LinAlgError("Failed linear solve in GLMM ordinal update.")
+            # Mirror the binary GLMM fallback to stay robust on collinear or
+            # near-singular real-world design matrices.
+            delta = np.linalg.pinv(h_sym + max(ridge, 1e-6) * eye) @ self.s
         nrm = float(np.linalg.norm(delta))
         if nrm > max_step_norm and nrm > 0.0:
             delta *= max_step_norm / nrm
