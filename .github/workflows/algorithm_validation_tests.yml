@@ -45,29 +45,37 @@ jobs:
       - name: Deploy all api
         run: poetry run inv deploy --no-install-dep
 
+      - name: List runtime log files
+        run: ls -lah /tmp/exaflow || true
+
       - name: Controller logs
-        run: cat /tmp/exaflow/controller.out
+        run: tail -n 300 /tmp/exaflow/controller.out || true
 
       - name: Globalworker logs
-        run: cat /tmp/exaflow/globalworker.out
+        run: tail -n 300 /tmp/exaflow/globalworker.out || true
 
       - name: Localworker logs
-        run: cat /tmp/exaflow/localworker1.out
+        run: |
+          for f in /tmp/exaflow/localworker*.out; do
+            [ -e "$f" ] || continue
+            echo "===== $f ====="
+            tail -n 300 "$f" || true
+          done
 
       - name: Controller logs (post run)
         uses: webiny/action-post-run@3.0.0
         with:
-          run: cat /tmp/exaflow/controller.out
+          run: tail -n 300 /tmp/exaflow/controller.out || true
 
       - name: Globalworker logs (post run)
         uses: webiny/action-post-run@3.0.0
         with:
-          run: cat /tmp/exaflow/globalworker.out
+          run: tail -n 300 /tmp/exaflow/globalworker.out || true
 
       - name: Localworker logs (post run)
         uses: webiny/action-post-run@3.0.0
         with:
-          run: cat /tmp/exaflow/localworker1.out
+          run: for f in /tmp/exaflow/localworker*.out; do [ -e "$f" ] || continue; echo "===== $f ====="; tail -n 300 "$f" || true; done
 
       # Flower tests disabled pending MIP-1203.
 #      - name: Run Flower algorithm validation tests (with resource summary)
@@ -154,32 +162,40 @@ jobs:
       - name: Deploy all api
         run: poetry run inv deploy --no-install-dep
 
+      - name: List runtime log files
+        run: ls -lah /tmp/exaflow || true
+
       - name: Controller logs
-        run: cat /tmp/exaflow/controller.out
+        run: tail -n 300 /tmp/exaflow/controller.out || true
 
       - name: Aggregation Server logs
-        run: cat /tmp/exaflow/aggregation_server.out
+        run: tail -n 300 /tmp/exaflow/aggregation_server.out || true
 
       - name: Globalworker logs
-        run: cat /tmp/exaflow/globalworker.out
+        run: tail -n 300 /tmp/exaflow/globalworker.out || true
 
       - name: Localworker logs
-        run: cat /tmp/exaflow/localworker1.out
+        run: |
+          for f in /tmp/exaflow/localworker*.out; do
+            [ -e "$f" ] || continue
+            echo "===== $f ====="
+            tail -n 300 "$f" || true
+          done
 
       - name: Controller logs (post run)
         uses: webiny/action-post-run@3.0.0
         with:
-          run: cat /tmp/exaflow/controller.out
+          run: tail -n 300 /tmp/exaflow/controller.out || true
 
       - name: Globalworker logs (post run)
         uses: webiny/action-post-run@3.0.0
         with:
-          run: cat /tmp/exaflow/globalworker.out
+          run: tail -n 300 /tmp/exaflow/globalworker.out || true
 
       - name: Localworker logs (post run)
         uses: webiny/action-post-run@3.0.0
         with:
-          run: cat /tmp/exaflow/localworker1.out
+          run: for f in /tmp/exaflow/localworker*.out; do [ -e "$f" ] || continue; echo "===== $f ====="; tail -n 300 "$f" || true; done
 
       - name: Run Exaflow algorithm validation tests (with resource summary)
         run: |
