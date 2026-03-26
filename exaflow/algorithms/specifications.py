@@ -18,7 +18,7 @@ class AlgorithmType(Enum):
 
 
 @unique
-class PreprocessingStep(Enum):
+class PreprocessingStepType(Enum):
     EXAREME3_PREPROCESSING_STEP = "exareme3_preprocessing_step"
 
 
@@ -275,6 +275,5 @@ class PreprocessingStepSpecification(WorkflowStepSpecification):
     label: str
     enabled: bool
     parameters: Optional[Dict[str, ParameterSpecification]] = None
-    compatible_algorithms: Optional[List[str]] = None
-    type: PreprocessingStep = PreprocessingStep.EXAREME3_PREPROCESSING_STEP
+    type: PreprocessingStepType = PreprocessingStepType.EXAREME3_PREPROCESSING_STEP
     components: List[ComponentType] = Field(default_factory=list)

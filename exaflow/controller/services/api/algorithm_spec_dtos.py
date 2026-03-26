@@ -228,26 +228,13 @@ def _convert_transformer_specification_to_dto(spec: PreprocessingStepSpecificati
     )
 
 
-def _get_algorithm_compatible_preprocessing_steps(
-    algo_name: str, preprocessing_steps: List[PreprocessingStepSpecification]
-) -> List[PreprocessingStepSpecification]:
-    compatible_preprocessing_steps = []
-    for preprocessing_step in preprocessing_steps:
-        if (
-            not preprocessing_step.compatible_algorithms
-            or algo_name in preprocessing_step.compatible_algorithms
-        ):
-            compatible_preprocessing_steps.append(preprocessing_step)
-    return compatible_preprocessing_steps
-
-
 def _convert_algorithm_specification_to_dto(
     spec: AlgorithmSpecification,
     preprocessing_steps: List[PreprocessingStepSpecification],
 ):
     """
     Converting to a DTO has the following additions:
-    1) The preprocessing specifications are added from the preprocessing steps that are compatible with the specific algorithm.
+    1) The preprocessing specifications are added from all enabled preprocessing steps.
     2) The system specific flags are added.
     """
     return AlgorithmSpecificationDTO(
@@ -265,9 +252,7 @@ def _convert_algorithm_specification_to_dto(
         ),
         preprocessing=[
             _convert_transformer_specification_to_dto(spec)
-            for spec in _get_algorithm_compatible_preprocessing_steps(
-                spec.name, preprocessing_steps
-            )
+            for spec in preprocessing_steps
         ],
         flags=[AlgorithmRequestSystemFlags.SMPC],
         type=spec.type,
