@@ -24,7 +24,7 @@ __all__ = [
     "EXAREME3_ALGORITHM_FOLDERS_ENV_VARIABLE",
     "EXAREME3_ALGORITHM_FOLDERS",
     "exareme3_algorithm_classes",
-    "exareme3_transformer_classes",
+    "exareme3_preprocessing_step_classes",
 ]
 
 
@@ -169,7 +169,7 @@ def get_exareme3_algorithm_classes() -> Dict[str, type]:
 exareme3_algorithm_classes = get_exareme3_algorithm_classes()
 
 
-def get_exareme3_transformer_classes() -> Dict[str, type]:
+def get_exareme3_preprocessing_step_classes() -> Dict[str, type]:
     _ensure_exareme3_modules_loaded()
     return {
         cls.get_specification().name: cls
@@ -177,4 +177,4 @@ def get_exareme3_transformer_classes() -> Dict[str, type]:
     }
 
 
-exareme3_transformer_classes = get_exareme3_transformer_classes()
+exareme3_preprocessing_step_classes = get_exareme3_preprocessing_step_classes()

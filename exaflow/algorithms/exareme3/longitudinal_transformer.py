@@ -44,8 +44,8 @@ class LongitudinalTransformer(PreprocessingStep):
         self._transformed_y: List[str] = []
 
     @classmethod
-    def get_specification(cls) -> specs.TransformerSpecification:
-        return specs.TransformerSpecification(
+    def get_specification(cls) -> specs.PreprocessingStepSpecification:
+        return specs.PreprocessingStepSpecification(
             name="longitudinal_transformer",
             desc="Longitudinal transformation between two visits.",
             label="Longitudinal Transformer",
@@ -113,7 +113,7 @@ class LongitudinalTransformer(PreprocessingStep):
                 "naive_bayes_gaussian_cv",
                 "naive_bayes_categorical_cv",
             ],
-            type=specs.TransformerType.EXAREME3_TRANSFORMER,
+            type=specs.PreprocessingStep.EXAREME3_PREPROCESSING_STEP,
             components=[],
         )
 

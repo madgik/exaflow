@@ -8,12 +8,12 @@ from typing import Union
 
 from exaflow import FLOWER_ALGORITHM_FOLDERS
 from exaflow import exareme3_algorithm_classes
-from exaflow import exareme3_transformer_classes
+from exaflow import exareme3_preprocessing_step_classes
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import AlgorithmType
 from exaflow.algorithms.specifications import ComponentType
-from exaflow.algorithms.specifications import TransformerSpecification
-from exaflow.algorithms.specifications import TransformerType
+from exaflow.algorithms.specifications import PreprocessingStep
+from exaflow.algorithms.specifications import PreprocessingStepSpecification
 from exaflow.controller import config as ctrl_config
 
 logger = logging.getLogger(__name__)
@@ -36,14 +36,14 @@ def load_json_file(path: Path) -> dict:
 
 
 class Specifications:
-    SpecType = Union[AlgorithmSpecification, TransformerSpecification]
+    SpecType = Union[AlgorithmSpecification, PreprocessingStepSpecification]
     enabled_algorithms: Dict[str, AlgorithmSpecification]
-    enabled_transformers: Dict[str, TransformerSpecification]
+    enabled_preprocessing_steps: Dict[str, PreprocessingStepSpecification]
 
     def __init__(self):
         self._all_specs: Dict[str, Specifications.SpecType] = {}
         self.enabled_algorithms = {}
-        self.enabled_transformers = {}
+        self.enabled_preprocessing_steps = {}
         self._flags = {
             ComponentType.AGGREGATION_SERVER: ctrl_config.aggregation_server.enabled,
             ComponentType.FLOWER: ctrl_config.flower.enabled,
@@ -57,7 +57,7 @@ class Specifications:
 
     def _load_exareme3_specifications(self) -> None:
         self._load_exareme3_algorithm_specifications()
-        self._load_exareme3_transformer_specifications()
+        self._load_exareme3_preprocessing_step_specifications()
 
     def _load_exareme3_algorithm_specifications(self) -> None:
         for algorithm_name, algorithm_cls in exareme3_algorithm_classes.items():
@@ -68,8 +68,11 @@ class Specifications:
                 )
             self._add_specification(spec, f"algorithm class '{algorithm_name}'")
 
-    def _load_exareme3_transformer_specifications(self) -> None:
-        for transformer_name, transformer_cls in exareme3_transformer_classes.items():
+    def _load_exareme3_preprocessing_step_specifications(self) -> None:
+        for (
+            transformer_name,
+            transformer_cls,
+        ) in exareme3_preprocessing_step_classes.items():
             spec = transformer_cls.get_specification()
             if spec.name != transformer_name:
                 raise ValueError(
@@ -109,12 +112,12 @@ class Specifications:
             if isinstance(spec, AlgorithmSpecification):
                 self.enabled_algorithms[spec.name] = spec
             else:
-                self.enabled_transformers[spec.name] = spec
+                self.enabled_preprocessing_steps[spec.name] = spec
 
     @staticmethod
     def _choose_spec_class(raw: dict) -> Type[SpecType]:
-        if raw["type"].startswith(TransformerType.EXAREME3_TRANSFORMER.value):
-            return TransformerSpecification
+        if raw["type"].startswith(PreprocessingStep.EXAREME3_PREPROCESSING_STEP.value):
+            return PreprocessingStepSpecification
         return AlgorithmSpecification
 
     def get_algorithm_type(self, algo_name: str) -> AlgorithmType:

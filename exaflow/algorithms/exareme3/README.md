@@ -13,10 +13,10 @@
     - `check_min_rows` (default `True`) to skip the privacy minimum-row check.
     - `add_dataset_variable` (default `False`) to include the dataset column.
 
-- Transformer base class: `exaflow/algorithms/exareme3/utils/transformer.py` -> `Transformer`
+- PreprocessingStep base class: `exaflow/algorithms/exareme3/utils/preprocessing_step.py` -> `PreprocessingStep`
 
-  - Each transformer must implement `@classmethod get_specification()` and return a
-    `TransformerSpecification` (see `exaflow/algorithms/specifications.py`).
+  - Each preprocessing step must implement `@classmethod get_specification()` and return a
+    `PreprocessingStepSpecification` (see `exaflow/algorithms/specifications.py`).
 
 - Input payloads:
 
@@ -35,14 +35,14 @@
 
 ## Discovery and loading
 
-- The controller discovers Exareme3 algorithms/transformers by importing the
+- The controller discovers Exareme3 algorithms/preprocessing_steps by importing the
   modules under `EXAREME3_ALGORITHM_FOLDERS` and collecting subclasses of the
   base classes.
 
 - Class maps are keyed by the specification name:
 
   - `exaflow.exareme3_algorithm_classes[AlgorithmSpecification.name] -> class`
-  - `exaflow.exareme3_transformer_classes[TransformerSpecification.name] -> class`
+  - `exaflow.exareme3_preprocessing_step_classes[PreprocessingStepSpecification.name] -> class`
 
 ## UDFs, registry, and aggregation
 
@@ -75,6 +75,21 @@
 - Dummy encoding: use `preprocessing.get_dummy_categories` with
   `run_local_udf_func=self.run_local_udf` to collect categories, then
   `metrics.build_design_matrix` inside UDFs.
+- Preprocessing contract:
+  - `PreprocessingStep.required_input_variables()` returns extra columns that
+    must be loaded by workers before UDF execution.
+  - Default implementation returns `[]`; override it for steps that need
+    system columns outside user-selected `x`/`y`.
+  - `LongitudinalTransformer.required_input_variables()` returns
+    `[dataset, subjectid, visitid]`, so worker UDF loading can include the
+    longitudinal keys explicitly.
+
+## Longitudinal notes
+
+- Longitudinal preprocessing validates `diff` strategies against
+  `self._metadata` directly (categorical variables cannot use `diff`).
+- `transform_inputdata()` uses Pydantic v2-style `model_copy(...)` to return
+  transformed `x`/`y` safely.
 
 ## Cross-validation utilities
 

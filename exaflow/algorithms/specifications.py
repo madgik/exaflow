@@ -18,8 +18,8 @@ class AlgorithmType(Enum):
 
 
 @unique
-class TransformerType(Enum):
-    EXAREME3_TRANSFORMER = "exareme3_transformer"
+class PreprocessingStep(Enum):
+    EXAREME3_PREPROCESSING_STEP = "exareme3_preprocessing_step"
 
 
 @unique
@@ -54,7 +54,7 @@ class ParameterEnumType(str, Enum):
 
 
 @unique
-class TransformerName(str, Enum):
+class PreprocessingStepName(str, Enum):
     LONGITUDINAL_TRANSFORMER = "longitudinal_transformer"
 
     def __str__(self) -> str:
@@ -266,12 +266,12 @@ class AlgorithmSpecification(WorkflowStepSpecification):
     components: List[ComponentType] = Field(default_factory=list)
 
 
-class TransformerSpecification(WorkflowStepSpecification):
+class PreprocessingStepSpecification(WorkflowStepSpecification):
     name: str
     desc: str
     label: str
     enabled: bool
     parameters: Optional[Dict[str, ParameterSpecification]] = None
     compatible_algorithms: Optional[List[str]] = None
-    type: TransformerType = TransformerType.EXAREME3_TRANSFORMER
+    type: PreprocessingStep = PreprocessingStep.EXAREME3_PREPROCESSING_STEP
     components: List[ComponentType] = Field(default_factory=list)

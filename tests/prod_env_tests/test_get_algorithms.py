@@ -28,8 +28,8 @@ def test_logistic_regression_has_longitudinal_transformer():
                 pytest.fail(
                     "Logistic Regression should have the 'longitudinal_transform' as preprocessing step."
                 )
-            for transformer in algorithm["preprocessing"]:
-                if transformer["name"] == "longitudinal_transformer":
+            for preprocessing in algorithm["preprocessing"]:
+                if preprocessing["name"] == "longitudinal_transformer":
                     break
             else:
                 pytest.fail(

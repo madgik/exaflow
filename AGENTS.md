@@ -20,7 +20,7 @@ ______________________________________________________________________
   | --- | --- |
   | `exaflow/controller/quart` | HTTP endpoints; `endpoints.py` drives `/algorithms`. |
   | `exaflow/controller/services/exareme3` | Controller-side strategy + worker task abstractions. |
-  | `exaflow/algorithms/exareme3` | Algorithm + transformer implementations and in-code specs (`get_specification`). |
+  | `exaflow/algorithms/exareme3` | Algorithm + preprocessing step implementations and in-code specs (`get_specification`). |
   | `exaflow/worker` | gRPC server, DuckDB loader, UDF runner. |
   | `exaflow/aggregation_server` | Optional microservice providing SUM/MIN/MAX aggregation. |
   | `tasks.py` | `invoke` tasks for configs, data seeding, service lifecycle. |
@@ -52,11 +52,11 @@ The pipeline below is what you usually need to reference/debug.
 
    - Algorithm classes are discovered by importing modules from
      `EXAREME3_ALGORITHM_FOLDERS` (defaults to `./exaflow/algorithms/exareme3`) and
-     collecting `Algorithm` / `Transformer` subclasses (`exaflow/__init__.py`).
+     collecting `Algorithm` / `PreprocessingStep` subclasses (`exaflow/__init__.py`).
    - Exareme3 specifications are defined in code:
      - Algorithms implement `@classmethod get_specification() -> AlgorithmSpecification`.
-     - Transformers implement `@classmethod get_specification() -> TransformerSpecification`.
-     - `exaflow.exareme3_algorithm_classes` and `exaflow.exareme3_transformer_classes` are keyed by `spec.name`.
+     - Preprocessing Steps implement `@classmethod get_specification() -> PreprocessingStepSpecification`.
+     - `exaflow.exareme3_algorithm_classes` and `exaflow.exareme3_preprocessing_step_classes` are keyed by `spec.name`.
    - Module importing is designed to be idempotent even when `EXAREME3_ALGORITHM_FOLDERS`
      points at non-package folders (to avoid double-executing modules and duplicate UDF registrations).
    - Strategy creates the algorithm class, passing:
@@ -84,6 +84,10 @@ The pipeline below is what you usually need to reference/debug.
    - `WorkerTasksHandler` calls `RunUdf` on the worker; `udf_service` loads the
      registered UDF, applies parameters, and runs queries locally (usually through
      helpers in `exaflow/worker/exareme3/udf/` and `exaflow/algorithms/exareme3/library/`).
+   - For preprocessing-aware execution, worker-side `run_udf` now asks each
+     preprocessing step for `required_input_variables()`. For longitudinal
+     preprocessing this pulls `dataset`, `subjectid`, and `visitid` through the
+     `LongitudinalPreprocessingStep` contract instead of hardcoded worker logic.
    - Results are JSON-serialisable dicts that the controller stitches into the
      algorithm-specific Pydantic model returned by `algorithm.run`.
 
@@ -104,18 +108,20 @@ ______________________________________________________________________
 
 ## Working on Algorithms
 
-- **Specs (Exareme3):** Algorithm + transformer metadata shipped to clients is defined in code via
-  `get_specification()` returning `AlgorithmSpecification` / `TransformerSpecification`
+- **Specs (Exareme3):** Algorithm + preprocessing step metadata shipped to clients is defined in code via
+  `get_specification()` returning `AlgorithmSpecification` / `PreprocessingStepSpecification`
   (`exaflow/algorithms/specifications.py`). Update the specification method and implementation together.
 - **Implementations:** `exaflow/algorithms/exareme3/*.py` typically define:
-  - A class derived from `Algorithm` (or `Transformer` for preprocessing) exposing `run` (or transformer helpers).
+  - A class derived from `Algorithm` (or `PreprocessingStep` for preprocessing) exposing `run` (or preprocessing step helpers).
   - `@classmethod get_specification()` returning the typed spec object (prefer `from exaflow.algorithms import specifications as specs`).
+  - Optional `@classmethod required_input_variables()` for preprocessing steps to
+    declare extra columns needed at worker load time.
   - UDF helpers decorated with `@exareme3_udf`.
 - **Data helpers:** `metrics.py` and `library/` hold reusable computations;
   prefer extending them before inlining SQL.
 - **Controller integration:** Ensure the algorithm module lives in
   `EXAREME3_ALGORITHM_FOLDERS` (default `./exaflow/algorithms/exareme3`) so
-  `exareme3_algorithm_classes` / `exareme3_transformer_classes` can discover it.
+  `exareme3_algorithm_classes` / `exareme3_preprocessing_step_classes` can discover it.
 
 ______________________________________________________________________
 
