@@ -1,10 +1,10 @@
 import inspect
 from typing import Optional
 
+from exaflow import exareme3_preprocessing_step_classes
 from exaflow.aggregation_clients.exareme3_udf_aggregation_client import (
     Exareme3UDFAggregationClient as AggregationClient,
 )
-from exaflow.algorithms.exareme3.longitudinal_transformer import LongitudinalTransformer
 from exaflow.algorithms.exareme3.utils.metadata_enums import enforce_enum_order
 from exaflow.algorithms.exareme3.utils.registry import exareme3_registry
 from exaflow.algorithms.federated.utils import BadInputError
@@ -26,65 +26,36 @@ def run_udf(
     kw_args: dict,
     system_args: RunUdfSystemArgs,
 ):
-    udf = exareme3_registry.get_func(udf_registry_key)
-    if not udf:
-        error_msg = f"udf '{udf_registry_key}' not found in EXAREME3_REGISTRY."
-        raise ImportError(error_msg)
-
-    if exareme3_registry.lazy_aggregation_enabled(udf_registry_key):
-        agg_client_name = exareme3_registry.agg_client_name(udf_registry_key)
-        udf = lazy_agg(agg_client_name=agg_client_name)(udf)
-
-    agg_client: Optional[AggregationClient] = None
-    if exareme3_registry.aggregation_server_required(udf_registry_key):
-        agg_dns = worker_config.aggregation_server.dns
-        agg_client = AggregationClient(request_id, aggregator_dns=agg_dns)
-
+    udf = _get_udf_or_raise(udf_registry_key)
+    udf = _wrap_udf_with_lazy_aggregation_if_enabled(udf_registry_key, udf)
+    agg_client = _create_aggregation_client_if_required(request_id, udf_registry_key)
     preprocessing = system_args.preprocessing
     metadata = enforce_enum_order(system_args.metadata)
-    include_dataset = False
-    extra_columns = set()
-    if preprocessing and "longitudinal_transformer" in preprocessing:
-        extra_columns.update(LongitudinalTransformer.required_input_variables())
-
-    data = load_algorithm_arrow_table(
-        system_args.inputdata,
+    data = _load_worker_data_for_udf(
+        inputdata=system_args.inputdata,
+        preprocessing=preprocessing,
         dropna=system_args.drop_na,
-        include_dataset=(include_dataset or system_args.add_dataset_variable),
-        extra_columns=extra_columns,
+        add_dataset_variable=system_args.add_dataset_variable,
+    )
+    _check_min_rows_or_raise(
+        data=data,
+        check_min_rows=system_args.check_min_rows,
+        agg_client=agg_client,
+    )
+    data, metadata = _apply_preprocessing_steps_to_data_and_metadata(
+        data=data,
+        metadata=metadata,
+        preprocessing=preprocessing,
     )
 
-    if system_args.check_min_rows:
-        num_rows = data.num_rows
-        min_required = worker_config.privacy.minimum_row_count
-        if num_rows < min_required:
-            if agg_client:
-                try:
-                    agg_client.unregister()
-                finally:
-                    agg_client.close()
-            raise InsufficientDataError(
-                f"Insufficient data returned {num_rows} rows; minimum required is {min_required}."
-            )
-
-    data = convert_to_pandas_dataframe(data)
-    if preprocessing and "longitudinal_transformer" in preprocessing:
-        preprocessing_step = LongitudinalTransformer(
-            inputdata=system_args.inputdata,
-            metadata=metadata,
-            params=preprocessing["longitudinal_transformer"],
-        )
-        preprocessing_step.validate()
-        data, metadata = preprocessing_step.transform_data_and_metadata(data=data)
-
     try:
-        if agg_client:
-            kw_args["agg_client"] = agg_client
-        kw_args["data"] = data
-        if "metadata" in inspect.signature(udf).parameters:
-            kw_args["metadata"] = metadata
-        result = udf(**kw_args)
-        return result
+        return _execute_udf(
+            udf=udf,
+            kw_args=kw_args,
+            data=data,
+            metadata=metadata,
+            agg_client=agg_client,
+        )
     except BadInputError as e:
         logger = get_logger()
         logger.info(
@@ -97,3 +68,118 @@ def run_udf(
             f"Error calling udf. (udf={udf_registry_key})({kw_args=})({system_args=})(error={e})"
         )
         raise
+
+
+def _get_udf_or_raise(udf_registry_key: str):
+    udf = exareme3_registry.get_func(udf_registry_key)
+    if not udf:
+        error_msg = f"udf '{udf_registry_key}' not found in EXAREME3_REGISTRY."
+        raise ImportError(error_msg)
+    return udf
+
+
+def _wrap_udf_with_lazy_aggregation_if_enabled(udf_registry_key: str, udf):
+    if exareme3_registry.lazy_aggregation_enabled(udf_registry_key):
+        agg_client_name = exareme3_registry.agg_client_name(udf_registry_key)
+        return lazy_agg(agg_client_name=agg_client_name)(udf)
+    return udf
+
+
+def _create_aggregation_client_if_required(
+    request_id,
+    udf_registry_key: str,
+) -> Optional[AggregationClient]:
+    if not exareme3_registry.aggregation_server_required(udf_registry_key):
+        return None
+    agg_dns = worker_config.aggregation_server.dns
+    return AggregationClient(request_id, aggregator_dns=agg_dns)
+
+
+def _collect_extra_columns(preprocessing: dict) -> set[str]:
+    extra_columns = set()
+    for preprocessing_step_name in preprocessing or {}:
+        preprocessing_step_cls = exareme3_preprocessing_step_classes[
+            preprocessing_step_name
+        ]
+        extra_columns.update(preprocessing_step_cls.required_input_variables())
+    return extra_columns
+
+
+def _load_worker_data_for_udf(
+    *,
+    inputdata,
+    preprocessing: dict,
+    dropna: bool,
+    add_dataset_variable: bool,
+):
+    include_dataset = False
+    return load_algorithm_arrow_table(
+        inputdata,
+        dropna=dropna,
+        include_dataset=(include_dataset or add_dataset_variable),
+        extra_columns=_collect_extra_columns(preprocessing),
+    )
+
+
+def _check_min_rows_or_raise(
+    *,
+    data,
+    check_min_rows: bool,
+    agg_client: Optional[AggregationClient],
+) -> None:
+    if not check_min_rows:
+        return
+
+    num_rows = data.num_rows
+    min_required = worker_config.privacy.minimum_row_count
+    if num_rows >= min_required:
+        return
+
+    if agg_client:
+        try:
+            agg_client.unregister()
+        finally:
+            agg_client.close()
+
+    raise InsufficientDataError(
+        f"Insufficient data returned {num_rows} rows; minimum required is {min_required}."
+    )
+
+
+def _apply_preprocessing_steps_to_data_and_metadata(
+    data,
+    metadata: dict,
+    preprocessing: dict,
+):
+    data = convert_to_pandas_dataframe(data)
+    for preprocessing_step_name, preprocessing_step_params in (
+        preprocessing or {}
+    ).items():
+        preprocessing_step_cls = exareme3_preprocessing_step_classes[
+            preprocessing_step_name
+        ]
+        step_metadata = metadata
+        preprocessing_step = preprocessing_step_cls(
+            params=preprocessing_step_params,
+        )
+        data, metadata = preprocessing_step.transform_data_and_metadata(
+            data=data,
+            metadata=step_metadata,
+        )
+    return data, metadata
+
+
+def _execute_udf(
+    *,
+    udf,
+    kw_args: dict,
+    data,
+    metadata: dict,
+    agg_client: Optional[AggregationClient],
+):
+    if agg_client:
+        kw_args["agg_client"] = agg_client
+    kw_args["data"] = data
+    if "metadata" in inspect.signature(udf).parameters:
+        kw_args["metadata"] = metadata
+    return udf(**kw_args)

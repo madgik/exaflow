@@ -1,10 +1,10 @@
 from typing import List
 
 from exaflow import exareme3_algorithm_classes
+from exaflow import exareme3_preprocessing_step_classes
 from exaflow.aggregation_clients.controller_aggregation_client import (
     ControllerAggregationClient,
 )
-from exaflow.algorithms.exareme3.longitudinal_transformer import LongitudinalTransformer
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.controller import config as controller_config
 from exaflow.controller.federation_info_logs import log_experiment_execution
@@ -22,6 +22,35 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
     _local_worker_tasks_handlers: List[Exareme3TasksHandler]
     _global_worker_tasks_handler: Exareme3TasksHandler
 
+    @staticmethod
+    def _run_preprocessing_steps(
+        inputdata: Inputdata,
+        metadata: dict,
+        preprocessing: dict,
+    ) -> Inputdata:
+        transformed_inputdata = inputdata
+        transformed_metadata = metadata
+        for preprocessing_step_name, preprocessing_step_params in preprocessing.items():
+            preprocessing_step_cls = exareme3_preprocessing_step_classes[
+                preprocessing_step_name
+            ]
+            step_inputdata = transformed_inputdata
+            step_metadata = transformed_metadata
+            preprocessing_step = preprocessing_step_cls(
+                params=preprocessing_step_params,
+            )
+            preprocessing_step.validate_params(
+                inputdata=step_inputdata,
+                metadata=step_metadata,
+            )
+            transformed_inputdata = preprocessing_step.transform_inputdata(
+                inputdata=step_inputdata,
+            )
+            transformed_metadata = preprocessing_step.transform_metadata(
+                metadata=step_metadata,
+            )
+        return transformed_inputdata
+
     async def execute(self) -> str:
         inputdata = Inputdata.model_validate(
             self._algorithm_request_dto.inputdata.model_dump()
@@ -33,15 +62,11 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
         )
 
         preprocessing = self._algorithm_request_dto.preprocessing or {}
-        transformed_inputdata = inputdata
-        if "longitudinal_transformer" in preprocessing:
-            transformer = LongitudinalTransformer(
-                inputdata=inputdata,
-                metadata=metadata,
-                params=preprocessing["longitudinal_transformer"],
-            )
-            transformer.validate()
-            transformed_inputdata = transformer.transform_inputdata()
+        transformed_inputdata = self._run_preprocessing_steps(
+            inputdata=inputdata,
+            metadata=metadata,
+            preprocessing=preprocessing,
+        )
 
         engine = Exareme3AlgorithmFlowEngineInterface(
             request_id=self._request_id,
