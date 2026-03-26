@@ -11,7 +11,7 @@ from exaflow.algorithms.specifications import InputDataStatType
 from exaflow.algorithms.specifications import InputDataType
 from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterSpecification
-from exaflow.algorithms.specifications import TransformerSpecification
+from exaflow.algorithms.specifications import PreprocessingStepSpecification
 from exaflow.controller.services.api.algorithm_request_dtos import AlgorithmInputDataDTO
 from exaflow.controller.services.api.algorithm_request_dtos import AlgorithmRequestDTO
 from exaflow.controller.services.api.algorithm_request_dtos import (
@@ -38,7 +38,7 @@ def validate_algorithm_request(
     algorithm_name: str,
     algorithm_request_dto: AlgorithmRequestDTO,
     algorithms_specs: Dict[str, AlgorithmSpecification],
-    transformers_specs: Dict[str, TransformerSpecification],
+    preprocessing_steps_specs: Dict[str, PreprocessingStepSpecification],
     worker_landscape_aggregator: WorkerLandscapeAggregator,
     smpc_enabled: bool,
     smpc_optional: bool,
@@ -57,7 +57,7 @@ def validate_algorithm_request(
     _validate_algorithm_request_body(
         algorithm_request_dto=algorithm_request_dto,
         algorithm_specs=algorithm_specs,
-        transformers_specs=transformers_specs,
+        preprocessing_steps_specs=preprocessing_steps_specs,
         training_datasets=training_datasets,
         validation_datasets=validation_datasets,
         data_model_cdes=data_model_cdes,
@@ -78,7 +78,7 @@ def _get_algorithm_specs(
 def _validate_algorithm_request_body(
     algorithm_request_dto: AlgorithmRequestDTO,
     algorithm_specs: AlgorithmSpecification,
-    transformers_specs: Dict[str, TransformerSpecification],
+    preprocessing_steps_specs: Dict[str, PreprocessingStepSpecification],
     training_datasets: List[str],
     validation_datasets: List[str],
     data_model_cdes: Dict[str, CommonDataElement],
@@ -110,7 +110,7 @@ def _validate_algorithm_request_body(
     _validate_algorithm_preprocessing(
         algorithm_request_dto=algorithm_request_dto,
         algorithm_name=algorithm_specs.name,
-        transformers_specs=transformers_specs,
+        preprocessing_steps_specs=preprocessing_steps_specs,
         data_model_cdes=data_model_cdes,
     )
 
@@ -599,17 +599,17 @@ def _validate_flags(flags: Dict[str, Any], smpc_enabled: bool, smpc_optional: bo
 def _validate_algorithm_preprocessing(
     algorithm_request_dto: AlgorithmRequestDTO,
     algorithm_name: str,
-    transformers_specs: Dict[str, TransformerSpecification],
+    preprocessing_steps_specs: Dict[str, PreprocessingStepSpecification],
     data_model_cdes: Dict[str, CommonDataElement],
 ):
     if not algorithm_request_dto.preprocessing:
         return
 
     for name, params in algorithm_request_dto.preprocessing.items():
-        if name not in transformers_specs.keys():
+        if name not in preprocessing_steps_specs.keys():
             raise BadUserInput(f"Transformer '{name}' does not exist.")
 
-        compatible_algos = transformers_specs[name].compatible_algorithms
+        compatible_algos = preprocessing_steps_specs[name].compatible_algorithms
         if compatible_algos and algorithm_name not in compatible_algos:
             raise BadUserInput(
                 f"Transformer '{name}' is not available for algorithm '{algorithm_name}'."
@@ -617,7 +617,7 @@ def _validate_algorithm_preprocessing(
 
         _validate_parameters(
             parameters=params,
-            parameters_specs=transformers_specs[name].parameters,
+            parameters_specs=preprocessing_steps_specs[name].parameters,
             inputdata=algorithm_request_dto.inputdata,
             data_model_cdes=data_model_cdes,
         )

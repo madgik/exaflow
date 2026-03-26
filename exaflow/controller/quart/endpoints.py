@@ -115,7 +115,7 @@ async def run_algorithm(algorithm_name: str) -> str:
         algorithm_name=algorithm_name,
         algorithm_request_dto=algorithm_request_dto,
         algorithms_specs=specifications.enabled_algorithms,
-        transformers_specs=specifications.enabled_transformers,
+        preprocessing_steps_specs=specifications.enabled_preprocessing_steps,
         worker_landscape_aggregator=get_worker_landscape_aggregator(),
         smpc_enabled=ctrl_config.smpc.enabled,
         smpc_optional=ctrl_config.smpc.optional,
