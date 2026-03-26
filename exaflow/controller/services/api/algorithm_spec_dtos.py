@@ -18,7 +18,7 @@ from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterEnumType
 from exaflow.algorithms.specifications import ParameterSpecification
 from exaflow.algorithms.specifications import ParameterType
-from exaflow.algorithms.specifications import TransformerSpecification
+from exaflow.algorithms.specifications import PreprocessingStepSpecification
 from exaflow.controller.services.api.algorithm_request_dtos import (
     AlgorithmRequestSystemFlags,
 )
@@ -67,7 +67,7 @@ class ParameterSpecificationDTO(ImmutableBaseModel):
     max: Optional[float] = None
 
 
-class TransformerSpecificationDTO(ImmutableBaseModel):
+class PreprocessingStepSpecificationDTO(ImmutableBaseModel):
     name: str
     desc: str
     label: str
@@ -80,7 +80,7 @@ class AlgorithmSpecificationDTO(ImmutableBaseModel):
     label: str
     inputdata: InputDataSpecificationsDTO
     parameters: Optional[Dict[str, ParameterSpecificationDTO]] = None
-    preprocessing: Optional[List[TransformerSpecificationDTO]] = None
+    preprocessing: Optional[List[PreprocessingStepSpecificationDTO]] = None
     flags: Optional[List[str]] = None
     type: AlgorithmType
 
@@ -89,7 +89,9 @@ class AlgorithmSpecificationsDTO(RootModel[List[AlgorithmSpecificationDTO]]):
     pass
 
 
-class TransformerSpecificationsDTO(RootModel[List[TransformerSpecificationDTO]]):
+class PreprocessingStepSpecificationsDTO(
+    RootModel[List[PreprocessingStepSpecificationDTO]]
+):
     pass
 
 
@@ -210,8 +212,8 @@ def _convert_parameter_specification_to_dto(spec: ParameterSpecification):
     )
 
 
-def _convert_transformer_specification_to_dto(spec: TransformerSpecification):
-    return TransformerSpecificationDTO(
+def _convert_transformer_specification_to_dto(spec: PreprocessingStepSpecification):
+    return PreprocessingStepSpecificationDTO(
         name=spec.name,
         desc=spec.desc,
         label=spec.label,
@@ -226,25 +228,26 @@ def _convert_transformer_specification_to_dto(spec: TransformerSpecification):
     )
 
 
-def _get_algorithm_compatible_transformers(
-    algo_name: str, transformers: List[TransformerSpecification]
-) -> List[TransformerSpecification]:
-    compatible_transformers = []
-    for transformer in transformers:
+def _get_algorithm_compatible_preprocessing_steps(
+    algo_name: str, preprocessing_steps: List[PreprocessingStepSpecification]
+) -> List[PreprocessingStepSpecification]:
+    compatible_preprocessing_steps = []
+    for preprocessing_step in preprocessing_steps:
         if (
-            not transformer.compatible_algorithms
-            or algo_name in transformer.compatible_algorithms
+            not preprocessing_step.compatible_algorithms
+            or algo_name in preprocessing_step.compatible_algorithms
         ):
-            compatible_transformers.append(transformer)
-    return compatible_transformers
+            compatible_preprocessing_steps.append(preprocessing_step)
+    return compatible_preprocessing_steps
 
 
 def _convert_algorithm_specification_to_dto(
-    spec: AlgorithmSpecification, transformers: List[TransformerSpecification]
+    spec: AlgorithmSpecification,
+    preprocessing_steps: List[PreprocessingStepSpecification],
 ):
     """
     Converting to a DTO has the following additions:
-    1) The preprocessing specifications are added from the transformers that are compatible with the specific algorithm.
+    1) The preprocessing specifications are added from the preprocessing steps that are compatible with the specific algorithm.
     2) The system specific flags are added.
     """
     return AlgorithmSpecificationDTO(
@@ -262,7 +265,9 @@ def _convert_algorithm_specification_to_dto(
         ),
         preprocessing=[
             _convert_transformer_specification_to_dto(spec)
-            for spec in _get_algorithm_compatible_transformers(spec.name, transformers)
+            for spec in _get_algorithm_compatible_preprocessing_steps(
+                spec.name, preprocessing_steps
+            )
         ],
         flags=[AlgorithmRequestSystemFlags.SMPC],
         type=spec.type,
@@ -271,11 +276,11 @@ def _convert_algorithm_specification_to_dto(
 
 def _get_algorithm_specifications_dtos(
     algorithms_specs: List[AlgorithmSpecification],
-    transformers_specs: List[TransformerSpecification],
+    preprocessing_steps_specs: List[PreprocessingStepSpecification],
 ) -> AlgorithmSpecificationsDTO:
     return AlgorithmSpecificationsDTO(
         root=[
-            _convert_algorithm_specification_to_dto(spec, transformers_specs)
+            _convert_algorithm_specification_to_dto(spec, preprocessing_steps_specs)
             for spec in algorithms_specs
         ]
     )
@@ -283,5 +288,5 @@ def _get_algorithm_specifications_dtos(
 
 algorithm_specifications_dtos = _get_algorithm_specifications_dtos(
     list(specifications.enabled_algorithms.values()),
-    list(specifications.enabled_transformers.values()),
+    list(specifications.enabled_preprocessing_steps.values()),
 )

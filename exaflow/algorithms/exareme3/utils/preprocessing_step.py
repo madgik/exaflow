@@ -9,7 +9,7 @@ from typing import Tuple
 
 import pandas as pd
 
-from exaflow.algorithms.specifications import TransformerSpecification
+from exaflow.algorithms.specifications import PreprocessingStepSpecification
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 
 
@@ -27,7 +27,7 @@ class PreprocessingStep(ABC):
         self._validated = False
 
     @classmethod
-    def get_specification(cls) -> TransformerSpecification:
+    def get_specification(cls) -> PreprocessingStepSpecification:
         transformer_path = Path(inspect.getfile(cls)).resolve()
         transformer_folder = transformer_path.parent
 
@@ -44,7 +44,7 @@ class PreprocessingStep(ABC):
         with specification_path.open("r", encoding="utf-8") as fp:
             specification = json.load(fp)
 
-        return TransformerSpecification.model_validate(specification)
+        return PreprocessingStepSpecification.model_validate(specification)
 
     @classmethod
     def required_input_variables(cls) -> List[str]:

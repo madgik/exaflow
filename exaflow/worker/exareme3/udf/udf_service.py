@@ -69,13 +69,13 @@ def run_udf(
 
     data = convert_to_pandas_dataframe(data)
     if preprocessing and "longitudinal_transformer" in preprocessing:
-        transformer = LongitudinalTransformer(
+        preprocessing_step = LongitudinalTransformer(
             inputdata=system_args.inputdata,
             metadata=metadata,
             params=preprocessing["longitudinal_transformer"],
         )
-        transformer.validate()
-        data, metadata = transformer.transform_data_and_metadata(data=data)
+        preprocessing_step.validate()
+        data, metadata = preprocessing_step.transform_data_and_metadata(data=data)
 
     try:
         if agg_client:

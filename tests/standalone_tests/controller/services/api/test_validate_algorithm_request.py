@@ -12,8 +12,8 @@ from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterEnumType
 from exaflow.algorithms.specifications import ParameterSpecification
 from exaflow.algorithms.specifications import ParameterType
-from exaflow.algorithms.specifications import TransformerSpecification
-from exaflow.algorithms.specifications import TransformerType
+from exaflow.algorithms.specifications import PreprocessingStep
+from exaflow.algorithms.specifications import PreprocessingStepSpecification
 from exaflow.controller import DeploymentType
 from exaflow.controller import logger as ctrl_logger
 from exaflow.controller.services.api.algorithm_request_dtos import AlgorithmInputDataDTO
@@ -490,13 +490,13 @@ def algorithms_specs():
 
 
 @pytest.fixture(scope="module")
-def transformers_specs():
+def preprocessing_steps_specs():
     return {
-        "transformer_with_real_param": TransformerSpecification(
+        "transformer_with_real_param": PreprocessingStepSpecification(
             name="transformer_with_real_param",
             desc="transformer_with_real_param",
             label="transformer_with_real_param",
-            type=TransformerType.EXAREME3_TRANSFORMER,
+            type=PreprocessingStep.EXAREME3_PREPROCESSING_STEP,
             components=[],
             enabled=True,
             parameters={
@@ -517,11 +517,11 @@ def transformers_specs():
             },
             compatible_algorithms=["algorithm_with_transformer"],
         ),
-        "transformer_compatible_with_all_algorithms": TransformerSpecification(
+        "transformer_compatible_with_all_algorithms": PreprocessingStepSpecification(
             name="transformer_compatible_with_all_algorithms",
             desc="transformer_compatible_with_all_algorithms",
             label="transformer_compatible_with_all_algorithms",
-            type=TransformerType.EXAREME3_TRANSFORMER,
+            type=PreprocessingStep.EXAREME3_PREPROCESSING_STEP,
             components=[],
             enabled=True,
         ),
@@ -784,7 +784,7 @@ def test_validate_algorithm_success(
     request_dto,
     worker_landscape_aggregator,
     algorithms_specs,
-    transformers_specs,
+    preprocessing_steps_specs,
 ):
     with patch.object(
         worker_landscape_aggregator,
@@ -795,7 +795,7 @@ def test_validate_algorithm_success(
             algorithm_name=algorithm_name,
             algorithm_request_dto=request_dto,
             algorithms_specs=algorithms_specs,
-            transformers_specs=transformers_specs,
+            preprocessing_steps_specs=preprocessing_steps_specs,
             worker_landscape_aggregator=worker_landscape_aggregator,
             smpc_enabled=False,
             smpc_optional=False,
@@ -1360,7 +1360,7 @@ def test_validate_algorithm_exceptions(
     request_dto,
     exception,
     algorithms_specs,
-    transformers_specs,
+    preprocessing_steps_specs,
     worker_landscape_aggregator,
 ):
     exception_type, exception_message = exception
@@ -1374,7 +1374,7 @@ def test_validate_algorithm_exceptions(
                 algorithm_name=algorithm_name,
                 algorithm_request_dto=request_dto,
                 algorithms_specs=algorithms_specs,
-                transformers_specs=transformers_specs,
+                preprocessing_steps_specs=preprocessing_steps_specs,
                 worker_landscape_aggregator=worker_landscape_aggregator,
                 smpc_enabled=False,
                 smpc_optional=False,
