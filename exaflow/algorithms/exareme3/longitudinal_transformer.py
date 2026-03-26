@@ -168,16 +168,15 @@ class LongitudinalTransformer(PreprocessingStep):
             metadata=metadata,
         )
 
-    def transform_inputdata(
+    def transform_inputdata_variables(
         self,
         *,
-        inputdata: Inputdata,
-    ) -> Inputdata:
-        raw_x = list(inputdata.x or [])
-        raw_y = list(inputdata.y or [])
-        transformed_x = self._build_transformed_variable_names(raw_x)
-        transformed_y = self._build_transformed_variable_names(raw_y)
-        return inputdata.model_copy(update={"x": transformed_x, "y": transformed_y})
+        x: List[str],
+        y: List[str],
+    ) -> tuple[List[str], List[str]]:
+        transformed_x = self._build_transformed_variable_names(x)
+        transformed_y = self._build_transformed_variable_names(y)
+        return transformed_x, transformed_y
 
     def transform_metadata(
         self,

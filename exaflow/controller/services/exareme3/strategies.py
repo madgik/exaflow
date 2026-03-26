@@ -43,8 +43,14 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
                 inputdata=step_inputdata,
                 metadata=step_metadata,
             )
-            transformed_inputdata = preprocessing_step.transform_inputdata(
-                inputdata=step_inputdata,
+            transformed_x, transformed_y = (
+                preprocessing_step.transform_inputdata_variables(
+                    x=list(step_inputdata.x or []),
+                    y=list(step_inputdata.y or []),
+                )
+            )
+            transformed_inputdata = step_inputdata.model_copy(
+                update={"x": transformed_x, "y": transformed_y}
             )
             transformed_metadata = preprocessing_step.transform_metadata(
                 metadata=step_metadata,

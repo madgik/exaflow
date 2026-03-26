@@ -6,8 +6,13 @@
 
   - Each algorithm must implement `@classmethod get_specification()` and return a
     `AlgorithmSpecification` (see `exaflow/algorithms/specifications.py`).
-  - Constructor receives `inputdata`, `metadata`, `parameters`, and the engine.
+  - Constructor receives `engine`, `inputdata`, and optional `parameters`.
   - Use `self.run_local_udf(func=..., kw_args=...)` to execute UDFs on workers.
+  - `self.run_local_udf(..., identical_results=True)` enforces that all worker
+    responses are identical and returns one result.
+  - Global step contract (`Algorithm.run`): it only has direct access to the
+    preprocessed `inputdata` and algorithm `parameters`; it does not directly
+    access worker dataframes or metadata.
   - Override these properties when needed:
     - `drop_na_rows` (default `True`) to keep rows with NA values.
     - `check_min_rows` (default `True`) to skip the privacy minimum-row check.
@@ -17,6 +22,12 @@
 
   - Each preprocessing step must implement `@classmethod get_specification()` and return a
     `PreprocessingStepSpecification` (see `exaflow/algorithms/specifications.py`).
+  - Constructor accepts only `params`.
+  - Validation and transforms are explicit contracts:
+    - `validate_params(inputdata=..., metadata=...)`
+    - `transform_inputdata_variables(x=..., y=...)`
+    - `transform_metadata(metadata=...)`
+    - `transform_data(data=...)`
 
 - Input payloads:
 
@@ -52,6 +63,8 @@
   - UDF registry keys are stable and derived from `__qualname__` + module.
   - Duplicate keys for different callables raise to avoid ambiguity.
   - `with_aggregation_server=True` injects an `agg_client` argument.
+  - In local UDF steps, `metadata` is passed by the system only if the UDF
+    function includes `metadata` in its parameters.
 
 - Aggregation client contract:
 
@@ -83,13 +96,18 @@
   - `LongitudinalTransformer.required_input_variables()` returns
     `[dataset, subjectid, visitid]`, so worker UDF loading can include the
     longitudinal keys explicitly.
+  - Controller preprocessing orchestration runs step names in request order
+    (`strategies.py`) and applies:
+    `validate_params -> transform_inputdata_variables -> transform_metadata`.
+  - Worker preprocessing applies runtime transforms in request order
+    (`udf_service.py`) via `transform_data_and_metadata(data, metadata)`.
 
 ## Longitudinal notes
 
-- Longitudinal preprocessing validates `diff` strategies against
-  `self._metadata` directly (categorical variables cannot use `diff`).
-- `transform_inputdata()` uses Pydantic v2-style `model_copy(...)` to return
-  transformed `x`/`y` safely.
+- Longitudinal preprocessing validates `diff` strategies against the provided
+  metadata (categorical variables cannot use `diff`).
+- `transform_inputdata_variables()` returns transformed `x`/`y` names; the
+  strategy rebuilds a new `Inputdata` with `model_copy(...)`.
 
 ## Cross-validation utilities
 
