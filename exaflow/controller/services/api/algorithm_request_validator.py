@@ -4,6 +4,7 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
+from exaflow import exareme3_preprocessing_step_classes
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import InputDataSpecification
 from exaflow.algorithms.specifications import InputDataSpecifications
@@ -85,20 +86,31 @@ def _validate_algorithm_request_body(
     smpc_enabled: bool,
     smpc_optional: bool,
 ):
-    _validate_inputdata(
+    _validate_inputdata_base(
         inputdata=algorithm_request_dto.inputdata,
-        inputdata_specs=algorithm_specs.inputdata,
         training_datasets=training_datasets,
         algorithm_specification_validation_flag=algorithm_specs.inputdata.validation,
         validation_datasets=validation_datasets,
         data_model_cdes=data_model_cdes,
     )
 
+    transformed_inputdata, transformed_data_model_cdes = (
+        _validate_and_apply_preprocessing(
+            algorithm_request_dto=algorithm_request_dto,
+            preprocessing_steps_specs=preprocessing_steps_specs,
+            data_model_cdes=data_model_cdes,
+        )
+    )
+
+    _validate_algorithm_inputdatas(
+        transformed_inputdata, algorithm_specs.inputdata, transformed_data_model_cdes
+    )
+
     _validate_parameters(
         algorithm_request_dto.parameters,
         algorithm_specs.parameters,
-        algorithm_request_dto.inputdata,
-        data_model_cdes=data_model_cdes,
+        transformed_inputdata,
+        data_model_cdes=transformed_data_model_cdes,
     )
 
     _validate_flags(
@@ -107,17 +119,9 @@ def _validate_algorithm_request_body(
         smpc_optional=smpc_optional,
     )
 
-    _validate_algorithm_preprocessing(
-        algorithm_request_dto=algorithm_request_dto,
-        algorithm_name=algorithm_specs.name,
-        preprocessing_steps_specs=preprocessing_steps_specs,
-        data_model_cdes=data_model_cdes,
-    )
 
-
-def _validate_inputdata(
+def _validate_inputdata_base(
     inputdata: AlgorithmInputDataDTO,
-    inputdata_specs: InputDataSpecifications,
     training_datasets: List[str],
     algorithm_specification_validation_flag: Optional[bool],
     validation_datasets: List[str],
@@ -135,7 +139,80 @@ def _validate_inputdata(
         validation_datasets=validation_datasets,
     )
     _validate_inputdata_filter(inputdata.data_model, inputdata.filters, data_model_cdes)
-    _validate_algorithm_inputdatas(inputdata, inputdata_specs, data_model_cdes)
+
+
+def _validate_and_apply_preprocessing(
+    algorithm_request_dto: AlgorithmRequestDTO,
+    preprocessing_steps_specs: Dict[str, PreprocessingStepSpecification],
+    data_model_cdes: Dict[str, CommonDataElement],
+):
+    transformed_inputdata = algorithm_request_dto.inputdata
+    transformed_metadata = _convert_data_model_cdes_to_metadata(data_model_cdes)
+    transformed_data_model_cdes = dict(data_model_cdes)
+
+    if not algorithm_request_dto.preprocessing:
+        return transformed_inputdata, transformed_data_model_cdes
+
+    for name, params in algorithm_request_dto.preprocessing.items():
+        if name not in preprocessing_steps_specs.keys():
+            raise BadUserInput(f"Transformer '{name}' does not exist.")
+
+        _validate_parameters(
+            parameters=params,
+            parameters_specs=preprocessing_steps_specs[name].parameters,
+            inputdata=transformed_inputdata,
+            data_model_cdes=transformed_data_model_cdes,
+        )
+
+        preprocessing_step_cls = exareme3_preprocessing_step_classes.get(name)
+        if not preprocessing_step_cls:
+            raise BadUserInput(
+                f"Preprocessing step '{name}' is enabled but its implementation was not found."
+            )
+
+        preprocessing_step = preprocessing_step_cls(params=params)
+        preprocessing_step.validate_params(
+            inputdata=transformed_inputdata,
+            metadata=transformed_metadata,
+        )
+        transformed_x, transformed_y = preprocessing_step.transform_inputdata_variables(
+            x=list(transformed_inputdata.x or []),
+            y=list(transformed_inputdata.y or []),
+        )
+        transformed_inputdata = transformed_inputdata.model_copy(
+            update={"x": transformed_x, "y": transformed_y}
+        )
+        transformed_metadata = preprocessing_step.transform_metadata(
+            metadata=transformed_metadata,
+        )
+        transformed_data_model_cdes = _convert_metadata_to_data_model_cdes(
+            transformed_metadata
+        )
+
+    return transformed_inputdata, transformed_data_model_cdes
+
+
+def _convert_data_model_cdes_to_metadata(
+    data_model_cdes: Dict[str, CommonDataElement],
+) -> Dict[str, dict]:
+    return {
+        cde_name: cde_metadata.model_dump()
+        for cde_name, cde_metadata in data_model_cdes.items()
+    }
+
+
+def _convert_metadata_to_data_model_cdes(
+    metadata: Dict[str, dict],
+) -> Dict[str, CommonDataElement]:
+    transformed = {}
+    for cde_name, cde_metadata in metadata.items():
+        serialized_cde_metadata = dict(cde_metadata)
+        serialized_cde_metadata["code"] = cde_name
+        serialized_cde_metadata.setdefault("label", cde_name)
+        transformed[cde_name] = CommonDataElement.model_validate(
+            serialized_cde_metadata
+        )
+    return transformed
 
 
 def _validate_inputdata_training_datasets(
@@ -593,31 +670,4 @@ def _validate_flags(flags: Dict[str, Any], smpc_enabled: bool, smpc_optional: bo
     if AlgorithmRequestSystemFlags.SMPC in flags.keys():
         validate_smpc_usage(
             flags[AlgorithmRequestSystemFlags.SMPC], smpc_enabled, smpc_optional
-        )
-
-
-def _validate_algorithm_preprocessing(
-    algorithm_request_dto: AlgorithmRequestDTO,
-    algorithm_name: str,
-    preprocessing_steps_specs: Dict[str, PreprocessingStepSpecification],
-    data_model_cdes: Dict[str, CommonDataElement],
-):
-    if not algorithm_request_dto.preprocessing:
-        return
-
-    for name, params in algorithm_request_dto.preprocessing.items():
-        if name not in preprocessing_steps_specs.keys():
-            raise BadUserInput(f"Transformer '{name}' does not exist.")
-
-        compatible_algos = preprocessing_steps_specs[name].compatible_algorithms
-        if compatible_algos and algorithm_name not in compatible_algos:
-            raise BadUserInput(
-                f"Transformer '{name}' is not available for algorithm '{algorithm_name}'."
-            )
-
-        _validate_parameters(
-            parameters=params,
-            parameters_specs=preprocessing_steps_specs[name].parameters,
-            inputdata=algorithm_request_dto.inputdata,
-            data_model_cdes=data_model_cdes,
         )

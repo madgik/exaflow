@@ -12,8 +12,8 @@ from exaflow import exareme3_preprocessing_step_classes
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import AlgorithmType
 from exaflow.algorithms.specifications import ComponentType
-from exaflow.algorithms.specifications import PreprocessingStep
 from exaflow.algorithms.specifications import PreprocessingStepSpecification
+from exaflow.algorithms.specifications import PreprocessingStepType
 from exaflow.controller import config as ctrl_config
 
 logger = logging.getLogger(__name__)
@@ -116,7 +116,9 @@ class Specifications:
 
     @staticmethod
     def _choose_spec_class(raw: dict) -> Type[SpecType]:
-        if raw["type"].startswith(PreprocessingStep.EXAREME3_PREPROCESSING_STEP.value):
+        if raw["type"].startswith(
+            PreprocessingStepType.EXAREME3_PREPROCESSING_STEP.value
+        ):
             return PreprocessingStepSpecification
         return AlgorithmSpecification
 
