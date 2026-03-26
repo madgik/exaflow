@@ -2,6 +2,8 @@ from unittest.mock import patch
 
 import pytest
 
+import exaflow.controller.services.api.algorithm_request_validator as algorithm_request_validator
+from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import AlgorithmType
 from exaflow.algorithms.specifications import InputDataSpecification
@@ -12,12 +14,15 @@ from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterEnumType
 from exaflow.algorithms.specifications import ParameterSpecification
 from exaflow.algorithms.specifications import ParameterType
-from exaflow.algorithms.specifications import PreprocessingStep
 from exaflow.algorithms.specifications import PreprocessingStepSpecification
+from exaflow.algorithms.specifications import PreprocessingStepType
 from exaflow.controller import DeploymentType
 from exaflow.controller import logger as ctrl_logger
 from exaflow.controller.services.api.algorithm_request_dtos import AlgorithmInputDataDTO
 from exaflow.controller.services.api.algorithm_request_dtos import AlgorithmRequestDTO
+from exaflow.controller.services.api.algorithm_request_dtos import (
+    AlgorithmRequestSystemFlags,
+)
 from exaflow.controller.services.api.algorithm_request_validator import BadRequest
 from exaflow.controller.services.api.algorithm_request_validator import (
     validate_algorithm_request,
@@ -468,6 +473,45 @@ def algorithms_specs():
                 ),
             },
         ),
+        "algorithm_with_x_single_and_enum_param": AlgorithmSpecification(
+            name="algorithm_with_x_single_and_enum_param",
+            desc="algorithm_with_x_single_and_enum_param",
+            label="algorithm_with_x_single_and_enum_param",
+            enabled=True,
+            type=AlgorithmType.EXAREME3,
+            components=[],
+            inputdata=InputDataSpecifications(
+                x=InputDataSpecification(
+                    label="x",
+                    desc="x",
+                    types=[InputDataType.INT, InputDataType.TEXT],
+                    stattypes=[InputDataStatType.NOMINAL, InputDataStatType.NUMERICAL],
+                    required=True,
+                    multiple=False,
+                ),
+                y=InputDataSpecification(
+                    label="y",
+                    desc="y",
+                    types=[InputDataType.TEXT, InputDataType.REAL, InputDataType.INT],
+                    stattypes=[InputDataStatType.NOMINAL, InputDataStatType.NUMERICAL],
+                    required=False,
+                    multiple=True,
+                ),
+            ),
+            parameters={
+                "param_with_enum_type_input_var_CDE_enums_x": ParameterSpecification(
+                    label="param_with_enum_type_input_var_CDE_enums_x",
+                    desc="param_with_enum_type_input_var_CDE_enums_x",
+                    types=[ParameterType.TEXT],
+                    required=False,
+                    multiple=False,
+                    enums=ParameterEnumSpecification(
+                        type=ParameterEnumType.INPUT_VAR_CDE_ENUMS,
+                        source=["x"],
+                    ),
+                ),
+            },
+        ),
         "algorithm_with_transformer": AlgorithmSpecification(
             name="algorithm_with_transformer",
             desc="algorithm_with_transformer",
@@ -496,7 +540,7 @@ def preprocessing_steps_specs():
             name="transformer_with_real_param",
             desc="transformer_with_real_param",
             label="transformer_with_real_param",
-            type=PreprocessingStep.EXAREME3_PREPROCESSING_STEP,
+            type=PreprocessingStepType.EXAREME3_PREPROCESSING_STEP,
             components=[],
             enabled=True,
             parameters={
@@ -515,15 +559,43 @@ def preprocessing_steps_specs():
                     multiple=False,
                 ),
             },
-            compatible_algorithms=["algorithm_with_transformer"],
         ),
         "transformer_compatible_with_all_algorithms": PreprocessingStepSpecification(
             name="transformer_compatible_with_all_algorithms",
             desc="transformer_compatible_with_all_algorithms",
             label="transformer_compatible_with_all_algorithms",
-            type=PreprocessingStep.EXAREME3_PREPROCESSING_STEP,
+            type=PreprocessingStepType.EXAREME3_PREPROCESSING_STEP,
             components=[],
             enabled=True,
+        ),
+        "rename_to_real": PreprocessingStepSpecification(
+            name="rename_to_real",
+            desc="rename_to_real",
+            label="rename_to_real",
+            type=PreprocessingStepType.EXAREME3_PREPROCESSING_STEP,
+            components=[],
+            enabled=True,
+        ),
+        "step_using_transformed_inputdata": PreprocessingStepSpecification(
+            name="step_using_transformed_inputdata",
+            desc="step_using_transformed_inputdata",
+            label="step_using_transformed_inputdata",
+            type=PreprocessingStepType.EXAREME3_PREPROCESSING_STEP,
+            components=[],
+            enabled=True,
+            parameters={
+                "selected_var": ParameterSpecification(
+                    label="selected_var",
+                    desc="selected_var",
+                    types=[ParameterType.TEXT],
+                    required=True,
+                    multiple=False,
+                    enums=ParameterEnumSpecification(
+                        type=ParameterEnumType.INPUT_VAR_NAMES,
+                        source=["y"],
+                    ),
+                )
+            },
         ),
     }
 
@@ -762,6 +834,33 @@ def get_parametrization_list_success_cases():
             ),
             id="Algorithm with transformer that is compatible with all algorithms.",
         ),
+        pytest.param(
+            "algorithm_with_y_int",
+            AlgorithmRequestDTO(
+                inputdata=AlgorithmInputDataDTO(
+                    data_model="data_model_with_all_cde_types:0.1",
+                    datasets=["sample_dataset1"],
+                    y=["text_cde_categ"],
+                ),
+                preprocessing={"rename_to_real": {}},
+            ),
+            id="Algorithm inputdata x/y validation uses preprocessed variables.",
+        ),
+        pytest.param(
+            "algorithm_with_y_int",
+            AlgorithmRequestDTO(
+                inputdata=AlgorithmInputDataDTO(
+                    data_model="data_model_with_all_cde_types:0.1",
+                    datasets=["sample_dataset1"],
+                    y=["text_cde_categ"],
+                ),
+                preprocessing={
+                    "rename_to_real": {},
+                    "step_using_transformed_inputdata": {"selected_var": "real_cde"},
+                },
+            ),
+            id="Preprocessing params are validated using transformed inputdata from previous steps.",
+        ),
     ]
     return parametrization_list
 
@@ -776,6 +875,66 @@ mocked_worker_info = WorkerInfo(
 )
 
 
+class RenameYToRealStep(PreprocessingStep):
+    def __init__(self, *, params):
+        self._params = params
+
+    @classmethod
+    def get_specification(cls):
+        return PreprocessingStepSpecification(
+            name="rename_to_real",
+            desc="rename_to_real",
+            label="rename_to_real",
+            enabled=True,
+        )
+
+    def validate_params(self, *, inputdata, metadata):
+        return None
+
+    def transform_inputdata_variables(self, *, x, y):
+        return x, ["real_cde"]
+
+    def transform_metadata(self, *, metadata):
+        return metadata
+
+    def transform_data(self, *, data):
+        return data
+
+    @classmethod
+    def required_input_variables(cls):
+        return []
+
+
+class NoopPreprocessingStep(PreprocessingStep):
+    def __init__(self, *, params):
+        self._params = params
+
+    @classmethod
+    def get_specification(cls):
+        return PreprocessingStepSpecification(
+            name="noop_preprocessing_step",
+            desc="noop_preprocessing_step",
+            label="noop_preprocessing_step",
+            enabled=True,
+        )
+
+    def validate_params(self, *, inputdata, metadata):
+        return None
+
+    def transform_inputdata_variables(self, *, x, y):
+        return x, y
+
+    def transform_metadata(self, *, metadata):
+        return metadata
+
+    def transform_data(self, *, data):
+        return data
+
+    @classmethod
+    def required_input_variables(cls):
+        return []
+
+
 @pytest.mark.parametrize(
     "algorithm_name, request_dto", get_parametrization_list_success_cases()
 )
@@ -786,20 +945,69 @@ def test_validate_algorithm_success(
     algorithms_specs,
     preprocessing_steps_specs,
 ):
-    with patch.object(
-        worker_landscape_aggregator,
-        "get_global_worker",
-        return_value=mocked_worker_info,
+    with patch.dict(
+        algorithm_request_validator.exareme3_preprocessing_step_classes,
+        {
+            "rename_to_real": RenameYToRealStep,
+            "transformer_with_real_param": NoopPreprocessingStep,
+            "transformer_compatible_with_all_algorithms": NoopPreprocessingStep,
+            "step_using_transformed_inputdata": NoopPreprocessingStep,
+        },
+        clear=False,
     ):
-        validate_algorithm_request(
-            algorithm_name=algorithm_name,
-            algorithm_request_dto=request_dto,
-            algorithms_specs=algorithms_specs,
-            preprocessing_steps_specs=preprocessing_steps_specs,
-            worker_landscape_aggregator=worker_landscape_aggregator,
-            smpc_enabled=False,
-            smpc_optional=False,
-        )
+        with patch.object(
+            worker_landscape_aggregator,
+            "get_global_worker",
+            return_value=mocked_worker_info,
+        ):
+            validate_algorithm_request(
+                algorithm_name=algorithm_name,
+                algorithm_request_dto=request_dto,
+                algorithms_specs=algorithms_specs,
+                preprocessing_steps_specs=preprocessing_steps_specs,
+                worker_landscape_aggregator=worker_landscape_aggregator,
+                smpc_enabled=False,
+                smpc_optional=False,
+            )
+
+
+def test_validate_algorithm_preprocessing_raises_when_implementation_is_missing(
+    worker_landscape_aggregator,
+    algorithms_specs,
+    preprocessing_steps_specs,
+):
+    request_dto = AlgorithmRequestDTO(
+        inputdata=AlgorithmInputDataDTO(
+            data_model="data_model_with_all_cde_types:0.1",
+            datasets=["sample_dataset1"],
+            y=["real_cde"],
+        ),
+        preprocessing={"transformer_with_real_param": {"required_real_param": 10.4}},
+    )
+
+    with patch.dict(
+        algorithm_request_validator.exareme3_preprocessing_step_classes,
+        {"transformer_with_real_param": None},
+        clear=False,
+    ):
+        with patch.object(
+            worker_landscape_aggregator,
+            "get_global_worker",
+            return_value=mocked_worker_info,
+        ):
+            with pytest.raises(
+                BadUserInput,
+                match="Preprocessing step .* implementation was not found.",
+            ):
+                validate_algorithm_request(
+                    algorithm_name="algorithm_with_transformer",
+                    algorithm_request_dto=request_dto,
+                    algorithms_specs=algorithms_specs,
+                    preprocessing_steps_specs=preprocessing_steps_specs,
+                    worker_landscape_aggregator=worker_landscape_aggregator,
+                    smpc_enabled=False,
+                    smpc_optional=False,
+                )
 
 
 def get_parametrization_list_exception_cases():
@@ -1104,6 +1312,25 @@ def get_parametrization_list_exception_cases():
             id="Parameter with enumerations of type 'input_var_CDE_enums' given non existing enum.",
         ),
         pytest.param(
+            "algorithm_with_x_single_and_enum_param",
+            AlgorithmRequestDTO(
+                inputdata=AlgorithmInputDataDTO(
+                    data_model="data_model_with_all_cde_types:0.1",
+                    datasets=["sample_dataset1"],
+                    x=["int_cde_categ"],
+                    y=["text_cde_categ"],
+                ),
+                parameters={
+                    "param_with_enum_type_input_var_CDE_enums_x": "non_existing_enum",
+                },
+            ),
+            (
+                BadUserInput,
+                "Parameter's .* enums, that are taken from the CDE .* given in inputdata .* variable, should be one of the following: .*",
+            ),
+            id="Parameter with enumerations of type 'input_var_CDE_enums' from x given non existing enum.",
+        ),
+        pytest.param(
             "algorithm_with_many_params",
             AlgorithmRequestDTO(
                 inputdata=AlgorithmInputDataDTO(
@@ -1222,9 +1449,9 @@ def get_parametrization_list_exception_cases():
             ),
             (
                 BadUserInput,
-                "Transformer .* is not available for algorithm .*",
+                "Parameter .* does not exist in the algorithm specification.",
             ),
-            id="Transformer provided to incompatible algorithm.",
+            id="Transformer parameter does not exist.",
         ),
         pytest.param(
             "algorithm_with_transformer",
@@ -1379,3 +1606,69 @@ def test_validate_algorithm_exceptions(
                 smpc_enabled=False,
                 smpc_optional=False,
             )
+
+
+def test_validate_algorithm_inputdata_returns_when_values_and_spec_are_missing(
+    worker_landscape_aggregator,
+):
+    data_model_cdes = worker_landscape_aggregator.get_cdes(
+        "data_model_with_all_cde_types:0.1"
+    )
+    algorithm_request_validator._validate_algorithm_inputdata(
+        inputdata_values=None,
+        inputdata_spec=None,
+        data_model_cdes=data_model_cdes,
+    )
+
+
+def test_validate_inputdata_values_quantity_raises_for_non_list():
+    with pytest.raises(BadRequest, match="Inputdata .* should be a list."):
+        algorithm_request_validator._validate_inputdata_values_quantity(
+            inputdata_value="not_a_list",
+            inputdata_spec=InputDataSpecification(
+                label="y",
+                desc="y",
+                types=[InputDataType.REAL],
+                stattypes=[InputDataStatType.NUMERICAL],
+                required=True,
+                multiple=False,
+            ),
+        )
+
+
+def test_validate_param_enums_input_var_cde_enums_with_x_source_success(
+    worker_landscape_aggregator,
+):
+    data_model_cdes = worker_landscape_aggregator.get_cdes(
+        "data_model_with_all_cde_types:0.1"
+    )
+    inputdata = AlgorithmInputDataDTO(
+        data_model="data_model_with_all_cde_types:0.1",
+        datasets=["sample_dataset1"],
+        x=["int_cde_categ"],
+        y=["text_cde_categ"],
+    )
+    algorithm_request_validator._validate_param_enums(
+        parameter_value="1",
+        parameter_spec_enums=ParameterEnumSpecification(
+            type=ParameterEnumType.INPUT_VAR_CDE_ENUMS,
+            source=["x"],
+        ),
+        parameter_spec_label="param",
+        inputdata=inputdata,
+        data_model_cdes=data_model_cdes,
+    )
+
+
+def test_validate_flags_with_smpc_calls_validate_smpc_usage():
+    with patch.object(
+        algorithm_request_validator,
+        "validate_smpc_usage",
+    ) as validate_smpc_usage_mock:
+        algorithm_request_validator._validate_flags(
+            flags={AlgorithmRequestSystemFlags.SMPC: True},
+            smpc_enabled=True,
+            smpc_optional=True,
+        )
+
+    validate_smpc_usage_mock.assert_called_once_with(True, True, True)

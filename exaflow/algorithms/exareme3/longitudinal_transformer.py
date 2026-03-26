@@ -103,17 +103,7 @@ class LongitudinalTransformer(PreprocessingStep):
                     max=None,
                 ),
             },
-            compatible_algorithms=[
-                "anova_oneway",
-                "anova_twoway",
-                "linear_regression",
-                "linear_regression_cv",
-                "logistic_regression",
-                "logistic_regression_cv",
-                "naive_bayes_gaussian_cv",
-                "naive_bayes_categorical_cv",
-            ],
-            type=specs.PreprocessingStep.EXAREME3_PREPROCESSING_STEP,
+            type=specs.PreprocessingStepType.EXAREME3_PREPROCESSING_STEP,
             components=[],
         )
 
