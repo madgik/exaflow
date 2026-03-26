@@ -30,18 +30,18 @@ class LongitudinalTransformer(PreprocessingStep):
     def __init__(
         self,
         *,
-        inputdata: Inputdata,
-        metadata: Dict[str, dict],
         params: Dict[str, object],
     ):
-        super().__init__(inputdata=inputdata, metadata=metadata, params=params)
-        self._visit1: str = ""
-        self._visit2: str = ""
-        self._strategies: Dict[str, str] = {}
-        self._raw_x: List[str] = []
-        self._raw_y: List[str] = []
-        self._transformed_x: List[str] = []
-        self._transformed_y: List[str] = []
+        super().__init__(params=params)
+        visit1 = self._params.get("visit1")
+        visit2 = self._params.get("visit2")
+        strategies = self._params.get("strategies", {})
+
+        self._visit1: str = str(visit1) if visit1 is not None else ""
+        self._visit2: str = str(visit2) if visit2 is not None else ""
+        self._strategies: Dict[str, str] = (
+            dict(strategies) if isinstance(strategies, dict) else {}
+        )
 
     @classmethod
     def get_specification(cls) -> specs.PreprocessingStepSpecification:
@@ -121,26 +121,23 @@ class LongitudinalTransformer(PreprocessingStep):
     def required_input_variables(cls) -> List[str]:
         return [DATASET_COL, SUBJECT_ID_COL, VISIT_ID_COL]
 
-    def validate(self) -> None:
-        self._parse_and_validate_params()
-        self._validated = True
-
-    def _parse_and_validate_params(self) -> None:
-        visit1 = self._params.get("visit1")
-        visit2 = self._params.get("visit2")
-        strategies = self._params.get("strategies", {})
-
-        if not visit1 or not visit2:
+    def validate_params(
+        self,
+        *,
+        inputdata: Inputdata,
+        metadata: Dict[str, dict],
+    ) -> None:
+        if not self._visit1 or not self._visit2:
             raise BadUserInput("Both 'visit1' and 'visit2' parameters are required.")
-        if visit1 == visit2:
+        if self._visit1 == self._visit2:
             raise BadUserInput("'visit1' and 'visit2' must be different.")
-        if not isinstance(strategies, dict):
+        if not isinstance(self._params.get("strategies", {}), dict):
             raise BadUserInput("'strategies' must be a dictionary.")
 
-        raw_x = list(self._inputdata.x or [])
-        raw_y = list(self._inputdata.y or [])
+        raw_x = list(inputdata.x or [])
+        raw_y = list(inputdata.y or [])
         requested_vars = set(raw_x + raw_y)
-        provided_vars = set(strategies.keys())
+        provided_vars = set(self._strategies.keys())
 
         missing = sorted(requested_vars - provided_vars)
         extra = sorted(provided_vars - requested_vars)
@@ -157,7 +154,7 @@ class LongitudinalTransformer(PreprocessingStep):
 
         invalid_values = {
             name: value
-            for name, value in strategies.items()
+            for name, value in self._strategies.items()
             if value not in VALID_STRATEGIES
         }
         if invalid_values:
@@ -166,29 +163,28 @@ class LongitudinalTransformer(PreprocessingStep):
                 f"{invalid_values}. Allowed values are: {sorted(VALID_STRATEGIES)}."
             )
 
-        typed_strategies = dict(strategies)
-        self._validate_diff_not_nominal(strategies=typed_strategies)
-        self._visit1 = str(visit1)
-        self._visit2 = str(visit2)
-        self._strategies = typed_strategies
-        self._raw_x = raw_x
-        self._raw_y = raw_y
-        self._transformed_x = [
-            _output_name(name, self._strategies[name]) for name in raw_x
-        ]
-        self._transformed_y = [
-            _output_name(name, self._strategies[name]) for name in raw_y
-        ]
-
-    def transform_inputdata(self) -> Inputdata:
-        self._ensure_validated()
-        return self._inputdata.model_copy(
-            update={"x": self._transformed_x, "y": self._transformed_y}
+        self._validate_diff_not_nominal(
+            strategies=self._strategies,
+            metadata=metadata,
         )
 
-    def transform_metadata(self) -> Dict[str, dict]:
-        self._ensure_validated()
-        transformed_metadata = deepcopy(self._metadata)
+    def transform_inputdata(
+        self,
+        *,
+        inputdata: Inputdata,
+    ) -> Inputdata:
+        raw_x = list(inputdata.x or [])
+        raw_y = list(inputdata.y or [])
+        transformed_x = self._build_transformed_variable_names(raw_x)
+        transformed_y = self._build_transformed_variable_names(raw_y)
+        return inputdata.model_copy(update={"x": transformed_x, "y": transformed_y})
+
+    def transform_metadata(
+        self,
+        *,
+        metadata: Dict[str, dict],
+    ) -> Dict[str, dict]:
+        transformed_metadata = deepcopy(metadata)
         for varname, strategy in self._strategies.items():
             if strategy == STRATEGY_DIFF:
                 source_metadata = transformed_metadata.pop(varname, None)
@@ -198,8 +194,14 @@ class LongitudinalTransformer(PreprocessingStep):
                     )
         return transformed_metadata
 
-    def transform_data(self, *, data: pd.DataFrame) -> pd.DataFrame:
-        self._ensure_validated()
+    def transform_data(
+        self,
+        *,
+        data: pd.DataFrame,
+    ) -> pd.DataFrame:
+        transformed_variables = self._build_transformed_variable_names(
+            list(self._strategies.keys())
+        )
         df = convert_to_pandas_dataframe(data)
         missing_columns = self._required_longitudinal_columns() - set(df.columns)
         if missing_columns:
@@ -235,26 +237,28 @@ class LongitudinalTransformer(PreprocessingStep):
                 value_visit1, value_visit2
             )
 
-        desired_columns = _deduplicate_preserve_order(
-            key_cols + self._transformed_x + self._transformed_y
-        )
+        desired_columns = _deduplicate_preserve_order(key_cols + transformed_variables)
         return result[[col for col in desired_columns if col in result.columns]]
 
-    def _ensure_validated(self) -> None:
-        if not self._validated:
-            raise RuntimeError("validate() must be called before transform methods.")
-
     def _required_longitudinal_columns(self) -> set[str]:
-        return set(self._raw_x + self._raw_y + [SUBJECT_ID_COL, VISIT_ID_COL])
+        return set(list(self._strategies.keys()) + [SUBJECT_ID_COL, VISIT_ID_COL])
 
-    def _validate_diff_not_nominal(self, *, strategies: Dict[str, str]) -> None:
+    def _validate_diff_not_nominal(
+        self, *, strategies: Dict[str, str], metadata: Dict[str, dict]
+    ) -> None:
         for name, strategy in strategies.items():
-            if strategy == STRATEGY_DIFF and self._metadata.get(name, {}).get(
+            if strategy == STRATEGY_DIFF and metadata.get(name, {}).get(
                 "is_categorical"
             ):
                 raise BadUserInput(
                     f"Cannot take the difference for the nominal variable '{name}'."
                 )
+
+    def _build_transformed_variable_names(self, variables: List[str]) -> List[str]:
+        return [
+            _output_name(name, self._strategies.get(name, STRATEGY_FIRST))
+            for name in variables
+        ]
 
 
 def _output_name(varname: str, strategy: str) -> str:
