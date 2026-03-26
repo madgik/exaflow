@@ -40,12 +40,13 @@ class PreprocessingStep(ABC):
         """Parse and validate configured preprocessing state."""
 
     @abstractmethod
-    def transform_inputdata(
+    def transform_inputdata_variables(
         self,
         *,
-        inputdata: Inputdata,
-    ) -> Inputdata:
-        """Transform only inputdata-level contract (x/y naming/order)."""
+        x: List[str],
+        y: List[str],
+    ) -> Tuple[List[str], List[str]]:
+        """Transform only input variable names (x/y naming/order)."""
 
     @abstractmethod
     def transform_metadata(
