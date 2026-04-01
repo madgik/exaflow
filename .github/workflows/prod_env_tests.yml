@@ -10,7 +10,7 @@ jobs:
   run_tests:
     runs-on: ubuntu-latest
     env:
-      CI_FREE_UP_SPACE: "false"
+      CI_FREE_UP_SPACE: "true"
 
     steps:
       - name: Check out repository
