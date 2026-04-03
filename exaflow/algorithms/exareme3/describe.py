@@ -108,10 +108,6 @@ class Describe(Algorithm):
         )
 
     @property
-    def drop_na_rows(self) -> bool:
-        return False
-
-    @property
     def check_min_rows(self) -> bool:
         return False
 

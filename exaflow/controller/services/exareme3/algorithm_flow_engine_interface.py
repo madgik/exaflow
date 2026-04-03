@@ -32,7 +32,6 @@ class Exareme3AlgorithmFlowEngineInterface:
     def run_udf(
         self,
         func,
-        drop_na: bool,
         check_min_rows: bool,
         add_dataset_variable: bool,
         kw_args: dict,
@@ -45,7 +44,6 @@ class Exareme3AlgorithmFlowEngineInterface:
         system_args = RunUdfSystemArgs(
             inputdata=self._inputdata,
             metadata=add_ordered_enums(self._metadata),
-            drop_na=drop_na,
             check_min_rows=check_min_rows,
             add_dataset_variable=add_dataset_variable,
             preprocessing=self._preprocessing,

@@ -10,7 +10,6 @@ import pandas as pd
 from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
-from exaflow.algorithms.utils.pandas_utils import convert_to_pandas_dataframe
 from exaflow.column_names import DATASET_COL
 from exaflow.column_names import SUBJECT_ID_COL
 from exaflow.column_names import VISIT_ID_COL
@@ -216,21 +215,20 @@ class LongitudinalTransformer(PreprocessingStep):
         transformed_variables = self._build_transformed_variable_names(
             list(self._strategies.keys())
         )
-        df = convert_to_pandas_dataframe(data)
-        missing_columns = self._required_longitudinal_columns() - set(df.columns)
+        missing_columns = self._required_longitudinal_columns() - set(data.columns)
         if missing_columns:
             raise BadUserInput(
                 "Missing required columns for longitudinal transformation: "
                 f"{sorted(missing_columns)}"
             )
 
-        df = df[df[VISIT_ID_COL].isin([self._visit1, self._visit2])]
+        data = data[data[VISIT_ID_COL].isin([self._visit1, self._visit2])]
         key_cols = [SUBJECT_ID_COL]
-        if DATASET_COL in df.columns:
+        if DATASET_COL in data.columns:
             key_cols.append(DATASET_COL)
 
-        left = df[df[VISIT_ID_COL] == self._visit1]
-        right = df[df[VISIT_ID_COL] == self._visit2]
+        left = data[data[VISIT_ID_COL] == self._visit1]
+        right = data[data[VISIT_ID_COL] == self._visit2]
         merged = left.merge(
             right,
             on=key_cols,

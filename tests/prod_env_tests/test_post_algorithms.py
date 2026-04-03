@@ -32,6 +32,7 @@ def get_parametrization_list_exception_cases():
             "x": ["test_cde1", "test_cde2"],
             "y": ["test_cde3"],
         },
+        "preprocessing": {"missing_values_handler": {"strategy": "drop"}},
         "type": "exareme3",
     }
 
@@ -66,6 +67,7 @@ def get_parametrization_list_exception_cases():
                 "valid": True,
             },
         },
+        "preprocessing": {"missing_values_handler": {"strategy": "drop"}},
         "parameters": {"positive_class": "AD"},
         "type": "exareme3",
     }
@@ -109,6 +111,7 @@ def test_post_algorithm_with_request_id():
             ],
             "filters": None,
         },
+        "preprocessing": {"missing_values_handler": {"strategy": "drop"}},
         "parameters": None,
         "request_id": "89aace55-60e8-4b29-958b-84cca8785120",
         "type": "exareme3",

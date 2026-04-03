@@ -34,18 +34,14 @@ def run_udf(
     data = _load_worker_data_for_udf(
         inputdata=system_args.inputdata,
         preprocessing=preprocessing,
-        dropna=system_args.drop_na,
         add_dataset_variable=system_args.add_dataset_variable,
-    )
-    _check_min_rows_or_raise(
-        data=data,
-        check_min_rows=system_args.check_min_rows,
-        agg_client=agg_client,
     )
     data, metadata = _apply_preprocessing_steps_to_data_and_metadata(
         data=data,
         metadata=metadata,
         preprocessing=preprocessing,
+        check_min_rows=system_args.check_min_rows,
+        agg_client=agg_client,
     )
 
     try:
@@ -109,13 +105,11 @@ def _load_worker_data_for_udf(
     *,
     inputdata,
     preprocessing: dict,
-    dropna: bool,
     add_dataset_variable: bool,
 ):
     include_dataset = False
     return load_algorithm_arrow_table(
         inputdata,
-        dropna=dropna,
         include_dataset=(include_dataset or add_dataset_variable),
         extra_columns=_collect_extra_columns(preprocessing),
     )
@@ -130,7 +124,7 @@ def _check_min_rows_or_raise(
     if not check_min_rows:
         return
 
-    num_rows = data.num_rows
+    num_rows = getattr(data, "num_rows", len(data))
     min_required = worker_config.privacy.minimum_row_count
     if num_rows >= min_required:
         return
@@ -150,8 +144,16 @@ def _apply_preprocessing_steps_to_data_and_metadata(
     data,
     metadata: dict,
     preprocessing: dict,
+    check_min_rows: bool,
+    agg_client: Optional[AggregationClient],
 ):
     data = convert_to_pandas_dataframe(data)
+    _check_min_rows_or_raise(
+        data=data,
+        check_min_rows=check_min_rows,
+        agg_client=agg_client,
+    )
+
     for preprocessing_step_name, preprocessing_step_params in (
         preprocessing or {}
     ).items():
@@ -165,6 +167,11 @@ def _apply_preprocessing_steps_to_data_and_metadata(
         data, metadata = preprocessing_step.transform_data_and_metadata(
             data=data,
             metadata=step_metadata,
+        )
+        _check_min_rows_or_raise(
+            data=data,
+            check_min_rows=check_min_rows,
+            agg_client=agg_client,
         )
     return data, metadata
 

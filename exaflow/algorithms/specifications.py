@@ -56,6 +56,7 @@ class ParameterEnumType(str, Enum):
 @unique
 class PreprocessingStepName(str, Enum):
     LONGITUDINAL_TRANSFORMER = "longitudinal_transformer"
+    MISSING_VALUES_HANDLER = "missing_values_handler"
 
     def __str__(self) -> str:
         return str.__str__(self)

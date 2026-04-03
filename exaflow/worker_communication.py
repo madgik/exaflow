@@ -201,7 +201,6 @@ class CommonDataElements(BaseModel):
 class RunUdfSystemArgs(BaseModel):
     inputdata: Inputdata
     metadata: Dict[str, Any]
-    drop_na: bool
     check_min_rows: bool
     add_dataset_variable: bool
     preprocessing: Optional[Dict[str, Any]] = None
