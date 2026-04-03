@@ -1,13 +1,13 @@
 import pandas as pd
 import pytest
 
-from exaflow.algorithms.exareme3.missing_values_handler import STRATEGY_DROP
 from exaflow.algorithms.exareme3.missing_values_handler import MissingValuesHandler
+from exaflow.algorithms.exareme3.missing_values_handler import MissingValueStrategy
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.worker_communication import BadUserInput
 
 
-def _make_handler(strategy=STRATEGY_DROP):
+def _make_handler(strategy=MissingValueStrategy.DROP.value):
     return MissingValuesHandler(params={"strategy": strategy})
 
 
@@ -17,7 +17,7 @@ def test_get_specification_has_expected_shape():
     assert spec.name == "missing_values_handler"
     assert spec.enabled is True
     assert set(spec.parameters.keys()) == {"strategy"}
-    assert spec.parameters["strategy"].enums.source == [STRATEGY_DROP]
+    assert spec.parameters["strategy"].enums.source == [MissingValueStrategy.DROP.value]
 
 
 def test_validate_params_accepts_drop_strategy():

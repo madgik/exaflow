@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from enum import Enum
 from typing import Dict
 from typing import Iterable
 from typing import List
@@ -15,10 +16,12 @@ from exaflow.column_names import SUBJECT_ID_COL
 from exaflow.column_names import VISIT_ID_COL
 from exaflow.worker_communication import BadUserInput
 
-STRATEGY_FIRST = "first"
-STRATEGY_SECOND = "second"
-STRATEGY_DIFF = "diff"
-VALID_STRATEGIES = {STRATEGY_FIRST, STRATEGY_SECOND, STRATEGY_DIFF}
+
+class LongitudinalStrategy(str, Enum):
+    FIRST = "first"
+    SECOND = "second"
+    DIFF = "diff"
+
 
 DIFF_SUFFIX = "_diff"
 VISIT1_VALUE_SUFFIX = "_v1"
@@ -121,7 +124,11 @@ class LongitudinalTransformer(PreprocessingStep):
                     ),
                     dict_values_enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.LIST,
-                        source=[STRATEGY_DIFF, STRATEGY_FIRST, STRATEGY_SECOND],
+                        source=[
+                            LongitudinalStrategy.DIFF.value,
+                            LongitudinalStrategy.FIRST.value,
+                            LongitudinalStrategy.SECOND.value,
+                        ],
                     ),
                     min=None,
                     max=None,
@@ -166,15 +173,16 @@ class LongitudinalTransformer(PreprocessingStep):
                 f"({' ; '.join(details)})."
             )
 
+        valid_strategies = [strategy.value for strategy in LongitudinalStrategy]
         invalid_values = {
             name: value
             for name, value in self._strategies.items()
-            if value not in VALID_STRATEGIES
+            if value not in valid_strategies
         }
         if invalid_values:
             raise BadUserInput(
                 "Invalid strategy values provided: "
-                f"{invalid_values}. Allowed values are: {sorted(VALID_STRATEGIES)}."
+                f"{invalid_values}. Allowed values are: {sorted(valid_strategies)}."
             )
 
         self._validate_diff_not_nominal(
@@ -199,7 +207,7 @@ class LongitudinalTransformer(PreprocessingStep):
     ) -> Dict[str, dict]:
         transformed_metadata = deepcopy(metadata)
         for varname, strategy in self._strategies.items():
-            if strategy == STRATEGY_DIFF:
+            if strategy == LongitudinalStrategy.DIFF.value:
                 source_metadata = transformed_metadata.pop(varname, None)
                 if source_metadata is not None:
                     transformed_metadata[_output_name(varname, strategy)] = (
@@ -238,9 +246,11 @@ class LongitudinalTransformer(PreprocessingStep):
         result = merged[key_cols].copy()
 
         strategy_dispatch = {
-            STRATEGY_FIRST: lambda series_v1, series_v2: series_v1,
-            STRATEGY_SECOND: lambda series_v1, series_v2: series_v2,
-            STRATEGY_DIFF: lambda series_v1, series_v2: series_v2 - series_v1,
+            LongitudinalStrategy.FIRST.value: lambda series_v1, series_v2: series_v1,
+            LongitudinalStrategy.SECOND.value: lambda series_v1, series_v2: series_v2,
+            LongitudinalStrategy.DIFF.value: lambda series_v1, series_v2: (
+                series_v2 - series_v1
+            ),
         }
         for varname, strategy in self._strategies.items():
             value_visit1 = merged[f"{varname}{VISIT1_VALUE_SUFFIX}"]
@@ -259,22 +269,28 @@ class LongitudinalTransformer(PreprocessingStep):
         self, *, strategies: Dict[str, str], metadata: Dict[str, dict]
     ) -> None:
         for name, strategy in strategies.items():
-            if strategy == STRATEGY_DIFF and metadata.get(name, {}).get(
-                "is_categorical"
-            ):
+            if strategy == LongitudinalStrategy.DIFF.value and metadata.get(
+                name, {}
+            ).get("is_categorical"):
                 raise BadUserInput(
                     f"Cannot take the difference for the nominal variable '{name}'."
                 )
 
     def _build_transformed_variable_names(self, variables: List[str]) -> List[str]:
         return [
-            _output_name(name, self._strategies.get(name, STRATEGY_FIRST))
+            _output_name(
+                name, self._strategies.get(name, LongitudinalStrategy.FIRST.value)
+            )
             for name in variables
         ]
 
 
 def _output_name(varname: str, strategy: str) -> str:
-    return f"{varname}{DIFF_SUFFIX}" if strategy == STRATEGY_DIFF else varname
+    return (
+        f"{varname}{DIFF_SUFFIX}"
+        if strategy == LongitudinalStrategy.DIFF.value
+        else varname
+    )
 
 
 def _deduplicate_preserve_order(values: Iterable[str]) -> List[str]:

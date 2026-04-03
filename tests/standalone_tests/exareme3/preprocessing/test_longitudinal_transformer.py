@@ -3,15 +3,17 @@ import pandas as pd
 import pandas.testing as pdt
 import pytest
 
-from exaflow.algorithms.exareme3.longitudinal_transformer import STRATEGY_DIFF
-from exaflow.algorithms.exareme3.longitudinal_transformer import STRATEGY_FIRST
-from exaflow.algorithms.exareme3.longitudinal_transformer import STRATEGY_SECOND
+from exaflow.algorithms.exareme3.longitudinal_transformer import LongitudinalStrategy
 from exaflow.algorithms.exareme3.longitudinal_transformer import LongitudinalTransformer
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.column_names import DATASET_COL
 from exaflow.column_names import SUBJECT_ID_COL
 from exaflow.column_names import VISIT_ID_COL
 from exaflow.worker_communication import BadUserInput
+
+STRATEGY_FIRST = LongitudinalStrategy.FIRST.value
+STRATEGY_SECOND = LongitudinalStrategy.SECOND.value
+STRATEGY_DIFF = LongitudinalStrategy.DIFF.value
 
 BASE_METADATA = {
     "age": {"is_categorical": False, "label": "Age"},
