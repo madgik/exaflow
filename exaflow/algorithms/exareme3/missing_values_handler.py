@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from enum import Enum
 from typing import Dict
 from typing import List
 
@@ -11,8 +12,9 @@ from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingSt
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.worker_communication import BadUserInput
 
-STRATEGY_DROP = "drop"
-VALID_STRATEGIES = {STRATEGY_DROP}
+
+class MissingValueStrategy(str, Enum):
+    DROP = "drop"
 
 
 class MissingValuesHandler(PreprocessingStep):
@@ -41,10 +43,10 @@ class MissingValuesHandler(PreprocessingStep):
                     types=[specs.ParameterType.TEXT],
                     required=True,
                     multiple=False,
-                    default=STRATEGY_DROP,
+                    default=MissingValueStrategy.DROP.value,
                     enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.LIST,
-                        source=[STRATEGY_DROP],
+                        source=[MissingValueStrategy.DROP.value],
                     ),
                     dict_keys_enums=None,
                     dict_values_enums=None,
@@ -62,10 +64,11 @@ class MissingValuesHandler(PreprocessingStep):
         inputdata: Inputdata,
         metadata: Dict[str, dict],
     ) -> None:
-        if self._strategy not in VALID_STRATEGIES:
+        allowed_values = [strategy.value for strategy in MissingValueStrategy]
+        if self._strategy not in allowed_values:
             raise BadUserInput(
                 f"Invalid strategy '{self._strategy}'. "
-                f"Allowed values are: {sorted(VALID_STRATEGIES)}."
+                f"Allowed values are: {sorted(allowed_values)}."
             )
 
     def transform_inputdata_variables(
@@ -88,6 +91,6 @@ class MissingValuesHandler(PreprocessingStep):
         *,
         data: pd.DataFrame,
     ) -> pd.DataFrame:
-        if self._strategy == STRATEGY_DROP:
+        if self._strategy == MissingValueStrategy.DROP.value:
             return data.dropna(axis=0, how="any")
         return data
