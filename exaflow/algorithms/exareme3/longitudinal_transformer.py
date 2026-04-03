@@ -27,6 +27,31 @@ VISIT2_VALUE_SUFFIX = "_v2"
 
 
 class LongitudinalTransformer(PreprocessingStep):
+    """Federated preprocessing step that aligns and transforms two visits per subject.
+
+    This step expects two visit identifiers (`visit1`, `visit2`) and a per-variable
+    strategy map (`strategies`) for all requested `x` and `y` variables.
+
+    Per worker, it:
+    1. Filters rows to the selected visits.
+    2. Matches records between visits on `subjectid` and `dataset`.
+    3. Applies one strategy per variable:
+       - `first`: keep value from `visit1`
+       - `second`: keep value from `visit2`
+       - `diff`: compute `visit2 - visit1` (numeric variables only)
+
+    Output contains only matched subjects and preserves key columns
+    (`subjectid`, plus `dataset`). Variables transformed with
+    `diff` are renamed with the `_diff` suffix; other strategies keep the
+    original variable name.
+
+    Validation enforces:
+    - `visit1` and `visit2` are both provided and distinct.
+    - `strategies` contains exactly the variables requested in `x` and `y`.
+    - strategy values are in `{first, second, diff}`.
+    - `diff` is not used for categorical variables.
+    """
+
     def __init__(
         self,
         *,
