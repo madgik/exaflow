@@ -30,7 +30,6 @@ def quote_literal(value: str) -> str:
 def load_algorithm_arrow_table(
     inputdata: Inputdata,
     *,
-    dropna: bool = True,
     include_dataset: bool = False,
     extra_columns: Iterable[str] | None = None,
 ) -> pa.Table:
@@ -43,12 +42,10 @@ def load_algorithm_arrow_table(
     if extra_columns:
         required_columns.update(extra_columns)
 
-    return _fetch_with_duckdb(inputdata, required_columns, dropna=dropna)
+    return _fetch_with_duckdb(inputdata, required_columns)
 
 
-def _fetch_with_duckdb(
-    inputdata: Inputdata, required_columns: Set[str], *, dropna: bool
-) -> pa.Table:
+def _fetch_with_duckdb(inputdata: Inputdata, required_columns: Set[str]) -> pa.Table:
     import duckdb
 
     from exaflow.worker import config as worker_config
@@ -67,12 +64,6 @@ def _fetch_with_duckdb(
 
     if inputdata.filters:
         where_clauses.append(build_filter_clause(inputdata.filters))
-
-    if dropna and required_columns:
-        not_null_clause = " AND ".join(
-            f"{quote_identifier(col)} IS NOT NULL" for col in required_columns
-        )
-        where_clauses.append(not_null_clause)
 
     where_sql = ""
     if where_clauses:

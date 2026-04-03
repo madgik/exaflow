@@ -14,9 +14,10 @@
     preprocessed `inputdata` and algorithm `parameters`; it does not directly
     access worker dataframes or metadata.
   - Override these properties when needed:
-    - `drop_na_rows` (default `True`) to keep rows with NA values.
     - `check_min_rows` (default `True`) to skip the privacy minimum-row check.
     - `add_dataset_variable` (default `False`) to include the dataset column.
+  - Missing-value row dropping is modeled as preprocessing (`missing_values_handler`
+    with `strategy=drop`) instead of a hardcoded algorithm property.
 
 - PreprocessingStep base class: `exaflow/algorithms/exareme3/utils/preprocessing_step.py` -> `PreprocessingStep`
 

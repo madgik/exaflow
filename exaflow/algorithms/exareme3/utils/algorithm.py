@@ -33,15 +33,6 @@ class Algorithm(ABC):
         return self._parameters.get(name, default)
 
     @property
-    def drop_na_rows(self) -> bool:
-        """
-        By default, the rows with 'Not Available' values are dropped.
-        If an algorithm needs to keep the 'Not Available' values,
-        this method must be overridden to return False.
-        """
-        return True
-
-    @property
     def check_min_rows(self) -> bool:
         """
         If an algorithm needs to ignore the minimum row count threshold check,
@@ -64,7 +55,6 @@ class Algorithm(ABC):
     def run_local_udf(self, func, kw_args, *, identical_results: bool = False):
         results: List[Dict[str, Any]] = self._engine.run_udf(
             func,
-            self.drop_na_rows,
             self.check_min_rows,
             self.add_dataset_variable,
             kw_args,

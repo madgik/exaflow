@@ -5,11 +5,20 @@ import numpy as np
 import pytest
 import requests
 
+MISSING_VALUES_STEP_NAME = "missing_values_handler"
+MISSING_VALUES_DROP_PARAMS = {"strategy": "drop"}
 
-def algorithm_request(algorithm: str, input: dict):
+
+def algorithm_request(algorithm: str, input: dict, drop_na: bool = True):
+    request_payload = dict(input)
+    if drop_na:
+        preprocessing = dict(request_payload.get("preprocessing") or {})
+        preprocessing.setdefault(MISSING_VALUES_STEP_NAME, MISSING_VALUES_DROP_PARAMS)
+        request_payload["preprocessing"] = preprocessing
+
     url = "http://127.0.0.1:5100/algorithms" + f"/{algorithm}"
     headers = {"Content-type": "application/json", "Accept": "text/plain"}
-    response = requests.post(url, data=json.dumps(input), headers=headers)
+    response = requests.post(url, data=json.dumps(request_payload), headers=headers)
     return response
 
 
