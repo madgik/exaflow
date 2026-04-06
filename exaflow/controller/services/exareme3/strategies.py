@@ -1,4 +1,5 @@
 from typing import List
+from typing import Tuple
 
 from exaflow import exareme3_algorithm_classes
 from exaflow import exareme3_preprocessing_step_classes
@@ -27,7 +28,7 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
         inputdata: Inputdata,
         metadata: dict,
         preprocessing: dict,
-    ) -> Inputdata:
+    ) -> Tuple[Inputdata, dict]:
         transformed_inputdata = inputdata
         transformed_metadata = metadata
         for preprocessing_step_name, preprocessing_step_params in preprocessing.items():
@@ -55,7 +56,7 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
             transformed_metadata = preprocessing_step.transform_metadata(
                 metadata=step_metadata,
             )
-        return transformed_inputdata
+        return transformed_inputdata, transformed_metadata
 
     async def execute(self) -> str:
         inputdata = Inputdata.model_validate(
@@ -68,7 +69,7 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
         )
 
         preprocessing = self._algorithm_request_dto.preprocessing or {}
-        transformed_inputdata = self._run_preprocessing_steps(
+        transformed_inputdata, transformed_metadata = self._run_preprocessing_steps(
             inputdata=inputdata,
             metadata=metadata,
             preprocessing=preprocessing,
@@ -86,6 +87,7 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
         algorithm = algorithm_cls(
             engine=engine,
             inputdata=transformed_inputdata,
+            metadata=transformed_metadata,
             parameters=self._algorithm_request_dto.parameters,
         )
         log_experiment_execution(

@@ -59,12 +59,16 @@ class NaiveBayesCategorical(Algorithm):
     def run(self):
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)
+        categories: Dict[str, List[str]] = {
+            var: sorted(get_enum_codes(self.metadata, var)) for var in x_vars + [y_var]
+        }
 
         params = self.run_local_udf(
             func=local_step,
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
+                "categories": categories,
             },
             identical_results=True,
         )
@@ -77,12 +81,8 @@ def local_step(
     data,
     y_var,
     x_vars,
-    metadata,
+    categories,
 ):
-    categories: Dict[str, List[str]] = {
-        var: sorted(get_enum_codes(metadata, var)) for var in x_vars + [y_var]
-    }
-
     y = data[y_var].to_numpy()
 
     pipeline = FederatedPipeline(

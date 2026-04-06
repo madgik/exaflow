@@ -79,6 +79,7 @@ class NaiveBayesGaussianCV(Algorithm):
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)
         n_splits = self.get_parameter("n_splits")
+        labels = sorted(get_enum_codes(self.metadata, y_var))
 
         # Run CV UDF (with aggregation server)
         metrics = self.run_local_udf(
@@ -86,6 +87,7 @@ class NaiveBayesGaussianCV(Algorithm):
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
+                "labels": labels,
                 "n_splits": int(n_splits),
             },
             identical_results=True,
@@ -117,14 +119,13 @@ def local_step(
     data,
     y_var,
     x_vars,
-    metadata,
+    labels,
     n_splits,
 ):
     """
     Exaflow UDF that performs K-fold cross-validation for Gaussian Naive Bayes.
     """
     n_splits = int(n_splits)
-    labels = sorted(get_enum_codes(metadata, y_var))
     class_labels = list(labels)
     if not class_labels:
         return {"labels": [], "confmats": [], "n_obs": []}

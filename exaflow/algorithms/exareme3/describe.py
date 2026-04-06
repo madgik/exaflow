@@ -119,11 +119,24 @@ class Describe(Algorithm):
         x_vars = self.inputdata.x or []
         y_vars = self.inputdata.y or []
         variable_names = [v for v in (x_vars + y_vars) if v != DATASET_VAR_NAME]
+        numerical_vars = [
+            var for var in variable_names if not self.metadata[var]["is_categorical"]
+        ]
+        nominal_vars = [
+            var for var in variable_names if self.metadata[var]["is_categorical"]
+        ]
+        nominal_levels = {}
+        for var in nominal_vars:
+            enums = self.metadata[var].get("enumerations") or {}
+            nominal_levels[var] = [code for code in enums.keys()]
 
         local_results = self.run_local_udf(
             func=local_step,
             kw_args={
                 "variable_names": variable_names,
+                "numerical_vars": numerical_vars,
+                "nominal_vars": nominal_vars,
+                "nominal_levels": nominal_levels,
             },
         )
 
@@ -158,17 +171,15 @@ class Describe(Algorithm):
 
 
 @exareme3_udf(with_aggregation_server=True)
-def local_step(agg_client, data, variable_names, metadata):
+def local_step(
+    agg_client,
+    data,
+    variable_names,
+    numerical_vars,
+    nominal_vars,
+    nominal_levels,
+):
     from exaflow.worker import config as worker_config
-
-    numerical_vars = [
-        var for var in variable_names if not metadata[var]["is_categorical"]
-    ]
-    nominal_vars = [var for var in variable_names if metadata[var]["is_categorical"]]
-    nominal_levels = {}
-    for var in nominal_vars:
-        enums = metadata[var].get("enumerations") or {}
-        nominal_levels[var] = [code for code in enums.keys()]
 
     min_row_count = worker_config.privacy.minimum_row_count
     if "dataset" in data.columns:

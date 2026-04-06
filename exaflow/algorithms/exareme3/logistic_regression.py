@@ -101,6 +101,12 @@ class LogisticRegression(Algorithm):
         positive_class = self.get_parameter("positive_class")
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)
+        categorical_vars = [
+            var for var in x_vars if self.metadata[var]["is_categorical"]
+        ]
+        numerical_vars = [
+            var for var in x_vars if not self.metadata[var]["is_categorical"]
+        ]
 
         model_stats = self.run_local_udf(
             func=local_step,
@@ -108,6 +114,8 @@ class LogisticRegression(Algorithm):
                 "positive_class": positive_class,
                 "y_var": y_var,
                 "x_vars": x_vars,
+                "categorical_vars": categorical_vars,
+                "numerical_vars": numerical_vars,
             },
             identical_results=True,
         )
@@ -143,11 +151,9 @@ def local_step(
     positive_class,
     y_var,
     x_vars,
-    metadata,
+    categorical_vars,
+    numerical_vars,
 ):
-    categorical_vars = [var for var in x_vars if metadata[var]["is_categorical"]]
-    numerical_vars = [var for var in x_vars if not metadata[var]["is_categorical"]]
-
     transformer = FederatedColumnTransformer(
         [("cat", FederatedOneHotEncoder(), categorical_vars)],
         remainder="passthrough",

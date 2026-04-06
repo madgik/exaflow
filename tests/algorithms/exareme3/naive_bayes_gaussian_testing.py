@@ -62,12 +62,14 @@ class GaussianNBTestingPredict(Algorithm):
 
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)
+        labels = sorted(get_enum_codes(self.metadata, y_var))
 
         udf_results = self.run_local_udf(
             func=gaussian_nb_predict_udf,
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
+                "labels": labels,
             },
         )
 
@@ -84,10 +86,9 @@ def gaussian_nb_predict_udf(
     data,
     y_var,
     x_vars,
-    metadata,
+    labels,
 ):
     df = _prepare_dataframe(data, x_vars, y_var)
-    labels = sorted(get_enum_codes(metadata, y_var))
 
     X = df[x_vars].to_numpy(dtype=float, copy=False)
     y = df[y_var].to_numpy()

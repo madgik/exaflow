@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
+from exaflow.algorithms.exareme3.utils.metadata_enums import get_enum_codes
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.naive_bayes import FederatedCategoricalNB
 from exaflow.algorithms.federated.preprocessing.ordinal_encoder import (
@@ -59,12 +60,16 @@ class CategoricalNBTestingPredict(Algorithm):
 
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)
+        categories = {
+            var: sorted(get_enum_codes(self.metadata, var)) for var in x_vars + [y_var]
+        }
 
         udf_results = self.run_local_udf(
             func=categorical_nb_predict_udf,
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
+                "categories": categories,
             },
         )
 
@@ -88,13 +93,9 @@ def categorical_nb_predict_udf(
     data,
     y_var,
     x_vars,
-    metadata,
+    categories,
 ):
     df = _prepare_dataframe(data, x_vars, y_var)
-    categories = {
-        var: list(sorted(metadata[var]["enumerations"].keys()))
-        for var in x_vars + [y_var]
-    }
 
     encoder = FederatedOrdinalEncoder(
         categories=categories,
