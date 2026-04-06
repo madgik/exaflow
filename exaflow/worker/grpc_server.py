@@ -306,7 +306,9 @@ def serve() -> None:
             f"[{worker_config.identifier}] - [BACKGROUND] - %(message)s"
         ),
     )
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    server = grpc.server(
+        futures.ThreadPoolExecutor(max_workers=worker_config.grpc.max_workers)
+    )
 
     health_servicer = health.HealthServicer()
     health_pb2_grpc.add_HealthServicer_to_server(health_servicer, server)

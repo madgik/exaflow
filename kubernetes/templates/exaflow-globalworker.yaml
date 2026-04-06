@@ -82,6 +82,8 @@ spec:
               fieldPath: status.podIP
         - name: GRPC_PORT
           value: "5672"
+        - name: GRPC_MAX_WORKERS
+          value: "20"
         - name: DUCKDB_PATH
           value: "/opt/data/data_models.duckdb"
         - name: AGGREGATION_SERVER_ENABLED
