@@ -83,6 +83,8 @@ spec:
               fieldPath: status.podIP
         - name: GRPC_PORT
           value: "5672"
+        - name: GRPC_MAX_WORKERS
+          value: "20"
         - name: AGGREGATION_SERVER_ENABLED
           value: {{ quote .Values.aggregation_server.enabled }}
         - name: AGGREGATION_SERVER_DNS
@@ -111,23 +113,26 @@ spec:
               - exaflow.worker.healthcheck
           initialDelaySeconds: 30
           periodSeconds: 30
-          timeoutSeconds: 10
+          timeoutSeconds: 30
+          failureThreshold: 10
         livenessProbe:
           exec:
             command:
               - python
               - -m
               - exaflow.worker.healthcheck
-          periodSeconds: 30
-          timeoutSeconds: 10
+          periodSeconds: 60
+          timeoutSeconds: 30
+          failureThreshold: 5
         readinessProbe:
           exec:
             command:
               - python
               - -m
               - exaflow.worker.healthcheck
-          periodSeconds: 10
-          timeoutSeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 30
+          failureThreshold: 5
 
       {{ if .Values.smpc.enabled }}
       - name: smpc-client

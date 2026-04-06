@@ -24,6 +24,7 @@ tasks_timeout="$WORKER_TASKS_TIMEOUT"
 [grpc]
 ip = "$GRPC_IP"
 port = "$GRPC_PORT"
+max_workers = "$GRPC_MAX_WORKERS"
 
 [aggregation_server]
 enabled = "$AGGREGATION_SERVER_ENABLED"
