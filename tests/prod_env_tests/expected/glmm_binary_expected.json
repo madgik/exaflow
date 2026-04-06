@@ -1,0 +1,21 @@
+{
+    "test_cases": [
+        {
+            "input": {
+                "inputdata": {
+                    "y": ["gender"],
+                    "x": ["lefthippocampus", "leftamygdala", "dataset"],
+                    "data_model": "dementia:0.1",
+                    "datasets": ["ppmi0", "ppmi1", "desd-synthdata0"],
+                    "filters": null
+                },
+                "parameters": {
+                    "positive_class": "F",
+                    "grouping_var": "dataset"
+                },
+                "test_case_num": 0
+            },
+            "output": {}
+        }
+    ]
+}
