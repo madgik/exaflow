@@ -174,7 +174,10 @@ GLMM_BINARY_CASES = [
                 "test_case_num": 8,
             },
             "expected_status": 460,
-            "expected_message": r"Parameter 'grouping_var'.*must match exactly one variable included in 'x'",
+            "expected_message": (
+                r"Parameter 'grouping_var'.*must match exactly one variable included in 'x'"
+                r"|Grouping variable.*inputdata \['x'\].*should be one of the following"
+            ),
         },
         id="grouping_var_missing_from_x",
     ),

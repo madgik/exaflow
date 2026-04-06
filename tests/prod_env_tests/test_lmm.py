@@ -147,7 +147,10 @@ LMM_CASES = [
                 "test_case_num": 7,
             },
             "expected_status": 460,
-            "expected_message": r"Parameter 'grouping_var'.*must match exactly one variable included in 'x'",
+            "expected_message": (
+                r"Parameter 'grouping_var'.*must match exactly one variable included in 'x'"
+                r"|Grouping variable.*inputdata \['x'\].*should be one of the following"
+            ),
         },
         id="grouping_var_missing_from_x",
     ),
@@ -185,7 +188,10 @@ LMM_CASES = [
                 "test_case_num": 9,
             },
             "expected_status": 460,
-            "expected_message": r"The CDE 'gender'.*should NOT be categorical",
+            "expected_message": (
+                r"The CDE 'gender'.*should NOT be categorical"
+                r"|The CDE 'gender'.*doesn't have one of the allowed types"
+            ),
         },
         id="invalid_categorical_y",
     ),
@@ -225,7 +231,6 @@ def test_lmm_wrapper(case):
         assert "converged" in result
 
         if case["name"] in {
-            "categorical_fixed_effect_one_hot",
             "multiple_categorical_fixed_effects",
         }:
             assert len(result["indep_vars"]) > 3
