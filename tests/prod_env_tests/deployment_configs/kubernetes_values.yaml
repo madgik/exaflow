@@ -14,19 +14,18 @@ globalworker_identifier: globalworker
 
 aggregation_server:
   enabled: true
-  max_wait_for_aggregation_inputs: 60
+  max_wait_for_aggregation_inputs: 120
   dns: "exaflow-aggregation-service"
 
 flower:
   enabled: true
-  execution_timeout: 30
+  execution_timeout: 180
   server_port: 8080
 
 controller:
   workers_dns: "exaflow-workers-service"
   worker_landscape_aggregator_update_interval: 20
-  worker_tasks_timeout: 120
-  workers_cleanup_interval: 60
+  worker_tasks_timeout: 240
 
 smpc:
   enabled: false

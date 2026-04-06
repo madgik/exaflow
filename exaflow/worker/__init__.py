@@ -41,6 +41,8 @@ def _ensure_grpc_config(cfg: AttrDict) -> None:
 
     port_value = grpc_cfg.get("port", default_port)
     grpc_cfg.port = _normalize_port(port_value, default_port)
+    max_workers_value = grpc_cfg.get("max_workers", 10)
+    grpc_cfg.max_workers = _normalize_port(max_workers_value, 10)
 
     cfg.grpc = grpc_cfg
 
