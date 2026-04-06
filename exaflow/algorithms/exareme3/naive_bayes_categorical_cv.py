@@ -81,12 +81,16 @@ class NaiveBayesCategorical(Algorithm):
         y_var = self.inputdata.y[0]
         x_vars = list(self.inputdata.x)
         n_splits = self.get_parameter("n_splits")
+        categories: Dict[str, List[str]] = {
+            var: sorted(get_enum_codes(self.metadata, var)) for var in x_vars + [y_var]
+        }
 
         metrics = self.run_local_udf(
             func=local_step,
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
+                "categories": categories,
                 "n_splits": int(n_splits),
             },
             identical_results=True,
@@ -114,7 +118,7 @@ def local_step(
     data,
     y_var,
     x_vars,
-    metadata,
+    categories,
     n_splits,
 ):
     """
@@ -123,9 +127,6 @@ def local_step(
     """
 
     n_splits = int(n_splits)
-    categories: Dict[str, List[str]] = {
-        var: sorted(get_enum_codes(metadata, var)) for var in x_vars + [y_var]
-    }
 
     labels = list(categories[y_var])
     if not labels:

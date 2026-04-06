@@ -75,6 +75,8 @@ class AnovaTwoWay(Algorithm):
         x1, x2 = xs
 
         sstype = self.get_parameter("sstype")
+        levels_a = get_enum_codes(self.metadata, x1)
+        levels_b = get_enum_codes(self.metadata, x2)
 
         result = self.run_local_udf(
             func=local_step,
@@ -82,6 +84,8 @@ class AnovaTwoWay(Algorithm):
                 "x1": x1,
                 "x2": x2,
                 "y": y,
+                "levels_a": levels_a,
+                "levels_b": levels_b,
                 "sstype": sstype,
             },
             identical_results=True,
@@ -90,9 +94,7 @@ class AnovaTwoWay(Algorithm):
 
 
 @exareme3_udf(with_aggregation_server=True)
-def local_step(agg_client, data, x1, x2, y, metadata, sstype):
-    levels_a = get_enum_codes(metadata, x1)
-    levels_b = get_enum_codes(metadata, x2)
+def local_step(agg_client, data, x1, x2, y, levels_a, levels_b, sstype):
     if len(levels_a) < 2:
         raise BadUserInput(
             f"The variable {x1} has less than 2 levels and Anova cannot be "

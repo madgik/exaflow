@@ -100,12 +100,20 @@ class LinearRegressionCV(Algorithm):
         y_var = self.inputdata.y[0]
         n_splits = int(self.get_parameter("n_splits"))
         x_vars = list(self.inputdata.x)
+        categorical_vars = [
+            var for var in x_vars if self.metadata[var]["is_categorical"]
+        ]
+        numerical_vars = [
+            var for var in x_vars if not self.metadata[var]["is_categorical"]
+        ]
 
         metrics = self.run_local_udf(
             func=local_step,
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
+                "categorical_vars": categorical_vars,
+                "numerical_vars": numerical_vars,
                 "n_splits": n_splits,
             },
             identical_results=True,
@@ -140,7 +148,8 @@ def local_step(
     data,
     y_var,
     x_vars,
-    metadata,
+    categorical_vars,
+    numerical_vars,
     n_splits,
 ):
     """
@@ -151,9 +160,6 @@ def local_step(
 
     Returns identical global metrics from every worker.
     """
-    categorical_vars = [var for var in x_vars if metadata[var]["is_categorical"]]
-    numerical_vars = [var for var in x_vars if not metadata[var]["is_categorical"]]
-
     cv_pipeline = FederatedPipeline(
         [
             (
