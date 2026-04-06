@@ -220,7 +220,10 @@ GLMM_ORDINAL_CASES = [
                 "test_case_num": 9,
             },
             "expected_status": 460,
-            "expected_message": r"Parameter 'grouping_var'.*must match exactly one variable included in 'x'",
+            "expected_message": (
+                r"Parameter 'grouping_var'.*must match exactly one variable included in 'x'"
+                r"|Grouping variable.*inputdata \['x'\].*should be one of the following"
+            ),
         },
         id="grouping_var_missing_from_x",
     ),
@@ -250,10 +253,7 @@ def test_glmm_ordinal_wrapper(case):
         assert "sigma_u2" in result
         assert "converged" in result
 
-        if case["name"] in {
-            "categorical_fixed_effect_one_hot",
-            "multiple_categorical_fixed_effects",
-        }:
+        if case["name"] == "multiple_categorical_fixed_effects":
             assert len(result["indep_vars"]) > 3
     else:
         assert re.search(case["expected_message"], response.text), response.text

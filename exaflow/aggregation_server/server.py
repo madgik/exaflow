@@ -399,6 +399,16 @@ class AggregationServer(AggregationServerServicer):
                         )
                     ),
                 )
+                received_workers = (
+                    len(agg_ctx.batch_vectors[0]) if agg_ctx.batch_vectors else 0
+                )
+                logger.info(
+                    "[AGGREGATE] Received worker results for context_id='%s' "
+                    "(%d/%d workers reported)",
+                    request.request_id,
+                    received_workers,
+                    agg_ctx.expected_workers,
+                )
 
                 if (
                     agg_ctx.state == AggregationState.COLLECTING

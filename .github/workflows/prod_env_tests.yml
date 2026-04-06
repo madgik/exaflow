@@ -202,27 +202,37 @@ jobs:
             exit "$exit_code"
           fi
 
-
       - name: Controller logs
-        run: kubectl logs -l app=exaflow-controller --tail -1
+        run: kubectl logs -l app=exaflow-controller -c controller --tail -1
 
-      - name: Globalnode logs
+      - name: Aggregation Server logs
+        run: kubectl logs -l app=exaflow-aggregation-server -c aggregation-server --tail -1
+
+      - name: Globalworker logs
         run: kubectl logs -l nodeType=globalworker -c worker --tail -1
 
-      - name: Localnode logs
+      - name: Localworker logs
+        run: kubectl logs -l nodeType=localworker -c worker --tail -1
+
+      - name: Aggregation Server logs
         run: kubectl logs -l nodeType=localworker -c worker --tail -1
 
       - name: Controller logs (post run)
         uses: webiny/action-post-run@3.1.0
         with:
-          run: kubectl logs -l app=exaflow-controller --tail -1
+          run: kubectl logs -l app=exaflow-controller -c controller --tail -1
 
-      - name: Globalnode logs (post run)
+      - name: Aggregation Server logs (post run)
+        uses: webiny/action-post-run@3.1.0
+        with:
+          run: kubectl logs -l app=exaflow-aggregation-server -c aggregation-server --tail -1
+
+      - name: Globalworker logs (post run)
         uses: webiny/action-post-run@3.1.0
         with:
           run: kubectl logs -l nodeType=globalworker -c worker --tail -1
 
-      - name: Localnode logs (post run)
+      - name: Localworker logs (post run)
         uses: webiny/action-post-run@3.1.0
         with:
           run: kubectl logs -l nodeType=localworker -c worker --tail -1
