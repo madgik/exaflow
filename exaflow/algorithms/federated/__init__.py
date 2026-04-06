@@ -3,6 +3,9 @@ from exaflow.algorithms.federated.compose import make_column_selector
 from exaflow.algorithms.federated.decomposition import FederatedPCA
 from exaflow.algorithms.federated.linear_model import FederatedLogisticRegression
 from exaflow.algorithms.federated.linear_model import FederatedOLS
+from exaflow.algorithms.federated.mixed_effects import FederatedGLMMBinary
+from exaflow.algorithms.federated.mixed_effects import FederatedGLMMOrdinal
+from exaflow.algorithms.federated.mixed_effects import FederatedLMM
 from exaflow.algorithms.federated.model_selection import FederatedClassificationScorer
 from exaflow.algorithms.federated.model_selection import FederatedCrossValidator
 from exaflow.algorithms.federated.model_selection import FederatedKFoldSplitter
@@ -25,6 +28,9 @@ __all__ = [
     "FederatedCrossValidator",
     "FederatedOLS",
     "FederatedLogisticRegression",
+    "FederatedGLMMBinary",
+    "FederatedGLMMOrdinal",
+    "FederatedLMM",
     "FederatedPCA",
     "FederatedTTestIndependent",
     "FederatedTTestOneSample",
