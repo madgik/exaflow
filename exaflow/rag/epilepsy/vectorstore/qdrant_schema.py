@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 COLLECTION_NAME = "epilepsy_rag_v1"
 VECTOR_NAME = "medcpt_dense"
 VECTOR_DISTANCE = "Cosine"

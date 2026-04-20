@@ -9,7 +9,6 @@ from typing import Sequence
 
 import numpy as np
 
-
 DEFAULT_QUERY_MODEL_NAME = "ncbi/MedCPT-Query-Encoder"
 DEFAULT_ARTICLE_MODEL_NAME = "ncbi/MedCPT-Article-Encoder"
 

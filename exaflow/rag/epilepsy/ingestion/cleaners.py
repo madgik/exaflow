@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 
-
 _PAGE_NUMBER_RE = re.compile(r"^\s*\d+\s*$")
 _MULTISPACE_RE = re.compile(r"[ \t]+")
 _MULTIBLANK_RE = re.compile(r"\n{3,}")
