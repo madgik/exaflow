@@ -1,0 +1,65 @@
+version: "1.0"
+
+chunking:
+  strategy: "section_aware"
+  target_tokens: 450
+  min_tokens: 180
+  max_tokens: 750
+  overlap_tokens: 80
+  split_on:
+    - "heading"
+    - "subheading"
+    - "paragraph"
+  preserve:
+    - "section_titles"
+    - "numbered_recommendations"
+    - "tables_as_text"
+    - "bullet_lists"
+  never_split_inside:
+    - "classification_definition"
+    - "recommendation_statement"
+    - "drug_dose_table"
+    - "warning_block"
+
+cleaning:
+  remove_headers: true
+  remove_footers: true
+  remove_page_numbers: true
+  normalize_whitespace: true
+  fix_hyphenation: true
+
+normalization:
+  preserve_original_text: true
+  expand_aliases_in_metadata: true
+  drug_alias_map:
+    levetiracetam:
+      - "keppra"
+    valproate:
+      - "valproic acid"
+      - "vpa"
+    lamotrigine:
+      - "lamictal"
+  syndrome_alias_map:
+    focal_aware_seizure:
+      - "simple partial seizure"
+    focal_impaired_awareness_seizure:
+      - "complex partial seizure"
+
+metadata_enrichment:
+  add_section_path: true
+  add_token_count: true
+  add_source_hash: true
+  add_publication_year: true
+  add_patient_group: true
+  add_clinical_topics: true
+  add_synonyms: true
+  add_entities:
+    - "drug"
+    - "disease"
+    - "syndrome"
+
+quality_rules:
+  reject_empty_chunks: true
+  reject_duplicate_chunks: true
+  reject_chunks_shorter_than_tokens: 80
+  require_section_title: true

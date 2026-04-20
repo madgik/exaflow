@@ -1,0 +1,58 @@
+version: "1.0"
+domain: "epilepsy"
+owner: "clinical_ai_team"
+
+sources:
+  - document_id: "ilae_2025_seizure_classification"
+    enabled: true
+    approved_for_rag: true
+    priority: 1
+    source_type: "guideline"
+    organization: "ILAE"
+    title: "Updated Classification of Epileptic Seizures"
+    version: "2025"
+    publication_year: 2025
+    language: "en"
+    jurisdiction: "international"
+    patient_group: "all"
+    clinical_topics:
+      - "classification"
+      - "diagnosis"
+    source_url: "https://www.ilae.org/guidelines/definition-and-classification/updated-classification-of-epileptic-seizures-2025"
+    acquisition_method: "html"
+    local_path: "exaflow/rag/epilepsy/data/raw/ilae_2025_seizure_classification.html"
+    citation_label: "ILAE 2025"
+    review_status: "approved"
+    evidence_level: "guideline"
+    trust_policy: "primary_source"
+    synonym_policy: "expand_drug_and_syndrome_aliases"
+    tags:
+      - "epilepsy"
+      - "classification"
+
+  - document_id: "ilae_epilepsy_syndromes"
+    enabled: true
+    approved_for_rag: true
+    priority: 1
+    source_type: "guideline"
+    organization: "ILAE"
+    title: "Classification and Definition of Epilepsy Syndromes"
+    version: "current"
+    publication_year: 2022
+    language: "en"
+    jurisdiction: "international"
+    patient_group: "all"
+    clinical_topics:
+      - "syndromes"
+      - "classification"
+    source_url: "https://www.ilae.org/guidelines/definition-and-classification/classification-and-definition-of-epilepsy-syndromes/classification-and-definition-of-epilepsy-syndromes"
+    acquisition_method: "html"
+    local_path: "exaflow/rag/epilepsy/data/raw/ilae_epilepsy_syndromes.html"
+    citation_label: "ILAE Syndromes"
+    review_status: "approved"
+    evidence_level: "guideline"
+    trust_policy: "primary_source"
+    synonym_policy: "expand_drug_and_syndrome_aliases"
+    tags:
+      - "epilepsy"
+      - "syndromes"
