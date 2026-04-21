@@ -131,3 +131,18 @@ ______________________________________________________________________
   - `poetry run pytest tests/algorithms` — golden tests for algorithm outputs.
 - **Markers:** Defined in `pyproject.toml` (`slow`, `very_slow`, `smpc`, etc.).
   Focus on `slow/very_slow` when algorithm changes might affect distributed runs.
+
+______________________________________________________________________
+
+## Repo Skills (Algorithm Workflow)
+
+Use repo-path invocation for the shared algorithm skills:
+
+- Scaffold placeholders:
+  - `poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --dry-run`
+  - `poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms <algo_name>`
+- Validate required steps:
+  - `poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root .`
+  - `poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --algorithms <algo_name> --strict`
+
+These skills are versioned in-repo under `.agents/skills/` and are intended as the canonical workflow for Exareme3 algorithm scaffolding and validation.

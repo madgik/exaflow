@@ -1,0 +1,3 @@
+interface:
+  display_name: "Exaflow Algorithm Validate"
+  short_description: "Validate Exareme3 algorithm required steps"
