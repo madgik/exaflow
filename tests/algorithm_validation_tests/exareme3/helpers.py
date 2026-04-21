@@ -6,20 +6,31 @@ import pytest
 import requests
 
 MISSING_VALUES_STEP_NAME = "missing_values_handler"
-MISSING_VALUES_DROP_PARAMS = {"strategy": "drop"}
+MISSING_VALUE_DROP_STRATEGY = "drop"
 
 
 def algorithm_request(algorithm: str, input: dict, drop_na: bool = True):
     request_payload = dict(input)
     if drop_na:
         preprocessing = dict(request_payload.get("preprocessing") or {})
-        preprocessing.setdefault(MISSING_VALUES_STEP_NAME, MISSING_VALUES_DROP_PARAMS)
+        if MISSING_VALUES_STEP_NAME not in preprocessing:
+            strategies = _build_default_drop_strategies(request_payload)
+            if strategies:
+                preprocessing[MISSING_VALUES_STEP_NAME] = {"strategies": strategies}
         request_payload["preprocessing"] = preprocessing
 
     url = "http://127.0.0.1:5100/algorithms" + f"/{algorithm}"
     headers = {"Content-type": "application/json", "Accept": "text/plain"}
     response = requests.post(url, data=json.dumps(request_payload), headers=headers)
     return response
+
+
+def _build_default_drop_strategies(request_payload: dict) -> dict:
+    inputdata = request_payload.get("inputdata") or {}
+    x_vars = inputdata.get("x") or []
+    y_vars = inputdata.get("y") or []
+    variables = list(dict.fromkeys(list(x_vars) + list(y_vars)))
+    return {var: MISSING_VALUE_DROP_STRATEGY for var in variables}
 
 
 def parse_response(response) -> dict:

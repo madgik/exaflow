@@ -5,10 +5,32 @@ from exaflow.algorithms.exareme3.missing_values_handler import MissingValuesHand
 from exaflow.algorithms.exareme3.missing_values_handler import MissingValueStrategy
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.worker_communication import BadUserInput
+from exaflow.worker_communication import InsufficientDataError
 
 
-def _make_handler(strategy=MissingValueStrategy.DROP.value):
-    return MissingValuesHandler(params={"strategy": strategy})
+def _make_handler(params):
+    return MissingValuesHandler(params=params)
+
+
+def _validate(handler):
+    handler.validate_params(
+        inputdata=Inputdata(
+            data_model="dm:0.1",
+            datasets=["d1"],
+            x=["x1", "x2", "x3", "x_cat"],
+            y=["y1"],
+        ),
+        metadata={
+            "x1": {"is_categorical": False},
+            "x2": {"is_categorical": False},
+            "x3": {"is_categorical": False},
+            "x_cat": {
+                "is_categorical": True,
+                "enumerations": {"A": "Category A", "B": "Category B"},
+            },
+            "y1": {"is_categorical": False},
+        },
+    )
 
 
 def test_get_specification_has_expected_shape():
@@ -16,41 +38,160 @@ def test_get_specification_has_expected_shape():
 
     assert spec.name == "missing_values_handler"
     assert spec.enabled is True
-    assert set(spec.parameters.keys()) == {"strategy"}
-    assert spec.parameters["strategy"].enums.source == [MissingValueStrategy.DROP.value]
+    assert set(spec.parameters.keys()) == {"strategies", "fill_values"}
+    assert spec.parameters["strategies"].required is True
+    assert spec.parameters["strategies"].dict_values_enums.source == [
+        MissingValueStrategy.DROP.value,
+        MissingValueStrategy.MEAN.value,
+        MissingValueStrategy.MEDIAN.value,
+        MissingValueStrategy.MOST_FREQUENT.value,
+        MissingValueStrategy.CONSTANT.value,
+    ]
 
 
-def test_validate_params_accepts_drop_strategy():
-    handler = _make_handler()
-
-    handler.validate_params(
-        inputdata=Inputdata(
-            data_model="dm:0.1",
-            datasets=["d1"],
-            x=["x1"],
-            y=["y1"],
-        ),
-        metadata={"x1": {"is_categorical": False}, "y1": {"is_categorical": False}},
+def test_validate_params_accepts_per_variable_strategies():
+    handler = _make_handler(
+        params={
+            "strategies": {
+                "x1": MissingValueStrategy.MEAN.value,
+                "x_cat": MissingValueStrategy.MOST_FREQUENT.value,
+                "y1": MissingValueStrategy.CONSTANT.value,
+            },
+            "fill_values": {"y1": 0},
+        }
     )
+
+    _validate(handler)
 
 
 def test_validate_params_rejects_unknown_strategy():
-    handler = _make_handler(strategy="unknown")
+    handler = _make_handler(params={"strategies": {"x1": "unknown"}})
 
-    with pytest.raises(BadUserInput, match="Invalid strategy"):
+    with pytest.raises(BadUserInput, match="Invalid per-variable strategy"):
+        _validate(handler)
+
+
+def test_validate_params_rejects_unknown_variable_in_strategies():
+    handler = _make_handler(
+        params={"strategies": {"unknown_var": MissingValueStrategy.MEAN.value}}
+    )
+
+    with pytest.raises(BadUserInput, match="variables not present in x/y"):
+        _validate(handler)
+
+
+def test_validate_params_rejects_mean_for_categorical_variable():
+    handler = _make_handler(
+        params={
+            "strategies": {"x_cat": MissingValueStrategy.MEAN.value},
+        }
+    )
+
+    with pytest.raises(BadUserInput, match="can only be used for numerical variables"):
+        _validate(handler)
+
+
+def test_validate_params_rejects_fill_values_for_non_constant_variable():
+    handler = _make_handler(
+        params={
+            "strategies": {"x1": MissingValueStrategy.MEAN.value},
+            "fill_values": {"x1": 0},
+        }
+    )
+
+    with pytest.raises(
+        BadUserInput, match="can only be provided when strategy is 'constant'"
+    ):
+        _validate(handler)
+
+
+@pytest.mark.parametrize("fill_value", [0, False, "", 1.5])
+def test_validate_params_accepts_constant_strategy_with_falsy_fill_values(fill_value):
+    handler = _make_handler(
+        params={
+            "strategies": {"x1": MissingValueStrategy.CONSTANT.value},
+            "fill_values": {"x1": fill_value},
+        }
+    )
+
+    _validate(handler)
+
+
+def test_validate_params_rejects_non_scalar_fill_values():
+    handler = _make_handler(
+        params={
+            "strategies": {"x1": MissingValueStrategy.CONSTANT.value},
+            "fill_values": {"x1": {"nested": 1}},
+        }
+    )
+
+    with pytest.raises(BadUserInput, match="should be a scalar"):
+        _validate(handler)
+
+
+def test_validate_params_rejects_fill_values_outside_categorical_enums():
+    handler = _make_handler(
+        params={
+            "strategies": {"x_cat": MissingValueStrategy.CONSTANT.value},
+            "fill_values": {"x_cat": "unknown"},
+        }
+    )
+
+    with pytest.raises(BadUserInput, match="categorical enum codes"):
+        _validate(handler)
+
+
+def test_validate_params_requires_fill_value_for_categorical_constant():
+    handler = _make_handler(
+        params={
+            "strategies": {"x_cat": MissingValueStrategy.CONSTANT.value},
+        }
+    )
+
+    with pytest.raises(BadUserInput, match="requires 'fill_values\\[x_cat\\]'"):
+        _validate(handler)
+
+
+def test_validate_params_accepts_fill_value_within_categorical_enums():
+    handler = _make_handler(
+        params={
+            "strategies": {"x_cat": MissingValueStrategy.CONSTANT.value},
+            "fill_values": {"x_cat": "A"},
+        }
+    )
+
+    _validate(handler)
+
+
+def test_validate_params_rejects_non_string_fill_value_for_categorical_enums():
+    handler = _make_handler(
+        params={
+            "strategies": {"x_cat": MissingValueStrategy.CONSTANT.value},
+            "fill_values": {"x_cat": 1},
+        }
+    )
+
+    with pytest.raises(BadUserInput, match="text categorical enum code"):
         handler.validate_params(
             inputdata=Inputdata(
                 data_model="dm:0.1",
                 datasets=["d1"],
-                x=["x1"],
-                y=["y1"],
+                x=["x_cat"],
+                y=[],
             ),
-            metadata={"x1": {"is_categorical": False}, "y1": {"is_categorical": False}},
+            metadata={
+                "x_cat": {
+                    "is_categorical": True,
+                    "enumerations": {"1": "One", "2": "Two"},
+                },
+            },
         )
 
 
 def test_transform_inputdata_variables_returns_identity():
-    handler = _make_handler()
+    handler = _make_handler(
+        params={"strategies": {"x1": MissingValueStrategy.DROP.value}}
+    )
 
     transformed_x, transformed_y = handler.transform_inputdata_variables(
         x=["x1", "x2"],
@@ -63,7 +204,9 @@ def test_transform_inputdata_variables_returns_identity():
 
 def test_transform_metadata_returns_copy():
     metadata = {"x1": {"is_categorical": False}}
-    handler = _make_handler()
+    handler = _make_handler(
+        params={"strategies": {"x1": MissingValueStrategy.DROP.value}}
+    )
 
     transformed = handler.transform_metadata(metadata=metadata)
     transformed["x1"]["is_categorical"] = True
@@ -71,21 +214,98 @@ def test_transform_metadata_returns_copy():
     assert metadata["x1"]["is_categorical"] is False
 
 
-def test_transform_data_drop_strategy_removes_rows_with_any_missing_values():
+def test_transform_data_per_variable_drop_only_selected_columns():
     data = pd.DataFrame(
         {
             "x1": [1.0, None, 3.0],
             "x2": [10.0, 20.0, None],
-            "dataset": ["d1", "d1", "d1"],
+            "x3": [5.0, 6.0, 7.0],
         }
     )
-    handler = _make_handler()
+    handler = _make_handler(
+        params={
+            "strategies": {
+                "x1": MissingValueStrategy.DROP.value,
+                "x2": MissingValueStrategy.MEAN.value,
+            }
+        }
+    )
 
     transformed = handler.transform_data(data=data)
 
-    expected = pd.DataFrame({"x1": [1.0], "x2": [10.0], "dataset": ["d1"]})
+    expected = pd.DataFrame(
+        {
+            "x1": [1.0, 3.0],
+            "x2": [10.0, 10.0],
+            "x3": [5.0, 7.0],
+        },
+        index=[0, 2],
+    )
+    pd.testing.assert_frame_equal(
+        transformed,
+        expected,
+        check_dtype=False,
+    )
+
+
+def test_transform_data_per_variable_mixed_strategies():
+    data = pd.DataFrame(
+        {
+            "x1": [1.0, None, 3.0],
+            "x2": [10.0, 10.0, None],
+            "x3": ["a", None, "b"],
+            "x4": [100.0, None, 300.0],
+        }
+    )
+    handler = _make_handler(
+        params={
+            "strategies": {
+                "x1": MissingValueStrategy.MEAN.value,
+                "x2": MissingValueStrategy.MOST_FREQUENT.value,
+                "x3": MissingValueStrategy.CONSTANT.value,
+            },
+            "fill_values": {"x3": "unknown"},
+        }
+    )
+
+    transformed = handler.transform_data(data=data)
+
+    expected = pd.DataFrame(
+        {
+            "x1": [1.0, 2.0, 3.0],
+            "x2": [10.0, 10.0, 10.0],
+            "x3": ["a", "unknown", "b"],
+            "x4": [100.0, None, 300.0],
+        }
+    )
     pd.testing.assert_frame_equal(
         transformed.reset_index(drop=True),
         expected,
         check_dtype=False,
     )
+
+
+def test_transform_data_per_variable_raises_for_missing_column():
+    data = pd.DataFrame({"x1": [1.0, None, 3.0]})
+    handler = _make_handler(
+        params={"strategies": {"unknown_var": MissingValueStrategy.MEAN.value}}
+    )
+
+    with pytest.raises(BadUserInput, match="were not found in the runtime data"):
+        handler.transform_data(data=data)
+
+
+@pytest.mark.parametrize(
+    "strategy",
+    [
+        MissingValueStrategy.MEAN.value,
+        MissingValueStrategy.MEDIAN.value,
+        MissingValueStrategy.MOST_FREQUENT.value,
+    ],
+)
+def test_transform_data_raises_insufficient_data_for_all_missing_column(strategy):
+    data = pd.DataFrame({"x1": [None, None, None]})
+    handler = _make_handler(params={"strategies": {"x1": strategy}})
+
+    with pytest.raises(InsufficientDataError, match="has only missing values"):
+        handler.transform_data(data=data)
