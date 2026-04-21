@@ -16,8 +16,15 @@
   - Override these properties when needed:
     - `check_min_rows` (default `True`) to skip the privacy minimum-row check.
     - `add_dataset_variable` (default `False`) to include the dataset column.
-  - Missing-value row dropping is modeled as preprocessing (`missing_values_handler`
-    with `strategy=drop`) instead of a hardcoded algorithm property.
+  - Missing-value handling is modeled as preprocessing (`missing_values_handler`)
+    with a per-variable `strategies` map
+    (`drop`, `mean`, `median`, `most_frequent`, `constant`), instead of a
+    hardcoded algorithm property.
+  - For categorical variables using `constant`, `fill_values[var]` must be one
+    of the metadata enum codes for that variable.
+  - For `mean`/`median`/`most_frequent`, if a worker has only missing values for
+    a selected variable, preprocessing raises `InsufficientDataError` so that
+    worker can be skipped (instead of injecting zeros).
 
 - PreprocessingStep base class: `exaflow/algorithms/exareme3/utils/preprocessing_step.py` -> `PreprocessingStep`
 
