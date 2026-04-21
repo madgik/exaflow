@@ -1,24 +1,18 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
 from scipy import stats
 
-from exaflow.algorithms.federated.mixed_effects.common import accumulate_gls_summaries
-from exaflow.algorithms.federated.mixed_effects.common import (
-    accumulate_reml_score_terms,
-)
 from exaflow.algorithms.federated.mixed_effects.common import apply_weights
 from exaflow.algorithms.federated.mixed_effects.common import build_local_hist
-from exaflow.algorithms.federated.mixed_effects.common import cluster_design_outcome
-from exaflow.algorithms.federated.mixed_effects.common import compute_cluster_residuals
-from exaflow.algorithms.federated.mixed_effects.common import (
-    compute_vinv_random_intercept,
-)
-from exaflow.algorithms.federated.mixed_effects.common import extract_clusters
 from exaflow.algorithms.federated.mixed_effects.common import gls_beta_from_sxx_sxy
 from exaflow.algorithms.federated.mixed_effects.common import pack_upper_triangle
+from exaflow.algorithms.federated.mixed_effects.common import (
+    reml_grad_logscale_from_summaries,
+)
 from exaflow.algorithms.federated.mixed_effects.common import (
     reml_objective_from_summaries,
 )
@@ -165,10 +159,6 @@ class _LMMRemlAggregator:
         *,
         eps: float = 1e-6,
     ) -> np.ndarray:
-        """
-        Finite-difference gradient wrt (log sigma2, log sigma_u2) from the same
-        objective used in line search. This guarantees objective/gradient consistency.
-        """
         phi = np.array([np.log(sigma2), np.log(sigma_u2)], dtype=float)
         grad = np.zeros(2, dtype=float)
         for i in range(2):
@@ -180,6 +170,97 @@ class _LMMRemlAggregator:
             fm = self.objective(beta, float(sm[0]), float(sm[1]))
             grad[i] = (fp - fm) / (2.0 * eps)
         return grad
+
+
+@dataclass(frozen=True)
+class _LMMClusterStats:
+    label: object
+    n_obs: int
+    xtx: np.ndarray
+    xty: np.ndarray
+    yty: float
+    x_sum: np.ndarray
+    y_sum: float
+
+
+@dataclass(frozen=True)
+class _LMMProfileState:
+    beta: np.ndarray
+    a_inv: np.ndarray
+    sxx: np.ndarray
+    syy: float
+    ll_reml: float
+
+
+def _solve_gls_system(
+    sxx: np.ndarray,
+    sxy: np.ndarray,
+    *,
+    ridge: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    p = sxx.shape[0]
+    a = sxx + ridge * np.eye(p, dtype=sxx.dtype)
+    eye = np.eye(p, dtype=sxx.dtype)
+    try:
+        chol = np.linalg.cholesky(a)
+        beta = np.linalg.solve(chol.T, np.linalg.solve(chol, sxy))
+        a_inv = np.linalg.solve(chol.T, np.linalg.solve(chol, eye))
+        return beta, a_inv
+    except np.linalg.LinAlgError:
+        try:
+            beta = np.linalg.solve(a, sxy)
+            a_inv = np.linalg.solve(a, eye)
+            return beta, a_inv
+        except np.linalg.LinAlgError:
+            a_inv = np.linalg.pinv(a)
+            beta = a_inv @ sxy
+            return beta, a_inv
+
+
+def _random_intercept_scalars(
+    n_obs: int,
+    sigma2: float,
+    sigma_u2: float,
+) -> tuple[float, float, float]:
+    inv_sigma2 = 1.0 / sigma2
+    alpha = sigma_u2 / (sigma2 * (sigma2 + n_obs * sigma_u2))
+    ones_gain = inv_sigma2 - alpha * n_obs
+    return inv_sigma2, alpha, ones_gain
+
+
+def _prepare_cluster_stats(
+    X: np.ndarray,
+    y: np.ndarray,
+    center_ids: np.ndarray,
+    w: np.ndarray | None = None,
+) -> tuple[list[_LMMClusterStats], np.ndarray, np.ndarray]:
+    Xw, yw = apply_weights(X, y, w)
+    centers, inverse = np.unique(center_ids, return_inverse=True)
+
+    cluster_stats: list[_LMMClusterStats] = []
+    cluster_sizes = np.zeros(centers.shape[0], dtype=int)
+    cluster_sums = np.zeros(centers.shape[0], dtype=float)
+    for idx, label in enumerate(centers):
+        mask = inverse == idx
+        xj = Xw[mask]
+        yj = yw[mask]
+        nj = int(xj.shape[0])
+        if nj == 0:
+            continue
+        cluster_sizes[idx] = nj
+        cluster_sums[idx] = float(np.sum(yj))
+        cluster_stats.append(
+            _LMMClusterStats(
+                label=label,
+                n_obs=nj,
+                xtx=xj.T @ xj,
+                xty=xj.T @ yj,
+                yty=float(yj @ yj),
+                x_sum=np.sum(xj, axis=0),
+                y_sum=float(np.sum(yj)),
+            )
+        )
+    return cluster_stats, cluster_sizes, cluster_sums
 
 
 class FederatedLMM(FederatedEstimator):
@@ -241,14 +322,23 @@ class FederatedLMM(FederatedEstimator):
         self.return_history = bool(return_history)
         self.results: FederatedLMMResults | None = None
 
+    @staticmethod
+    def _add_intercept(X: np.ndarray) -> np.ndarray:
+        if X.ndim == 1:
+            X = X.reshape(-1, 1)
+        n_obs = X.shape[0]
+        return np.hstack([np.ones((n_obs, 1), dtype=float), X])
+
     def _rough_variance_init(
         self,
         y: np.ndarray,
         center_ids: np.ndarray,
         *,
         agg_client: AggregationClient,
+        cluster_sizes: np.ndarray,
+        cluster_sums: np.ndarray,
+        cluster_labels: np.ndarray,
     ) -> tuple[float, float]:
-        # Global first/second moments of y
         n_obs = int(
             np.asarray(
                 agg_client.sum(np.array([float(y.shape[0])], dtype=float)),
@@ -271,149 +361,196 @@ class FederatedLMM(FederatedEstimator):
         global_mean = sum_y / n_obs
         total_var = max(sum_sq_y / n_obs - global_mean * global_mean, self.lower_bound)
 
-        # Federated per-center count/sum alignment via global union
-        centers = list(agg_client.union(np.unique(center_ids).tolist()))
+        centers = list(agg_client.union(cluster_labels.tolist()))
         if not centers:
             return max(total_var, self.lower_bound), self.lower_bound
+
         idx_map = {cid: i for i, cid in enumerate(centers)}
-        m = len(centers)
-        local_counts = np.zeros(m, dtype=float)
-        local_sums = np.zeros(m, dtype=float)
-        for cid in np.unique(center_ids):
-            mask = center_ids == cid
-            i = idx_map[cid]
-            local_counts[i] = float(np.sum(mask))
-            local_sums[i] = float(np.sum(y[mask]))
+        local_counts = np.zeros(len(centers), dtype=float)
+        local_sums = np.zeros(len(centers), dtype=float)
+        for cid, count, sum_yj in zip(
+            cluster_labels,
+            cluster_sizes,
+            cluster_sums,
+            strict=True,
+        ):
+            local_idx = idx_map[cid]
+            local_counts[local_idx] = float(count)
+            local_sums[local_idx] = float(sum_yj)
+
         counts = np.asarray(agg_client.sum(local_counts), dtype=float)
         sums = np.asarray(agg_client.sum(local_sums), dtype=float)
         valid = counts > 0
         if not np.any(valid):
             return max(total_var, self.lower_bound), self.lower_bound
+
         means = np.zeros_like(sums)
         means[valid] = sums[valid] / counts[valid]
         between = float(
             np.sum(counts[valid] * (means[valid] - global_mean) ** 2) / n_obs
         )
         between = min(max(between, self.lower_bound), self.upper_bound)
-        within = total_var - between
-        within = min(max(within, self.lower_bound), self.upper_bound)
+        within = min(max(total_var - between, self.lower_bound), self.upper_bound)
         return within, between
 
-    @staticmethod
-    def _add_intercept(X: np.ndarray) -> np.ndarray:
-        if X.ndim == 1:
-            X = X.reshape(-1, 1)
-        n = X.shape[0]
-        return np.hstack([np.ones((n, 1), dtype=float), X])
-
-    @staticmethod
-    def _summaries_node(
-        X: np.ndarray,
-        y: np.ndarray,
-        center_ids: np.ndarray,
-        sigma2: float,
-        sigma_u2: float,
-        beta_hat: np.ndarray,
-        w: np.ndarray | None = None,
-        *,
-        compute_reml_terms: bool = True,
-    ) -> dict[str, Any]:
-        validate_inputs(X, y, center_ids, w)
-        Xw, yw = apply_weights(X, y, w)
-
-        p = X.shape[1]
-        sxx = np.zeros((p, p), dtype=float)
-        sxy = np.zeros(p, dtype=float)
-        syy = 0.0
-        q1 = 0.0
-        q2 = 0.0
-        t0 = 0.0
-        t1 = 0.0
-        b = np.zeros((p, p), dtype=float)
-
-        nj_sizes: list[int] = []
-        clusters = extract_clusters(center_ids)
-        for cid in clusters:
-            xj, yj = cluster_design_outcome(Xw, yw, center_ids, cid)
-            nj = int(xj.shape[0])
-            if nj == 0:
-                continue
-            nj_sizes.append(nj)
-            vj_inv, _ = compute_vinv_random_intercept(nj, sigma2, sigma_u2)
-            sxx, sxy, syy = accumulate_gls_summaries(sxx, sxy, syy, xj, yj, vj_inv)
-            if compute_reml_terms:
-                rj = compute_cluster_residuals(xj, yj, beta_hat)
-                q1, q2, t0, t1, b = accumulate_reml_score_terms(
-                    q1, q2, t0, t1, b, xj, vj_inv, rj
-                )
-
-        payload: dict[str, Any] = {
-            "p": p,
-            "sxx_packed": pack_upper_triangle(sxx),
-            "sxy": sxy.tolist(),
-            "syy": float(syy),
-            "nj_sizes": nj_sizes,
-        }
-        if compute_reml_terms:
-            payload.update(
-                {
-                    "q1": float(q1),
-                    "q2": float(q2),
-                    "t0": float(t0),
-                    "t1": float(t1),
-                    "b_packed": pack_upper_triangle(b),
-                }
-            )
-        return payload
-
-    @staticmethod
-    def _collect_global_phase_a(
-        payload: dict[str, Any],
+    def _collect_global_hist(
+        self,
+        cluster_stats: list[_LMMClusterStats],
         agg_client: AggregationClient,
-    ) -> tuple[np.ndarray, np.ndarray, float, np.ndarray]:
-        local_max, _ = build_local_hist(payload.get("nj_sizes", []))
+    ) -> np.ndarray:
+        local_max, _ = build_local_hist([stat.n_obs for stat in cluster_stats])
         global_max = int(
             np.asarray(
                 agg_client.max(np.array([float(local_max)], dtype=float)),
                 dtype=float,
             ).reshape(-1)[0]
         )
-        if global_max > 0:
-            _, local_hist = build_local_hist(payload.get("nj_sizes", []), K=global_max)
-            global_hist = np.asarray(agg_client.sum(local_hist.astype(float))).astype(
-                np.int64
+        if global_max <= 0:
+            return np.zeros(0, dtype=np.int64)
+        _, local_hist = build_local_hist(
+            [stat.n_obs for stat in cluster_stats],
+            K=global_max,
+        )
+        return np.asarray(agg_client.sum(local_hist.astype(float)), dtype=float).astype(
+            np.int64
+        )
+
+    def _local_phase_a_vector(
+        self,
+        cluster_stats: list[_LMMClusterStats],
+        *,
+        sigma2: float,
+        sigma_u2: float,
+        p: int,
+    ) -> np.ndarray:
+        sxx = np.zeros((p, p), dtype=float)
+        sxy = np.zeros(p, dtype=float)
+        syy = 0.0
+        for stat in cluster_stats:
+            inv_sigma2, alpha, _ = _random_intercept_scalars(
+                stat.n_obs,
+                sigma2,
+                sigma_u2,
             )
-        else:
-            global_hist = np.zeros(0, dtype=np.int64)
+            sxx += inv_sigma2 * stat.xtx - alpha * np.outer(stat.x_sum, stat.x_sum)
+            sxy += inv_sigma2 * stat.xty - alpha * stat.x_sum * stat.y_sum
+            syy += inv_sigma2 * stat.yty - alpha * stat.y_sum * stat.y_sum
+        packed_sxx = np.asarray(pack_upper_triangle(sxx), dtype=float)
+        return np.concatenate([packed_sxx, sxy, np.array([syy], dtype=float)])
 
-        sxx = np.asarray(
-            agg_client.sum(np.asarray(payload["sxx_packed"], dtype=float)),
-            dtype=float,
-        )
-        sxy = np.asarray(
-            agg_client.sum(np.asarray(payload["sxy"], dtype=float)),
-            dtype=float,
-        )
-        syy = float(
-            np.asarray(
-                agg_client.sum(np.array([payload["syy"]], dtype=float)),
-                dtype=float,
-            ).reshape(-1)[0]
-        )
-        return sxx, sxy, syy, global_hist
-
-    @staticmethod
-    def _collect_global_phase_b(
-        payload: dict[str, Any],
+    def _profile_eval(
+        self,
+        cluster_stats: list[_LMMClusterStats],
+        *,
+        sigma2: float,
+        sigma_u2: float,
+        p: int,
+        global_hist: np.ndarray,
+        n_obs: int,
         agg_client: AggregationClient,
-    ) -> tuple[float, float, float, float, np.ndarray]:
-        q = np.asarray([payload["q1"], payload["q2"], payload["t0"], payload["t1"]])
-        q_sum = np.asarray(agg_client.sum(q), dtype=float).reshape(-1)
-        b_sum = np.asarray(
-            agg_client.sum(np.asarray(payload["b_packed"], dtype=float)),
-            dtype=float,
+    ) -> _LMMProfileState:
+        phase_a_local = self._local_phase_a_vector(
+            cluster_stats,
+            sigma2=sigma2,
+            sigma_u2=sigma_u2,
+            p=p,
         )
-        return float(q_sum[0]), float(q_sum[1]), float(q_sum[2]), float(q_sum[3]), b_sum
+        phase_a_global = np.asarray(agg_client.sum(phase_a_local), dtype=float)
+        packed_len = (p * (p + 1)) // 2
+        sxx = unpack_upper_triangle(phase_a_global[:packed_len], p)
+        sxy = phase_a_global[packed_len : packed_len + p]
+        syy = float(phase_a_global[-1])
+        beta, a_inv = _solve_gls_system(sxx, sxy, ridge=self.ridge)
+        ll_reml = reml_objective_from_summaries(
+            sxx,
+            syy,
+            beta,
+            sigma2=sigma2,
+            sigma_u2=sigma_u2,
+            hist=global_hist,
+            n_obs=n_obs,
+            p=p,
+        )
+        return _LMMProfileState(
+            beta=beta,
+            a_inv=a_inv,
+            sxx=sxx,
+            syy=syy,
+            ll_reml=float(ll_reml),
+        )
+
+    def _local_phase_b_vector(
+        self,
+        cluster_stats: list[_LMMClusterStats],
+        *,
+        sigma2: float,
+        sigma_u2: float,
+        beta: np.ndarray,
+        p: int,
+    ) -> np.ndarray:
+        q1 = 0.0
+        q2 = 0.0
+        t0 = 0.0
+        t1 = 0.0
+        b = np.zeros((p, p), dtype=float)
+        for stat in cluster_stats:
+            inv_sigma2, alpha, ones_gain = _random_intercept_scalars(
+                stat.n_obs,
+                sigma2,
+                sigma_u2,
+            )
+            sum_r = stat.y_sum - float(stat.x_sum @ beta)
+            rtr = float(
+                stat.yty - 2.0 * np.dot(beta, stat.xty) + beta @ (stat.xtx @ beta)
+            )
+            q1 += (
+                inv_sigma2 * inv_sigma2 * rtr
+                + (-2.0 * inv_sigma2 * alpha + alpha * alpha * stat.n_obs)
+                * sum_r
+                * sum_r
+            )
+            q2 += (ones_gain * sum_r) ** 2
+            t0 += stat.n_obs * (inv_sigma2 - alpha)
+            t1 += stat.n_obs * ones_gain
+            xv = ones_gain * stat.x_sum
+            b += np.outer(xv, xv)
+        packed_b = np.asarray(pack_upper_triangle(b), dtype=float)
+        return np.concatenate(
+            [np.array([q1, q2, t0, t1], dtype=float), packed_b],
+        )
+
+    def _gradient_logscale(
+        self,
+        cluster_stats: list[_LMMClusterStats],
+        *,
+        sigma2: float,
+        sigma_u2: float,
+        beta: np.ndarray,
+        a_inv: np.ndarray,
+        p: int,
+        agg_client: AggregationClient,
+    ) -> np.ndarray:
+        phase_b_local = self._local_phase_b_vector(
+            cluster_stats,
+            sigma2=sigma2,
+            sigma_u2=sigma_u2,
+            beta=beta,
+            p=p,
+        )
+        phase_b_global = np.asarray(agg_client.sum(phase_b_local), dtype=float)
+        q1, q2, t0, t1 = phase_b_global[:4]
+        b = unpack_upper_triangle(phase_b_global[4:], p)
+        return reml_grad_logscale_from_summaries(
+            q1=q1,
+            q2=q2,
+            t0=t0,
+            t1=t1,
+            b=b,
+            a_inv=a_inv,
+            p=p,
+            sigma2=sigma2,
+            sigma_u2=sigma_u2,
+        )
 
     def fit(
         self,
@@ -442,6 +579,17 @@ class FederatedLMM(FederatedEstimator):
                 "LMM cannot run because observations are fewer than predictors."
             )
 
+        cluster_stats, cluster_sizes, cluster_sums = _prepare_cluster_stats(
+            X,
+            y,
+            center_ids,
+            w,
+        )
+        cluster_labels = np.asarray(
+            [stat.label for stat in cluster_stats], dtype=object
+        )
+        global_hist = self._collect_global_hist(cluster_stats, agg_client)
+
         p = X.shape[1]
         beta = np.zeros(p, dtype=float)
         if self.use_rough_init:
@@ -449,95 +597,78 @@ class FederatedLMM(FederatedEstimator):
                 y,
                 center_ids,
                 agg_client=agg_client,
+                cluster_sizes=cluster_sizes,
+                cluster_sums=cluster_sums,
+                cluster_labels=cluster_labels,
             )
         else:
             sigma2 = float(self.init_sigma2)
             sigma_u2 = float(self.init_sigma_u2)
+
         converged = False
         history: list[dict[str, float]] = []
-        final_agg = _LMMRemlAggregator(p, n_obs=n_obs)
-        final_a_inv = np.eye(p, dtype=float)
+        final_profile: _LMMProfileState | None = None
 
         for it in range(1, self.max_iter + 1):
+            current_profile = self._profile_eval(
+                cluster_stats,
+                sigma2=sigma2,
+                sigma_u2=sigma_u2,
+                p=p,
+                global_hist=global_hist,
+                n_obs=n_obs,
+                agg_client=agg_client,
+            )
+            grad = self._gradient_logscale(
+                cluster_stats,
+                sigma2=sigma2,
+                sigma_u2=sigma_u2,
+                beta=current_profile.beta,
+                a_inv=current_profile.a_inv,
+                p=p,
+                agg_client=agg_client,
+            )
 
-            def _profile_eval(
-                s2_eval: float,
-                su2_eval: float,
-            ) -> tuple[np.ndarray, float, _LMMRemlAggregator, np.ndarray]:
-                phase_a_payload = self._summaries_node(
-                    X,
-                    y,
-                    center_ids,
-                    s2_eval,
-                    su2_eval,
-                    beta,
-                    w=w,
-                    compute_reml_terms=False,
-                )
-                sxx_packed, sxy, syy, global_hist = self._collect_global_phase_a(
-                    phase_a_payload, agg_client
-                )
-                agg_eval = _LMMRemlAggregator(p, n_obs=n_obs)
-                agg_eval.accumulate(
-                    {
-                        "sxx_packed": sxx_packed,
-                        "sxy": sxy,
-                        "syy": syy,
-                        "global_hist": global_hist,
-                    }
-                )
-                beta_eval, a_inv_eval = agg_eval.compute_beta_gls(ridge=self.ridge)
-                ll_eval = agg_eval.objective(beta_eval, s2_eval, su2_eval)
-                return beta_eval, float(ll_eval), agg_eval, a_inv_eval
-
-            beta_new, ell0, agg, a_inv = _profile_eval(sigma2, sigma_u2)
             phi0 = np.array([np.log(sigma2), np.log(sigma_u2)], dtype=float)
-            eps = 1e-6
-            g = np.zeros(2, dtype=float)
-            for i in range(2):
-                d = np.zeros(2, dtype=float)
-                d[i] = eps
-                sp = np.exp(phi0 + d)
-                sm = np.exp(phi0 - d)
-                ll_p = _profile_eval(float(sp[0]), float(sp[1]))[1]
-                ll_m = _profile_eval(float(sm[0]), float(sm[1]))[1]
-                g[i] = (ll_p - ll_m) / (2.0 * eps)
-            # Trust-region style regularization in step space
-            d = g / (1.0 + self.reg_lambda)
-            gd = float(g @ d)
+            direction = grad / (1.0 + self.reg_lambda)
+            gd = float(grad @ direction)
             log_lo = float(np.log(self.lower_bound))
             log_hi = float(np.log(self.upper_bound))
-            sigma2_new, sigma_u2_new = sigma2, sigma_u2
-            beta_selected = beta_new
-            agg_selected = agg
-            a_inv_selected = a_inv
+
+            sigma2_new = sigma2
+            sigma_u2_new = sigma_u2
+            selected_profile = current_profile
             improved = False
 
-            if np.isfinite(gd) and gd > 0:
+            if np.isfinite(gd) and gd > 0.0:
                 step = 1.0
-                ell_selected = ell0
                 for _ in range(10):
-                    phi_try = np.clip(phi0 + step * d, log_lo, log_hi)
-                    s2_try = float(np.exp(phi_try[0]))
-                    su2_try = float(np.exp(phi_try[1]))
-                    beta_t, ell_try, agg_t, a_inv_t = _profile_eval(s2_try, su2_try)
-
-                    if np.isfinite(ell_try) and ell_try >= ell0 + 1e-4 * step * gd:
-                        sigma2_new, sigma_u2_new = s2_try, su2_try
-                        beta_selected = beta_t
-                        agg_selected = agg_t
-                        a_inv_selected = a_inv_t
-                        ell_selected = ell_try
+                    phi_try = np.clip(phi0 + step * direction, log_lo, log_hi)
+                    sigma2_try = float(np.exp(phi_try[0]))
+                    sigma_u2_try = float(np.exp(phi_try[1]))
+                    trial_profile = self._profile_eval(
+                        cluster_stats,
+                        sigma2=sigma2_try,
+                        sigma_u2=sigma_u2_try,
+                        p=p,
+                        global_hist=global_hist,
+                        n_obs=n_obs,
+                        agg_client=agg_client,
+                    )
+                    if np.isfinite(trial_profile.ll_reml) and (
+                        trial_profile.ll_reml
+                        >= current_profile.ll_reml + 1e-4 * step * gd
+                    ):
+                        sigma2_new = sigma2_try
+                        sigma_u2_new = sigma_u2_try
+                        selected_profile = trial_profile
                         improved = True
                         break
                     step *= 0.5
-            else:
-                ell_selected = ell0
 
             delta = max(
-                float(
-                    np.linalg.norm(beta_selected - beta) / (1.0 + np.linalg.norm(beta))
-                ),
+                float(np.linalg.norm(selected_profile.beta - beta))
+                / (1.0 + float(np.linalg.norm(beta))),
                 abs(sigma2_new - sigma2) / (1.0 + sigma2),
                 abs(sigma_u2_new - sigma_u2) / (1.0 + sigma_u2),
             )
@@ -547,21 +678,24 @@ class FederatedLMM(FederatedEstimator):
                     "delta": float(delta),
                     "sigma2": float(sigma2_new),
                     "sigma_u2": float(sigma_u2_new),
-                    "ll_reml": float(ell_selected),
+                    "ll_reml": float(selected_profile.ll_reml),
                     "improved": float(improved),
                 }
             )
-            beta = beta_selected
+
+            beta = selected_profile.beta
             sigma2 = sigma2_new
             sigma_u2 = sigma_u2_new
-            final_agg = agg_selected
-            final_a_inv = a_inv_selected
+            final_profile = selected_profile
+
             if it >= self.min_iter and delta < self.tol:
                 converged = True
                 break
 
-        beta = np.asarray(beta, dtype=float)
-        cov_params = final_a_inv * sigma2
+        if final_profile is None:  # pragma: no cover - defensive
+            raise RuntimeError("LMM finished without a profile state.")
+
+        cov_params = final_profile.a_inv
         bse = np.sqrt(np.maximum(np.diag(cov_params), 0.0))
         df_model = int(p - 1 if self.fit_intercept else p)
         df_resid = int(n_obs - p)
@@ -583,13 +717,10 @@ class FederatedLMM(FederatedEstimator):
             conf_low = np.full_like(beta, np.nan, dtype=float)
             conf_high = np.full_like(beta, np.nan, dtype=float)
 
-        ll_reml = final_agg.objective(beta, sigma2, sigma_u2)
-        n_groups = (
-            int(np.sum(final_agg.global_hist)) if final_agg.global_hist.size else 0
-        )
+        n_groups = int(np.sum(global_hist)) if global_hist.size else 0
         k_params = p + 2
-        aic = float(2.0 * k_params - 2.0 * ll_reml)
-        bic = float(np.log(max(n_obs, 1)) * k_params - 2.0 * ll_reml)
+        aic = float(2.0 * k_params - 2.0 * final_profile.ll_reml)
+        bic = float(np.log(max(n_obs, 1)) * k_params - 2.0 * final_profile.ll_reml)
 
         results = FederatedLMMResults(
             params=beta,
@@ -605,7 +736,7 @@ class FederatedLMM(FederatedEstimator):
             n_groups=n_groups,
             df_model=df_model,
             df_resid=df_resid,
-            ll_reml=ll_reml,
+            ll_reml=float(final_profile.ll_reml),
             aic=aic,
             bic=bic,
             converged=converged,

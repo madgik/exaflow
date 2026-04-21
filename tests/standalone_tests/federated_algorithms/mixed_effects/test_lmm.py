@@ -405,14 +405,29 @@ def _assert_case_against_oracle(
     X: np.ndarray,
 ):
     beta_sm = np.asarray(oracle.fe_params, dtype=float)
+    p = beta_sm.shape[0]
     sigma2_sm = float(oracle.scale)
     sigma_u2_sm = float(np.asarray(oracle.cov_re, dtype=float)[0, 0])
+    cov_params_sm = np.asarray(oracle.cov_params(), dtype=float)[:p, :p]
+    bse_sm = np.sqrt(np.maximum(np.diag(cov_params_sm), 0.0))
 
     np.testing.assert_allclose(
         fed.params,
         beta_sm,
         atol=case.param_atol,
         rtol=case.param_rtol,
+    )
+    np.testing.assert_allclose(
+        fed.bse,
+        bse_sm,
+        atol=max(5e-2, case.sigma_atol),
+        rtol=max(1e-1, case.sigma_rtol),
+    )
+    np.testing.assert_allclose(
+        fed.cov_params,
+        cov_params_sm,
+        atol=max(8e-2, case.sigma_atol),
+        rtol=max(2e-1, case.sigma_rtol),
     )
 
     if case.boundary_sigma_u2 or sigma_u2_sm < 1e-3:
