@@ -5,6 +5,9 @@ from typing import List
 from typing import Optional
 
 from exaflow import exareme3_preprocessing_step_classes
+from exaflow.algorithms.exareme3.utils.preprocessing_step import (
+    get_ordered_preprocessing_items,
+)
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import InputDataSpecification
 from exaflow.algorithms.specifications import InputDataSpecifications
@@ -153,7 +156,11 @@ def _validate_and_apply_preprocessing(
     if not algorithm_request_dto.preprocessing:
         return transformed_inputdata, transformed_data_model_cdes
 
-    for name, params in algorithm_request_dto.preprocessing.items():
+    for name, params in get_ordered_preprocessing_items(
+        preprocessing=algorithm_request_dto.preprocessing,
+        preprocessing_step_classes=exareme3_preprocessing_step_classes,
+        preprocessing_step_specs=preprocessing_steps_specs,
+    ):
         if name not in preprocessing_steps_specs.keys():
             raise BadUserInput(f"Transformer '{name}' does not exist.")
 

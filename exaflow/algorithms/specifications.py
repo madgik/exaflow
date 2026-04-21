@@ -1,4 +1,5 @@
 from enum import Enum
+from enum import IntEnum
 from enum import unique
 from typing import Any
 from typing import Dict
@@ -20,6 +21,14 @@ class AlgorithmType(Enum):
 @unique
 class PreprocessingStepType(Enum):
     EXAREME3_PREPROCESSING_STEP = "exareme3_preprocessing_step"
+
+
+@unique
+class PreprocessingStepOrder(IntEnum):
+    FIRST = 1
+    SECOND = 2
+    THIRD = 3
+    FOURTH = 4
 
 
 @unique
@@ -277,4 +286,5 @@ class PreprocessingStepSpecification(WorkflowStepSpecification):
     enabled: bool
     parameters: Optional[Dict[str, ParameterSpecification]] = None
     type: PreprocessingStepType = PreprocessingStepType.EXAREME3_PREPROCESSING_STEP
+    order: PreprocessingStepOrder = PreprocessingStepOrder.FOURTH
     components: List[ComponentType] = Field(default_factory=list)

@@ -91,6 +91,7 @@ class MissingValuesHandler(PreprocessingStep):
                 ),
             },
             type=specs.PreprocessingStepType.EXAREME3_PREPROCESSING_STEP,
+            order=specs.PreprocessingStepOrder.FIRST,
             components=[],
         )
 

@@ -14,6 +14,7 @@ from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterEnumType
 from exaflow.algorithms.specifications import ParameterSpecification
 from exaflow.algorithms.specifications import ParameterType
+from exaflow.algorithms.specifications import PreprocessingStepOrder
 from exaflow.algorithms.specifications import PreprocessingStepSpecification
 from exaflow.algorithms.specifications import PreprocessingStepType
 from exaflow.controller import DeploymentType
@@ -861,6 +862,21 @@ def get_parametrization_list_success_cases():
             ),
             id="Preprocessing params are validated using transformed inputdata from previous steps.",
         ),
+        pytest.param(
+            "algorithm_with_y_int",
+            AlgorithmRequestDTO(
+                inputdata=AlgorithmInputDataDTO(
+                    data_model="data_model_with_all_cde_types:0.1",
+                    datasets=["sample_dataset1"],
+                    y=["text_cde_categ"],
+                ),
+                preprocessing={
+                    "step_using_transformed_inputdata": {"selected_var": "real_cde"},
+                    "rename_to_real": {},
+                },
+            ),
+            id="Preprocessing execution order is derived from step order enum, not request map order.",
+        ),
     ]
     return parametrization_list
 
@@ -886,6 +902,7 @@ class RenameYToRealStep(PreprocessingStep):
             desc="rename_to_real",
             label="rename_to_real",
             enabled=True,
+            order=PreprocessingStepOrder.FIRST,
         )
 
     def validate_params(self, *, inputdata, metadata):
@@ -916,6 +933,7 @@ class NoopPreprocessingStep(PreprocessingStep):
             desc="noop_preprocessing_step",
             label="noop_preprocessing_step",
             enabled=True,
+            order=PreprocessingStepOrder.FOURTH,
         )
 
     def validate_params(self, *, inputdata, metadata):

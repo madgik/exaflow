@@ -104,11 +104,12 @@
   - `LongitudinalTransformer.required_input_variables()` returns
     `[dataset, subjectid, visitid]`, so worker UDF loading can include the
     longitudinal keys explicitly.
-  - Controller preprocessing orchestration runs step names in request order
-    (`strategies.py`) and applies:
+  - Controller preprocessing orchestration sorts steps by each step's
+    `PreprocessingStep.get_specification().order` and applies:
     `validate_params -> transform_inputdata_variables -> transform_metadata`.
-  - Worker preprocessing applies runtime transforms in request order
-    (`udf_service.py`) via `transform_data_and_metadata(data, metadata)`.
+  - Worker preprocessing applies runtime transforms in the same
+    `PreprocessingStep.get_specification().order` sequence (`udf_service.py`) via
+    `transform_data_and_metadata(data, metadata)`.
 
 ## Longitudinal notes
 
