@@ -6,6 +6,9 @@ from exaflow.aggregation_clients.exareme3_udf_aggregation_client import (
     Exareme3UDFAggregationClient as AggregationClient,
 )
 from exaflow.algorithms.exareme3.utils.metadata_enums import enforce_enum_order
+from exaflow.algorithms.exareme3.utils.preprocessing_step import (
+    get_ordered_preprocessing_items,
+)
 from exaflow.algorithms.exareme3.utils.registry import exareme3_registry
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.utils.pandas_utils import convert_to_pandas_dataframe
@@ -93,7 +96,10 @@ def _create_aggregation_client_if_required(
 
 def _collect_extra_columns(preprocessing: dict) -> set[str]:
     extra_columns = set()
-    for preprocessing_step_name in preprocessing or {}:
+    for preprocessing_step_name, _ in get_ordered_preprocessing_items(
+        preprocessing=preprocessing,
+        preprocessing_step_classes=exareme3_preprocessing_step_classes,
+    ):
         preprocessing_step_cls = exareme3_preprocessing_step_classes[
             preprocessing_step_name
         ]
@@ -154,9 +160,13 @@ def _apply_preprocessing_steps_to_data_and_metadata(
         agg_client=agg_client,
     )
 
-    for preprocessing_step_name, preprocessing_step_params in (
-        preprocessing or {}
-    ).items():
+    for (
+        preprocessing_step_name,
+        preprocessing_step_params,
+    ) in get_ordered_preprocessing_items(
+        preprocessing=preprocessing,
+        preprocessing_step_classes=exareme3_preprocessing_step_classes,
+    ):
         preprocessing_step_cls = exareme3_preprocessing_step_classes[
             preprocessing_step_name
         ]

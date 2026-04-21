@@ -6,6 +6,9 @@ from exaflow import exareme3_preprocessing_step_classes
 from exaflow.aggregation_clients.controller_aggregation_client import (
     ControllerAggregationClient,
 )
+from exaflow.algorithms.exareme3.utils.preprocessing_step import (
+    get_ordered_preprocessing_items,
+)
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.controller import config as controller_config
 from exaflow.controller.federation_info_logs import log_experiment_execution
@@ -31,7 +34,13 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
     ) -> Tuple[Inputdata, dict]:
         transformed_inputdata = inputdata
         transformed_metadata = metadata
-        for preprocessing_step_name, preprocessing_step_params in preprocessing.items():
+        for (
+            preprocessing_step_name,
+            preprocessing_step_params,
+        ) in get_ordered_preprocessing_items(
+            preprocessing=preprocessing,
+            preprocessing_step_classes=exareme3_preprocessing_step_classes,
+        ):
             preprocessing_step_cls = exareme3_preprocessing_step_classes[
                 preprocessing_step_name
             ]

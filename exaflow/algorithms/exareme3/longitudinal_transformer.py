@@ -135,6 +135,7 @@ class LongitudinalTransformer(PreprocessingStep):
                 ),
             },
             type=specs.PreprocessingStepType.EXAREME3_PREPROCESSING_STEP,
+            order=specs.PreprocessingStepOrder.SECOND,
             components=[],
         )
 

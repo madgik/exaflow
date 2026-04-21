@@ -18,6 +18,7 @@ from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterEnumType
 from exaflow.algorithms.specifications import ParameterSpecification
 from exaflow.algorithms.specifications import ParameterType
+from exaflow.algorithms.specifications import PreprocessingStepOrder
 from exaflow.algorithms.specifications import PreprocessingStepSpecification
 from exaflow.controller.services.api.algorithm_request_dtos import (
     AlgorithmRequestSystemFlags,
@@ -72,6 +73,7 @@ class PreprocessingStepSpecificationDTO(ImmutableBaseModel):
     desc: str
     label: str
     parameters: Optional[Dict[str, ParameterSpecificationDTO]] = None
+    order: PreprocessingStepOrder
 
 
 class AlgorithmSpecificationDTO(ImmutableBaseModel):
@@ -217,6 +219,7 @@ def _convert_transformer_specification_to_dto(spec: PreprocessingStepSpecificati
         name=spec.name,
         desc=spec.desc,
         label=spec.label,
+        order=spec.order,
         parameters=(
             {
                 name: _convert_parameter_specification_to_dto(value)
