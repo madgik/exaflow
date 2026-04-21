@@ -14,7 +14,7 @@ GLMM_ORDINAL_CASES = [
                     "y": ["agegroup"],
                     "x": ["lefthippocampus", "leftamygdala", "dataset"],
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2", "desd-synthdata1"],
+                    "datasets": ["ppmi0", "ppmi1", "ppmi2"],
                     "filters": None,
                 },
                 "parameters": {

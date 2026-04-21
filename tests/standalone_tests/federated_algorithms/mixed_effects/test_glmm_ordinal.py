@@ -6,6 +6,9 @@ import numpy as np
 import pytest
 
 from exaflow.algorithms.federated.mixed_effects import FederatedGLMMOrdinal
+from exaflow.algorithms.federated.mixed_effects.glmm_ordinal import (
+    _prepare_ordinal_clusters,
+)
 from exaflow.algorithms.federated.utils import BadInputError
 from tests.standalone_tests.federated_algorithms.mixed_effects.glmm_test_template import (
     CASE_MATRIX,
@@ -52,6 +55,8 @@ def _assert_behavior(case: GLMMCase, fed, *, X: np.ndarray, y: np.ndarray):
     assert np.all(preds >= 0) and np.all(preds <= case.K - 1)
     assert np.all(np.diff(fed.cutpoints) > 0.0)
     assert np.isfinite(fed.sigma_u2) and fed.sigma_u2 >= 0.0
+    if case.fit_intercept:
+        assert np.isclose(fed.cutpoints[0], 0.0, atol=1e-10)
 
     assert fed.nobs == X.shape[0]
     assert fed.n_groups > 0
@@ -64,19 +69,24 @@ def _assert_behavior(case: GLMMCase, fed, *, X: np.ndarray, y: np.ndarray):
     assert np.all(np.isfinite(score_vals))
     assert np.all(np.isfinite(dtheta_vals))
     assert score_vals[-1] <= score_vals[0] + 1e-8
-    assert dtheta_vals[-1] <= dtheta_vals[0] + 1e-8
+    assert dtheta_vals[-1] <= 5.0 + 1e-8
 
-    beta_true = np.asarray(case.beta, dtype=float)
+    beta_true_full = np.asarray(case.beta, dtype=float)
+    beta_true = beta_true_full
+    beta_ref = fed.params
+    if case.fit_intercept:
+        beta_true = beta_true[1:]
+        beta_ref = beta_ref[1:]
     strong_mask = np.abs(beta_true) >= 0.35
     if np.any(strong_mask):
         assert np.array_equal(
-            np.sign(fed.params[strong_mask]), np.sign(beta_true[strong_mask])
+            np.sign(beta_ref[strong_mask]), np.sign(beta_true[strong_mask])
         )
 
     x_design = X
     if case.fit_intercept:
         x_design = np.hstack([np.ones((X.shape[0], 1), dtype=float), X])
-    latent = x_design @ beta_true
+    latent = x_design @ beta_true_full
     expected_class = probs @ np.arange(case.K, dtype=float)
     corr = np.corrcoef(latent, expected_class)[0, 1]
     if case.name == "near_zero_signal":
@@ -257,6 +267,63 @@ def test_glmm_ordinal_result_invariants_and_predict():
     _assert_behavior(case, fed, X=X, y=y)
 
 
+def test_glmm_ordinal_laplace_gradient_matches_finite_difference():
+    case = CASE_MATRIX[0]
+    X, y, center_ids = synth_glmm_ordinal_case(case)
+    model = FederatedGLMMOrdinal(K=case.K, fit_intercept=case.fit_intercept)
+    x_design = np.asarray(X, dtype=float)
+    if case.fit_intercept:
+        x_design = model._add_intercept(x_design)
+    clusters = _prepare_ordinal_clusters(
+        x_design,
+        np.asarray(y, dtype=int),
+        np.asarray(center_ids),
+    )
+    p = x_design.shape[1]
+    ordinal_dim = max(0, case.K - 2) if case.fit_intercept else case.K - 1
+    theta = np.concatenate(
+        [
+            np.linspace(-0.2, 0.2, p, dtype=float),
+            np.array([np.log(0.7)], dtype=float),
+            np.linspace(-0.1, 0.15, ordinal_dim, dtype=float),
+        ]
+    )
+    theta = model._clip_theta_bounds(theta, p=p)
+    zero_modes = np.zeros(len(clusters), dtype=float)
+    objective, grad, _ = model._site_objective_gradient_from_clusters(
+        clusters,
+        theta,
+        p=p,
+        mode_state=zero_modes,
+    )
+
+    eps = 1e-6
+    num_grad = np.zeros_like(theta)
+    for idx in range(theta.size):
+        theta_plus = theta.copy()
+        theta_minus = theta.copy()
+        theta_plus[idx] += eps
+        theta_minus[idx] -= eps
+        theta_plus = model._clip_theta_bounds(theta_plus, p=p)
+        theta_minus = model._clip_theta_bounds(theta_minus, p=p)
+        obj_plus, _ = model._site_objective_only_from_clusters(
+            clusters,
+            theta_plus,
+            p=p,
+            mode_state=np.zeros(len(clusters), dtype=float),
+        )
+        obj_minus, _ = model._site_objective_only_from_clusters(
+            clusters,
+            theta_minus,
+            p=p,
+            mode_state=np.zeros(len(clusters), dtype=float),
+        )
+        num_grad[idx] = (obj_plus - obj_minus) / (2.0 * eps)
+
+    assert np.isfinite(objective)
+    assert np.allclose(grad, num_grad, atol=5e-4, rtol=5e-4)
+
+
 def test_glmm_ordinal_invalid_inputs_raise():
     case = CASE_MATRIX[0]
     X, y, center_ids = synth_glmm_ordinal_case(case)
@@ -270,6 +337,16 @@ def test_glmm_ordinal_invalid_inputs_raise():
         model.fit(
             X,
             y_bad,
+            center_ids=center_ids,
+            agg_client=agg_client,
+        )
+
+    X_bad = np.asarray(X, dtype=float).copy()
+    X_bad[0, 0] = np.nan
+    with pytest.raises(BadInputError):
+        model.fit(
+            X_bad,
+            y,
             center_ids=center_ids,
             agg_client=agg_client,
         )

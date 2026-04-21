@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -9,15 +10,11 @@ from exaflow.algorithms.federated.mixed_effects.common import (
     glm_logistic_score_hessian_block,
 )
 from exaflow.algorithms.federated.mixed_effects.common import (
-    glmm_binary_random_intercept_mode,
-)
-from exaflow.algorithms.federated.mixed_effects.common import (
     glmm_laplace_corrections_beta,
 )
 from exaflow.algorithms.federated.mixed_effects.common import logistic_sigmoid
 from exaflow.algorithms.federated.mixed_effects.common import pack_upper_triangle
 from exaflow.algorithms.federated.mixed_effects.common import unpack_upper_triangle
-from exaflow.algorithms.federated.mixed_effects.common import validate_inputs
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
@@ -132,9 +129,73 @@ class _GLMMAggregator:
         tol_theta: float,
         tol_score: float,
     ) -> bool:
-        dtheta_max = float(np.max(np.abs(theta_new - theta)))
+        dtheta = float(np.max(np.abs(theta_new - theta)))
         snorm = float(np.linalg.norm(score))
-        return (dtheta_max < tol_theta) and (snorm < tol_score)
+        return (dtheta < tol_theta) and (snorm < tol_score)
+
+
+@dataclass(frozen=True)
+class _BinaryClusterData:
+    center_id: object
+    X: np.ndarray
+    y: np.ndarray
+    w: np.ndarray
+
+
+def _prepare_binary_clusters(
+    X: np.ndarray,
+    y: np.ndarray,
+    center_ids: np.ndarray,
+    w: np.ndarray | None,
+) -> list[_BinaryClusterData]:
+    if w is None:
+        weights = np.ones_like(y, dtype=float)
+    else:
+        weights = np.asarray(w, dtype=float)
+
+    centers, inverse = np.unique(center_ids, return_inverse=True)
+    clusters: list[_BinaryClusterData] = []
+    for idx, center_id in enumerate(centers):
+        mask = inverse == idx
+        if not np.any(mask):
+            continue
+        clusters.append(
+            _BinaryClusterData(
+                center_id=center_id,
+                X=np.asarray(X[mask], dtype=float),
+                y=np.asarray(y[mask], dtype=float),
+                w=np.asarray(weights[mask], dtype=float),
+            )
+        )
+    return clusters
+
+
+def _glmm_binary_random_intercept_mode_warm(
+    eta_base: np.ndarray,
+    y: np.ndarray,
+    w: np.ndarray,
+    sigma_u2: float,
+    *,
+    init_u: float,
+    max_iter: int = 25,
+    tol: float = 1e-8,
+) -> tuple[float, float]:
+    inv_su2 = 1.0 / sigma_u2
+    u = float(init_u)
+    h = -inv_su2
+    for _ in range(max_iter):
+        eta = eta_base + u
+        p = clip_probs(logistic_sigmoid(eta))
+        g = np.sum(w * (y - p)) - u * inv_su2
+        h = -np.sum(w * p * (1.0 - p)) - inv_su2
+        step = g / h
+        u_new = u - step
+        if abs(u_new - u) < tol:
+            u = u_new
+            break
+        u = u_new
+    huu = -h
+    return float(u), float(huu)
 
 
 class FederatedGLMMBinary(FederatedEstimator):
@@ -151,6 +212,8 @@ class FederatedGLMMBinary(FederatedEstimator):
         max_step_norm: float = 5.0,
         log_sigma_u2_init: float = np.log(0.3),
         return_history: bool = False,
+        mode_tol: float = 1e-8,
+        mode_max_iter: int = 25,
     ) -> None:
         if max_iters <= 0:
             raise BadInputError("max_iters must be positive.")
@@ -160,6 +223,15 @@ class FederatedGLMMBinary(FederatedEstimator):
             raise BadInputError("tol_theta and tol_score must be positive.")
         if max_step_norm <= 0:
             raise BadInputError("max_step_norm must be positive.")
+        if mode_tol <= 0:
+            raise BadInputError("mode_tol must be positive.")
+        if mode_max_iter <= 0:
+            raise BadInputError("mode_max_iter must be positive.")
+        if not add_laplace_corrections:
+            raise BadInputError(
+                "FederatedGLMMBinary requires add_laplace_corrections=True to "
+                "estimate sigma_u2 correctly."
+            )
 
         self.fit_intercept = bool(fit_intercept)
         self.max_iters = int(max_iters)
@@ -171,6 +243,8 @@ class FederatedGLMMBinary(FederatedEstimator):
         self.max_step_norm = float(max_step_norm)
         self.log_sigma_u2_init = float(log_sigma_u2_init)
         self.return_history = bool(return_history)
+        self.mode_tol = float(mode_tol)
+        self.mode_max_iter = int(mode_max_iter)
         self.results: FederatedGLMMBinaryResults | None = None
 
     @staticmethod
@@ -180,26 +254,17 @@ class FederatedGLMMBinary(FederatedEstimator):
         n = X.shape[0]
         return np.hstack([np.ones((n, 1), dtype=float), X])
 
-    @staticmethod
     def _site_derivatives(
-        X: np.ndarray,
-        y: np.ndarray,
-        center_ids: np.ndarray,
+        self,
+        clusters: list[_BinaryClusterData],
         theta: np.ndarray,
-        w: np.ndarray | None,
-        add_laplace_corrections: bool,
-    ) -> dict[str, Any]:
-        validate_inputs(X, y, center_ids, w)
-        n, p = X.shape
+        *,
+        warm_modes: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
         theta = np.asarray(theta, dtype=float).reshape(-1)
-        q = int(theta.shape[0])
-        if q != p + 1:
-            raise BadInputError(f"theta must have length p+1={p + 1}, got {q}")
-
-        if w is None:
-            w = np.ones_like(y, dtype=float)
-        else:
-            w = np.asarray(w, dtype=float)
+        p = theta.shape[0] - 1
+        if theta.shape[0] != p + 1:
+            raise BadInputError("theta length mismatch.")
 
         beta = theta[:p]
         log_su2 = float(theta[p])
@@ -207,53 +272,57 @@ class FederatedGLMMBinary(FederatedEstimator):
         if sigma_u2 <= 0:
             raise BadInputError("sigma_u2 must be positive.")
         inv_su2 = 1.0 / sigma_u2
-        eta0 = X @ beta
 
-        score = np.zeros(q, dtype=float)
-        h = np.zeros((q, q), dtype=float)
-        uniq_centers = np.unique(center_ids)
-        sum_log_huu = 0.0
-
+        score = np.zeros(p + 1, dtype=float)
+        h = np.zeros((p + 1, p + 1), dtype=float)
         s_beta = score[:p]
         s_logsu2 = score[p : p + 1]
         h_bb = h[:p, :p]
         h_bs = h[:p, p : p + 1]
         h_ss = h[p : p + 1, p : p + 1]
+        next_warm_modes = np.zeros_like(warm_modes, dtype=float)
 
-        for j in uniq_centers:
-            idx = center_ids == j
-            xj = X[idx, :]
-            yj = y[idx]
-            wj = w[idx]
-            eta_base = eta0[idx]
-
-            u_star, huu = glmm_binary_random_intercept_mode(eta_base, yj, wj, sigma_u2)
-            sum_log_huu += np.log(huu)
+        for idx, cluster in enumerate(clusters):
+            eta_base = cluster.X @ beta
+            u_star, huu = _glmm_binary_random_intercept_mode_warm(
+                eta_base,
+                cluster.y,
+                cluster.w,
+                sigma_u2,
+                init_u=warm_modes[idx],
+                max_iter=self.mode_max_iter,
+                tol=self.mode_tol,
+            )
+            next_warm_modes[idx] = u_star
 
             eta = eta_base + u_star
             pj = clip_probs(logistic_sigmoid(eta))
 
-            s_b, h_b = glm_logistic_score_hessian_block(xj, yj, pj, wj)
+            s_b, h_b = glm_logistic_score_hessian_block(
+                cluster.X,
+                cluster.y,
+                pj,
+                cluster.w,
+            )
             s_beta += s_b
             h_bb += h_b
 
-            if add_laplace_corrections:
-                corr_beta = glmm_laplace_corrections_beta(xj, pj, wj, huu)
+            if self.add_laplace_corrections:
+                corr_beta = glmm_laplace_corrections_beta(
+                    cluster.X,
+                    pj,
+                    cluster.w,
+                    huu,
+                )
                 s_beta += corr_beta
                 h_bs += 0.5 * (corr_beta[:, None]) * (inv_su2 / (huu * huu))
-                s_logsu2[0] += 0.5 * ((u_star * u_star) * inv_su2 - 1.0) - 0.5 * (
+                s_logsu2[0] += 0.5 * ((u_star * u_star) * inv_su2 - 1.0) + 0.5 * (
                     inv_su2 / huu
                 )
                 h_ss[0, 0] += -0.5 * (u_star * u_star) * inv_su2 - 0.5 * (inv_su2 / huu)
 
         h[p : p + 1, :p] = h_bs.T
-        return {
-            "q": q,
-            "score": score.astype(float),
-            "h_packed": np.asarray(pack_upper_triangle(h.astype(float)), dtype=float),
-            "n_centers": int(len(uniq_centers)),
-            "sum_log_huu": float(sum_log_huu),
-        }
+        return score, h, next_warm_modes
 
     def fit(
         self,
@@ -269,8 +338,10 @@ class FederatedGLMMBinary(FederatedEstimator):
         center_ids = np.asarray(center_ids)
         if self.fit_intercept:
             X = self._add_intercept(X)
-        validate_inputs(X, y, center_ids, w)
 
+        from exaflow.algorithms.federated.mixed_effects.common import validate_inputs
+
+        validate_inputs(X, y, center_ids, w)
         if not np.all(np.isin(y, [0.0, 1.0])):
             raise BadInputError("GLMM binary expects y in {0,1}.")
 
@@ -285,30 +356,30 @@ class FederatedGLMMBinary(FederatedEstimator):
         except Exception:
             n_groups = len(np.unique(center_ids))
 
+        clusters = _prepare_binary_clusters(X, y, center_ids, w)
         p = X.shape[1]
-        theta = np.concatenate(
-            [np.zeros(p, dtype=float), np.array([self.log_sigma_u2_init], dtype=float)]
-        )
         q = p + 1
+        theta = np.concatenate(
+            [
+                np.zeros(p, dtype=float),
+                np.array([self.log_sigma_u2_init], dtype=float),
+            ]
+        )
+        warm_modes = np.zeros(len(clusters), dtype=float)
         history: list[dict[str, float]] = []
         converged = False
 
         for it in range(1, self.max_iters + 1):
-            site = self._site_derivatives(
-                X,
-                y,
-                center_ids,
+            score, h, warm_modes_new = self._site_derivatives(
+                clusters,
                 theta,
-                w,
-                self.add_laplace_corrections,
+                warm_modes=warm_modes,
             )
-            score_sum = np.asarray(agg_client.sum(site["score"]), dtype=float).reshape(
-                q
-            )
-            h_packed_sum = np.asarray(
-                agg_client.sum(np.asarray(site["h_packed"], dtype=float)),
-                dtype=float,
-            )
+            packed_h = np.asarray(pack_upper_triangle(h), dtype=float)
+            fused = np.concatenate([score, packed_h])
+            fused_sum = np.asarray(agg_client.sum(fused), dtype=float)
+            score_sum = fused_sum[:q]
+            h_packed_sum = fused_sum[q:]
 
             agg = _GLMMAggregator(q)
             agg.accumulate({"score": score_sum, "h_packed": h_packed_sum})
@@ -329,6 +400,7 @@ class FederatedGLMMBinary(FederatedEstimator):
                     "dtheta_max": dtheta_max,
                 }
             )
+            warm_modes = warm_modes_new
             if _GLMMAggregator.converged(
                 theta,
                 theta_new,

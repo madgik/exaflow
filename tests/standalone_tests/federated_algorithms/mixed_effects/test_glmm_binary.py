@@ -239,7 +239,7 @@ def test_glmm_binary_result_invariants_and_predict():
     _assert_behavior(case, fed, X=X, y=y)
 
 
-def test_glmm_binary_laplace_toggle_remains_finite():
+def test_glmm_binary_rejects_disabling_laplace_corrections():
     case = CASE_MATRIX[0]
     X, y, center_ids = synth_glmm_binary_case(case)
     coordinator = AggregationCoordinator(n_workers=1)
@@ -253,21 +253,18 @@ def test_glmm_binary_laplace_toggle_remains_finite():
         )
     ).fit(X, y, center_ids=center_ids, agg_client=agg_client)
 
-    coordinator = AggregationCoordinator(n_workers=1)
-    agg_client = SimulatedAggClient(worker_id=0, coordinator=coordinator)
-    without_laplace = FederatedGLMMBinary(
-        **build_binary_model_kwargs(
-            fit_intercept=case.fit_intercept,
-            add_laplace_corrections=False,
-            return_history=True,
-        )
-    ).fit(X, y, center_ids=center_ids, agg_client=agg_client)
-
     assert np.all(np.isfinite(with_laplace.params))
-    assert np.all(np.isfinite(without_laplace.params))
     assert np.isfinite(with_laplace.sigma_u2)
-    assert np.isfinite(without_laplace.sigma_u2)
-    assert with_laplace.nobs == without_laplace.nobs == X.shape[0]
+    assert with_laplace.nobs == X.shape[0]
+
+    with pytest.raises(BadInputError):
+        FederatedGLMMBinary(
+            **build_binary_model_kwargs(
+                fit_intercept=case.fit_intercept,
+                add_laplace_corrections=False,
+                return_history=True,
+            )
+        )
 
 
 def test_glmm_binary_invalid_inputs_raise():
