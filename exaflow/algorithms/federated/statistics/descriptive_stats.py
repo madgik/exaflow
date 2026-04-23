@@ -22,9 +22,10 @@ class FederatedDescriptiveStatistics:
     """
     Statsmodels-style descriptive interface backed by federated primitives.
 
-    ``describe`` returns per-variable summaries for each dataset together with
-    aggregation-backed global aggregates. ``hist`` provides federated histograms
-    (numerical or categorical) with optional grouping via ``x_vars``.
+    ``describe`` returns per-feature summaries for each dataset together
+    with aggregation-backed global aggregates.
+    ``hist`` provides federated histograms (numerical or categorical) with
+    optional grouping via ``x_vars``.
 
     Notes
     -----
