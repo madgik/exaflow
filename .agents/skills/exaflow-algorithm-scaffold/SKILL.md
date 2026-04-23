@@ -1,6 +1,7 @@
-______________________________________________________________________
-
-## name: exaflow-algorithm-scaffold description: Create missing placeholder artifacts for Exaflow Exareme3 algorithm development using a shared template. Use when you need to scaffold one or more algorithms, especially for bulk placeholder generation across the runtime algorithm catalog.
+---
+name: exaflow-algorithm-scaffold
+description: "Scaffold new or existing Exaflow Exareme3 algorithm placeholders."
+---
 
 # Exaflow Algorithm Scaffold
 
@@ -9,9 +10,9 @@ Use this skill to generate missing placeholder artifacts for Exareme3 algorithms
 ## Workflow
 
 1. Run the scaffold CLI from the Exaflow repository root.
-1. Use `--algorithms` for explicit targets or omit it to scaffold all runtime catalog algorithms.
-1. Use `--dry-run` first when checking impact.
-1. Review the JSON report (`created`, `skipped_existing`, `failed`).
+2. Use `--algorithms` for explicit targets or omit it to scaffold all runtime catalog algorithms.
+3. Use `--dry-run` first when checking impact.
+4. Review the JSON report (`created`, `skipped_existing`, `failed`).
 
 ## Commands
 

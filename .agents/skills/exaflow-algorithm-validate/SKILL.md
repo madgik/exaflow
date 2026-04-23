@@ -1,6 +1,7 @@
-______________________________________________________________________
-
-## name: exaflow-algorithm-validate description: Validate required implementation steps for Exaflow Exareme3 algorithms using static contracts and runtime checks. Use for changed-algorithm verification before commits and for stricter validation that combines standalone and production-environment tests.
+---
+name: exaflow-algorithm-validate
+description: "Validate required Exaflow Exareme3 algorithm implementation steps."
+---
 
 # Exaflow Algorithm Validate
 
@@ -9,10 +10,10 @@ Use this skill to verify that Exareme3 algorithm development artifacts and check
 ## Workflow
 
 1. Run the validator from the Exaflow repository root.
-1. Default mode validates changed algorithms only.
-1. Use `--algorithms` for explicit targets.
-1. Use `--strict` to run both standalone and prod_env runtime suites.
-1. Inspect the JSON report and fix `failed` entries.
+2. Default mode validates changed algorithms only.
+3. Use `--algorithms` for explicit targets.
+4. Use `--strict` to run both standalone and prod_env runtime suites.
+5. Inspect the JSON report and fix `failed` entries.
 
 ## Commands
 
