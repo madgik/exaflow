@@ -158,12 +158,13 @@ def _build_dataframe(case):
     return pd.DataFrame(rows)
 
 
-def _expected_describe(df, case):
+def _expected_describe(df, case, *, analysis_set):
+    stats_df = df.dropna() if analysis_set else df
     numerical_vars = case["numerical_vars"]
     nominal_vars = case["nominal_vars"]
     min_row_count = case["min_row_count"]
     dataset_groups = {
-        dataset: group for dataset, group in df.groupby("dataset", sort=False)
+        dataset: group for dataset, group in stats_df.groupby("dataset", sort=False)
     }
     expected_varbased = {}
     dataset_info = {
@@ -336,7 +337,7 @@ class TestFederatedDescriptiveStatistics(FederatedAlgorithmTest):
             return {
                 "global_varbased": {
                     (rec["variable"], rec["dataset"]): rec["data"]
-                    for rec in result.global_varbased
+                    for rec in result.global_recs
                 },
             }
 
@@ -348,8 +349,10 @@ class TestFederatedDescriptiveStatistics(FederatedAlgorithmTest):
         describe = FederatedDescriptiveStatistics(
             agg_client=kwargs["centralized_agg_client"]
         )
+        mode = kwargs["mode"]
+        describe_data = X if mode == "featurewise" else X.dropna()
         return describe.describe(
-            data=X,
+            data=describe_data,
             numerical_vars=kwargs["case"]["numerical_vars"],
             nominal_vars=kwargs["case"]["nominal_vars"],
             min_row_count=kwargs["case"]["min_row_count"],
@@ -359,8 +362,10 @@ class TestFederatedDescriptiveStatistics(FederatedAlgorithmTest):
 
     def compute_federated_result(self, X, y, *, agg_client, **kwargs):
         describe = FederatedDescriptiveStatistics(agg_client=agg_client)
+        mode = kwargs["mode"]
+        describe_data = X if mode == "featurewise" else X.dropna()
         return describe.describe(
-            data=X,
+            data=describe_data,
             numerical_vars=kwargs["case"]["numerical_vars"],
             nominal_vars=kwargs["case"]["nominal_vars"],
             min_row_count=kwargs["case"]["min_row_count"],
@@ -371,16 +376,19 @@ class TestFederatedDescriptiveStatistics(FederatedAlgorithmTest):
     def compare(self, federated_output, centralized_output, **kwargs):
         df = kwargs["X_full"]
         case = kwargs["case"]
+        mode = kwargs["mode"]
 
         varbased_map = {
             (rec["variable"], rec["dataset"]): rec["data"]
-            for rec in federated_output.recs_varbased
+            for rec in federated_output.recs
         }
         global_map = {
             (rec["variable"], rec["dataset"]): rec["data"]
-            for rec in federated_output.global_varbased
+            for rec in federated_output.global_recs
         }
-        expected_varbased, expected_global = _expected_describe(df, case)
+        expected_varbased, expected_global = _expected_describe(
+            df, case, analysis_set=mode == "analysis_set"
+        )
 
         if kwargs["n_workers"] == 1:
             assert set(varbased_map) == set(expected_varbased)
@@ -400,8 +408,9 @@ class TestFederatedDescriptiveStatistics(FederatedAlgorithmTest):
             else:
                 _nominal_close(global_map[key], expected)
 
+    @pytest.mark.parametrize("mode", ["featurewise", "analysis_set"])
     @pytest.mark.parametrize("case", TEST_CASES, ids=[c["name"] for c in TEST_CASES])
-    def test_federated_algorithm_with_one_worker(self, case):
+    def test_federated_algorithm_with_one_worker(self, case, mode):
         df = _build_dataframe(case)
         coordinator = AggregationCoordinator(n_workers=1)
         centralized_agg_client = SimulatedAggClient(
@@ -412,12 +421,14 @@ class TestFederatedDescriptiveStatistics(FederatedAlgorithmTest):
             y=np.zeros((df.shape[0],), dtype=float),
             n_workers=1,
             case=case,
+            mode=mode,
             X_full=df,
             centralized_agg_client=centralized_agg_client,
         )
 
+    @pytest.mark.parametrize("mode", ["featurewise", "analysis_set"])
     @pytest.mark.parametrize("case", TEST_CASES, ids=[c["name"] for c in TEST_CASES])
-    def test_federated_algorithm_with_multiple_workers(self, case):
+    def test_federated_algorithm_with_multiple_workers(self, case, mode):
         df = _build_dataframe(case)
         coordinator = AggregationCoordinator(n_workers=1)
         centralized_agg_client = SimulatedAggClient(
@@ -428,6 +439,7 @@ class TestFederatedDescriptiveStatistics(FederatedAlgorithmTest):
             y=np.zeros((df.shape[0],), dtype=float),
             n_workers=3,
             case=case,
+            mode=mode,
             X_full=df,
             centralized_agg_client=centralized_agg_client,
         )

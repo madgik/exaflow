@@ -1,3 +1,4 @@
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
@@ -9,38 +10,49 @@ from tests.algorithm_validation_tests.exareme3.helpers import parse_response
 
 algorithm_name = "describe"
 
-expected_file = Path(__file__).parent / "expected" / f"{algorithm_name}_expected.json"
+expected_file = (
+    Path(__file__).parent / "expected" / "describe_analysis_set_expected.json"
+)
 
 
 @pytest.mark.parametrize("test_input, expected", get_test_params(expected_file))
-def test_describe(test_input, expected):
-    response = algorithm_request(algorithm_name, test_input, drop_na=False)
+def test_describe_analysis_set(test_input, expected):
+    payload = _add_dropna_preprocessing(test_input)
+    response = algorithm_request(algorithm_name, payload, drop_na=False)
     result = parse_response(response)
 
-    compare_results(result, expected)
+    compare_results(result["featurewise"], expected["analysis_set"])
+
+
+def _add_dropna_preprocessing(test_input):
+    payload = deepcopy(test_input)
+    inputdata = payload.get("inputdata", {})
+    variables = [
+        var
+        for var in (inputdata.get("x", []) + inputdata.get("y", []))
+        if var != "dataset"
+    ]
+    if not variables:
+        return payload
+    payload["preprocessing"] = {
+        "missing_values_handler": {
+            "strategies": {var: "drop" for var in variables},
+        }
+    }
+    return payload
 
 
 def compare_results(result, expected):
     # sort records by variable and dataset in order to compare them
-    varbased_res = sorted(
-        result["variable_based"],
+    result_records = sorted(
+        result,
         key=lambda rec: rec["variable"] + rec["dataset"],
     )
-    varbased_exp = sorted(
-        expected["variable_based"],
+    expected_records = sorted(
+        expected,
         key=lambda rec: rec["variable"] + rec["dataset"],
     )
-    compare_records(varbased_res, varbased_exp)
-
-    modbased_res = sorted(
-        result["model_based"],
-        key=lambda rec: rec["variable"] + rec["dataset"],
-    )
-    modbased_exp = sorted(
-        expected["model_based"],
-        key=lambda rec: rec["variable"] + rec["dataset"],
-    )
-    compare_records(modbased_res, modbased_exp)
+    compare_records(result_records, expected_records)
 
 
 def compare_records(records1, records2):

@@ -1,8 +1,6 @@
 import pandas as pd
 
-from exaflow.algorithms.exareme3.describe import Result
 from exaflow.algorithms.exareme3.describe import Variable
-from exaflow.algorithms.exareme3.describe import reduce_recs_for_var
 from tests.testcase_generators.testcase_generator import TestCaseGenerator
 
 # TODO privacy threshold is hardcoded. Find beter solution.
@@ -54,9 +52,10 @@ class DesciptiveStatistics(TestCaseGenerator):
 
         result_modbased = [Variable.from_record(rec) for rec in recs_modbased]
 
-        result = Result(variable_based=result_varbased, model_based=result_modbased)
-
-        return result.model_dump()
+        return {
+            "featurewise": [rec.model_dump() for rec in result_varbased],
+            "analysis_set": [rec.model_dump() for rec in result_modbased],
+        }
 
 
 def get_numerical_records(data, numerical_vars, dataset):
@@ -125,6 +124,61 @@ def get_nominal_records(data, nominal_vars, dataset, enums):
 def group_by_dataset(data, datasets):
     for dataset in datasets:
         yield dataset, data[data.dataset == dataset]
+
+
+def reduce_recs_for_var(recs, var):
+    var_recs = [rec for rec in recs if rec["variable"] == var and rec["data"]]
+    if not var_recs:
+        return {"variable": var, "dataset": "all datasets", "data": None}
+
+    first_data = var_recs[0]["data"]
+    if "counts" in first_data:
+        counts = {}
+        for rec in var_recs:
+            for level, value in rec["data"]["counts"].items():
+                counts[level] = counts.get(level, 0) + int(value)
+        return {
+            "variable": var,
+            "dataset": "all datasets",
+            "data": {
+                "num_dtps": sum(int(rec["data"]["num_dtps"]) for rec in var_recs),
+                "num_total": sum(int(rec["data"]["num_total"]) for rec in var_recs),
+                "num_na": sum(int(rec["data"]["num_na"]) for rec in var_recs),
+                "counts": counts,
+            },
+        }
+
+    sx = sum(float(rec["data"]["sx"]) for rec in var_recs)
+    sxx = sum(float(rec["data"]["sxx"]) for rec in var_recs)
+    num_dtps = sum(int(rec["data"]["num_dtps"]) for rec in var_recs)
+    num_total = sum(int(rec["data"]["num_total"]) for rec in var_recs)
+    num_na = sum(int(rec["data"]["num_na"]) for rec in var_recs)
+    if num_dtps == 0:
+        return {"variable": var, "dataset": "all datasets", "data": None}
+
+    mean = sx / num_dtps
+    std = None
+    if num_dtps > 1:
+        variance = (sxx - num_dtps * mean**2) / (num_dtps - 1)
+        std = variance**0.5 if variance >= 0 else 0.0
+    return {
+        "variable": var,
+        "dataset": "all datasets",
+        "data": {
+            "num_dtps": num_dtps,
+            "num_total": num_total,
+            "num_na": num_na,
+            "mean": mean,
+            "std": std,
+            "min": min(float(rec["data"]["min"]) for rec in var_recs),
+            "q1": None,
+            "q2": None,
+            "q3": None,
+            "max": max(float(rec["data"]["max"]) for rec in var_recs),
+            "sx": sx,
+            "sxx": sxx,
+        },
+    }
 
 
 if __name__ == "__main__":

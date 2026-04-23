@@ -55,8 +55,7 @@ class Variable(BaseModel):
 
 
 class Result(BaseModel):
-    variable_based: List[Variable]
-    model_based: List[Variable]
+    featurewise: List[Variable]
 
 
 class Describe(Algorithm):
@@ -64,7 +63,7 @@ class Describe(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="describe",
-            desc="Federated descriptive statistics mirroring statsmodels Describe: per-dataset records plus aggregation server-backed global summaries.",
+            desc="Federated descriptive statistics with pairwise feature-level NA handling.",
             label="Descriptive stats (Describe)",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
@@ -140,34 +139,16 @@ class Describe(Algorithm):
             },
         )
 
-        recs_varbased = [
-            rec for worker_res in local_results for rec in worker_res["recs_varbased"]
-        ]
-        recs_modbased = [
-            rec for worker_res in local_results for rec in worker_res["recs_modbased"]
-        ]
+        recs = [rec for worker_res in local_results for rec in worker_res["recs"]]
 
-        recs_varbased = _append_missing_datasets(
-            records=recs_varbased,
+        recs = _append_missing_datasets(
+            records=recs,
             variables=variable_names,
             datasets=self.inputdata.datasets,
         )
-        recs_modbased = _append_missing_datasets(
-            records=recs_modbased,
-            variables=variable_names,
-            datasets=self.inputdata.datasets,
-        )
-        recs_varbased += local_results[0][
-            "global_varbased"
-        ]  # The global stats are the same in all responses
-        recs_modbased += local_results[0][
-            "global_modbased"
-        ]  # The global stats are the same in all responses
+        recs += local_results[0]["global_recs"]
 
-        return Result(
-            variable_based=[Variable.from_record(rec) for rec in recs_varbased],
-            model_based=[Variable.from_record(rec) for rec in recs_modbased],
-        )
+        return Result(featurewise=[Variable.from_record(rec) for rec in recs])
 
 
 @exareme3_udf(with_aggregation_server=True)
@@ -197,10 +178,8 @@ def local_step(
         dataset_col=DATASET_VAR_NAME,
     )
     return {
-        "recs_varbased": result.recs_varbased,
-        "recs_modbased": result.recs_modbased,
-        "global_varbased": result.global_varbased,
-        "global_modbased": result.global_modbased,
+        "recs": result.recs,
+        "global_recs": result.global_recs,
     }
 
 

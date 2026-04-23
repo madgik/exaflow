@@ -14,23 +14,19 @@ from exaflow.column_names import DATASET_COL
 class DescribeResult:
     def __init__(
         self,
-        recs_varbased: List[Dict],
-        recs_modbased: List[Dict],
-        global_varbased: List[Dict],
-        global_modbased: List[Dict],
+        recs: List[Dict],
+        global_recs: List[Dict],
     ):
-        self.recs_varbased = recs_varbased
-        self.recs_modbased = recs_modbased
-        self.global_varbased = global_varbased
-        self.global_modbased = global_modbased
+        self.recs = recs
+        self.global_recs = global_recs
 
 
 class FederatedDescribe:
     """
     Federated descriptive statistics algorithm.
 
-    ``describe`` mimics statsmodels' ``Describe`` by returning per-variable summaries
-    for each dataset together with aggregation-server-backed global aggregates.
+    ``describe`` returns per-feature summaries where each feature is
+    computed with pairwise complete observations.
 
     Notes
     -----
@@ -62,7 +58,7 @@ class FederatedDescribe:
         else:
             datasets = ["unknown"]
 
-        recs_varbased = [
+        recs = [
             rec
             for dataset in datasets
             for rec in self._compute_stats_records(
@@ -78,39 +74,15 @@ class FederatedDescribe:
             )
         ]
 
-        data_nona = data.dropna()
-        recs_modbased = [
-            rec
-            for dataset in datasets
-            for rec in self._compute_stats_records(
-                df=(
-                    data_nona[data_nona[dataset_col] == dataset]
-                    if dataset_col in data_nona.columns
-                    else data_nona
-                ),
-                dataset=str(dataset),
-                numerical_vars=numerical_vars,
-                nominal_vars=nominal_vars,
-                min_row_count=min_row_count,
-            )
-        ]
-
-        global_varbased = self._aggregate_global(
-            records=recs_varbased,
-            variables=numerical_vars + nominal_vars,
-            nominal_levels=nominal_levels,
-        )
-        global_modbased = self._aggregate_global(
-            records=recs_modbased,
+        global_recs = self._aggregate_global(
+            records=recs,
             variables=numerical_vars + nominal_vars,
             nominal_levels=nominal_levels,
         )
 
         return DescribeResult(
-            recs_varbased=recs_varbased,
-            recs_modbased=recs_modbased,
-            global_varbased=global_varbased,
-            global_modbased=global_modbased,
+            recs=recs,
+            global_recs=global_recs,
         )
 
     def _compute_stats_records(
