@@ -430,9 +430,36 @@ def main() -> int:
     args = parse_args()
     repo_root = ensure_repo_root(args.repo_root)
 
-    try:
-        runtime_catalog = load_runtime_catalog(repo_root)
-    except Exception as exc:  # pylint: disable=broad-except
+    if args.algorithms:
+        target_algorithms = parse_algorithm_list(args.algorithms)
+    else:
+        try:
+            runtime_catalog = load_runtime_catalog(repo_root)
+        except Exception as exc:  # pylint: disable=broad-except
+            print(
+                json.dumps(
+                    {
+                        "created": [],
+                        "skipped_existing": [],
+                        "failed": [
+                            {
+                                "algorithm": "*",
+                                "phase": "scaffold",
+                                "check": "load_runtime_catalog",
+                                "status": "failed",
+                                "message": str(exc),
+                                "path": None,
+                            }
+                        ],
+                        "report": [],
+                    },
+                    indent=2,
+                )
+            )
+            return 1
+        target_algorithms = runtime_catalog
+
+    if not target_algorithms:
         print(
             json.dumps(
                 {
@@ -442,41 +469,11 @@ def main() -> int:
                         {
                             "algorithm": "*",
                             "phase": "scaffold",
-                            "check": "load_runtime_catalog",
+                            "check": "target_selection",
                             "status": "failed",
-                            "message": str(exc),
+                            "message": "No target algorithms provided.",
                             "path": None,
                         }
-                    ],
-                    "report": [],
-                },
-                indent=2,
-            )
-        )
-        return 1
-
-    if args.algorithms:
-        target_algorithms = parse_algorithm_list(args.algorithms)
-    else:
-        target_algorithms = runtime_catalog
-
-    unknown = [name for name in target_algorithms if name not in runtime_catalog]
-    if unknown:
-        print(
-            json.dumps(
-                {
-                    "created": [],
-                    "skipped_existing": [],
-                    "failed": [
-                        {
-                            "algorithm": name,
-                            "phase": "scaffold",
-                            "check": "target_validation",
-                            "status": "failed",
-                            "message": "Algorithm not found in runtime catalog.",
-                            "path": None,
-                        }
-                        for name in unknown
                     ],
                     "report": [],
                 },

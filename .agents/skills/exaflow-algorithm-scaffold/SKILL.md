@@ -26,6 +26,7 @@ poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_alg
 ## Behavior Contract
 
 - Source of truth for `--all`: runtime Exareme3 algorithm catalog from `exaflow.exareme3_algorithm_classes`.
+- `--algorithms` accepts new algorithm IDs that are not yet in the runtime catalog.
 - Overwrite policy: never overwrite existing files.
 - Standalone test placement: infer `tests/standalone_tests/federated_algorithms/<subfolder>/test_<algorithm>.py`; fallback to `_generated` when uncertain.
 - Created placeholders:
