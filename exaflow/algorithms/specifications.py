@@ -84,6 +84,7 @@ class AlgorithmName(str, Enum):
     TTEST_INDEPENDENT = "ttest_independent"
     TTEST_ONESAMPLE = "ttest_onesample"
     TTEST_PAIRED = "ttest_paired"
+    TTEST_WELCH = "ttest_welch"
 
     def __str__(self) -> str:
         return str.__str__(self)

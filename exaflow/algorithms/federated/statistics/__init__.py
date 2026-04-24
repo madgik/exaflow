@@ -7,6 +7,7 @@ from .pearson_correlation import FederatedPearsonCorrelation
 from .ttest_independent import FederatedTTestIndependent
 from .ttest_onesample import FederatedTTestOneSample
 from .ttest_paired import FederatedTTestPaired
+from .ttest_welch import FederatedTtestWelch
 
 __all__ = [
     "FederatedAnovaOneWay",
@@ -18,4 +19,5 @@ __all__ = [
     "FederatedTTestIndependent",
     "FederatedTTestOneSample",
     "FederatedTTestPaired",
+    "FederatedTtestWelch",
 ]

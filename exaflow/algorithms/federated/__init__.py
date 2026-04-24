@@ -17,6 +17,7 @@ from exaflow.algorithms.federated.statistics import FederatedDescriptiveStatisti
 from exaflow.algorithms.federated.statistics import FederatedTTestIndependent
 from exaflow.algorithms.federated.statistics import FederatedTTestOneSample
 from exaflow.algorithms.federated.statistics import FederatedTTestPaired
+from exaflow.algorithms.federated.statistics import FederatedTtestWelch
 
 __all__ = [
     "FederatedAnovaOneWay",
@@ -38,4 +39,5 @@ __all__ = [
     "make_column_selector",
     "FederatedRegressionScorer",
     "FederatedClassificationScorer",
+    "FederatedTtestWelch",
 ]

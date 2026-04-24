@@ -1,0 +1,57 @@
+{
+  "test_cases": [
+    {
+      "input": {
+        "inputdata": {
+          "y": [
+            "rightgregyrusrectus"
+          ],
+          "x": [
+            "dataset"
+          ],
+          "data_model": "dementia:0.1",
+          "datasets": [
+            "ppmi2",
+            "desd-synthdata6",
+            "ppmi6",
+            "desd-synthdata0",
+            "ppmi8",
+            "ppmi9",
+            "ppmi4",
+            "desd-synthdata4",
+            "edsd6",
+            "edsd2",
+            "edsd8",
+            "desd-synthdata5",
+            "desd-synthdata3",
+            "desd-synthdata2",
+            "edsd1",
+            "ppmi0",
+            "edsd5",
+            "ppmi5",
+            "ppmi1"
+          ],
+          "filters": null
+        },
+        "parameters": {
+          "alt_hypothesis": "two-sided",
+          "alpha": 0.05,
+          "groupA": "edsd1",
+          "groupB": "ppmi2"
+        }
+      },
+      "output": {
+        "required_keys": [
+          "t_stat",
+          "df",
+          "p",
+          "mean_diff",
+          "se_diff",
+          "ci_upper",
+          "ci_lower",
+          "cohens_d"
+        ]
+      }
+    }
+  ]
+}
