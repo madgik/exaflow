@@ -14,6 +14,7 @@ repos:
     rev: 0.7.22
     hooks:
     -   id: mdformat
+        exclude: ^\.agents/skills/.*/SKILL\.md$
 
 -   repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.5
