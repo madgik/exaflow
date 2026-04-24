@@ -1,6 +1,14 @@
 # Compatibility Mapping (Transition)
 
-This skill keeps legacy naming compatibility to avoid false failures while the repository converges on new naming conventions.
+This skill keeps legacy naming compatibility to avoid false failures while the repository converges on canonical naming conventions.
+
+## Policy
+
+- Standard mode:
+  - Canonical path missing + legacy path present => `legacy_used` warning (non-failing).
+- `--new-algorithm` mode:
+  - Canonical path is mandatory.
+  - Legacy path may still be detected, but canonical missing is reported as `canonical_missing` (failing).
 
 ## Prod Test Compatibility
 
@@ -24,4 +32,4 @@ Maps selected algorithms to legacy documentation files such as
 
 ## Legacy Suite Policy
 
-`tests/algorithm_validation_tests` is treated as legacy and non-blocking by design.
+`tests/algorithm_validation_tests` remains non-blocking by design.
