@@ -86,6 +86,25 @@
   ./run_algorithm -a pearson_correlation -y leftamygdala lefthippocampus -d ppmi0 -m dementia:0.1 -p alpha 0.95
   ```
 
+## Algorithm Development
+
+For a new Exareme3 federated algorithm, start with
+[`documentation/new-algorithm-setup.md`](documentation/new-algorithm-setup.md).
+It contains the scaffold command, validation gate, required files, and a prompt
+you can give Codex for end-to-end integration.
+
+Fast path from the repository root:
+
+```
+poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family>
+```
+
+After implementation edits:
+
+```
+poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold
+```
+
 # Acknowledgement
 
 This project/research received funding from the European Union’s Horizon 2020 Framework Programme for Research and Innovation under the Framework Partnership Agreement No. 650003 (HBP FPA).

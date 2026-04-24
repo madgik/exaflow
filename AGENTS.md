@@ -21,10 +21,66 @@ ______________________________________________________________________
   | `exaflow/controller/quart` | HTTP endpoints; `endpoints.py` drives `/algorithms`. |
   | `exaflow/controller/services/exareme3` | Controller-side strategy + worker task abstractions. |
   | `exaflow/algorithms/exareme3` | Algorithm + preprocessing step implementations and in-code specs (`get_specification`). |
+  | `exaflow/algorithms/federated` | Federated core modules, family exports, and implementation docs. |
   | `exaflow/worker` | gRPC server, DuckDB loader, UDF runner. |
   | `exaflow/aggregation_server` | Optional microservice providing SUM/MIN/MAX aggregation. |
   | `tasks.py` | `invoke` tasks for configs, data seeding, service lifecycle. |
-  | `tests/algorithms` | Expected inputs/outputs used in validation. |
+  | `tests/standalone_tests/federated_algorithms` | Fast parity tests for federated core logic. |
+  | `tests/prod_env_tests` | Prod validation request tests and expected fixtures. |
+  | `.agents/skills` | Canonical scaffold and validation automation for algorithm work. |
+
+______________________________________________________________________
+
+## New Algorithm Quickstart
+
+Use `documentation/new-algorithm-setup.md` as the human-facing guide. For agent
+work, the canonical path is:
+
+1. Pick a lower snake_case `<algorithm_id>` and a federated `<family>` such as
+   `statistics`, `linear_model`, `decomposition`, or `naive_bayes`.
+
+1. Run the integration driver once to scaffold and expose the first failing
+   gates:
+
+   ```bash
+   poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family>
+   ```
+
+1. Implement the generated files:
+
+   - `exaflow/algorithms/exareme3/<algorithm_id>.py`
+   - `exaflow/algorithms/federated/<family>/<algorithm_id>.py`
+   - `tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py`
+   - `tests/prod_env_tests/test_<algorithm_id>_validation.py`
+   - `tests/prod_env_tests/expected/<algorithm_id>_expected.json`
+   - `documentation/algorithms/<algorithm_id>.md`
+   - `exaflow/algorithms/federated/docs/<algorithm_id>.md`
+
+1. Re-run the integration driver after edits and keep fixing until it reports
+   `"done": true`:
+
+   ```bash
+   poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold
+   ```
+
+1. Use `--strict` only when the prod environment is available and prod validation
+   is required.
+
+Do not leave scaffold placeholders in new algorithms. `TODO`,
+`NotImplementedError`, `__REPLACE_ME_*__` fixture values, missing docs, missing
+exports, and validator warnings are incomplete work for new-algorithm mode.
+
+Prompt template for future new-algorithm requests:
+
+```text
+Use the exaflow-algorithm-scaffold and exaflow-algorithm-validate skills to
+integrate <algorithm_id> as a new federated <family> algorithm in this Exaflow
+repo. Do not stop at placeholders. Implement the Exareme3 wrapper, federated
+core, registrations, standalone parity tests, prod validation fixture/test, and
+algorithm docs. Start with integrate_new_algorithm.py, then rerun it with
+--skip-scaffold after edits until it reports "done": true. Use --strict only if
+the prod environment is available.
+```
 
 ______________________________________________________________________
 
@@ -122,12 +178,39 @@ ______________________________________________________________________
 - **Controller integration:** Ensure the algorithm module lives in
   `EXAREME3_ALGORITHM_FOLDERS` (default `./exaflow/algorithms/exareme3`) so
   `exareme3_algorithm_classes` / `exareme3_preprocessing_step_classes` can discover it.
+- **New algorithm setup:** Prefer the scaffold and validation skills over manual
+  file creation. They patch common exports, create canonical fixtures/docs, and
+  reject incomplete placeholders in new-algorithm mode.
 
 ______________________________________________________________________
 
 ## Testing & Validation
 
 - **Pytest entrypoints:**
-  - `poetry run pytest tests/algorithms` — golden tests for algorithm outputs.
+  - `poetry run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py` — fast federated-core parity checks.
+  - `poetry run pytest -q tests/prod_env_tests/test_<algorithm_id>_validation.py` — prod validation checks when the environment is available.
+- **Algorithm integration gates:**
+  - `poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold`
+  - `poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm <algorithm_id>`
+  - Add `--strict` only when prod-env runtime checks should run.
 - **Markers:** Defined in `pyproject.toml` (`slow`, `very_slow`, `smpc`, etc.).
   Focus on `slow/very_slow` when algorithm changes might affect distributed runs.
+
+______________________________________________________________________
+
+## Repo Skills (Algorithm Workflow)
+
+Use repo-path invocation for the shared algorithm skills:
+
+- Scaffold and integration gate:
+  - `poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family>`
+  - `poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold`
+- Scaffold only:
+  - `poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --dry-run`
+  - `poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms <algorithm_id> --family <family>`
+- Validate required steps:
+  - `poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root .`
+  - `poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm <algorithm_id>`
+  - `poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm <algorithm_id> --strict`
+
+These skills are versioned in-repo under `.agents/skills/` and are intended as the canonical workflow for Exareme3 algorithm scaffolding and validation.
