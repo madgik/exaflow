@@ -16,6 +16,25 @@ Use this skill to verify that Exareme3 algorithm development artifacts and check
 5. Use `--strict` to run standalone + prod_env runtime suites.
 6. Inspect JSON output and resolve `failed` entries first, then `warn` entries.
 
+## Execution-First Contract
+
+Agents using this skill must treat validator output as the source of truth. A task is not complete while `failed` or `warnings` are non-empty.
+
+Definition of Done:
+
+- `validate_algorithms.py --new-algorithm <name>` exits successfully.
+- Validator JSON contains no `failed` entries.
+- Validator JSON contains no `warnings` entries.
+- Focused standalone tests pass.
+- Focused import-order and format checks pass.
+- Strict mode is run when the user requests prod-env confidence.
+
+If validation fails, continue fixing until the same command passes. If blocked, return only the failing command, the relevant error, files already changed, and the next required action.
+
+## Watchdog Policy
+
+When supervising a delegated validation run, request a status snapshot after 5-8 minutes with commands run, files changed, and current failing gate. If the agent cannot name a current failing gate, interrupt it and run the integration driver from the scaffold skill.
+
 ## Commands
 
 Validate changed algorithms (default selection):

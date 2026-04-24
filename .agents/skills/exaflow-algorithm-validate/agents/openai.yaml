@@ -1,3 +1,18 @@
 interface:
   display_name: "Exaflow Algorithm Validate"
   short_description: "Validate Exareme3 algorithm required steps"
+execution_contract:
+  definition_of_done:
+    - "Run validate_algorithms.py with --new-algorithm for new algorithms."
+    - "Treat any failed or warning JSON rows as incomplete work."
+    - "Run focused ruff checks and standalone pytest for changed algorithm files."
+  watchdog:
+    status_after_minutes: 5
+    max_stalled_cycles: 2
+    stalled_cycle_action: "Return the current failing gate or hand off to integrate_new_algorithm.py."
+  blocked_response:
+    required_fields:
+      - "failing_command"
+      - "error_summary"
+      - "files_changed"
+      - "next_action"

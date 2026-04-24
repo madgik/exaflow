@@ -1,3 +1,19 @@
 interface:
   display_name: "Exaflow Algorithm Scaffold"
   short_description: "Integrate new Exareme3 algorithms end-to-end"
+execution_contract:
+  definition_of_done:
+    - "Run scaffold for the requested algorithm/family."
+    - "Replace every generated TODO/NotImplementedError placeholder."
+    - "Implement Exareme3 wrapper, federated core, standalone tests, prod fixture, and docs."
+    - "Run integrate_new_algorithm.py until every gate passes."
+  watchdog:
+    status_after_minutes: 5
+    max_stalled_cycles: 2
+    stalled_cycle_action: "Interrupt planning/status-only work and run the integration driver."
+  blocked_response:
+    required_fields:
+      - "failing_command"
+      - "error_summary"
+      - "files_changed"
+      - "next_action"

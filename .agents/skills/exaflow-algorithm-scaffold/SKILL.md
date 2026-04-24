@@ -17,7 +17,40 @@ Use this skill for end-to-end algorithm integration. Do not stop at placeholders
 6. Implement or update docs under `documentation/algorithms/` and `exaflow/algorithms/federated/docs/`.
 7. Run validation with `$exaflow-algorithm-validate` (fast, then strict when requested).
 
+## Execution-First Contract
+
+Agents using this skill must keep working until the Definition of Done is met or a concrete blocker is proven by a failing command.
+
+Definition of Done:
+
+- Scaffold command has run successfully.
+- All generated placeholder text is replaced (`TODO`, `NotImplementedError`).
+- Exareme3 wrapper and federated core import successfully.
+- Standalone parity test exists and passes.
+- Prod validation test and non-empty expected fixture exist.
+- Registration touchpoints and docs are patched.
+- `validate_algorithms.py --new-algorithm <name>` passes with no warnings.
+- Focused `ruff check --select I`, `ruff format --check`, and standalone `pytest` pass.
+
+Checkpoint responses are only acceptable when they include a failing command, its error summary, and the next concrete fix.
+
+## Watchdog Policy
+
+If a delegated agent has no meaningful file diff or command result after 5-8 minutes, interrupt it and run the integration driver below. After two stalled cycles, stop delegating and finish locally from the driver report.
+
 ## Commands
+
+Mechanical integration gate runner:
+
+```bash
+poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm my_new_algorithm --family statistics
+```
+
+After implementation edits are already present:
+
+```bash
+poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm my_new_algorithm --family statistics --skip-scaffold
+```
 
 Scaffold one new algorithm with family-aware integration patches:
 
