@@ -1,0 +1,67 @@
+{
+    "test_cases": [
+        {
+            "input": {
+                "inputdata": {
+                    "y": [
+                        "gender"
+                    ],
+                    "x": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "edsd0",
+                        "ppmi0"
+                    ],
+                    "filters": null
+                },
+                "parameters": {},
+                "test_case_num": 0
+            },
+            "output": {
+                "odds_ratio": 1.4857142857142858,
+                "p_value": 0.5609700785123689
+            }
+        },
+        {
+            "input": {
+                "inputdata": {
+                    "y": [
+                        "gender"
+                    ],
+                    "x": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "edsd0",
+                        "ppmi0"
+                    ],
+                    "filters": {
+                        "condition": "AND",
+                        "rules": [
+                            {
+                                "id": "alzheimerbroadcategory",
+                                "field": "alzheimerbroadcategory",
+                                "type": "string",
+                                "input": "text",
+                                "operator": "in",
+                                "value": [
+                                    "AD",
+                                    "Other"
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "parameters": {},
+                "test_case_num": 1
+            },
+            "output": {
+                "odds_ratio": 1.4857142857142858,
+                "p_value": 0.5609700785123689
+            }
+        }
+    ]
+}
