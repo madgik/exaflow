@@ -8,6 +8,7 @@ from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated import FederatedDescriptiveStatistics
+from exaflow.worker_communication import InsufficientDataError
 
 HistogramBin = Union[float, str]
 
@@ -131,6 +132,15 @@ class Histogram(Algorithm):
 def local_step(agg_client, data, y_var, x_vars, metadata, bins):
     from exaflow.worker import config as worker_config
 
+    selected_columns = list(dict.fromkeys([y_var, *x_vars]))
+    # Align with missing-values drop strategy: exclude rows with missing inputs
+    # across all variables participating in the histogram computation.
+    data = data[selected_columns].dropna(axis=0, how="any")
+    _check_min_rows_or_raise(
+        data=data,
+        min_required=worker_config.privacy.minimum_row_count,
+    )
+
     metadata_subset = {var: metadata[var] for var in {y_var, *x_vars}}
     min_row_count = worker_config.privacy.minimum_row_count
     descriptive_stats = FederatedDescriptiveStatistics(agg_client=agg_client)
@@ -143,3 +153,11 @@ def local_step(agg_client, data, y_var, x_vars, metadata, bins):
         min_row_count=min_row_count,
     )
     return result.as_payload()
+
+
+def _check_min_rows_or_raise(*, data, min_required: int) -> None:
+    num_rows = len(data)
+    if num_rows < min_required:
+        raise InsufficientDataError(
+            f"Insufficient data returned {num_rows} rows; minimum required is {min_required}."
+        )
