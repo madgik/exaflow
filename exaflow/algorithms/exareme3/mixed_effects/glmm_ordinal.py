@@ -3,9 +3,13 @@ from typing import List
 from pydantic import BaseModel
 
 from exaflow.algorithms import specifications as specs
-from exaflow.algorithms.exareme3.mixed_effects_common import encode_ordinal_response
-from exaflow.algorithms.exareme3.mixed_effects_common import get_group_ids
-from exaflow.algorithms.exareme3.mixed_effects_common import split_grouping_var
+from exaflow.algorithms.exareme3.mixed_effects.mixed_effects_common import (
+    encode_ordinal_response,
+)
+from exaflow.algorithms.exareme3.mixed_effects.mixed_effects_common import get_group_ids
+from exaflow.algorithms.exareme3.mixed_effects.mixed_effects_common import (
+    split_grouping_var,
+)
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.compose.column_transformer import (

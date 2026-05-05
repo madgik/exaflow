@@ -1,12 +1,13 @@
-import glob
+import hashlib
 import importlib
 import importlib.util
 import os
 import sys
-from os.path import basename
-from os.path import isfile
+from pathlib import Path
 from types import ModuleType
 from typing import Dict
+from typing import List
+from typing import Tuple
 
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm as ExaflowAlgorithm
 from exaflow.algorithms.exareme3.utils.preprocessing_step import (
@@ -53,6 +54,34 @@ def _resolve_package_import(module_path: str):
     return import_path, package_root
 
 
+def _module_key_for_path(module_path: Path, root_folder: Path) -> str:
+    """Create a deterministic module key scoped to the folder root."""
+    relative = module_path.relative_to(root_folder)
+    return ".".join(relative.with_suffix("").parts)
+
+
+def _iter_algorithm_module_paths(algorithm_folder: str) -> List[Tuple[Path, str]]:
+    """
+    Recursively collect python module paths under ``algorithm_folder``.
+    Excludes __init__.py files and non-runtime directories.
+    """
+    root_folder = Path(algorithm_folder).resolve()
+    if not root_folder.is_dir():
+        return []
+
+    excluded_dir_names = {"__pycache__", "docs"}
+    module_paths = []
+    for module_path in sorted(root_folder.rglob("*.py")):
+        if module_path.name == "__init__.py":
+            continue
+        if excluded_dir_names.intersection(module_path.parts):
+            continue
+        module_paths.append(
+            (module_path, _module_key_for_path(module_path, root_folder))
+        )
+    return module_paths
+
+
 def import_algorithm_modules(algorithm_folders: str) -> Dict[str, ModuleType]:
     """
     Import all algorithm modules from the given folder paths.
@@ -62,19 +91,11 @@ def import_algorithm_modules(algorithm_folders: str) -> Dict[str, ModuleType]:
     """
     all_modules = {}
     for algorithm_folder in algorithm_folders.split(","):
-        # Get all .py files in the folder (excluding __init__.py)
-        all_module_paths = glob.glob(f"{algorithm_folder}/*.py")
-        algorithm_module_paths = [
-            module
-            for module in all_module_paths
-            if isfile(module) and not module.endswith("__init__.py")
-        ]
-        algorithm_names = [
-            basename(module_path)[:-3] for module_path in algorithm_module_paths
-        ]
         modules = {}
-        for algorithm_name, module_path in zip(algorithm_names, algorithm_module_paths):
-            module_path = os.path.abspath(module_path)
+        for module_path_obj, module_key in _iter_algorithm_module_paths(
+            algorithm_folder
+        ):
+            module_path = str(module_path_obj)
             import_path, package_root = _resolve_package_import(module_path)
             module_obj = None
 
@@ -93,14 +114,24 @@ def import_algorithm_modules(algorithm_folders: str) -> Dict[str, ModuleType]:
                 if module_path in _MODULES_BY_ABSPATH:
                     module_obj = _MODULES_BY_ABSPATH[module_path]
                 else:
+                    # Use a path-hashed synthetic module name to avoid collisions
+                    # between equal basenames from different subfolders.
+                    synthetic_module_name = (
+                        f"exaflow_dynamic_"
+                        f"{hashlib.sha1(module_path.encode('utf-8')).hexdigest()}"
+                    )
                     spec = importlib.util.spec_from_file_location(
-                        algorithm_name, module_path
+                        synthetic_module_name, module_path
                     )
                     module_obj = importlib.util.module_from_spec(spec)
                     spec.loader.exec_module(module_obj)
                     _MODULES_BY_ABSPATH[module_path] = module_obj
 
-            modules[algorithm_name] = module_obj
+            if module_key in modules and modules[module_key] is not module_obj:
+                raise ValueError(
+                    f"Duplicate module key '{module_key}' under folder '{algorithm_folder}'."
+                )
+            modules[module_key] = module_obj
         all_modules.update(modules)
     return all_modules
 

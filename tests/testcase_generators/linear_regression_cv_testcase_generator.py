@@ -6,7 +6,9 @@ from sklearn.base import BaseEstimator
 from sklearn.base import RegressorMixin
 from sklearn.model_selection import cross_val_score
 
-from exaflow.algorithms.exareme3.linear_regression_cv import CVLinearRegressionResult
+from exaflow.algorithms.exareme3.model_selection.cross_validation.linear_regression_cv import (
+    CVLinearRegressionResult,
+)
 from tests.testcase_generators.testcase_generator import TestCaseGenerator
 
 

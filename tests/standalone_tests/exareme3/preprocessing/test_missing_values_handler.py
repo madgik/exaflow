@@ -1,8 +1,12 @@
 import pandas as pd
 import pytest
 
-from exaflow.algorithms.exareme3.missing_values_handler import MissingValuesHandler
-from exaflow.algorithms.exareme3.missing_values_handler import MissingValueStrategy
+from exaflow.algorithms.exareme3.preprocessing.missing_values_handler import (
+    MissingValuesHandler,
+)
+from exaflow.algorithms.exareme3.preprocessing.missing_values_handler import (
+    MissingValueStrategy,
+)
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import InsufficientDataError
