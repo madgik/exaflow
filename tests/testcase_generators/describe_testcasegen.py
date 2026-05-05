@@ -1,6 +1,6 @@
 import pandas as pd
 
-from exaflow.algorithms.exareme3.describe import Variable
+from exaflow.algorithms.exareme3.statistics.describe import Variable
 from tests.testcase_generators.testcase_generator import TestCaseGenerator
 
 # TODO privacy threshold is hardcoded. Find beter solution.

@@ -3,54 +3,48 @@ from typing import List
 from pydantic import BaseModel
 
 from exaflow.algorithms import specifications as specs
-from exaflow.algorithms.exareme3.mixed_effects_common import get_group_ids
-from exaflow.algorithms.exareme3.mixed_effects_common import split_grouping_var
+from exaflow.algorithms.exareme3.mixed_effects.mixed_effects_common import get_group_ids
+from exaflow.algorithms.exareme3.mixed_effects.mixed_effects_common import (
+    split_grouping_var,
+)
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.compose.column_transformer import (
     FederatedColumnTransformer,
 )
-from exaflow.algorithms.federated.mixed_effects import FederatedLMM
+from exaflow.algorithms.federated.linear_model.logistic_regression import (
+    FederatedLogisticRegression,
+)
+from exaflow.algorithms.federated.mixed_effects import FederatedGLMMBinary
 from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
 
 
-class LMMResult(BaseModel):
+class GLMMBinaryResult(BaseModel):
     dependent_var: str
     grouping_var: str
     indep_vars: List[str]
     n_obs: int
     n_groups: int
-    df_model: int
-    df_resid: int
     coefficients: List[float]
-    std_err: List[float]
-    t_stats: List[float]
-    pvalues: List[float]
-    lower_ci: List[float]
-    upper_ci: List[float]
-    sigma2: float
     sigma_u2: float
-    ll_reml: float
-    aic: float
-    bic: float
     converged: bool
     n_iter: int
 
 
-class LMM(Algorithm):
+class GLMMBinary(Algorithm):
     @classmethod
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
-            name="lmm",
-            desc="Federated linear mixed model with a single random-intercept grouping variable.",
-            label="Linear Mixed Model",
+            name="glmm_binary",
+            desc="Federated binary generalized linear mixed model with one random-intercept grouping variable.",
+            label="Binary GLMM",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Outcome (continuous)",
-                    desc="Single numerical dependent variable.",
-                    types=[specs.InputDataType.REAL],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
+                    label="Dependent variable (binary)",
+                    desc="A unique nominal variable converted to 0/1 using the positive_class parameter.",
+                    types=[specs.InputDataType.INT, specs.InputDataType.TEXT],
+                    stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
                     enumslen=None,
@@ -74,6 +68,22 @@ class LMM(Algorithm):
                 validation=None,
             ),
             parameters={
+                "positive_class": specs.ParameterSpecification(
+                    label="Positive class (y=1)",
+                    desc="Positive class of y. All other classes are considered negative.",
+                    types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
+                    required=True,
+                    multiple=False,
+                    default=None,
+                    enums=specs.ParameterEnumSpecification(
+                        type=specs.ParameterEnumType.INPUT_VAR_CDE_ENUMS,
+                        source=["y"],
+                    ),
+                    dict_keys_enums=None,
+                    dict_values_enums=None,
+                    min=None,
+                    max=None,
+                ),
                 "grouping_var": specs.ParameterSpecification(
                     label="Grouping variable",
                     desc="Variable from x to use as the random-intercept grouping factor.",
@@ -97,50 +107,42 @@ class LMM(Algorithm):
 
     def run(self):
         y_var = self.inputdata.y[0]
+        positive_class = self.get_parameter("positive_class")
         grouping_var = self.get_parameter("grouping_var")
         categorical_vars, numerical_vars = split_grouping_var(
             self.inputdata.x, grouping_var, self.metadata
         )
 
         udf_results = self.run_local_udf(
-            func=lmm_local_step,
+            func=glmm_binary_local_step,
             kw_args={
                 "y_var": y_var,
+                "positive_class": positive_class,
                 "grouping_var": grouping_var,
                 "categorical_vars": categorical_vars,
                 "numerical_vars": numerical_vars,
             },
         )
         model_stats = udf_results[0]
-        return LMMResult(
+        return GLMMBinaryResult(
             dependent_var=y_var,
             grouping_var=grouping_var,
             indep_vars=model_stats["feature_names"],
             n_obs=model_stats["n_obs"],
             n_groups=model_stats["n_groups"],
-            df_model=model_stats["df_model"],
-            df_resid=model_stats["df_resid"],
             coefficients=model_stats["coefficients"],
-            std_err=model_stats["std_err"],
-            t_stats=model_stats["t_stats"],
-            pvalues=model_stats["pvalues"],
-            lower_ci=model_stats["lower_ci"],
-            upper_ci=model_stats["upper_ci"],
-            sigma2=model_stats["sigma2"],
             sigma_u2=model_stats["sigma_u2"],
-            ll_reml=model_stats["ll_reml"],
-            aic=model_stats["aic"],
-            bic=model_stats["bic"],
             converged=model_stats["converged"],
             n_iter=model_stats["n_iter"],
         )
 
 
 @exareme3_udf(with_aggregation_server=True)
-def lmm_local_step(
+def glmm_binary_local_step(
     agg_client,
     data,
     y_var,
+    positive_class,
     grouping_var,
     categorical_vars,
     numerical_vars,
@@ -155,14 +157,17 @@ def lmm_local_step(
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,
     )
-    y = data[y_var].to_numpy(dtype=float, copy=False)
+    positive_class = FederatedLogisticRegression.coerce_positive_class(
+        data[y_var], positive_class
+    )
+    y = data[y_var].eq(positive_class).to_numpy(dtype=float, copy=False)
     center_ids = get_group_ids(data, grouping_var)
     X = transformer.transform(
         data,
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,
     )
-    model = FederatedLMM(fit_intercept=True)
+    model = FederatedGLMMBinary(fit_intercept=True)
     results = model.fit(
         X,
         y,
@@ -178,19 +183,8 @@ def lmm_local_step(
         "feature_names": feature_names,
         "n_obs": results.nobs,
         "n_groups": results.n_groups,
-        "df_model": results.df_model,
-        "df_resid": results.df_resid,
         "coefficients": results.params.tolist(),
-        "std_err": results.bse.tolist(),
-        "t_stats": results.tvalues.tolist(),
-        "pvalues": results.pvalues.tolist(),
-        "lower_ci": results.conf_int_low.tolist(),
-        "upper_ci": results.conf_int_high.tolist(),
-        "sigma2": results.sigma2,
         "sigma_u2": results.sigma_u2,
-        "ll_reml": results.ll_reml,
-        "aic": results.aic,
-        "bic": results.bic,
         "converged": results.converged,
         "n_iter": results.n_iter,
     }

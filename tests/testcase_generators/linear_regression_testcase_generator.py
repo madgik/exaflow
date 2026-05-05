@@ -3,7 +3,9 @@ import re
 import pandas as pd
 import statsmodels.formula.api as smf
 
-from exaflow.algorithms.exareme3.linear_regression import LinearRegressionResult
+from exaflow.algorithms.exareme3.linear_model.linear_regression import (
+    LinearRegressionResult,
+)
 from tests.testcase_generators.testcase_generator import TestCaseGenerator
 
 

@@ -3,8 +3,12 @@ import pandas as pd
 import pandas.testing as pdt
 import pytest
 
-from exaflow.algorithms.exareme3.longitudinal_transformer import LongitudinalStrategy
-from exaflow.algorithms.exareme3.longitudinal_transformer import LongitudinalTransformer
+from exaflow.algorithms.exareme3.preprocessing.longitudinal_transformer import (
+    LongitudinalStrategy,
+)
+from exaflow.algorithms.exareme3.preprocessing.longitudinal_transformer import (
+    LongitudinalTransformer,
+)
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.column_names import DATASET_COL
 from exaflow.column_names import SUBJECT_ID_COL

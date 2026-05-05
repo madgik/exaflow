@@ -34,3 +34,27 @@ def test_import_algorithm_modules_idempotent_for_non_package_dirs(tmp_path):
     assert after_second == after_first
 
     assert mods1["tmp_udf_module"] is mods2["tmp_udf_module"]
+
+
+def test_import_algorithm_modules_recursively_discovers_nested_modules(tmp_path):
+    nested_folder = tmp_path / "statistics"
+    nested_folder.mkdir(parents=True)
+    module_path = nested_folder / "histogram.py"
+    module_path.write_text(
+        "\n".join(
+            [
+                "from exaflow.algorithms.exareme3.utils.registry import exareme3_udf",
+                "",
+                "@exareme3_udf()",
+                "def udf_hist(data=None):",
+                "    return 1",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    from exaflow import import_algorithm_modules
+
+    mods = import_algorithm_modules(str(tmp_path))
+    assert "statistics.histogram" in mods
