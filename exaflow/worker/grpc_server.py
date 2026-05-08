@@ -1,5 +1,4 @@
 import argparse
-import json
 import logging
 from concurrent import futures
 from typing import Optional
@@ -14,6 +13,8 @@ from grpc_health.v1 import health_pb2_grpc
 
 from exaflow.protos.worker import worker_pb2
 from exaflow.protos.worker import worker_pb2_grpc
+from exaflow.udf_result_serialization import UDF_RESULT_FORMAT_JSON_BYTES_V1
+from exaflow.udf_result_serialization import encode_udf_result
 from exaflow.worker import config as worker_config
 from exaflow.worker.exareme3.udf import udf_service
 from exaflow.worker.utils import duck_db_csv_loader
@@ -118,12 +119,6 @@ def _dict_to_struct(data: dict) -> struct_pb2.Struct:
     struct = struct_pb2.Struct()
     json_format.ParseDict(data, struct, ignore_unknown_fields=True)
     return struct
-
-
-def _dict_to_value(data) -> struct_pb2.Value:
-    proto_value = struct_pb2.Value()
-    json_format.Parse(json.dumps(data), proto_value)
-    return proto_value
 
 
 def _data_model_attributes_to_proto(
@@ -292,7 +287,10 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
                 kw_args=kw_args,
                 system_args=system_args,
             )
-            return worker_pb2.RunUdfResponse(result=_dict_to_value(result))
+            return worker_pb2.RunUdfResponse(
+                result=encode_udf_result(result),
+                result_format=UDF_RESULT_FORMAT_JSON_BYTES_V1,
+            )
         except Exception as exc:  # noqa: BLE001
             self._handle_exception(context, exc)
 
@@ -325,23 +323,6 @@ def serve() -> None:
         "Service full name from descriptor: %s",
         worker_pb2.DESCRIPTOR.services_by_name["WorkerService"].full_name,
     )
-
-    # Add TestService
-    def test_method(request, context):
-        LOGGER.info("TestService.Test called")
-        return worker_pb2.HealthcheckResponse(ok=True)
-
-    rpc_method_handlers = {
-        "Test": grpc.unary_unary_rpc_method_handler(
-            test_method,
-            request_deserializer=worker_pb2.HealthcheckRequest.FromString,
-            response_serializer=worker_pb2.HealthcheckResponse.SerializeToString,
-        ),
-    }
-    generic_handler = grpc.method_handlers_generic_handler(
-        "TestService", rpc_method_handlers
-    )
-    server.add_generic_rpc_handlers((generic_handler,))
 
     server.start()
     try:

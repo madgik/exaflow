@@ -163,5 +163,6 @@ message RunUdfRequest {
 }
 
 message RunUdfResponse {
-  google.protobuf.Value result = 1;
+  bytes result = 1;
+  string result_format = 2;
 }
