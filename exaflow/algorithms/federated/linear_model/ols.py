@@ -347,7 +347,16 @@ class FederatedOLS(FederatedEstimator):
             r_squared = 0.0
         r_squared_adjusted = 1.0 - (1.0 - r_squared) * (n_obs - 1) / df_resid
 
-        if rss == 0.0 or p == 0:
+        tss_zero_tol = np.finfo(float).eps * max(1.0, abs(rss), abs(tss)) * 100.0
+        tss_is_zero = abs(tss) <= tss_zero_tol
+
+        if p == 0:
+            f_stat = float("nan")
+            f_pvalue = float("nan")
+        elif tss_is_zero:
+            f_stat = float("nan")
+            f_pvalue = float("nan")
+        elif abs(rss) <= abs(tss) * np.finfo(float).eps * 100.0:
             f_stat = float("inf")
             f_pvalue = 0.0
         else:

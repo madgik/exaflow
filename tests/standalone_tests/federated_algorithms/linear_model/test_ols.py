@@ -4,6 +4,9 @@ import statsmodels.api as sm
 
 from exaflow.algorithms.federated.linear_model.ols import FederatedOLS
 from tests.standalone_tests.federated_algorithms.utils import FederatedAlgorithmTest
+from tests.standalone_tests.federated_algorithms.utils.dummy_agg_client import (
+    DummyAggClient,
+)
 
 TEST_CASES = [
     (
@@ -434,3 +437,56 @@ class TestOLSFederatedAlgorithm(FederatedAlgorithmTest):
     @pytest.mark.parametrize("X, y", TEST_CASES)
     def test_federated_algorithm_with_multiple_workers(self, X, y):
         self.run_comparison(X=X, y=y, n_workers=3)
+
+
+def test_ols_f_stat_is_nan_for_intercept_only_model():
+    model = FederatedOLS(fit_intercept=True)
+
+    result = model.fit(
+        np.empty((4, 0), dtype=float),
+        np.array([1.0, 2.0, 3.0, 4.0], dtype=float),
+        agg_client=DummyAggClient(),
+    )
+
+    assert np.isnan(result.fvalue)
+    assert np.isnan(result.f_pvalue)
+
+
+def test_ols_f_stat_is_infinite_for_perfect_nonconstant_fit():
+    model = FederatedOLS(fit_intercept=True)
+
+    result = model.fit(
+        np.array([[0.0], [1.0], [2.0]], dtype=float),
+        np.array([1.0, 3.0, 5.0], dtype=float),
+        agg_client=DummyAggClient(),
+    )
+
+    assert result.fvalue == float("inf")
+    assert result.f_pvalue == 0.0
+
+
+def test_ols_f_stat_is_nan_for_perfect_constant_target_fit():
+    model = FederatedOLS(fit_intercept=True)
+
+    result = model.fit(
+        np.array([[0.0], [1.0], [2.0]], dtype=float),
+        np.array([5.0, 5.0, 5.0], dtype=float),
+        agg_client=DummyAggClient(),
+    )
+
+    assert np.isnan(result.fvalue)
+    assert np.isnan(result.f_pvalue)
+
+
+def test_ols_f_stat_stays_finite_for_small_scale_non_perfect_fit():
+    model = FederatedOLS(fit_intercept=True)
+
+    result = model.fit(
+        np.array([[0.0], [1.0], [2.0], [3.0]], dtype=float),
+        np.array([0.0, 1e-7, 2.1e-7, 2.9e-7], dtype=float),
+        agg_client=DummyAggClient(),
+    )
+
+    assert np.isfinite(result.fvalue)
+    assert np.isfinite(result.f_pvalue)
+    assert result.fvalue > 100.0
