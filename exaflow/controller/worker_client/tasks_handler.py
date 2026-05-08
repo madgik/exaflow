@@ -1,4 +1,3 @@
-import json
 from ipaddress import IPv4Address
 from logging import Logger
 from typing import List
@@ -8,6 +7,8 @@ from google.protobuf import struct_pb2
 
 from exaflow.controller.worker_client.app import WorkerClientFactory
 from exaflow.protos.worker import worker_pb2
+from exaflow.udf_result_serialization import UDF_RESULT_FORMAT_JSON_BYTES_V1
+from exaflow.udf_result_serialization import decode_udf_result
 from exaflow.worker_communication import CommonDataElement
 from exaflow.worker_communication import CommonDataElements
 from exaflow.worker_communication import DataModelAttributes
@@ -93,12 +94,6 @@ def _dict_to_struct(data: dict) -> struct_pb2.Struct:
     message = struct_pb2.Struct()
     json_format.ParseDict(data, message, ignore_unknown_fields=True)
     return message
-
-
-def _value_to_python(value) -> object:
-    if value is None:
-        return None
-    return json.loads(json_format.MessageToJson(value))
 
 
 class WorkerTaskResult:
@@ -257,4 +252,8 @@ class WorkerTasksHandler:
             ),
             timeout,
         )
-        return _value_to_python(response.result)
+        if response.result_format != UDF_RESULT_FORMAT_JSON_BYTES_V1:
+            raise ValueError(
+                f"Unsupported RunUdfResponse result format: {response.result_format!r}"
+            )
+        return decode_udf_result(response.result)
