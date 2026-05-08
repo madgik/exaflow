@@ -27,28 +27,12 @@ PLACEHOLDER_PATTERN = re.compile(
     r"\bTODO\b|NotImplementedError|__REPLACE_ME_[A-Z0-9_]*__"
 )
 
-LEGACY_PROD_TEST_PATHS = {
-    "anova_twoway": "tests/prod_env_tests/test_anova_twoway.py",
-    "describe": "tests/prod_env_tests/test_describe.py",
-    "histogram": "tests/prod_env_tests/test_histogram.py",
-    "kmeans": "tests/prod_env_tests/test_kmeans.py",
-    "linear_svm": "tests/prod_env_tests/test_linear_svm.py",
-    "naive_bayes_categorical_cv": "tests/prod_env_tests/test_naive_bayes_categorical_cv.py",
-    "naive_bayes_gaussian_cv": "tests/prod_env_tests/test_naive_bayes_gaussian_cv.py",
-    "ttest_independent": "tests/prod_env_tests/test_independent_ttest.py",
-    "ttest_onesample": "tests/prod_env_tests/test_one_sample.py",
-    "ttest_paired": "tests/prod_env_tests/test_paired_ttest.py",
-}
-
-LEGACY_EXPECTED_PATHS = {
-    "linear_svm": "tests/prod_env_tests/expected/svm_scikit_expected.json",
-    "naive_bayes_gaussian_cv": "tests/prod_env_tests/expected/naive_bayes_gauss_cv_expected.json",
-}
-
-LEGACY_DOC_PATHS = {
+PREFERRED_DOC_PATHS = {
     "anova_oneway": "documentation/algorithms/ANOVA.md",
     "anova_twoway": "documentation/algorithms/ANOVA.md",
+    "chi_squared": "documentation/algorithms/ChiSquared.md",
     "describe": "documentation/algorithms/Describe.md",
+    "fisher_exact": "documentation/algorithms/FisherExact.md",
     "histogram": "documentation/algorithms/Histogram.md",
     "kmeans": "documentation/algorithms/k-means.md",
     "linear_regression": "documentation/algorithms/LinearRegression.md",
@@ -66,10 +50,6 @@ LEGACY_DOC_PATHS = {
     "ttest_independent": "documentation/algorithms/TtestIndependent.md",
     "ttest_onesample": "documentation/algorithms/TtestOneSample.md",
     "ttest_paired": "documentation/algorithms/TtestPaired.md",
-}
-
-LEGACY_STANDALONE_PATHS = {
-    "linear_regression": "tests/standalone_tests/federated_algorithms/linear_model/test_ols.py",
 }
 
 
@@ -270,21 +250,19 @@ def get_changed_files(repo_root: Path) -> list[str]:
     return sorted(files)
 
 
-def _legacy_reverse_map(mapping: dict[str, str]) -> dict[str, str]:
+def _reverse_path_map(mapping: dict[str, str]) -> dict[str, str]:
     return {value: key for key, value in mapping.items()}
 
 
 def map_changed_files_to_algorithms(changed_files: Iterable[str]) -> set[str]:
     algorithms: set[str] = set()
 
-    reverse_prod = _legacy_reverse_map(LEGACY_PROD_TEST_PATHS)
-    reverse_docs = _legacy_reverse_map(LEGACY_DOC_PATHS)
-    reverse_standalone = _legacy_reverse_map(LEGACY_STANDALONE_PATHS)
+    reverse_docs = _reverse_path_map(PREFERRED_DOC_PATHS)
 
     patterns = [
         re.compile(r"^exaflow/algorithms/exareme3/([a-z][a-z0-9_]*)\.py$"),
         re.compile(r"^exaflow/algorithms/federated/[a-z0-9_]+/([a-z][a-z0-9_]*)\.py$"),
-        re.compile(r"^tests/prod_env_tests/test_([a-z0-9_]+)_validation\.py$"),
+        re.compile(r"^tests/prod_env_tests/test_([a-z0-9_]+)\.py$"),
         re.compile(r"^tests/prod_env_tests/expected/([a-z0-9_]+)_expected\.json$"),
         re.compile(
             r"^tests/standalone_tests/federated_algorithms/.*/test_([a-z0-9_]+)\.py$"
@@ -293,14 +271,8 @@ def map_changed_files_to_algorithms(changed_files: Iterable[str]) -> set[str]:
     ]
 
     for changed in changed_files:
-        if changed in reverse_prod:
-            algorithms.add(reverse_prod[changed])
-            continue
         if changed in reverse_docs:
             algorithms.add(reverse_docs[changed])
-            continue
-        if changed in reverse_standalone:
-            algorithms.add(reverse_standalone[changed])
             continue
 
         for pattern in patterns:
@@ -346,17 +318,7 @@ def discover_canonical_standalone_paths(repo_root: Path, algorithm: str) -> list
 
 
 def discover_standalone_paths(repo_root: Path, algorithm: str) -> list[Path]:
-    canonical = discover_canonical_standalone_paths(repo_root, algorithm)
-    if canonical:
-        return canonical
-
-    legacy = LEGACY_STANDALONE_PATHS.get(algorithm)
-    if legacy:
-        legacy_path = repo_root / legacy
-        if legacy_path.exists():
-            return [legacy_path]
-
-    return []
+    return discover_canonical_standalone_paths(repo_root, algorithm)
 
 
 def check_import_and_spec(
@@ -554,7 +516,7 @@ def check_import_and_spec(
         )
 
 
-def _resolve_preferred_with_legacy(
+def _resolve_required_path(
     *,
     algorithm: str,
     report: list[ReportEntry],
@@ -562,8 +524,6 @@ def _resolve_preferred_with_legacy(
     phase: str,
     check: str,
     preferred: Path,
-    legacy: Path | None,
-    enforce_canonical: bool,
     canonical_fix: str,
 ) -> tuple[Path | None, bool]:
     if preferred.exists():
@@ -579,34 +539,6 @@ def _resolve_preferred_with_legacy(
             repo_root=repo_root,
         )
         return preferred, True
-
-    if legacy and legacy.exists():
-        register(
-            report,
-            algorithm=algorithm,
-            phase=phase,
-            check=check,
-            status="legacy_used",
-            severity="warn",
-            message="Found legacy compatibility path.",
-            path=legacy,
-            repo_root=repo_root,
-            next_action=canonical_fix,
-        )
-        if enforce_canonical:
-            register(
-                report,
-                algorithm=algorithm,
-                phase=phase,
-                check=f"{check}_canonical_missing",
-                status="canonical_missing",
-                severity="failed",
-                message="Canonical path is required in --new-algorithm mode.",
-                path=preferred,
-                repo_root=repo_root,
-                next_action=canonical_fix,
-            )
-        return legacy, False
 
     register(
         report,
@@ -649,96 +581,40 @@ def check_required_paths(
             repo_root=repo_root,
         )
     else:
-        legacy_rel = LEGACY_STANDALONE_PATHS.get(algorithm)
-        legacy_path = repo_root / legacy_rel if legacy_rel else None
-        if legacy_path and legacy_path.exists():
-            paths.standalone = legacy_path
-            paths.standalone_canonical = False
-            register(
-                report,
-                algorithm=algorithm,
-                phase="static",
-                check="standalone_test_exists",
-                status="legacy_used",
-                severity="warn",
-                message="Found standalone test via legacy compatibility path.",
-                path=legacy_path,
-                repo_root=repo_root,
-                next_action=(
-                    "Create canonical standalone test file: "
-                    "tests/standalone_tests/federated_algorithms/<family>/"
-                    f"test_{algorithm}.py"
-                ),
-            )
-            if enforce_canonical:
-                register(
-                    report,
-                    algorithm=algorithm,
-                    phase="static",
-                    check="standalone_test_exists_canonical_missing",
-                    status="canonical_missing",
-                    severity="failed",
-                    message="Canonical standalone test is required in --new-algorithm mode.",
-                    path=(
-                        repo_root
-                        / "tests"
-                        / "standalone_tests"
-                        / "federated_algorithms"
-                        / "_generated"
-                        / f"test_{algorithm}.py"
-                    ),
-                    repo_root=repo_root,
-                    next_action=(
-                        "Create canonical standalone test file under "
-                        "tests/standalone_tests/federated_algorithms/<family>/"
-                        f"test_{algorithm}.py"
-                    ),
-                )
-        else:
-            paths.standalone = None
-            paths.standalone_canonical = False
-            register(
-                report,
-                algorithm=algorithm,
-                phase="static",
-                check="standalone_test_exists",
-                status="failed",
-                severity="failed",
-                message="No standalone test found under federated_algorithms.",
-                path=(
-                    repo_root
-                    / "tests"
-                    / "standalone_tests"
-                    / "federated_algorithms"
-                    / "_generated"
-                    / f"test_{algorithm}.py"
-                ),
-                repo_root=repo_root,
-                next_action=(
-                    "Create standalone test file or run scaffold with --family/--subfolder."
-                ),
-            )
+        paths.standalone = None
+        paths.standalone_canonical = False
+        register(
+            report,
+            algorithm=algorithm,
+            phase="static",
+            check="standalone_test_exists",
+            status="failed",
+            severity="failed",
+            message="No standalone test found under federated_algorithms.",
+            path=(
+                repo_root
+                / "tests"
+                / "standalone_tests"
+                / "federated_algorithms"
+                / "_generated"
+                / f"test_{algorithm}.py"
+            ),
+            repo_root=repo_root,
+            next_action=(
+                "Create standalone test file or run scaffold with --family/--subfolder."
+            ),
+        )
 
-    preferred_prod = (
-        repo_root / "tests" / "prod_env_tests" / f"test_{algorithm}_validation.py"
-    )
-    legacy_prod = (
-        repo_root / LEGACY_PROD_TEST_PATHS[algorithm]
-        if algorithm in LEGACY_PROD_TEST_PATHS
-        else None
-    )
-    paths.prod_test, paths.prod_test_canonical = _resolve_preferred_with_legacy(
+    preferred_prod = repo_root / "tests" / "prod_env_tests" / f"test_{algorithm}.py"
+    paths.prod_test, paths.prod_test_canonical = _resolve_required_path(
         algorithm=algorithm,
         report=report,
         repo_root=repo_root,
         phase="static",
         check="prod_env_test_exists",
         preferred=preferred_prod,
-        legacy=legacy_prod,
-        enforce_canonical=enforce_canonical,
         canonical_fix=(
-            "Create canonical prod test: "
-            f"tests/prod_env_tests/test_{algorithm}_validation.py"
+            f"Create canonical prod test: tests/prod_env_tests/test_{algorithm}.py"
         ),
     )
 
@@ -749,43 +625,31 @@ def check_required_paths(
         / "expected"
         / f"{algorithm}_expected.json"
     )
-    legacy_expected = (
-        repo_root / LEGACY_EXPECTED_PATHS[algorithm]
-        if algorithm in LEGACY_EXPECTED_PATHS
-        else None
-    )
-    paths.prod_expected, paths.prod_expected_canonical = _resolve_preferred_with_legacy(
+    paths.prod_expected, paths.prod_expected_canonical = _resolve_required_path(
         algorithm=algorithm,
         report=report,
         repo_root=repo_root,
         phase="static",
         check="prod_env_expected_exists",
         preferred=preferred_expected,
-        legacy=legacy_expected,
-        enforce_canonical=enforce_canonical,
         canonical_fix=(
             "Create canonical expected fixture: "
             f"tests/prod_env_tests/expected/{algorithm}_expected.json"
         ),
     )
 
-    preferred_doc = repo_root / "documentation" / "algorithms" / f"{algorithm}.md"
-    legacy_doc = (
-        repo_root / LEGACY_DOC_PATHS[algorithm]
-        if algorithm in LEGACY_DOC_PATHS
-        else None
+    preferred_doc = repo_root / PREFERRED_DOC_PATHS.get(
+        algorithm, f"documentation/algorithms/{algorithm}.md"
     )
-    paths.documentation, paths.documentation_canonical = _resolve_preferred_with_legacy(
+    paths.documentation, paths.documentation_canonical = _resolve_required_path(
         algorithm=algorithm,
         report=report,
         repo_root=repo_root,
         phase="static",
         check="documentation_exists",
         preferred=preferred_doc,
-        legacy=legacy_doc,
-        enforce_canonical=enforce_canonical,
         canonical_fix=(
-            f"Create canonical docs file: documentation/algorithms/{algorithm}.md"
+            f"Create canonical docs file: {to_rel(preferred_doc, repo_root)}"
         ),
     )
 
@@ -1185,11 +1049,9 @@ def _collect_candidate_lint_files(
         standalone_paths = discover_standalone_paths(repo_root, algorithm)
         generated.extend(to_rel(path, repo_root) for path in standalone_paths if path)
 
-        prod_test = f"tests/prod_env_tests/test_{algorithm}_validation.py"
-        legacy_prod = LEGACY_PROD_TEST_PATHS.get(algorithm)
-        for candidate in [prod_test, legacy_prod]:
-            if candidate and (repo_root / candidate).exists():
-                generated.append(candidate)
+        prod_test = f"tests/prod_env_tests/test_{algorithm}.py"
+        if (repo_root / prod_test).exists():
+            generated.append(prod_test)
 
     return sorted(set(path for path in generated if path))
 
@@ -1303,13 +1165,9 @@ def run_fast_tier(
 
 
 def resolve_prod_test_file(repo_root: Path, algorithm: str) -> str | None:
-    preferred = f"tests/prod_env_tests/test_{algorithm}_validation.py"
+    preferred = f"tests/prod_env_tests/test_{algorithm}.py"
     if (repo_root / preferred).exists():
         return preferred
-
-    legacy = LEGACY_PROD_TEST_PATHS.get(algorithm)
-    if legacy and (repo_root / legacy).exists():
-        return legacy
 
     return None
 
@@ -1363,7 +1221,7 @@ def run_strict_tier(
             repo_root=repo_root,
             next_action=(
                 "Create canonical prod_env tests under tests/prod_env_tests/"
-                "test_<algorithm>_validation.py"
+                "test_<algorithm>.py"
             ),
         )
 
