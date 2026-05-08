@@ -166,6 +166,37 @@ def test_single_worker_sum_returns_input(controller_factory, worker_factory):
     controller.cleanup()
 
 
+@pytest.mark.parametrize("agg_type", [AggregationType.MIN, AggregationType.MAX])
+def test_single_worker_numeric_ops_preserve_integer_dtype(
+    controller_factory, worker_factory, agg_type
+):
+    request_id = f"single-worker-int-{agg_type.value.lower()}"
+    controller = controller_factory(request_id)
+    controller.configure(1)
+    worker = worker_factory(request_id)
+
+    values = np.array([1, 2, -3], dtype=np.int64)
+    result = worker._aggregate_request(agg_type, values)
+    assert np.issubdtype(result.dtype, np.integer)
+    np.testing.assert_array_equal(result, values)
+    controller.cleanup()
+
+
+def test_single_worker_sum_of_integers_preserves_integer_dtype(
+    controller_factory, worker_factory
+):
+    request_id = "single-worker-int-sum-int64"
+    controller = controller_factory(request_id)
+    controller.configure(1)
+    worker = worker_factory(request_id)
+
+    values = np.array([1, 2, -3], dtype=np.int64)
+    result = worker._aggregate_request(AggregationType.SUM, values)
+    assert np.issubdtype(result.dtype, np.integer)
+    np.testing.assert_array_equal(result, values)
+    controller.cleanup()
+
+
 def test_multi_worker_sum_combines_vectors(controller_factory, worker_factory):
     request_id = "sum-multi"
     controller = controller_factory(request_id)
@@ -220,6 +251,191 @@ def test_multi_worker_max_selects_elementwise_maximum(
     expected = np.maximum(*vectors)
     for res in results:
         np.testing.assert_allclose(res, expected)
+
+
+def test_multi_worker_sum_preserves_nan_and_infinity(
+    controller_factory, worker_factory
+):
+    request_id = "sum-non-finite"
+    controller = controller_factory(request_id)
+    controller.configure(2)
+    worker_a = worker_factory(request_id)
+    worker_b = worker_factory(request_id)
+
+    vec_a = np.array([np.nan, np.inf, -np.inf, 1.0], dtype=np.float64)
+    vec_b = np.array([2.0, 3.0, -4.0, np.nan], dtype=np.float64)
+    expected = np.add(vec_a, vec_b)
+    results = _run_parallel(
+        lambda: worker_a._aggregate_request(AggregationType.SUM, vec_a),
+        lambda: worker_b._aggregate_request(AggregationType.SUM, vec_b),
+    )
+    for res in results:
+        assert res.dtype == np.float64
+        np.testing.assert_array_equal(res, expected, strict=True)
+
+
+@pytest.mark.parametrize("agg_type", [AggregationType.MIN, AggregationType.MAX])
+def test_multi_worker_min_max_preserve_infinity(
+    controller_factory, worker_factory, agg_type
+):
+    request_id = f"{agg_type.value.lower()}-infinity"
+    controller = controller_factory(request_id)
+    controller.configure(2)
+    worker_a = worker_factory(request_id)
+    worker_b = worker_factory(request_id)
+
+    vec_a = np.array([np.inf, -np.inf, 5.0], dtype=np.float64)
+    vec_b = np.array([1.0, -2.0, np.inf], dtype=np.float64)
+    expected = (
+        np.minimum(vec_a, vec_b)
+        if agg_type == AggregationType.MIN
+        else np.maximum(vec_a, vec_b)
+    )
+    results = _run_parallel(
+        lambda: worker_a._aggregate_request(agg_type, vec_a),
+        lambda: worker_b._aggregate_request(agg_type, vec_b),
+    )
+    for res in results:
+        assert res.dtype == np.float64
+        np.testing.assert_array_equal(res, expected, strict=True)
+
+
+@pytest.mark.parametrize("agg_type", [AggregationType.MIN, AggregationType.MAX])
+def test_multi_worker_min_max_propagate_nan(
+    controller_factory, worker_factory, agg_type
+):
+    request_id = f"{agg_type.value.lower()}-nan"
+    controller = controller_factory(request_id)
+    controller.configure(2)
+    worker_a = worker_factory(request_id)
+    worker_b = worker_factory(request_id)
+
+    vec_a = np.array([np.nan, 1.0, 5.0], dtype=np.float64)
+    vec_b = np.array([2.0, np.nan, 4.0], dtype=np.float64)
+    expected = (
+        np.minimum(vec_a, vec_b)
+        if agg_type == AggregationType.MIN
+        else np.maximum(vec_a, vec_b)
+    )
+    results = _run_parallel(
+        lambda: worker_a._aggregate_request(agg_type, vec_a),
+        lambda: worker_b._aggregate_request(agg_type, vec_b),
+    )
+    for res in results:
+        assert res.dtype == np.float64
+        np.testing.assert_array_equal(res, expected, strict=True)
+
+
+@pytest.mark.parametrize(
+    "agg_type", [AggregationType.SUM, AggregationType.MIN, AggregationType.MAX]
+)
+def test_multi_worker_integer_width_mixing_promotes_consistently(
+    controller_factory, worker_factory, agg_type
+):
+    request_id = f"dtype-mix-int-width-{agg_type.value.lower()}"
+    controller = controller_factory(request_id)
+    controller.configure(2)
+    worker_a = worker_factory(request_id)
+    worker_b = worker_factory(request_id)
+
+    vec_a = np.array([1, -2, 3], dtype=np.int32)
+    vec_b = np.array([4, 5, -6], dtype=np.int64)
+    expected_dtype = np.promote_types(vec_a.dtype, vec_b.dtype)
+    expected = getattr(np, agg_type.value.lower())(
+        np.stack([vec_a.astype(expected_dtype), vec_b.astype(expected_dtype)], axis=0),
+        axis=0,
+    )
+
+    results = _run_parallel(
+        lambda: worker_a._aggregate_request(agg_type, vec_a),
+        lambda: worker_b._aggregate_request(agg_type, vec_b),
+    )
+    for res in results:
+        assert res.dtype == expected_dtype
+        np.testing.assert_array_equal(res, expected)
+
+
+@pytest.mark.parametrize(
+    "agg_type", [AggregationType.SUM, AggregationType.MIN, AggregationType.MAX]
+)
+def test_multi_worker_int_float_mixing_promotes_to_float(
+    controller_factory, worker_factory, agg_type
+):
+    request_id = f"dtype-mix-int-float-{agg_type.value.lower()}"
+    controller = controller_factory(request_id)
+    controller.configure(2)
+    worker_a = worker_factory(request_id)
+    worker_b = worker_factory(request_id)
+
+    vec_a = np.array([1, -2, 3], dtype=np.int64)
+    vec_b = np.array([0.5, 5.25, -6.75], dtype=np.float32)
+    expected_dtype = (
+        np.float64
+        if agg_type == AggregationType.SUM
+        else np.promote_types(vec_a.dtype, vec_b.dtype)
+    )
+    expected = getattr(np, agg_type.value.lower())(
+        np.stack([vec_a.astype(expected_dtype), vec_b.astype(expected_dtype)], axis=0),
+        axis=0,
+    )
+
+    results = _run_parallel(
+        lambda: worker_a._aggregate_request(agg_type, vec_a),
+        lambda: worker_b._aggregate_request(agg_type, vec_b),
+    )
+    for res in results:
+        assert res.dtype == expected_dtype
+        np.testing.assert_allclose(res, expected)
+
+
+def test_multi_worker_sum_avoids_int64_wraparound(controller_factory, worker_factory):
+    request_id = "sum-int32-widens-to-int64"
+    controller = controller_factory(request_id)
+    controller.configure(2)
+    worker_a = worker_factory(request_id)
+    worker_b = worker_factory(request_id)
+
+    vec_a = np.array([np.iinfo(np.int32).max], dtype=np.int32)
+    vec_b = np.array([1], dtype=np.int64)
+    results = _run_parallel(
+        lambda: worker_a._aggregate_request(AggregationType.SUM, vec_a),
+        lambda: worker_b._aggregate_request(AggregationType.SUM, vec_b),
+    )
+    expected = np.array([np.iinfo(np.int32).max + 1], dtype=np.int64)
+    for res in results:
+        assert res.dtype == np.int64
+        np.testing.assert_array_equal(res, expected)
+
+
+@pytest.mark.parametrize(
+    "agg_type", [AggregationType.SUM, AggregationType.MIN, AggregationType.MAX]
+)
+def test_integer_aggregation_rejects_unsafe_signed_unsigned_mix(
+    controller_factory, worker_factory, agg_type
+):
+    request_id = f"dtype-unsafe-int-mix-{agg_type.value.lower()}"
+    controller = controller_factory(request_id)
+    controller.configure(2)
+    worker_a = worker_factory(request_id)
+    worker_b = worker_factory(request_id)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        future_a = pool.submit(
+            worker_a._aggregate_request,
+            agg_type,
+            np.array([np.iinfo(np.int64).max], dtype=np.int64),
+        )
+        future_b = pool.submit(
+            worker_b._aggregate_request,
+            agg_type,
+            np.array([np.iinfo(np.uint64).max], dtype=np.uint64),
+        )
+
+        for future in (future_a, future_b):
+            with pytest.raises(InlineRpcError) as exc:
+                future.result(timeout=2)
+            assert exc.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+            assert "cannot be safely promoted" in exc.value.details()
 
 
 def test_reusing_request_id_supports_multiple_rounds(

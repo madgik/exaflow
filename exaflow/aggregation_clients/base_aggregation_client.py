@@ -67,7 +67,7 @@ class BaseAggregationClient:
         flat_values: ArrayInput,
         *,
         step: int | None = None,
-    ) -> NDArray[np.floating]:
+    ) -> NDArray:
         results = self._aggregate_batch_request(
             [(aggregation_type, flat_values)], step=step
         )
@@ -75,13 +75,13 @@ class BaseAggregationClient:
 
     def _aggregate_batch_request(
         self, ops: list[tuple[AggregationType, ArrayInput]], *, step: int | None = None
-    ) -> list[NDArray[np.floating]]:
+    ) -> list[NDArray]:
         operations = []
         for op, vals in ops:
             if op == AggregationType.UNION:
                 tensor = values_to_bytes(vals)
             else:
-                array = np.asarray(vals, dtype=np.float64)
+                array = np.asarray(vals)
                 tensor = ndarray_to_bytes(array)
             operations.append(
                 pb2.Operation(
@@ -97,6 +97,11 @@ class BaseAggregationClient:
         resp = self._stub.Aggregate(req)
         if not resp.tensors:
             raise ValueError("Aggregation response missing tensor payloads.")
+        if len(resp.tensors) != len(ops):
+            raise ValueError(
+                f"Aggregation response tensor count mismatch "
+                f"(expected {len(ops)}, got {len(resp.tensors)})."
+            )
 
         decoded = []
         for (op, _), tensor in zip(ops, resp.tensors):
