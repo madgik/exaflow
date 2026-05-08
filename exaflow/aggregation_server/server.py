@@ -46,9 +46,8 @@ call either:
 - `AggregateBatch`: multiple operations in one call; each operation defines its
   own aggregation type and vector.
 
-Payloads can arrive either as legacy repeated doubles (`vectors`) or as Arrow
-tensors (`tensor`). Responses always include both a Python list and the binary
-tensor form for efficiency.
+Payloads are exchanged through the `tensor` bytes field. Numeric payloads use
+Arrow tensor bytes, while `UNION` payloads use JSON-encoded bytes.
 
 Synchronization model
 ~~~~~~~~~~~~~~~~~~~~~
@@ -176,9 +175,7 @@ class AggregationContext:
         assert self.batch_vectors is not None
         assert self.batch_vector_lengths is not None
         for idx, op in enumerate(request.operations):
-            vector = decode_fn(
-                op.tensor, op.vectors, op.aggregation_type, request.request_id
-            )
+            vector = decode_fn(op.tensor, op.aggregation_type, request.request_id)
             vector_length = len(vector)
             if op.aggregation_type != AggregationType.UNION.value:
                 expected_len = self.batch_vector_lengths[idx]
@@ -289,16 +286,14 @@ class AggregationServer(AggregationServerServicer):
         return agg_ctx
 
     def _decode_vector(
-        self, tensor: bytes, vectors, aggregation_type: str, request_id: str
+        self, tensor: bytes, aggregation_type: str, request_id: str
     ) -> np.ndarray:
         if tensor:
             if aggregation_type == AggregationType.UNION.value:
                 return bytes_to_values(tensor)
             return bytes_to_ndarray(tensor)
-        if vectors:
-            return np.asarray(vectors, dtype=np.float64)
         raise ValueError(
-            f"[AGGREGATE] request_id='{request_id}' missing tensor or vector payload"
+            f"[AGGREGATE] request_id='{request_id}' missing tensor payload"
         )
 
     def _aggregation_fn(self, aggregation_type: str):
@@ -393,10 +388,8 @@ class AggregationServer(AggregationServerServicer):
                 agg_ctx.ensure_step(request.step, request.operations, context)
                 agg_ctx.store_vectors(
                     request,
-                    lambda tensor, vectors, aggregation_type, request_id=request.request_id: (
-                        self._decode_vector(
-                            tensor, vectors, aggregation_type, request_id
-                        )
+                    lambda tensor, aggregation_type, request_id=request.request_id: (
+                        self._decode_vector(tensor, aggregation_type, request_id)
                     ),
                 )
                 received_workers = (
@@ -427,11 +420,9 @@ class AggregationServer(AggregationServerServicer):
                 context.abort(status, str(exc))
 
             agg_ctx.wait_for_ready(context)
-            results, offsets, tensors = agg_ctx.consume(context)
+            _results, _offsets, tensors = agg_ctx.consume(context)
 
         return AggregateResponse(
-            results=results,
-            offsets=offsets,
             tensors=[
                 (
                     values_to_bytes(tensor)

@@ -31,7 +31,6 @@ message ConfigureResponse {
 
 message Operation {
   string aggregation_type = 1;
-  repeated double vectors = 2;
   bytes tensor = 3;
 }
 
@@ -42,8 +41,6 @@ message AggregateRequest {
 }
 
 message AggregateResponse {
-  repeated double results = 1;
-  repeated int32 offsets = 2;
   repeated bytes tensors = 3;
 }
 
