@@ -5,7 +5,6 @@ from enum import Enum
 from typing import Dict
 from typing import List
 from typing import Optional
-from typing import Tuple
 
 import grpc
 import numpy as np
@@ -33,6 +32,8 @@ from .serialization import ndarray_to_bytes
 from .serialization import values_to_bytes
 
 logger = logging.getLogger("AggregationServer")
+
+NUMERIC_KINDS = {"i", "u", "f"}
 """
 Aggregation server, threading model, and data flow
 --------------------------------------------------
@@ -88,11 +89,9 @@ class AggregationContext:
         self.acquired_count = 0
         self.error: Optional[Exception] = None
         self.batch_ops: Optional[List[str]] = None
-        self.batch_vectors: Optional[List[List[np.ndarray]]] = None
+        self.batch_payloads: Optional[List[List[np.ndarray]]] = None
         self.batch_vector_lengths: Optional[List[Optional[int]]] = None
-        self.batch_result: Optional[Tuple[List[float], List[int], List[np.ndarray]]] = (
-            None
-        )
+        self.batch_result: Optional[List[np.ndarray]] = None
         self.condition = threading.Condition()
 
     def reset_step(self) -> None:
@@ -101,7 +100,7 @@ class AggregationContext:
         self.acquired_count = 0
         self.error = None
         self.batch_ops = None
-        self.batch_vectors = None
+        self.batch_payloads = None
         self.batch_vector_lengths = None
         self.batch_result = None
         self.condition.notify_all()
@@ -147,7 +146,7 @@ class AggregationContext:
         self.acquired_count = 0
         self.error = None
         self.batch_ops = [op.aggregation_type for op in operations]
-        self.batch_vectors = [[] for _ in operations]
+        self.batch_payloads = [[] for _ in operations]
         self.batch_vector_lengths = [None for _ in operations]
         self.batch_result = None
 
@@ -171,13 +170,17 @@ class AggregationContext:
                     f"(expected '{self.batch_ops[idx]}', got '{op.aggregation_type}')",
                 )
 
-    def store_vectors(self, request, decode_fn) -> int:
-        assert self.batch_vectors is not None
+    def store_payloads(self, request, decode_fn) -> None:
+        assert self.batch_payloads is not None
         assert self.batch_vector_lengths is not None
         for idx, op in enumerate(request.operations):
-            vector = decode_fn(op.tensor, op.aggregation_type, request.request_id)
-            vector_length = len(vector)
+            payload = decode_fn(op.tensor, op.aggregation_type, request.request_id)
+            vector_length = len(payload)
             if op.aggregation_type != AggregationType.UNION.value:
+                if payload.dtype.kind not in NUMERIC_KINDS:
+                    raise ValueError(
+                        "Numeric aggregation requires numeric tensor payloads."
+                    )
                 expected_len = self.batch_vector_lengths[idx]
                 if expected_len is None:
                     self.batch_vector_lengths[idx] = vector_length
@@ -186,27 +189,16 @@ class AggregationContext:
                         f"All vectors in batch op {idx} must have the same length "
                         f"(expected {expected_len}, got {vector_length})"
                     )
-            self.batch_vectors[idx].append(vector)
-
-        return len(self.batch_vectors[0])
+            self.batch_payloads[idx].append(payload)
 
     def compute(self, aggregation_fn) -> None:
-        assert self.batch_ops is not None and self.batch_vectors is not None
-        flat_results: List[float] = []
-        offsets = [0]
-        tensor_results: List[np.ndarray] = []
+        assert self.batch_ops is not None and self.batch_payloads is not None
+        results: List[np.ndarray] = []
         for idx, op_type in enumerate(self.batch_ops):
             agg_fn = aggregation_fn(op_type)
-            vectors = self.batch_vectors[idx]
-            res = agg_fn(vectors)
-            tensor_results.append(res)
-            if op_type == AggregationType.UNION.value:
-                offsets.append(len(flat_results))
-            else:
-                flat_results.extend(res.tolist())
-                offsets.append(len(flat_results))
+            results.append(agg_fn(self.batch_payloads[idx]))
 
-        self.batch_result = (flat_results, offsets, tensor_results)
+        self.batch_result = results
         self.state = AggregationState.READY
         self.condition.notify_all()
 
@@ -217,7 +209,7 @@ class AggregationContext:
         )
         if ready:
             return
-        received = len(self.batch_vectors[0]) if self.batch_vectors else 0
+        received = len(self.batch_payloads[0]) if self.batch_payloads else 0
         msg = (
             f"Timeout waiting for aggregation result for request_id='{self.request_id}' "
             f"(received {received}/{self.expected_workers})"
@@ -238,9 +230,9 @@ class AggregationContext:
         if not self.batch_result:
             context.abort(grpc.StatusCode.INTERNAL, "Batch result missing.")
 
-        results, offsets, tensors = self.batch_result
+        tensors = self.batch_result
         self._finish_step(reset_step=True)
-        return results, offsets, tensors
+        return tensors
 
     def _finish_step(self, reset_step: bool) -> None:
         self.acquired_count += 1
@@ -296,6 +288,39 @@ class AggregationServer(AggregationServerServicer):
             f"[AGGREGATE] request_id='{request_id}' missing tensor payload"
         )
 
+    @staticmethod
+    def _numeric_arrays(vectors: list[np.ndarray]) -> list[np.ndarray]:
+        return [np.asarray(vector) for vector in vectors]
+
+    @staticmethod
+    def _numeric_result_dtype(dtypes: list[np.dtype]) -> np.dtype:
+        if not all(dtype.kind in {"i", "u"} for dtype in dtypes):
+            return np.result_type(*dtypes)
+
+        target_dtype = np.result_type(*dtypes)
+        if target_dtype.kind not in {"i", "u"}:
+            raise ValueError(
+                "Integer aggregation inputs cannot be safely promoted to a "
+                "fixed-width integer dtype."
+            )
+        return target_dtype
+
+    @classmethod
+    def _sum_dtype(cls, dtypes: list[np.dtype]) -> np.dtype:
+        target_dtype = cls._numeric_result_dtype(dtypes)
+        if target_dtype.kind == "i" and target_dtype.itemsize < 8:
+            return np.dtype(np.int64)
+        if target_dtype.kind == "u" and target_dtype.itemsize < 8:
+            return np.dtype(np.uint64)
+        return target_dtype
+
+    @staticmethod
+    def _reduce_arrays(arrays: list[np.ndarray], dtype: np.dtype, ufunc) -> np.ndarray:
+        result = arrays[0].astype(dtype, copy=True)
+        for array in arrays[1:]:
+            ufunc(result, array.astype(dtype, copy=False), out=result)
+        return result
+
     def _aggregation_fn(self, aggregation_type: str):
         try:
             agg_type = AggregationType(aggregation_type)
@@ -305,11 +330,30 @@ class AggregationServer(AggregationServerServicer):
             ) from exc
 
         if agg_type == AggregationType.SUM:
-            return lambda vectors: np.sum(vectors, axis=0)
+
+            def _sum(vectors):
+                arrays = self._numeric_arrays(vectors)
+                dtypes = [array.dtype for array in arrays]
+                dtype = self._sum_dtype(dtypes)
+                return self._reduce_arrays(arrays, dtype, np.add)
+
+            return _sum
         if agg_type == AggregationType.MIN:
-            return lambda vectors: np.min(vectors, axis=0)
+
+            def _min(vectors):
+                arrays = self._numeric_arrays(vectors)
+                dtype = self._numeric_result_dtype([array.dtype for array in arrays])
+                return self._reduce_arrays(arrays, dtype, np.minimum)
+
+            return _min
         if agg_type == AggregationType.MAX:
-            return lambda vectors: np.max(vectors, axis=0)
+
+            def _max(vectors):
+                arrays = self._numeric_arrays(vectors)
+                dtype = self._numeric_result_dtype([array.dtype for array in arrays])
+                return self._reduce_arrays(arrays, dtype, np.maximum)
+
+            return _max
         if agg_type == AggregationType.UNION:
             return lambda vectors: np.asarray(
                 sorted(set(np.concatenate(vectors))), dtype=object
@@ -361,8 +405,8 @@ class AggregationServer(AggregationServerServicer):
 
             if (
                 agg_ctx.state == AggregationState.COLLECTING
-                and agg_ctx.batch_vectors
-                and len(agg_ctx.batch_vectors[0]) >= agg_ctx.expected_workers
+                and agg_ctx.batch_payloads
+                and len(agg_ctx.batch_payloads[0]) >= agg_ctx.expected_workers
             ):
                 try:
                     agg_ctx.compute(self._aggregation_fn)
@@ -386,14 +430,14 @@ class AggregationServer(AggregationServerServicer):
         with agg_ctx.condition:
             try:
                 agg_ctx.ensure_step(request.step, request.operations, context)
-                agg_ctx.store_vectors(
+                agg_ctx.store_payloads(
                     request,
                     lambda tensor, aggregation_type, request_id=request.request_id: (
                         self._decode_vector(tensor, aggregation_type, request_id)
                     ),
                 )
                 received_workers = (
-                    len(agg_ctx.batch_vectors[0]) if agg_ctx.batch_vectors else 0
+                    len(agg_ctx.batch_payloads[0]) if agg_ctx.batch_payloads else 0
                 )
                 logger.info(
                     "[AGGREGATE] Received worker results for context_id='%s' "
@@ -405,8 +449,8 @@ class AggregationServer(AggregationServerServicer):
 
                 if (
                     agg_ctx.state == AggregationState.COLLECTING
-                    and agg_ctx.batch_vectors
-                    and len(agg_ctx.batch_vectors[0]) >= agg_ctx.expected_workers
+                    and agg_ctx.batch_payloads
+                    and len(agg_ctx.batch_payloads[0]) >= agg_ctx.expected_workers
                 ):
                     agg_ctx.compute(self._aggregation_fn)
             except grpc.RpcError as exc:
@@ -420,7 +464,7 @@ class AggregationServer(AggregationServerServicer):
                 context.abort(status, str(exc))
 
             agg_ctx.wait_for_ready(context)
-            _results, _offsets, tensors = agg_ctx.consume(context)
+            tensors = agg_ctx.consume(context)
 
         return AggregateResponse(
             tensors=[
