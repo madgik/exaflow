@@ -95,22 +95,16 @@ class BaseAggregationClient:
             operations=operations,
         )
         resp = self._stub.Aggregate(req)
-        if resp.tensors:
-            decoded = []
-            for (op, _), tensor in zip(ops, resp.tensors):
-                if op == AggregationType.UNION:
-                    decoded.append(bytes_to_values(tensor))
-                else:
-                    decoded.append(bytes_to_ndarray(tensor))
-            return decoded
+        if not resp.tensors:
+            raise ValueError("Aggregation response missing tensor payloads.")
 
-        results = resp.results
-        offsets = resp.offsets
-        reconstructed = []
-        for i in range(len(offsets) - 1):
-            start, end = offsets[i], offsets[i + 1]
-            reconstructed.append(np.asarray(results[start:end], dtype=np.float64))
-        return reconstructed
+        decoded = []
+        for (op, _), tensor in zip(ops, resp.tensors):
+            if op == AggregationType.UNION:
+                decoded.append(bytes_to_values(tensor))
+            else:
+                decoded.append(bytes_to_ndarray(tensor))
+        return decoded
 
     def close(self) -> None:
         logger.debug("[CHANNEL] Closing gRPC channel.")
