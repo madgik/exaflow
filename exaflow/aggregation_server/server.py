@@ -12,6 +12,10 @@ from grpc_health.v1 import health
 from grpc_health.v1 import health_pb2
 from grpc_health.v1 import health_pb2_grpc
 
+from exaflow.aggregation_serialization import bytes_to_ndarray
+from exaflow.aggregation_serialization import bytes_to_values
+from exaflow.aggregation_serialization import ndarray_to_bytes
+from exaflow.aggregation_serialization import values_to_bytes
 from exaflow.aggregation_server import config
 from exaflow.protos.aggregation_server.aggregation_server_pb2 import AggregateResponse
 from exaflow.protos.aggregation_server.aggregation_server_pb2 import CleanupResponse
@@ -26,10 +30,6 @@ from exaflow.protos.aggregation_server.aggregation_server_pb2_grpc import (
 )
 
 from .constants import AggregationType
-from .serialization import bytes_to_ndarray
-from .serialization import bytes_to_values
-from .serialization import ndarray_to_bytes
-from .serialization import values_to_bytes
 
 logger = logging.getLogger("AggregationServer")
 

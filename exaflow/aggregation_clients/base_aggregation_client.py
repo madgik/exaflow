@@ -8,12 +8,12 @@ from numpy.typing import NDArray
 
 import exaflow.protos.aggregation_server.aggregation_server_pb2 as pb2
 import exaflow.protos.aggregation_server.aggregation_server_pb2_grpc as pb2_grpc
+from exaflow.aggregation_serialization import bytes_to_ndarray
+from exaflow.aggregation_serialization import bytes_to_values
+from exaflow.aggregation_serialization import ndarray_to_bytes
+from exaflow.aggregation_serialization import values_to_bytes
 
 from .constants import AggregationType
-from .serialization import bytes_to_ndarray
-from .serialization import bytes_to_values
-from .serialization import ndarray_to_bytes
-from .serialization import values_to_bytes
 
 logger = logging.getLogger(__name__)
 

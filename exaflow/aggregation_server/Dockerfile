@@ -24,6 +24,7 @@ WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
 
 COPY exaflow/aggregation_server ./exaflow/aggregation_server
+COPY exaflow/aggregation_serialization.py ./exaflow/aggregation_serialization.py
 COPY exaflow/protos ./exaflow/protos
 
 EXPOSE 50051
