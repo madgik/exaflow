@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from exaflow.aggregation_server import serialization as server_serialization
+from exaflow import aggregation_serialization
 
 
 @pytest.mark.parametrize(
@@ -30,8 +30,8 @@ from exaflow.aggregation_server import serialization as server_serialization
 def test_arrow_ndarray_roundtrip_preserves_dtype_shape_and_values(dtype, shape):
     values = np.arange(np.prod(shape), dtype=dtype).reshape(shape)
 
-    result = server_serialization.bytes_to_ndarray(
-        server_serialization.ndarray_to_bytes(values)
+    result = aggregation_serialization.bytes_to_ndarray(
+        aggregation_serialization.ndarray_to_bytes(values)
     )
 
     assert result.dtype == values.dtype
@@ -45,8 +45,8 @@ def test_arrow_ndarray_roundtrip_preserves_non_finite_float_values(
 ):
     values = np.array([np.nan, np.inf, -np.inf, 1.5], dtype=dtype)
 
-    result = server_serialization.bytes_to_ndarray(
-        server_serialization.ndarray_to_bytes(values)
+    result = aggregation_serialization.bytes_to_ndarray(
+        aggregation_serialization.ndarray_to_bytes(values)
     )
 
     assert result.dtype == values.dtype
@@ -57,9 +57,18 @@ def test_arrow_ndarray_roundtrip_preserves_non_finite_float_values(
 def test_json_values_roundtrip_preserves_union_values_as_object_array():
     values = ["b", "a", 3, None]
 
-    result = server_serialization.bytes_to_values(
-        server_serialization.values_to_bytes(values)
+    result = aggregation_serialization.bytes_to_values(
+        aggregation_serialization.values_to_bytes(values)
     )
 
     assert result.dtype == object
     np.testing.assert_array_equal(result, np.asarray(values, dtype=object))
+
+
+@pytest.mark.parametrize("bad_value", [np.nan, np.inf, -np.inf])
+def test_json_values_rejects_non_finite_float_values(bad_value):
+    with pytest.raises(
+        ValueError,
+        match="UNION payload contains non-JSON-compliant float values",
+    ):
+        aggregation_serialization.values_to_bytes(["a", bad_value])

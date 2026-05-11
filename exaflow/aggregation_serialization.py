@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from typing import Sequence
 
@@ -30,7 +32,12 @@ def values_to_bytes(values: Sequence[object]) -> bytes:
         return value
 
     payload = [_jsonify(value) for value in values]
-    return json.dumps(payload).encode("utf-8")
+    try:
+        return json.dumps(payload, allow_nan=False).encode("utf-8")
+    except ValueError as exc:
+        raise ValueError(
+            "UNION payload contains non-JSON-compliant float values (NaN or Infinity)."
+        ) from exc
 
 
 def bytes_to_values(payload: bytes) -> NDArray:
