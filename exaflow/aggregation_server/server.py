@@ -34,6 +34,7 @@ from .serialization import values_to_bytes
 logger = logging.getLogger("AggregationServer")
 
 NUMERIC_KINDS = {"i", "u", "f"}
+GRPC_MAX_MESSAGE_SIZE = 100 * 1024 * 1024  # 100 MiB
 """
 Aggregation server, threading model, and data flow
 --------------------------------------------------
@@ -504,7 +505,11 @@ def serve():
     )
 
     server = grpc.server(
-        futures.ThreadPoolExecutor(max_workers=config.max_grpc_connections)
+        futures.ThreadPoolExecutor(max_workers=config.max_grpc_connections),
+        options=[
+            ("grpc.max_send_message_length", GRPC_MAX_MESSAGE_SIZE),
+            ("grpc.max_receive_message_length", GRPC_MAX_MESSAGE_SIZE),
+        ],
     )
     add_AggregationServerServicer_to_server(AggregationServer(), server)
 
