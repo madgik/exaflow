@@ -132,7 +132,7 @@ Applied after missing values are handled, before transformations.
 Category: Outlier handling
 Purpose: Clip extreme values to quantiles
 Example: [1%, 99%] or [5%, 95%]
-Uses: histogram-based federated quantiles
+Uses: local worker winsorization bounds
 
 **OutlierDetector**
 Category: Outlier diagnostics (non-destructive)
@@ -281,7 +281,7 @@ ______________________________________________________________________
 | **OrdinalEncoder** | Ordinal Logistic, Linear, Tree-based, Mixed-Effects | Categorical (ordinal) | Maps ordered categories to integer ranks | Encode ordered predictors with preserved ranking | After Missing Handling (before model/scaling) |
 | **SimpleImputer (constant)** | All models using predictors | All types | Fills missing with user-defined constant (e.g. 0, “unknown”) | Replace missing values with fixed constant | 1st – Missing Data Handling |
 | **MissingIndicator** | Linear, Logistic, Cox, PropensityScore, Mixed-Effects | All types | Adds binary feature indicating missingness; does **not** replace imputation | Preserve information about missingness (clinical relevance) | 1st – Missing Data Handling (optional augmentation) |
-| **Winsorizer / Clipper** | Linear, Logistic, Cox, Mixed-Effects | Numerical (continuous / discrete) | Clips extreme values to quantile bounds; improves stability | Limit influence of extreme outliers using quantiles | 2nd – Outlier Handling |
+| **Winsorizer / Clipper** | Linear, Logistic, Cox, Mixed-Effects | Numerical (continuous / discrete) | Clips extreme values to local worker winsorization bounds; improves stability | Limit influence of extreme outliers | 2nd – Outlier Handling |
 | **OutlierDetector** | All models (diagnostic only) | Numerical | Detects outliers (z-score / robust); does not modify data | Identify extreme values (diagnostic, non-destructive) | 2nd – Outlier Handling (optional) |
 | **Yeo–Johnson Transformer** | Linear, Logistic, Cox, Mixed-Effects | Numerical (continuous / discrete) | Power transform for skewed data; works with negatives | General power transform for skewed distributions | 3rd – Power / Distribution Transform |
 | **log1p Transformer** | Linear, Logistic, Cox | Numerical (non-negative discrete / continuous) | Log-like transform for counts, costs, biomarkers | Reduce strong right skew in count-like data | 3rd – Power / Distribution Transform |

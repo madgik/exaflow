@@ -17,6 +17,7 @@ from exaflow.algorithms.federated.preprocessing import FederatedPassthrough
 from exaflow.algorithms.federated.statistics import FederatedAnovaOneWay
 from exaflow.algorithms.federated.statistics import FederatedAnovaTwoWay
 from exaflow.algorithms.federated.statistics import FederatedDescriptiveStatistics
+from exaflow.algorithms.federated.statistics import FederatedOutlierReport
 from exaflow.algorithms.federated.statistics import FederatedTTestIndependent
 from exaflow.algorithms.federated.statistics import FederatedTTestOneSample
 from exaflow.algorithms.federated.statistics import FederatedTTestPaired
@@ -44,4 +45,5 @@ __all__ = [
     "make_column_selector",
     "FederatedRegressionScorer",
     "FederatedClassificationScorer",
+    "FederatedOutlierReport",
 ]

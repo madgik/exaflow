@@ -14,6 +14,7 @@ from exaflow.algorithms.specifications import InputDataSpecification
 from exaflow.algorithms.specifications import InputDataSpecifications
 from exaflow.algorithms.specifications import InputDataStatType
 from exaflow.algorithms.specifications import InputDataType
+from exaflow.algorithms.specifications import ParameterDictValueType
 from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterEnumType
 from exaflow.algorithms.specifications import ParameterSpecification
@@ -63,6 +64,7 @@ class ParameterSpecificationDTO(ImmutableBaseModel):
     default: Any = None
     enums: Optional[ParameterEnumSpecificationDTO] = None
     dict_keys_enums: Optional[ParameterEnumSpecificationDTO] = None
+    dict_values_type: Optional[ParameterDictValueType] = None
     dict_values_enums: Optional[ParameterEnumSpecificationDTO] = None
     min: Optional[float] = None
     max: Optional[float] = None
@@ -204,6 +206,7 @@ def _convert_parameter_specification_to_dto(spec: ParameterSpecification):
             if spec.dict_keys_enums
             else None
         ),
+        dict_values_type=spec.dict_values_type,
         dict_values_enums=(
             _convert_parameter_enum_specification_to_dto(spec.dict_values_enums)
             if spec.dict_values_enums

@@ -1,0 +1,285 @@
+{
+  "test_cases": [
+    {
+      "input": {
+        "inputdata": {
+          "y": [
+            "lefthippocampus"
+          ],
+          "x": [],
+          "data_model": "dementia:0.1",
+          "datasets": [
+            "desd-synthdata8"
+          ],
+          "filters": null
+        },
+        "parameters": {
+          "strategies": {
+            "lefthippocampus": "iqr"
+          }
+        }
+      },
+      "output": {
+        "status_code": 200,
+        "variables": [
+          "lefthippocampus"
+        ],
+        "datasets": [
+          "desd-synthdata8"
+        ],
+        "records": [
+          {
+            "variable": "lefthippocampus",
+            "dataset": "desd-synthdata8",
+            "strategy": "iqr",
+            "tail": "both",
+            "fold": 1.5
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "inputdata": {
+          "y": [
+            "subjectageyears"
+          ],
+          "x": [],
+          "data_model": "dementia:0.1",
+          "datasets": [
+            "desd-synthdata8"
+          ],
+          "filters": null
+        },
+        "parameters": {
+          "strategies": {
+            "subjectageyears": "gaussian"
+          },
+          "tails": {
+            "subjectageyears": "left"
+          },
+          "folds": {
+            "subjectageyears": 2.5
+          }
+        }
+      },
+      "output": {
+        "status_code": 200,
+        "variables": [
+          "subjectageyears"
+        ],
+        "datasets": [
+          "desd-synthdata8"
+        ],
+        "records": [
+          {
+            "variable": "subjectageyears",
+            "dataset": "desd-synthdata8",
+            "strategy": "gaussian",
+            "tail": "left",
+            "fold": 2.5
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "inputdata": {
+          "y": [
+            "lefthippocampus"
+          ],
+          "x": [
+            "rightpallidum"
+          ],
+          "data_model": "dementia:0.1",
+          "datasets": [
+            "desd-synthdata8"
+          ],
+          "filters": null
+        },
+        "parameters": {
+          "strategies": {
+            "rightpallidum": "mad"
+          },
+          "tails": {
+            "rightpallidum": "right"
+          },
+          "folds": {
+            "rightpallidum": 2.0
+          }
+        }
+      },
+      "output": {
+        "status_code": 200,
+        "variables": [
+          "rightpallidum"
+        ],
+        "datasets": [
+          "desd-synthdata8"
+        ],
+        "records": [
+          {
+            "variable": "rightpallidum",
+            "dataset": "desd-synthdata8",
+            "strategy": "mad",
+            "tail": "right",
+            "fold": 2.0
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "inputdata": {
+          "y": [
+            "lefthippocampus"
+          ],
+          "x": [
+            "subjectageyears"
+          ],
+          "data_model": "dementia:0.1",
+          "datasets": [
+            "desd-synthdata8",
+            "ppmi0"
+          ],
+          "filters": null
+        },
+        "parameters": {
+          "strategies": {
+            "lefthippocampus": "quantile",
+            "subjectageyears": "iqr"
+          },
+          "tails": {
+            "lefthippocampus": "both",
+            "subjectageyears": "both"
+          },
+          "folds": {
+            "lefthippocampus": 0.1
+          }
+        }
+      },
+      "output": {
+        "status_code": 200,
+        "variables": [
+          "lefthippocampus",
+          "subjectageyears"
+        ],
+        "datasets": [
+          "desd-synthdata8",
+          "ppmi0"
+        ],
+        "records": [
+          {
+            "variable": "lefthippocampus",
+            "dataset": "desd-synthdata8",
+            "strategy": "quantile",
+            "tail": "both",
+            "fold": 0.1
+          },
+          {
+            "variable": "subjectageyears",
+            "dataset": "desd-synthdata8",
+            "strategy": "iqr",
+            "tail": "both",
+            "fold": 1.5
+          },
+          {
+            "variable": "lefthippocampus",
+            "dataset": "ppmi0",
+            "strategy": "quantile",
+            "tail": "both",
+            "fold": 0.1
+          },
+          {
+            "variable": "subjectageyears",
+            "dataset": "ppmi0",
+            "strategy": "iqr",
+            "tail": "both",
+            "fold": 1.5
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "inputdata": {
+          "y": [
+            "alzheimerbroadcategory"
+          ],
+          "x": [],
+          "data_model": "dementia:0.1",
+          "datasets": [
+            "desd-synthdata8"
+          ],
+          "filters": null
+        },
+        "parameters": {
+          "strategies": {
+            "alzheimerbroadcategory": "iqr"
+          }
+        }
+      },
+      "output": {
+        "status_code": 460,
+        "drop_na": false,
+        "message_contains": "allowed types"
+      }
+    },
+    {
+      "input": {
+        "inputdata": {
+          "y": [
+            "lefthippocampus"
+          ],
+          "x": [],
+          "data_model": "dementia:0.1",
+          "datasets": [
+            "desd-synthdata8"
+          ],
+          "filters": null
+        },
+        "parameters": {
+          "strategies": {
+            "lefthippocampus": "quantile"
+          },
+          "folds": {
+            "lefthippocampus": 0.5
+          }
+        }
+      },
+      "output": {
+        "status_code": 460,
+        "drop_na": false,
+        "message_contains": "Invalid outlier fold"
+      }
+    },
+    {
+      "input": {
+        "inputdata": {
+          "y": [
+            "lefthippocampus"
+          ],
+          "x": [],
+          "data_model": "dementia:0.1",
+          "datasets": [
+            "desd-synthdata8"
+          ],
+          "filters": null
+        },
+        "parameters": {
+          "strategies": {
+            "lefthippocampus": "iqr"
+          },
+          "folds": {
+            "lefthippocampus": "nan"
+          }
+        }
+      },
+      "output": {
+        "status_code": 460,
+        "drop_na": false,
+        "message_contains": "should be of type: real"
+      }
+    }
+  ]
+}

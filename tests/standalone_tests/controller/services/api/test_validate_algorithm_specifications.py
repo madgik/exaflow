@@ -6,6 +6,7 @@ from exaflow.algorithms.specifications import InputDataSpecification
 from exaflow.algorithms.specifications import InputDataSpecifications
 from exaflow.algorithms.specifications import InputDataStatType
 from exaflow.algorithms.specifications import InputDataType
+from exaflow.algorithms.specifications import ParameterDictValueType
 from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterEnumType
 from exaflow.algorithms.specifications import ParameterSpecification
@@ -340,6 +341,41 @@ def test_validate_parameter_property_dict_values_enums_can_only_be_given_with_ty
                     dict_values_enums=ParameterEnumSpecification(
                         type=ParameterEnumType.LIST, source=["sample_enum"]
                     ),
+                ),
+            },
+        )
+
+
+def test_validate_parameter_property_dict_values_type_can_only_be_given_with_type_dict():
+    exception_type = ValidationError
+    exception_message = (
+        ".*In algorithm 'sample_algo', parameter 'sample_label' has the property 'dict_values_type' "
+        "but the allowed 'types' is not 'dict'."
+    )
+    with pytest.raises(exception_type, match=exception_message):
+        AlgorithmSpecification(
+            name="sample_algo",
+            desc="sample",
+            label="sample_algo",
+            enabled=True,
+            inputdata=InputDataSpecifications(
+                y=InputDataSpecification(
+                    label="y",
+                    desc="y",
+                    types=[InputDataType.TEXT],
+                    stattypes=[InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=False,
+                )
+            ),
+            parameters={
+                "dict_values_type_param": ParameterSpecification(
+                    label="sample_label",
+                    desc="sample",
+                    types=[ParameterType.TEXT],
+                    required=False,
+                    multiple=False,
+                    dict_values_type=ParameterDictValueType.REAL,
                 ),
             },
         )

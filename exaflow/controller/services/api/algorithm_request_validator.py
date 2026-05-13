@@ -13,6 +13,7 @@ from exaflow.algorithms.specifications import InputDataSpecification
 from exaflow.algorithms.specifications import InputDataSpecifications
 from exaflow.algorithms.specifications import InputDataStatType
 from exaflow.algorithms.specifications import InputDataType
+from exaflow.algorithms.specifications import ParameterDictValueType
 from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterSpecification
 from exaflow.algorithms.specifications import PreprocessingStepSpecification
@@ -501,6 +502,26 @@ def _validate_parameter_type(
         )
 
 
+def _validate_parameter_value_type(
+    parameter_value: Any,
+    parameter_type: ParameterDictValueType,
+    parameter_spec_label: str,
+):
+    exaflowtypes_to_python_types = {
+        "text": str,
+        "int": int,
+        "real": numbers.Real,
+        "boolean": bool,
+    }
+
+    if isinstance(parameter_value, exaflowtypes_to_python_types[parameter_type.value]):
+        return
+
+    raise BadUserInput(
+        f"Parameter '{parameter_spec_label}' dictionary values should be of type: {parameter_type.value}."
+    )
+
+
 def _validate_param_enums_of_type_input_var_names(
     parameter_value: Any,
     parameter_spec_enums: ParameterEnumSpecification,
@@ -632,6 +653,13 @@ def _validate_param_dict_enums(
             )
 
         for value in parameter_value.values():
+            if parameter_spec.dict_values_type:
+                _validate_parameter_value_type(
+                    value,
+                    parameter_spec.dict_values_type,
+                    parameter_spec.label,
+                )
+
             _validate_param_enums(
                 value,
                 parameter_spec.dict_values_enums,
