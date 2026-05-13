@@ -52,3 +52,4 @@
 - [ANOVA_ONE_WAY](docs/anova_one_way.md)
 - [ANOVA_TWO_WAY](docs/anova_two_way.md)
 - [HISTOGRAM](docs/histogram.md)
+- [OUTLIER_REPORT](docs/outlier_report.md)

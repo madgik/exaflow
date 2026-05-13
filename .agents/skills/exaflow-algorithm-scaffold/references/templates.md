@@ -34,7 +34,7 @@ Priority order:
 
 ### Prod test
 
-- Path: `tests/prod_env_tests/test_<algorithm>_validation.py`
+- Path: `tests/prod_env_tests/test_<algorithm>.py`
 - Uses existing request helpers and expected fixture path.
 
 ### Prod expected fixture

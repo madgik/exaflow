@@ -10,6 +10,7 @@ from exaflow.algorithms.specifications import InputDataSpecification
 from exaflow.algorithms.specifications import InputDataSpecifications
 from exaflow.algorithms.specifications import InputDataStatType
 from exaflow.algorithms.specifications import InputDataType
+from exaflow.algorithms.specifications import ParameterDictValueType
 from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterEnumType
 from exaflow.algorithms.specifications import ParameterSpecification
@@ -457,6 +458,14 @@ def algorithms_specs():
                     required=False,
                     multiple=False,
                 ),
+                "param_with_dict_value_type": ParameterSpecification(
+                    label="param_with_dict_value_type",
+                    desc="param_with_dict_value_type",
+                    types=[ParameterType.DICT],
+                    required=False,
+                    multiple=False,
+                    dict_values_type=ParameterDictValueType.REAL,
+                ),
                 "param_with_dict_enums": ParameterSpecification(
                     label="param_with_dict_enums",
                     desc="param_with_dict_enums",
@@ -789,6 +798,18 @@ def get_parametrization_list_success_cases():
                 parameters={"param_with_type_dict": {"sample_key": "sample_value"}},
             ),
             id="Parameter with type dict.",
+        ),
+        pytest.param(
+            "algorithm_with_many_params",
+            AlgorithmRequestDTO(
+                inputdata=AlgorithmInputDataDTO(
+                    data_model="data_model_with_all_cde_types:0.1",
+                    datasets=["sample_dataset1"],
+                    y=["text_cde_categ"],
+                ),
+                parameters={"param_with_dict_value_type": {"sample_key": 1.5}},
+            ),
+            id="Parameter with dict value type.",
         ),
         pytest.param(
             "algorithm_with_many_params",
@@ -1258,6 +1279,19 @@ def get_parametrization_list_exception_cases():
             ),
             (BadUserInput, "Parameter .* values should be of types.*"),
             id="Parameter of type dict given wrong value.",
+        ),
+        pytest.param(
+            "algorithm_with_many_params",
+            AlgorithmRequestDTO(
+                inputdata=AlgorithmInputDataDTO(
+                    data_model="data_model_with_all_cde_types:0.1",
+                    datasets=["sample_dataset1"],
+                    y=["text_cde_categ"],
+                ),
+                parameters={"param_with_dict_value_type": {"sample_key": "text"}},
+            ),
+            (BadUserInput, "Parameter .* dictionary values should be of type: real."),
+            id="Parameter of type dict with wrong dict value type.",
         ),
         pytest.param(
             "algorithm_with_many_params",

@@ -1002,9 +1002,7 @@ def run_for_algorithm(
         / standalone_subfolder
         / f"test_{algorithm}.py"
     )
-    prod_test = (
-        repo_root / "tests" / "prod_env_tests" / f"test_{algorithm}_validation.py"
-    )
+    prod_test = repo_root / "tests" / "prod_env_tests" / f"test_{algorithm}.py"
     prod_expected = (
         repo_root
         / "tests"

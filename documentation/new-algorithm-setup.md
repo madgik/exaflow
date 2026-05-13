@@ -106,7 +106,7 @@ entry as something to fix before the integration is complete.
 | `exaflow/algorithms/exareme3/<algorithm_id>.py` | Exareme3 wrapper, specification, request parsing, worker UDF orchestration, response model. |
 | `exaflow/algorithms/federated/<family>/<algorithm_id>.py` | Federated/statistical core logic that can be tested without the full runtime. |
 | `tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py` | Fast parity tests for the federated core and edge cases. |
-| `tests/prod_env_tests/test_<algorithm_id>_validation.py` | Prod validation test wired to Exaflow request fixtures. |
+| `tests/prod_env_tests/test_<algorithm_id>.py` | Prod validation test wired to Exaflow request fixtures. |
 | `tests/prod_env_tests/expected/<algorithm_id>_expected.json` | Non-empty expected fixture with at least one runnable case. |
 | `documentation/algorithms/<algorithm_id>.md` | User-facing algorithm description and request shape. |
 | `exaflow/algorithms/federated/docs/<algorithm_id>.md` | Federated implementation notes. |
@@ -156,8 +156,8 @@ poetry run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<
 Focused formatting gates:
 
 ```bash
-poetry run ruff check --select I exaflow/algorithms/exareme3/<algorithm_id>.py exaflow/algorithms/federated/<family>/<algorithm_id>.py tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py tests/prod_env_tests/test_<algorithm_id>_validation.py
-poetry run ruff format --check exaflow/algorithms/exareme3/<algorithm_id>.py exaflow/algorithms/federated/<family>/<algorithm_id>.py tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py tests/prod_env_tests/test_<algorithm_id>_validation.py
+poetry run ruff check --select I exaflow/algorithms/exareme3/<algorithm_id>.py exaflow/algorithms/federated/<family>/<algorithm_id>.py tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py tests/prod_env_tests/test_<algorithm_id>.py
+poetry run ruff format --check exaflow/algorithms/exareme3/<algorithm_id>.py exaflow/algorithms/federated/<family>/<algorithm_id>.py tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py tests/prod_env_tests/test_<algorithm_id>.py
 ```
 
 ## Definition Of Done
