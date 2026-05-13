@@ -142,4 +142,5 @@ Each validator report entry includes:
 - `next_action`
 - `path`
 
-Read `references/compatibility-map.md` for transition mappings.
+Read `references/path-policy.md` for the validator's path rules and legacy
+suite policy.
