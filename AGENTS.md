@@ -181,6 +181,9 @@ ______________________________________________________________________
   pass explicit optional defaults like `default=None`, `enums=None`,
   `dict_values_enums=None`, `min=None`, or `max=None`; the model already
   defaults them.
+- **Lint/import order:** Do not spend agent time manually adjusting import
+  order, formatting-only lint, or other purely mechanical style issues.
+  Automated tools handle those changes.
 - **Implementations:** `exaflow/algorithms/exareme3/*.py` typically define:
   - A class derived from `Algorithm` (or `PreprocessingStep` for preprocessing) exposing `run` (or preprocessing step helpers).
   - `@classmethod get_specification()` returning the typed spec object (prefer `from exaflow.algorithms import specifications as specs`).
