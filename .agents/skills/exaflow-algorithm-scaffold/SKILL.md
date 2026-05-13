@@ -39,7 +39,8 @@ Definition of Done:
 - Prod validation test and non-empty expected fixture exist.
 - Registration touchpoints and docs are patched.
 - `validate_algorithms.py --new-algorithm <name>` passes with no warnings.
-- Focused `ruff check --select I`, `ruff format --check`, and standalone `pytest` pass.
+- Focused standalone `pytest` passes. Ignore import order, formatting-only lint,
+  and other purely mechanical style issues; automated tools handle them.
 
 Checkpoint responses are only acceptable when they include a failing command, its error summary, and the next concrete fix.
 
@@ -150,7 +151,8 @@ poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_alg
 - Registration missing symbol:
   - Re-run scaffold with `--with-registration`.
 - Ruff format/import failures:
-  - Run `poetry run ruff check --select I <files>` and `poetry run ruff format <files>`.
+  - Ignore import order and formatting-only lint. Automated tools handle these
+    mechanical edits.
 - Strict mode fails in prod tests:
   - Ensure environment prerequisites and fixture values are realistic for available datasets.
 

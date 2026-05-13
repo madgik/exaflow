@@ -28,7 +28,8 @@ Definition of Done:
 - Validator JSON contains no `failed` entries.
 - Validator JSON contains no `warnings` entries.
 - Focused standalone tests pass.
-- Focused import-order and format checks pass.
+- Ignore import-order and formatting-only lint findings. Automated tools handle
+  those mechanical edits.
 - Strict mode is run when the user requests prod-env confidence.
 
 If validation fails, continue fixing until the same command passes. If blocked, return only the failing command, the relevant error, files already changed, and the next required action.
@@ -84,7 +85,8 @@ Static checks (always):
 
 Runtime checks:
 
-- Fast tier: `ruff check --select I`, `ruff format --check`, targeted standalone tests.
+- Fast tier: targeted standalone tests. Ignore import-order and formatting-only
+  lint findings; automated tools handle those mechanical edits.
 - Strict tier: fast tier + targeted prod_env tests.
 
 Path policy:
@@ -127,7 +129,8 @@ poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_alg
 - Placeholder check failed:
   - Remove scaffold `TODO`, `NotImplementedError`, and `__REPLACE_ME_*__` placeholders.
 - Ruff/runtime failures:
-  - Fix lint/test errors before re-running strict tier.
+  - Ignore import-order and formatting-only lint findings. Fix test/runtime
+    errors before re-running strict tier.
 
 ## Output Schema
 
