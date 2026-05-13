@@ -167,6 +167,20 @@ ______________________________________________________________________
 - **Specs (Exareme3):** Algorithm + preprocessing step metadata shipped to clients is defined in code via
   `get_specification()` returning `AlgorithmSpecification` / `PreprocessingStepSpecification`
   (`exaflow/algorithms/specifications.py`). Update the specification method and implementation together.
+- **UI-facing descriptions:** `desc` fields are shown to users. Write them as
+  factual help text that explains what the algorithm/preprocessing step does,
+  what each parameter means, formulas/defaults/ranges, and what the output
+  represents. Use readable newline-separated sections and indented bullet lines
+  for multi-option parameters, like `outlier_report` and `outlier_winsorizer`.
+  Do not include recommendations such as "use this when..." unless the UI
+  explicitly needs decision guidance.
+- **Parameter specifications:** Prefer typed specification validation over
+  ad-hoc algorithm checks. For dictionary parameters, use `dict_keys_enums` for
+  allowed keys, `dict_values_enums` for allowed categorical values, and
+  `dict_values_type` for typed dictionary values such as numeric folds. Do not
+  pass explicit optional defaults like `default=None`, `enums=None`,
+  `dict_values_enums=None`, `min=None`, or `max=None`; the model already
+  defaults them.
 - **Implementations:** `exaflow/algorithms/exareme3/*.py` typically define:
   - A class derived from `Algorithm` (or `PreprocessingStep` for preprocessing) exposing `run` (or preprocessing step helpers).
   - `@classmethod get_specification()` returning the typed spec object (prefer `from exaflow.algorithms import specifications as specs`).

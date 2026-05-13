@@ -29,6 +29,12 @@ Definition of Done:
 - All generated placeholder text is replaced (`TODO`, `NotImplementedError`,
   `__REPLACE_ME_*__`).
 - Exareme3 wrapper and federated core import successfully.
+- `get_specification()` contains UI-facing descriptions that explain behavior,
+  parameters, formulas/defaults/ranges, and outputs using readable newline
+  sections and bullet lines when needed.
+- Parameter specs use typed validation (`dict_keys_enums`, `dict_values_enums`,
+  `dict_values_type`) instead of duplicating shape/type checks in algorithm
+  runtime code, and omit explicit optional `None` values.
 - Standalone parity test exists and passes.
 - Prod validation test and non-empty expected fixture exist.
 - Registration touchpoints and docs are patched.
@@ -95,6 +101,10 @@ poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_alg
 
 1. Run scaffold with `--algorithms <name>` and `--family <family>`.
 1. Implement Exareme3 wrapper logic in `exaflow/algorithms/exareme3/<name>.py`.
+1. Write `get_specification()` text for the UI: describe what the algorithm
+   does, define each input/parameter, include formulas/defaults/ranges, and use
+   newline-separated bullet lists for strategy-like options. Avoid advisory
+   "when to use" language unless it is required product copy.
 1. Implement federated core in `exaflow/algorithms/federated/<family>/<name>.py`.
 1. Confirm registration patches:
    - `exaflow/algorithms/federated/<family>/__init__.py`
