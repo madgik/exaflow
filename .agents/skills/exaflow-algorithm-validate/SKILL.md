@@ -80,7 +80,6 @@ Static checks (always):
 - Family and root `__init__.py` exports include expected federated symbol.
 - `AlgorithmName` enum contains algorithm value.
 - Federated README index and federated docs entry exist.
-- Canonical file paths are required (legacy compatibility no longer sufficient).
 - Expected fixture must be non-empty and contain runnable case shape (`input` + `output`).
 
 Runtime checks:
@@ -88,10 +87,10 @@ Runtime checks:
 - Fast tier: `ruff check --select I`, `ruff format --check`, targeted standalone tests.
 - Strict tier: fast tier + targeted prod_env tests.
 
-Legacy policy:
+Path policy:
 
-- `legacy_used` is a non-failing warning in standard mode.
-- `canonical_missing` is failing in `--new-algorithm` mode.
+- Required implementation, test, fixture, and documentation paths are enforced directly.
+- There is no legacy fallback for alternate prod test, expected fixture, or standalone test filenames.
 
 ## Mandatory New Federated Algorithm Checklist
 
@@ -99,7 +98,7 @@ Legacy policy:
 1. Implement Exareme3 wrapper and federated core logic.
 1. Ensure exports/registrations are patched and importable.
 1. Add standalone parity tests.
-1. Add prod validation test + non-empty expected fixture.
+1. Add prod environment test + non-empty expected fixture.
 1. Run validator fast mode.
 1. Run validator strict mode when requested.
 
@@ -121,8 +120,8 @@ poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_alg
 
 - Runtime catalog membership failure:
   - Verify module discovery and `get_specification().name`.
-- Canonical missing with legacy present:
-  - Create canonical file path while keeping legacy optional.
+- Required path missing:
+  - Create the exact path reported by the validator.
 - Registration symbol missing:
   - Patch `__init__.py`/`AlgorithmName` with expected symbol/value.
 - Placeholder check failed:
@@ -143,4 +142,5 @@ Each validator report entry includes:
 - `next_action`
 - `path`
 
-Read `references/compatibility-map.md` for transition mappings.
+Read `references/path-policy.md` for the validator's path rules and legacy
+suite policy.
