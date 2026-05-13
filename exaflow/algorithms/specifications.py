@@ -29,6 +29,7 @@ class PreprocessingStepOrder(IntEnum):
     SECOND = 2
     THIRD = 3
     FOURTH = 4
+    FIFTH = 5
 
 
 @unique
