@@ -33,7 +33,7 @@ def test_validate_parameter_spec_input_var_CDE_enums_source_is_x_or_y():
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=False,
+                    max_count=1,
                 )
             ),
             parameters={
@@ -72,7 +72,7 @@ def test_validate_parameter_spec_input_var_CDE_enums_multiple_false():
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=False,
+                    max_count=1,
                 )
             ),
             parameters={
@@ -94,7 +94,7 @@ def test_validate_parameter_spec_input_var_CDE_enums_inputdata_has_multiple_fals
     exception_type = ValidationError
     exception_message = (
         ".* In algorithm 'sample_algo', parameter 'sample_label' has enums type 'input_var_CDE_enums' "
-        "that doesn't support 'multiple=True' in it's linked inputdata var 'y'.*"
+        "that requires max_count=1 in its linked inputdata var 'y'.*"
     )
     with pytest.raises(exception_type, match=exception_message):
         AlgorithmSpecification(
@@ -110,7 +110,6 @@ def test_validate_parameter_spec_input_var_CDE_enums_inputdata_has_multiple_fals
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=True,
                 )
             ),
             parameters={
@@ -148,7 +147,6 @@ def test_validate_parameter_spec_input_var_names_type_must_be_text():
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=True,
                 )
             ),
             parameters={
@@ -186,7 +184,7 @@ def test_validate_parameter_spec_input_var_CDE_enums_only_one_value():
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=False,
+                    max=1,
                 )
             ),
             parameters={
@@ -195,7 +193,7 @@ def test_validate_parameter_spec_input_var_CDE_enums_only_one_value():
                     desc="sample",
                     types=[ParameterType.TEXT],
                     required=False,
-                    multiple=True,
+                    multiple=False,
                     enums=ParameterEnumSpecification(
                         type=ParameterEnumType.INPUT_VAR_CDE_ENUMS,
                         source=["y", "second_value"],
@@ -225,7 +223,7 @@ def test_validate_parameter_spec_fixed_var_CDE_enums_only_one_value():
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=False,
+                    max=1,
                 )
             ),
             parameters={
@@ -234,7 +232,7 @@ def test_validate_parameter_spec_fixed_var_CDE_enums_only_one_value():
                     desc="sample",
                     types=[ParameterType.TEXT],
                     required=False,
-                    multiple=True,
+                    multiple=False,
                     enums=ParameterEnumSpecification(
                         type=ParameterEnumType.FIXED_VAR_CDE_ENUMS,
                         source=["y", "second_value"],
@@ -264,7 +262,7 @@ def test_validate_parameter_dict_type_given_with_other_type():
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=False,
+                    max=1,
                 )
             ),
             parameters={
@@ -274,6 +272,7 @@ def test_validate_parameter_dict_type_given_with_other_type():
                     types=[ParameterType.DICT, ParameterType.TEXT],
                     required=False,
                     multiple=False,
+                    max=1,
                 ),
             },
         )
@@ -299,7 +298,7 @@ def test_validate_parameter_property_dict_keys_enums_can_only_be_given_with_type
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=False,
+                    max=1,
                 )
             ),
             parameters={
@@ -337,7 +336,7 @@ def test_validate_parameter_property_dict_values_enums_can_only_be_given_with_ty
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=False,
+                    max=1,
                 )
             ),
             parameters={
@@ -375,7 +374,7 @@ def test_validate_parameter_property_dict_values_type_can_only_be_given_with_typ
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=False,
+                    max=1,
                 )
             ),
             parameters={
@@ -411,7 +410,7 @@ def test_validate_parameter_property_enums_given_with_type_dict():
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=False,
+                    max=1,
                 )
             ),
             parameters={
@@ -431,7 +430,7 @@ def test_validate_parameter_property_enums_given_with_type_dict():
 
 def test_validate_inputdata_min_cannot_be_negative():
     exception_type = ValidationError
-    exception_message = ".*'min' should be greater than or equal to 0.*"
+    exception_message = ".*'min_count' should be greater than or equal to 0.*"
     with pytest.raises(exception_type, match=exception_message):
         InputDataSpecification(
             label="x",
@@ -439,14 +438,13 @@ def test_validate_inputdata_min_cannot_be_negative():
             types=[InputDataType.REAL],
             stattypes=[InputDataStatType.NUMERICAL],
             required=True,
-            multiple=True,
-            min=-1,
+            min_count=-1,
         )
 
 
 def test_validate_inputdata_max_cannot_be_negative():
     exception_type = ValidationError
-    exception_message = ".*'max' should be greater than or equal to 0.*"
+    exception_message = ".*'max_count' should be greater than or equal to 0.*"
     with pytest.raises(exception_type, match=exception_message):
         InputDataSpecification(
             label="x",
@@ -454,14 +452,13 @@ def test_validate_inputdata_max_cannot_be_negative():
             types=[InputDataType.REAL],
             stattypes=[InputDataStatType.NUMERICAL],
             required=True,
-            multiple=True,
-            max=-1,
+            max_count=-1,
         )
 
 
 def test_validate_inputdata_min_cannot_exceed_max():
     exception_type = ValidationError
-    exception_message = ".*'min' cannot be greater than 'max'.*"
+    exception_message = ".*'min_count' cannot be greater than 'max_count'.*"
     with pytest.raises(exception_type, match=exception_message):
         InputDataSpecification(
             label="x",
@@ -469,37 +466,6 @@ def test_validate_inputdata_min_cannot_exceed_max():
             types=[InputDataType.REAL],
             stattypes=[InputDataStatType.NUMERICAL],
             required=True,
-            multiple=True,
-            min=3,
-            max=2,
-        )
-
-
-def test_validate_inputdata_multiple_false_incompatible_with_min_gt_one():
-    exception_type = ValidationError
-    exception_message = ".*'multiple=False' is incompatible with 'min' greater than 1.*"
-    with pytest.raises(exception_type, match=exception_message):
-        InputDataSpecification(
-            label="x",
-            desc="x",
-            types=[InputDataType.REAL],
-            stattypes=[InputDataStatType.NUMERICAL],
-            required=True,
-            multiple=False,
-            min=2,
-        )
-
-
-def test_validate_inputdata_multiple_false_incompatible_with_max_gt_one():
-    exception_type = ValidationError
-    exception_message = ".*'multiple=False' is incompatible with 'max' greater than 1.*"
-    with pytest.raises(exception_type, match=exception_message):
-        InputDataSpecification(
-            label="x",
-            desc="x",
-            types=[InputDataType.REAL],
-            stattypes=[InputDataStatType.NUMERICAL],
-            required=True,
-            multiple=False,
-            max=2,
+            min_count=3,
+            max_count=2,
         )

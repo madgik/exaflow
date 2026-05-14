@@ -44,7 +44,7 @@ class TTestPaired(Algorithm):
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
-                    multiple=False,
+                    max_count=1,
                 ),
                 x=specs.InputDataSpecification(
                     label="Measurement 2",
@@ -52,7 +52,7 @@ class TTestPaired(Algorithm):
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
-                    multiple=False,
+                    max_count=1,
                 ),
             ),
             parameters={

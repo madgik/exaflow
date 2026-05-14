@@ -322,8 +322,8 @@ def _validate_algorithm_inputdata(
 
     if not inputdata_values:
         effective_min = (
-            inputdata_spec.min
-            if inputdata_spec.min is not None
+            inputdata_spec.min_count
+            if inputdata_spec.min_count is not None
             else (1 if inputdata_spec.required else 0)
         )
         if effective_min > 0:
@@ -346,14 +346,9 @@ def _validate_inputdata_values_quantity(
         raise BadRequest(f"Inputdata '{inputdata_spec.label}' should be a list.")
 
     size = len(inputdata_value)
-    if not inputdata_spec.multiple and size > 1:
-        raise BadUserInput(
-            f"Inputdata '{inputdata_spec.label}' cannot have multiple values."
-        )
-
     effective_min = (
-        inputdata_spec.min
-        if inputdata_spec.min is not None
+        inputdata_spec.min_count
+        if inputdata_spec.min_count is not None
         else (1 if inputdata_spec.required else 0)
     )
     if size < effective_min:
@@ -361,9 +356,9 @@ def _validate_inputdata_values_quantity(
             f"Inputdata '{inputdata_spec.label}' should include at least {effective_min} values."
         )
 
-    if inputdata_spec.max is not None and size > inputdata_spec.max:
+    if inputdata_spec.max_count is not None and size > inputdata_spec.max_count:
         raise BadUserInput(
-            f"Inputdata '{inputdata_spec.label}' should include at most {inputdata_spec.max} values."
+            f"Inputdata '{inputdata_spec.label}' should include at most {inputdata_spec.max_count} values."
         )
 
 

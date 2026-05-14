@@ -57,7 +57,7 @@ class NaiveBayesCategorical(Algorithm):
                     types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=False,
+                    max_count=1,
                 ),
                 x=specs.InputDataSpecification(
                     label="Covariates (independent)",
@@ -65,7 +65,6 @@ class NaiveBayesCategorical(Algorithm):
                     types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=True,
                 ),
             ),
             parameters={

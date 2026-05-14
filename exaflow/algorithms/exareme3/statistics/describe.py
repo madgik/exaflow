@@ -86,7 +86,6 @@ class Describe(Algorithm):
                         specs.InputDataStatType.NOMINAL,
                     ],
                     required=True,
-                    multiple=True,
                 ),
                 x=specs.InputDataSpecification(
                     label="x",
@@ -101,7 +100,6 @@ class Describe(Algorithm):
                         specs.InputDataStatType.NOMINAL,
                     ],
                     required=False,
-                    multiple=True,
                 ),
             ),
             type=specs.AlgorithmType.EXAREME3,

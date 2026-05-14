@@ -93,7 +93,6 @@ class OutlierReport(Algorithm):
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
-                    multiple=True,
                 ),
                 x=specs.InputDataSpecification(
                     label="Additional variables",
@@ -101,7 +100,6 @@ class OutlierReport(Algorithm):
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=False,
-                    multiple=True,
                 ),
             ),
             parameters={

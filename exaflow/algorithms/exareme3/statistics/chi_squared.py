@@ -44,7 +44,7 @@ class ChiSquared(Algorithm):
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=False,
+                    max_count=1,
                 ),
                 x=specs.InputDataSpecification(
                     label="Factor (independent)",
@@ -52,7 +52,7 @@ class ChiSquared(Algorithm):
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=False,
+                    max_count=1,
                 ),
             ),
             type=specs.AlgorithmType.EXAREME3,

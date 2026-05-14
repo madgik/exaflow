@@ -65,7 +65,7 @@ class LMM(Algorithm):
                     types=[specs.InputDataType.REAL],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
-                    multiple=False,
+                    max_count=1,
                 ),
                 x=specs.InputDataSpecification(
                     label="Covariates and grouping variable",
@@ -80,8 +80,7 @@ class LMM(Algorithm):
                         specs.InputDataStatType.NOMINAL,
                     ],
                     required=True,
-                    multiple=True,
-                    min=2,
+                    min_count=2,
                 ),
             ),
             parameters={

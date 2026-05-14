@@ -42,7 +42,6 @@ class PearsonCorrelation(Algorithm):
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
-                    multiple=True,
                 ),
                 x=specs.InputDataSpecification(
                     label="Covariates (optional)",
@@ -50,7 +49,6 @@ class PearsonCorrelation(Algorithm):
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=False,
-                    multiple=True,
                 ),
             ),
             parameters={

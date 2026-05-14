@@ -45,7 +45,6 @@ class LinearSVM(Algorithm):
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=True,
                 ),
                 x=specs.InputDataSpecification(
                     label="Features",
@@ -53,7 +52,6 @@ class LinearSVM(Algorithm):
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
-                    multiple=True,
                 ),
             ),
             parameters={

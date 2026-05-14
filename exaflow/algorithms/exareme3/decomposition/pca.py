@@ -38,7 +38,6 @@ class PCA(Algorithm):
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
-                    multiple=True,
                 ),
             ),
             type=specs.AlgorithmType.EXAREME3,

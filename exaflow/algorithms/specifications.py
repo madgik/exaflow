@@ -128,31 +128,26 @@ class InputDataSpecification(ImmutableBaseModel):
     types: List[InputDataType]
     stattypes: List[InputDataStatType]
     required: bool
-    multiple: bool
-    min: Optional[int] = None
-    max: Optional[int] = None
+    min_count: Optional[int] = None
+    max_count: Optional[int] = None
 
     @model_validator(mode="after")
     def validate_count_bounds(self):
-        if self.min is not None and self.min < 0:
+        if self.min_count is not None and self.min_count < 0:
             raise ValueError(
-                f"In inputdata '{self.label}', 'min' should be greater than or equal to 0."
+                f"In inputdata '{self.label}', 'min_count' should be greater than or equal to 0."
             )
-        if self.max is not None and self.max < 0:
+        if self.max_count is not None and self.max_count < 0:
             raise ValueError(
-                f"In inputdata '{self.label}', 'max' should be greater than or equal to 0."
+                f"In inputdata '{self.label}', 'max_count' should be greater than or equal to 0."
             )
-        if self.min is not None and self.max is not None and self.min > self.max:
+        if (
+            self.min_count is not None
+            and self.max_count is not None
+            and self.min_count > self.max_count
+        ):
             raise ValueError(
-                f"In inputdata '{self.label}', 'min' cannot be greater than 'max'."
-            )
-        if not self.multiple and self.min is not None and self.min > 1:
-            raise ValueError(
-                f"In inputdata '{self.label}', 'multiple=False' is incompatible with 'min' greater than 1."
-            )
-        if not self.multiple and self.max is not None and self.max > 1:
-            raise ValueError(
-                f"In inputdata '{self.label}', 'multiple=False' is incompatible with 'max' greater than 1."
+                f"In inputdata '{self.label}', 'min_count' cannot be greater than 'max_count'."
             )
         return self
 
@@ -212,11 +207,11 @@ def _validate_parameter_with_enums_type_input_var_CDE_enums(param_value, cls_val
     inputdata_var = (
         cls_values["inputdata"].x if value == "x" else cls_values["inputdata"].y
     )
-    if inputdata_var.multiple:
+    if inputdata_var.max_count is None or inputdata_var.max_count > 1:
         raise ValueError(
             f"In algorithm '{cls_values['label']}', parameter '{param_value.label}' has enums type "
             f"'{ParameterEnumType.INPUT_VAR_CDE_ENUMS.value}' "
-            f"that doesn't support 'multiple=True' in it's linked inputdata var '{inputdata_var.label}'."
+            f"that requires max_count=1 in its linked inputdata var '{inputdata_var.label}'."
         )
 
 
