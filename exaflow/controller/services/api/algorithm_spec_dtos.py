@@ -39,6 +39,8 @@ class InputDataSpecificationDTO(ImmutableBaseModel):
     multiple: bool
     stattypes: Optional[List[InputDataStatType]] = None
     enumslen: Optional[int] = None
+    min: Optional[int] = None
+    max: Optional[int] = None
 
 
 class InputDataSpecificationsDTO(ImmutableBaseModel):
@@ -112,6 +114,8 @@ def _convert_inputdata_specification_to_dto(self: InputDataSpecification):
         required=self.required,
         multiple=self.multiple,
         enumslen=self.enumslen,
+        min=self.min,
+        max=self.max,
     )
 
 
@@ -124,6 +128,8 @@ def _get_data_model_input_data_specification_dto():
         multiple=False,
         stattypes=None,
         enumslen=None,
+        min=None,
+        max=None,
     )
 
 
@@ -136,6 +142,8 @@ def _get_validation_datasets_input_data_specification_dto():
         multiple=True,
         stattypes=None,
         enumslen=None,
+        min=None,
+        max=None,
     )
 
 
@@ -148,6 +156,8 @@ def _get_datasets_input_data_specification_dto():
         multiple=True,
         stattypes=None,
         enumslen=None,
+        min=None,
+        max=None,
     )
 
 
@@ -160,6 +170,8 @@ def _get_filters_input_data_specification_dto():
         multiple=False,
         stattypes=None,
         enumslen=None,
+        min=None,
+        max=None,
     )
 
 

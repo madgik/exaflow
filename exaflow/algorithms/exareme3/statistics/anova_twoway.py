@@ -52,6 +52,8 @@ class AnovaTwoWay(Algorithm):
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=True,
+                    min=2,
+                    max=2,
                 ),
             ),
             parameters={

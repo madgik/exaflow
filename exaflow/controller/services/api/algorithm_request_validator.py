@@ -287,10 +287,29 @@ def _validate_algorithm_inputdatas(
     inputdata_specs: InputDataSpecifications,
     data_model_cdes: Dict[str, CommonDataElement],
 ):
+    _validate_inputdata_variable_uniqueness(inputdata)
+
     if inputdata_specs.x:
         _validate_algorithm_inputdata(inputdata.x, inputdata_specs.x, data_model_cdes)
     if inputdata_specs.y:
         _validate_algorithm_inputdata(inputdata.y, inputdata_specs.y, data_model_cdes)
+
+
+def _validate_inputdata_variable_uniqueness(inputdata: AlgorithmInputDataDTO):
+    x_values = inputdata.x or []
+    y_values = inputdata.y or []
+
+    if len(x_values) != len(set(x_values)):
+        raise BadUserInput("Inputdata 'x' should not contain duplicate variables.")
+
+    if len(y_values) != len(set(y_values)):
+        raise BadUserInput("Inputdata 'y' should not contain duplicate variables.")
+
+    overlap = set(x_values).intersection(y_values)
+    if overlap:
+        raise BadUserInput(
+            "Inputdata 'x' and 'y' should not contain the same variables."
+        )
 
 
 def _validate_algorithm_inputdata(
@@ -302,7 +321,12 @@ def _validate_algorithm_inputdata(
         return
 
     if not inputdata_values:
-        if inputdata_spec.required:
+        effective_min = (
+            inputdata_spec.min
+            if inputdata_spec.min is not None
+            else (1 if inputdata_spec.required else 0)
+        )
+        if effective_min > 0:
             raise BadUserInput(
                 f"Inputdata '{inputdata_spec.label}' should be provided."
             )
@@ -321,9 +345,25 @@ def _validate_inputdata_values_quantity(
     if not isinstance(inputdata_value, list):
         raise BadRequest(f"Inputdata '{inputdata_spec.label}' should be a list.")
 
-    if not inputdata_spec.multiple and len(inputdata_value) > 1:
+    size = len(inputdata_value)
+    if not inputdata_spec.multiple and size > 1:
         raise BadUserInput(
             f"Inputdata '{inputdata_spec.label}' cannot have multiple values."
+        )
+
+    effective_min = (
+        inputdata_spec.min
+        if inputdata_spec.min is not None
+        else (1 if inputdata_spec.required else 0)
+    )
+    if size < effective_min:
+        raise BadUserInput(
+            f"Inputdata '{inputdata_spec.label}' should include at least {effective_min} values."
+        )
+
+    if inputdata_spec.max is not None and size > inputdata_spec.max:
+        raise BadUserInput(
+            f"Inputdata '{inputdata_spec.label}' should include at most {inputdata_spec.max} values."
         )
 
 
@@ -428,7 +468,33 @@ def _validate_parameters(
             if parameter_name not in parameters.keys():
                 raise BadUserInput(f"Parameter '{parameter_name}' should not be blank.")
 
+        if parameters is None or parameter_name not in parameters:
+            continue
+
         parameter_values = parameters.get(parameter_name)
+        if parameter_values is None:
+            if parameter_spec.required:
+                raise BadUserInput(f"Parameter '{parameter_name}' should not be blank.")
+            continue
+
+        if isinstance(parameter_values, str) and not parameter_values.strip():
+            raise BadUserInput(f"Parameter '{parameter_name}' should not be blank.")
+
+        if isinstance(parameter_values, list) and len(parameter_values) == 0:
+            raise BadUserInput(f"Parameter '{parameter_name}' should not be blank.")
+
+        if isinstance(parameter_values, dict) and len(parameter_values) == 0:
+            raise BadUserInput(f"Parameter '{parameter_name}' should not be blank.")
+
+        if isinstance(parameter_values, bool):
+            _validate_parameter_values(
+                parameter_values=parameter_values,
+                parameter_spec=parameter_spec,
+                inputdata=inputdata,
+                data_model_cdes=data_model_cdes,
+            )
+            continue
+
         if parameter_values:
             _validate_parameter_values(
                 parameter_values=parameter_values,
