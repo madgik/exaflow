@@ -25,7 +25,6 @@ class ComputeAverage(Algorithm):
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=True,
-                    enumslen=None,
                 ),
                 x=None,
                 validation=False,

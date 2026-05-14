@@ -379,9 +379,6 @@ def _validate_inputdata_value(
     _validate_inputdata_stattypes(
         inputdata_value, inputdata_specs, inputdata_value_metadata
     )
-    _validate_inputdata_enumerations(
-        inputdata_value, inputdata_specs, inputdata_value_metadata
-    )
 
 
 def _get_cde_metadata(cde, data_model_cdes):
@@ -429,20 +426,6 @@ def _validate_inputdata_stattypes(
         raise BadUserInput(
             f"The CDE '{inputdata_value}', of inputdata '{inputdata_specs.label}', "
             f"should NOT be categorical."
-        )
-
-
-def _validate_inputdata_enumerations(
-    inputdata_value: str,
-    inputdata_specs: InputDataSpecification,
-    inputdata_value_metadata: CommonDataElement,
-):
-    if inputdata_specs.enumslen is not None and inputdata_specs.enumslen != len(
-        inputdata_value_metadata.enumerations
-    ):
-        raise BadUserInput(
-            f"The CDE '{inputdata_value}', of inputdata '{inputdata_specs.label}', "
-            f"should have {inputdata_specs.enumslen} enumerations."
         )
 
 

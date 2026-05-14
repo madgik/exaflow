@@ -5,9 +5,11 @@ from pydantic import BaseModel
 
 from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
-from exaflow.algorithms.exareme3.utils.metadata_enums import get_enum_codes
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.anova_twoway import FederatedAnovaTwoWay
+from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
+    NumpyAggregator,
+)
 from exaflow.worker_communication import BadUserInput
 
 
@@ -80,8 +82,6 @@ class AnovaTwoWay(Algorithm):
         x1, x2 = xs
 
         sstype = self.get_parameter("sstype")
-        levels_a = get_enum_codes(self.metadata, x1)
-        levels_b = get_enum_codes(self.metadata, x2)
 
         result = self.run_local_udf(
             func=local_step,
@@ -89,8 +89,6 @@ class AnovaTwoWay(Algorithm):
                 "x1": x1,
                 "x2": x2,
                 "y": y,
-                "levels_a": levels_a,
-                "levels_b": levels_b,
                 "sstype": sstype,
             },
             identical_results=True,
@@ -99,7 +97,11 @@ class AnovaTwoWay(Algorithm):
 
 
 @exareme3_udf(with_aggregation_server=True)
-def local_step(agg_client, data, x1, x2, y, levels_a, levels_b, sstype):
+def local_step(agg_client, data, x1, x2, y, sstype):
+    aggregator = NumpyAggregator(agg_client)
+    levels_a = aggregator.fed_union(data[x1].to_numpy(copy=False)).tolist()
+    levels_b = aggregator.fed_union(data[x2].to_numpy(copy=False)).tolist()
+
     if len(levels_a) < 2:
         raise BadUserInput(
             f"The variable {x1} has less than 2 levels and Anova cannot be "
