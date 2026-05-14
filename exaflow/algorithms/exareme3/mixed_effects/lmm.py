@@ -81,6 +81,7 @@ class LMM(Algorithm):
                     ],
                     required=True,
                     multiple=True,
+                    min=2,
                 ),
             ),
             parameters={

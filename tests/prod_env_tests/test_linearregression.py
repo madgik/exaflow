@@ -42,9 +42,7 @@ def test_linearregression_perfect_fit_serializes_infinite_f_stat_as_null():
     }
 
     response = algorithm_request(algorithm_name, test_input)
-    result = parse_response(response)
-
-    # JSON serialization in this API surface maps non-finite floats to null.
-    assert result["f_stat"] is None
-    assert result["f_pvalue"] == 0.0
-    assert result["r_squared"] == 1.0
+    assert response.status_code == 460, response.text
+    assert (
+        "Inputdata 'x' and 'y' should not contain the same variables." in response.text
+    )

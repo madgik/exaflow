@@ -206,6 +206,33 @@ def algorithms_specs():
                 ),
             ),
         ),
+        "algorithm_with_x_and_y_text_multiple_true": AlgorithmSpecification(
+            name="algorithm_with_x_and_y_text_multiple_true",
+            desc="algorithm_with_x_and_y_text_multiple_true",
+            documentation="algorithm_with_x_and_y_text_multiple_true",
+            label="algorithm_with_x_and_y_text_multiple_true",
+            enabled=True,
+            type=AlgorithmType.EXAREME3,
+            components=[],
+            inputdata=InputDataSpecifications(
+                x=InputDataSpecification(
+                    label="features",
+                    desc="Features",
+                    types=[InputDataType.TEXT],
+                    stattypes=[InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=True,
+                ),
+                y=InputDataSpecification(
+                    label="target",
+                    desc="Target variable",
+                    types=[InputDataType.TEXT],
+                    stattypes=[InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=True,
+                ),
+            ),
+        ),
         "algorithm_with_y_text_multiple_true": AlgorithmSpecification(
             name="algorithm_with_y_text_multiple_true",
             desc="algorithm_with_y_text_multiple_true",
@@ -222,6 +249,46 @@ def algorithms_specs():
                     stattypes=[InputDataStatType.NOMINAL, InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=True,
+                ),
+            ),
+        ),
+        "algorithm_with_y_min_2": AlgorithmSpecification(
+            name="algorithm_with_y_min_2",
+            desc="algorithm_with_y_min_2",
+            documentation="algorithm_with_y_min_2",
+            label="algorithm_with_y_min_2",
+            enabled=True,
+            type=AlgorithmType.EXAREME3,
+            components=[],
+            inputdata=InputDataSpecifications(
+                y=InputDataSpecification(
+                    label="target",
+                    desc="Target variable",
+                    types=[InputDataType.TEXT],
+                    stattypes=[InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=True,
+                    min=2,
+                ),
+            ),
+        ),
+        "algorithm_with_y_max_2": AlgorithmSpecification(
+            name="algorithm_with_y_max_2",
+            desc="algorithm_with_y_max_2",
+            documentation="algorithm_with_y_max_2",
+            label="algorithm_with_y_max_2",
+            enabled=True,
+            type=AlgorithmType.EXAREME3,
+            components=[],
+            inputdata=InputDataSpecifications(
+                y=InputDataSpecification(
+                    label="target",
+                    desc="Target variable",
+                    types=[InputDataType.TEXT],
+                    stattypes=[InputDataStatType.NOMINAL],
+                    required=True,
+                    multiple=True,
+                    max=2,
                 ),
             ),
         ),
@@ -720,6 +787,18 @@ def get_parametrization_list_success_cases():
             id="parameter required",
         ),
         pytest.param(
+            "algorithm_with_required_param",
+            AlgorithmRequestDTO(
+                inputdata=AlgorithmInputDataDTO(
+                    data_model="data_model_with_all_cde_types:0.1",
+                    datasets=["sample_dataset1"],
+                    y=["int_cde"],
+                ),
+                parameters={"required_param": 1, "optional_param": None},
+            ),
+            id="optional parameter provided as null",
+        ),
+        pytest.param(
             "algorithm_with_many_params",
             AlgorithmRequestDTO(
                 inputdata=AlgorithmInputDataDTO(
@@ -1162,6 +1241,30 @@ def get_parametrization_list_exception_cases():
             id="Inputdata variable with multiple false given list.",
         ),
         pytest.param(
+            "algorithm_with_y_min_2",
+            AlgorithmRequestDTO(
+                inputdata=AlgorithmInputDataDTO(
+                    data_model="data_model_with_all_cde_types:0.1",
+                    datasets=["sample_dataset1"],
+                    y=["text_cde_categ"],
+                ),
+            ),
+            (BadUserInput, "Inputdata .* should include at least 2 values."),
+            id="Inputdata variable violates min count.",
+        ),
+        pytest.param(
+            "algorithm_with_y_max_2",
+            AlgorithmRequestDTO(
+                inputdata=AlgorithmInputDataDTO(
+                    data_model="data_model_with_all_cde_types:0.1",
+                    datasets=["sample_dataset1"],
+                    y=["text_cde_categ", "text_cde_non_categ", "int_cde_categ"],
+                ),
+            ),
+            (BadUserInput, "Inputdata .* should include at most 2 values."),
+            id="Inputdata variable violates max count.",
+        ),
+        pytest.param(
             "algorithm_with_y_int",
             AlgorithmRequestDTO(
                 inputdata=AlgorithmInputDataDTO(
@@ -1196,6 +1299,73 @@ def get_parametrization_list_exception_cases():
             ),
             (BadUserInput, "The CDE .* should be categorical."),
             id="Inputdata variable requires categorical CDE given non categorical.",
+        ),
+        pytest.param(
+            "algorithm_with_required_param",
+            AlgorithmRequestDTO(
+                inputdata=AlgorithmInputDataDTO(
+                    data_model="data_model_with_all_cde_types:0.1",
+                    datasets=["sample_dataset1"],
+                    y=["int_cde"],
+                ),
+                parameters={"required_param": None},
+            ),
+            (BadUserInput, "Parameter .* should not be blank."),
+            id="Required parameter provided as null.",
+        ),
+        pytest.param(
+            "algorithm_with_required_param",
+            AlgorithmRequestDTO(
+                inputdata=AlgorithmInputDataDTO(
+                    data_model="data_model_with_all_cde_types:0.1",
+                    datasets=["sample_dataset1"],
+                    y=["int_cde"],
+                ),
+                parameters={"required_param": ""},
+            ),
+            (BadUserInput, "Parameter .* should not be blank."),
+            id="Required parameter provided as empty string.",
+        ),
+        pytest.param(
+            "algorithm_with_y_text_multiple_true",
+            AlgorithmRequestDTO(
+                inputdata=AlgorithmInputDataDTO(
+                    data_model="data_model_with_all_cde_types:0.1",
+                    datasets=["sample_dataset1"],
+                    y=["text_cde_categ", "text_cde_categ"],
+                ),
+            ),
+            (BadUserInput, "Inputdata 'y' should not contain duplicate variables."),
+            id="Inputdata y contains duplicates.",
+        ),
+        pytest.param(
+            "algorithm_with_x_and_y_text_multiple_true",
+            AlgorithmRequestDTO(
+                inputdata=AlgorithmInputDataDTO(
+                    data_model="data_model_with_all_cde_types:0.1",
+                    datasets=["sample_dataset1"],
+                    x=["text_cde_categ", "text_cde_non_categ"],
+                    y=["text_cde_categ"],
+                ),
+            ),
+            (
+                BadUserInput,
+                "Inputdata 'x' and 'y' should not contain the same variables.",
+            ),
+            id="Inputdata x and y overlap.",
+        ),
+        pytest.param(
+            "algorithm_with_x_and_y_text_multiple_true",
+            AlgorithmRequestDTO(
+                inputdata=AlgorithmInputDataDTO(
+                    data_model="data_model_with_all_cde_types:0.1",
+                    datasets=["sample_dataset1"],
+                    x=["text_cde_categ", "text_cde_categ"],
+                    y=["text_cde_non_categ"],
+                ),
+            ),
+            (BadUserInput, "Inputdata 'x' should not contain duplicate variables."),
+            id="Inputdata x contains duplicates.",
         ),
         pytest.param(
             "algorithm_with_y_text_non_categ",

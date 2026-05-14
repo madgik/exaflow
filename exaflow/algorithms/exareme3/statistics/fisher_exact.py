@@ -43,6 +43,7 @@ class FisherExact(Algorithm):
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
+                    enumslen=2,
                 ),
                 x=specs.InputDataSpecification(
                     label="Factor (independent)",
@@ -51,6 +52,7 @@ class FisherExact(Algorithm):
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
+                    enumslen=2,
                 ),
             ),
             type=specs.AlgorithmType.EXAREME3,

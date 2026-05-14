@@ -427,3 +427,79 @@ def test_validate_parameter_property_enums_given_with_type_dict():
                 ),
             },
         )
+
+
+def test_validate_inputdata_min_cannot_be_negative():
+    exception_type = ValidationError
+    exception_message = ".*'min' should be greater than or equal to 0.*"
+    with pytest.raises(exception_type, match=exception_message):
+        InputDataSpecification(
+            label="x",
+            desc="x",
+            types=[InputDataType.REAL],
+            stattypes=[InputDataStatType.NUMERICAL],
+            required=True,
+            multiple=True,
+            min=-1,
+        )
+
+
+def test_validate_inputdata_max_cannot_be_negative():
+    exception_type = ValidationError
+    exception_message = ".*'max' should be greater than or equal to 0.*"
+    with pytest.raises(exception_type, match=exception_message):
+        InputDataSpecification(
+            label="x",
+            desc="x",
+            types=[InputDataType.REAL],
+            stattypes=[InputDataStatType.NUMERICAL],
+            required=True,
+            multiple=True,
+            max=-1,
+        )
+
+
+def test_validate_inputdata_min_cannot_exceed_max():
+    exception_type = ValidationError
+    exception_message = ".*'min' cannot be greater than 'max'.*"
+    with pytest.raises(exception_type, match=exception_message):
+        InputDataSpecification(
+            label="x",
+            desc="x",
+            types=[InputDataType.REAL],
+            stattypes=[InputDataStatType.NUMERICAL],
+            required=True,
+            multiple=True,
+            min=3,
+            max=2,
+        )
+
+
+def test_validate_inputdata_multiple_false_incompatible_with_min_gt_one():
+    exception_type = ValidationError
+    exception_message = ".*'multiple=False' is incompatible with 'min' greater than 1.*"
+    with pytest.raises(exception_type, match=exception_message):
+        InputDataSpecification(
+            label="x",
+            desc="x",
+            types=[InputDataType.REAL],
+            stattypes=[InputDataStatType.NUMERICAL],
+            required=True,
+            multiple=False,
+            min=2,
+        )
+
+
+def test_validate_inputdata_multiple_false_incompatible_with_max_gt_one():
+    exception_type = ValidationError
+    exception_message = ".*'multiple=False' is incompatible with 'max' greater than 1.*"
+    with pytest.raises(exception_type, match=exception_message):
+        InputDataSpecification(
+            label="x",
+            desc="x",
+            types=[InputDataType.REAL],
+            stattypes=[InputDataStatType.NUMERICAL],
+            required=True,
+            multiple=False,
+            max=2,
+        )

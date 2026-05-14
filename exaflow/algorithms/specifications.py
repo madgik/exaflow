@@ -130,6 +130,32 @@ class InputDataSpecification(ImmutableBaseModel):
     required: bool
     multiple: bool
     enumslen: Optional[int] = None
+    min: Optional[int] = None
+    max: Optional[int] = None
+
+    @model_validator(mode="after")
+    def validate_count_bounds(self):
+        if self.min is not None and self.min < 0:
+            raise ValueError(
+                f"In inputdata '{self.label}', 'min' should be greater than or equal to 0."
+            )
+        if self.max is not None and self.max < 0:
+            raise ValueError(
+                f"In inputdata '{self.label}', 'max' should be greater than or equal to 0."
+            )
+        if self.min is not None and self.max is not None and self.min > self.max:
+            raise ValueError(
+                f"In inputdata '{self.label}', 'min' cannot be greater than 'max'."
+            )
+        if not self.multiple and self.min is not None and self.min > 1:
+            raise ValueError(
+                f"In inputdata '{self.label}', 'multiple=False' is incompatible with 'min' greater than 1."
+            )
+        if not self.multiple and self.max is not None and self.max > 1:
+            raise ValueError(
+                f"In inputdata '{self.label}', 'multiple=False' is incompatible with 'max' greater than 1."
+            )
+        return self
 
 
 class InputDataSpecifications(ImmutableBaseModel):

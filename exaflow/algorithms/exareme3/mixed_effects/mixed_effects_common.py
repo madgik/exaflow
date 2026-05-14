@@ -13,19 +13,7 @@ def split_grouping_var(
     metadata: dict,
 ) -> tuple[list[str], list[str]]:
     x_vars = list(x_vars)
-    if grouping_var is None:
-        raise BadUserInput("Parameter 'grouping_var' should not be blank.")
-    if grouping_var not in x_vars:
-        raise BadUserInput(
-            "Parameter 'grouping_var' must match exactly one variable included in 'x'."
-        )
-
     fixed_vars = [var for var in x_vars if var != grouping_var]
-    if not fixed_vars:
-        raise BadUserInput(
-            "At least one fixed-effect covariate must remain in 'x' after removing 'grouping_var'."
-        )
-
     categorical_vars = [var for var in fixed_vars if metadata[var]["is_categorical"]]
     numerical_vars = [var for var in fixed_vars if not metadata[var]["is_categorical"]]
     return categorical_vars, numerical_vars

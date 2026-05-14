@@ -196,7 +196,7 @@ GLMM_BINARY_CASES = [
                 "test_case_num": 9,
             },
             "expected_status": 460,
-            "expected_message": r"At least one fixed-effect covariate must remain",
+            "expected_message": r"Inputdata 'Covariates and grouping variable' should include at least 2 values.",
         },
         id="only_grouping_var_no_fixed_left",
     ),
