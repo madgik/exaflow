@@ -528,6 +528,17 @@ def algorithms_specs():
                         source=["x", "y"],
                     ),
                 ),
+                "param_with_enum_type_input_var_names_x_only": ParameterSpecification(
+                    label="param_with_enum_type_input_var_names_x_only",
+                    desc="param_with_enum_type_input_var_names_x_only",
+                    types=[ParameterType.TEXT],
+                    required=False,
+                    multiple=False,
+                    enums=ParameterEnumSpecification(
+                        type=ParameterEnumType.INPUT_VAR_NAMES,
+                        source=["x"],
+                    ),
+                ),
                 "param_with_type_dict": ParameterSpecification(
                     label="param_with_type_dict",
                     desc="param_with_type_dict",
@@ -1623,6 +1634,25 @@ def get_parametrization_list_exception_cases():
                 "Parameter's .* enums, that are taken from inputdata .* var names, should be one of the following: .*",
             ),
             id="Parameter with enumerations of type 'input_var_names' given non existing enum.",
+        ),
+        pytest.param(
+            "algorithm_with_many_params",
+            AlgorithmRequestDTO(
+                inputdata=AlgorithmInputDataDTO(
+                    data_model="data_model_with_all_cde_types:0.1",
+                    datasets=["sample_dataset1"],
+                    x=["int_cde"],
+                    y=["text_cde_categ"],
+                ),
+                parameters={
+                    "param_with_enum_type_input_var_names_x_only": "text_cde_categ",
+                },
+            ),
+            (
+                BadUserInput,
+                "Parameter's .* enums, that are taken from inputdata .* var names, should be one of the following: .*",
+            ),
+            id="Parameter with input_var_names source x rejects y variable.",
         ),
         pytest.param(
             "algorithm_with_many_params",

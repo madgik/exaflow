@@ -595,8 +595,16 @@ def _validate_param_enums_of_type_input_var_names(
     inputdata: AlgorithmInputDataDTO,
 ):
     input_var_names_enums = []
-    input_var_names_enums.extend(inputdata.y) if inputdata.y else None
-    input_var_names_enums.extend(inputdata.x) if inputdata.x else None
+    for source in parameter_spec_enums.source:
+        if source == "x":
+            input_var_names_enums.extend(inputdata.x) if inputdata.x else None
+        elif source == "y":
+            input_var_names_enums.extend(inputdata.y) if inputdata.y else None
+        else:
+            raise NotImplementedError(
+                "Input var names enums source should be either 'x' or 'y'."
+            )
+
     if parameter_value not in input_var_names_enums:
         raise BadUserInput(
             f"Parameter's '{parameter_spec_label}' enums, that are taken from inputdata {parameter_spec_enums.source} var names, "
