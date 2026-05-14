@@ -26,6 +26,7 @@ class CategoricalNBTestingPredict(Algorithm):
         return specs.AlgorithmSpecification(
             name=ALGNAME_PRED,
             desc="Uses Bayes' theorem to calculate the probability of each class given a set of nominal features assuming independence between features. It then classifies data points based on the class with the highest probability.",
+            documentation="Uses Bayes' theorem to calculate the probability of each class given a set of nominal features assuming independence between features. It then classifies data points based on the class with the highest probability.",
             label="Categorical Naive Bayes classifier with cross-validation",
             enabled=True,
             inputdata=specs.InputDataSpecifications(

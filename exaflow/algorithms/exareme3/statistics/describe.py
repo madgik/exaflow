@@ -63,13 +63,19 @@ class Describe(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="describe",
-            desc="Federated descriptive statistics with pairwise feature-level NA handling.",
+            desc="Descriptive statistics for selected variables.",
+            documentation=(
+                "Compute descriptive statistics for numerical and nominal "
+                "variables with pairwise feature-level missing-value handling.\n\n"
+                "The result includes featurewise summaries and analysis-set "
+                "summaries for the selected variables."
+            ),
             label="Descriptive stats (Describe)",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="y",
-                    desc="y",
+                    desc="Variables to summarize.",
                     types=[
                         specs.InputDataType.INT,
                         specs.InputDataType.REAL,
@@ -81,11 +87,10 @@ class Describe(Algorithm):
                     ],
                     required=True,
                     multiple=True,
-                    enumslen=None,
                 ),
                 x=specs.InputDataSpecification(
                     label="x",
-                    desc="x",
+                    desc="Optional additional variables to summarize.",
                     types=[
                         specs.InputDataType.INT,
                         specs.InputDataType.REAL,
@@ -97,11 +102,8 @@ class Describe(Algorithm):
                     ],
                     required=False,
                     multiple=True,
-                    enumslen=None,
                 ),
-                validation=None,
             ),
-            parameters=None,
             type=specs.AlgorithmType.EXAREME3,
             components=[specs.ComponentType.AGGREGATION_SERVER],
         )

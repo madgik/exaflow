@@ -23,7 +23,17 @@ class PCAWithTransformation(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="pca_with_transformation",
-            desc="Computes the principal components of a set of correlated variables. The principal components can then be used to represent the original data with reduced dimensions.",
+            desc="Principal component analysis with variable transformations.",
+            documentation=(
+                "Compute principal components for selected numerical variables "
+                "after optional per-variable transformations. Principal "
+                "components can represent the original variables with reduced "
+                "dimensionality.\n\n"
+                "The 'data_transformation' setting selects transformations such "
+                "as log, exp, center, or standardize for selected variables.\n\n"
+                "The result includes the observation count, eigenvalues, and "
+                "eigenvectors."
+            ),
             label="Principal Component Analysis (PCA)",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
@@ -34,24 +44,15 @@ class PCAWithTransformation(Algorithm):
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=True,
-                    enumslen=None,
                 ),
-                x=None,
-                validation=None,
             ),
             parameters={
                 "data_transformation": specs.ParameterSpecification(
                     label="Data Transformation",
-                    desc="Transform a column with on of the given methods (log, exp, center, standardize) to reduce skewness of a distribution towards normalcy.",
+                    desc="Transformation applied to each selected variable.",
                     types=[specs.ParameterType.DICT],
                     required=False,
                     multiple=False,
-                    default=None,
-                    enums=None,
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
-                    min=None,
-                    max=None,
                 ),
             },
             type=specs.AlgorithmType.EXAREME3,

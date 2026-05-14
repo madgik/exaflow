@@ -167,20 +167,24 @@ ______________________________________________________________________
 - **Specs (Exareme3):** Algorithm + preprocessing step metadata shipped to clients is defined in code via
   `get_specification()` returning `AlgorithmSpecification` / `PreprocessingStepSpecification`
   (`exaflow/algorithms/specifications.py`). Update the specification method and implementation together.
-- **UI-facing descriptions:** `desc` fields are shown to users. Write them as
-  factual help text that explains what the algorithm/preprocessing step does,
-  what each parameter means, formulas/defaults/ranges, and what the output
-  represents. Use readable newline-separated sections and indented bullet lines
-  for multi-option parameters, like `outlier_report` and `outlier_winsorizer`.
-  Do not include recommendations such as "use this when..." unless the UI
-  explicitly needs decision guidance.
+- **UI-facing descriptions:** `desc` fields are shown to users in compact UI
+  surfaces. Keep algorithm/preprocessing step and parameter `desc` values to
+  1-2 lines max, focused on observable behavior. Put detailed explanations,
+  formulas, defaults, ranges, option lists, and output interpretation in the
+  algorithm/preprocessing step `documentation` field.
+- **Parameter descriptions:** Parameter `desc` values should explain what the
+  setting does, not restate the schema shape. Prefer text like "Clipping
+  strategy for each variable." over "Required dictionary mapping variables to
+  strategies." The structured spec already conveys type, requiredness, enums,
+  and dictionary key/value constraints. Do not add `documentation` to parameter
+  specifications; parameter details belong in the parent step/algorithm
+  `documentation`. Omit explicit optional `None` specification arguments such as
+  `parameters=None`, `validation=None`, `enumslen=None`, `default=None`,
+  `enums=None`, `dict_values_enums=None`, `min=None`, and `max=None`.
 - **Parameter specifications:** Prefer typed specification validation over
   ad-hoc algorithm checks. For dictionary parameters, use `dict_keys_enums` for
   allowed keys, `dict_values_enums` for allowed categorical values, and
-  `dict_values_type` for typed dictionary values such as numeric folds. Do not
-  pass explicit optional defaults like `default=None`, `enums=None`,
-  `dict_values_enums=None`, `min=None`, or `max=None`; the model already
-  defaults them.
+  `dict_values_type` for typed dictionary values such as numeric folds.
 - **Lint/import order:** Do not spend agent time manually adjusting import
   order, formatting-only lint, or other purely mechanical style issues.
   Automated tools handle those changes.

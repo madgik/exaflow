@@ -30,7 +30,16 @@ class Histogram(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="histogram",
-            desc="Federated histogram with optional grouping and privacy masking.",
+            desc="Histogram with optional grouping.",
+            documentation=(
+                "Compute a histogram for a numerical or categorical target "
+                "variable, optionally grouped by categorical variables. Counts "
+                "are privacy-masked according to worker privacy rules.\n\n"
+                "The 'bins' setting controls the number of bins for numerical "
+                "targets and is ignored for categorical targets. Default is 20.\n\n"
+                "The result includes histogram bins or categories and their "
+                "counts, with grouped series when grouping variables are provided."
+            ),
             label="Histogram",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
@@ -48,7 +57,6 @@ class Histogram(Algorithm):
                     ],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
                 x=specs.InputDataSpecification(
                     label="Grouping variables",
@@ -57,21 +65,16 @@ class Histogram(Algorithm):
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=False,
                     multiple=True,
-                    enumslen=None,
                 ),
-                validation=None,
             ),
             parameters={
                 "bins": specs.ParameterSpecification(
                     label="Number of bins",
-                    desc="Bin count for numerical histograms (ignored for categorical targets).",
+                    desc="Bin count used for numerical histograms.",
                     types=[specs.ParameterType.INT],
                     required=False,
                     multiple=False,
                     default=20,
-                    enums=None,
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
                     min=1,
                     max=100,
                 ),

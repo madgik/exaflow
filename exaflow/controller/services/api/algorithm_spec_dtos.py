@@ -73,6 +73,7 @@ class ParameterSpecificationDTO(ImmutableBaseModel):
 class PreprocessingStepSpecificationDTO(ImmutableBaseModel):
     name: str
     desc: str
+    documentation: str
     label: str
     parameters: Optional[Dict[str, ParameterSpecificationDTO]] = None
     order: PreprocessingStepOrder
@@ -81,6 +82,7 @@ class PreprocessingStepSpecificationDTO(ImmutableBaseModel):
 class AlgorithmSpecificationDTO(ImmutableBaseModel):
     name: str
     desc: str
+    documentation: str
     label: str
     inputdata: InputDataSpecificationsDTO
     parameters: Optional[Dict[str, ParameterSpecificationDTO]] = None
@@ -221,6 +223,7 @@ def _convert_transformer_specification_to_dto(spec: PreprocessingStepSpecificati
     return PreprocessingStepSpecificationDTO(
         name=spec.name,
         desc=spec.desc,
+        documentation=spec.documentation,
         label=spec.label,
         order=spec.order,
         parameters=(
@@ -246,6 +249,7 @@ def _convert_algorithm_specification_to_dto(
     return AlgorithmSpecificationDTO(
         name=spec.name,
         desc=spec.desc,
+        documentation=spec.documentation,
         label=spec.label,
         inputdata=_convert_inputdata_specifications_to_dto(spec.inputdata),
         parameters=(

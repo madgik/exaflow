@@ -23,7 +23,16 @@ class NaiveBayesGaussian(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="naive_bayes_gaussian",
-            desc="Federated Gaussian Naive Bayes. Features are treated as numerical; missing values are not imputed.",
+            desc="Gaussian Naive Bayes for numerical features.",
+            documentation=(
+                "Fit a Gaussian Naive Bayes classifier across workers. Features "
+                "are treated as numerical and missing values are not imputed. "
+                "Class labels are taken from metadata and aggregated securely "
+                "across workers.\n\n"
+                "The result includes class labels, class counts, class priors, "
+                "per-class feature means, per-class feature variances, and "
+                "feature names."
+            ),
             label="Gaussian Naive Bayes",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
@@ -34,7 +43,6 @@ class NaiveBayesGaussian(Algorithm):
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
                 x=specs.InputDataSpecification(
                     label="Covariates (independent)",
@@ -43,11 +51,8 @@ class NaiveBayesGaussian(Algorithm):
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=True,
-                    enumslen=None,
                 ),
-                validation=None,
             ),
-            parameters=None,
             type=specs.AlgorithmType.EXAREME3,
             components=[specs.ComponentType.AGGREGATION_SERVER],
         )

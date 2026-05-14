@@ -31,7 +31,13 @@ class AnovaOneWay(Algorithm):
     def get_specification(cls) -> AlgorithmSpecification:
         return AlgorithmSpecification(
             name="anova_oneway",
-            desc="Federated one-way ANOVA for hypothesis testing across groups with Tukey HSD pairwise comparisons and group min/max summaries.",
+            desc="One-way ANOVA across groups.",
+            documentation=(
+                "Test whether a numerical outcome differs across groups defined "
+                "by one categorical factor.\n\n"
+                "The result includes the ANOVA table, Tukey HSD pairwise "
+                "comparisons, and group min/max summaries."
+            ),
             label="One-way ANOVA",
             enabled=True,
             inputdata=InputDataSpecifications(
@@ -42,7 +48,6 @@ class AnovaOneWay(Algorithm):
                     stattypes=[InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
                 x=InputDataSpecification(
                     label="Factor (independent)",
@@ -51,11 +56,8 @@ class AnovaOneWay(Algorithm):
                     stattypes=[InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
-                validation=None,
             ),
-            parameters=None,
             type=AlgorithmType.EXAREME3,
             components=[ComponentType.AGGREGATION_SERVER],
         )

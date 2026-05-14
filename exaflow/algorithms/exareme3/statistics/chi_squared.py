@@ -28,7 +28,13 @@ class ChiSquared(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="chi_squared",
-            desc="v5 - Federated Chi-Squared test of independence for two categorical variables.",
+            desc="Chi-squared test of independence for categorical variables.",
+            documentation=(
+                "Test whether two categorical variables are independent using "
+                "the chi-squared test.\n\n"
+                "The result includes the contingency table, chi-squared "
+                "statistic, p-value, degrees of freedom, and expected counts."
+            ),
             label="Chi-Squared Test",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
@@ -39,7 +45,6 @@ class ChiSquared(Algorithm):
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
                 x=specs.InputDataSpecification(
                     label="Factor (independent)",
@@ -48,11 +53,8 @@ class ChiSquared(Algorithm):
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
-                validation=None,
             ),
-            parameters=None,
             type=specs.AlgorithmType.EXAREME3,
             components=[specs.ComponentType.AGGREGATION_SERVER],
         )

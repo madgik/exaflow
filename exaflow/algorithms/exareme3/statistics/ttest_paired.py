@@ -22,7 +22,19 @@ class TTestPaired(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="ttest_paired",
-            desc="Federated Student's paired t-test compares the mean of within-subject differences between two related measurements (df = n - 1). Cohen's d is computed from the paired differences.",
+            desc="Paired t-test for two related measurements.",
+            documentation=(
+                "Compare the mean of paired differences between two related "
+                "numerical measurements. Degrees of freedom are n - 1, and "
+                "Cohen's d is computed from the paired differences.\n\n"
+                "The 'alt_hypothesis' setting selects the alternative hypothesis: "
+                "'two-sided', 'less', or 'greater'. Default is 'two-sided'.\n\n"
+                "The 'alpha' setting controls the significance level used for "
+                "confidence intervals. Default is 0.05.\n\n"
+                "The result includes the t statistic, p-value, confidence "
+                "interval, mean difference, standard error of the difference, "
+                "degrees of freedom, and Cohen's d."
+            ),
             label="Student's Paired T-Test",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
@@ -33,7 +45,6 @@ class TTestPaired(Algorithm):
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
                 x=specs.InputDataSpecification(
                     label="Measurement 2",
@@ -42,14 +53,12 @@ class TTestPaired(Algorithm):
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
-                validation=None,
             ),
             parameters={
                 "alt_hypothesis": specs.ParameterSpecification(
                     label="Alternative Hypothesis",
-                    desc="Specifies the alternative hypothesis for the mean difference (two-sided, less, or greater).",
+                    desc="Alternative hypothesis for the paired difference.",
                     types=[specs.ParameterType.TEXT],
                     required=True,
                     multiple=False,
@@ -58,21 +67,14 @@ class TTestPaired(Algorithm):
                         type=specs.ParameterEnumType.LIST,
                         source=["two-sided", "less", "greater"],
                     ),
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
-                    min=None,
-                    max=None,
                 ),
                 "alpha": specs.ParameterSpecification(
                     label="Alpha",
-                    desc="The significance level.",
+                    desc="Significance level for the test.",
                     types=[specs.ParameterType.REAL],
                     required=True,
                     multiple=False,
                     default=0.05,
-                    enums=None,
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
                     min=0.0,
                     max=1.0,
                 ),

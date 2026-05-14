@@ -75,6 +75,17 @@ class LongitudinalTransformer(PreprocessingStep):
         return specs.PreprocessingStepSpecification(
             name="longitudinal_transformer",
             desc="Longitudinal transformation between two visits.",
+            documentation=(
+                "Transform selected variables between two visits using a "
+                "per-variable longitudinal strategy.\n\n"
+                "The 'visit1' setting selects the earlier visit identifier.\n\n"
+                "The 'visit2' setting selects the later visit identifier.\n\n"
+                "Configure one transformation strategy per variable with "
+                "'strategies':\n"
+                "  - 'diff' subtracts the first-visit value from the second-visit value.\n"
+                "  - 'first' keeps the first-visit value.\n"
+                "  - 'second' keeps the second-visit value."
+            ),
             label="Longitudinal Transformer",
             enabled=True,
             parameters={
@@ -84,15 +95,10 @@ class LongitudinalTransformer(PreprocessingStep):
                     types=[specs.ParameterType.TEXT],
                     required=True,
                     multiple=False,
-                    default=None,
                     enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.FIXED_VAR_CDE_ENUMS,
                         source=[VISIT_ID_COL],
                     ),
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
-                    min=None,
-                    max=None,
                 ),
                 "visit2": specs.ParameterSpecification(
                     label="2nd Visit",
@@ -100,24 +106,17 @@ class LongitudinalTransformer(PreprocessingStep):
                     types=[specs.ParameterType.TEXT],
                     required=True,
                     multiple=False,
-                    default=None,
                     enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.FIXED_VAR_CDE_ENUMS,
                         source=[VISIT_ID_COL],
                     ),
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
-                    min=None,
-                    max=None,
                 ),
                 "strategies": specs.ParameterSpecification(
                     label="Strategies",
-                    desc="Select a strategy for each variable.",
+                    desc="Longitudinal transformation strategy for each variable.",
                     types=[specs.ParameterType.DICT],
                     required=True,
                     multiple=False,
-                    default=None,
-                    enums=None,
                     dict_keys_enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_NAMES,
                         source=["x", "y"],
@@ -130,8 +129,6 @@ class LongitudinalTransformer(PreprocessingStep):
                             LongitudinalStrategy.SECOND.value,
                         ],
                     ),
-                    min=None,
-                    max=None,
                 ),
             },
             type=specs.PreprocessingStepType.EXAREME3_PREPROCESSING_STEP,

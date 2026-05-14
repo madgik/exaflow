@@ -14,6 +14,7 @@ class StandardDeviationAlgorithm(Algorithm):
         return specs.AlgorithmSpecification(
             name=ALGORITHM_NAME,
             desc="Standard Deviation of a column",
+            documentation="Standard Deviation of a column",
             label="Standard Deviation",
             enabled=True,
             inputdata=specs.InputDataSpecifications(

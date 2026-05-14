@@ -34,7 +34,17 @@ class NaiveBayesGaussianCV(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="naive_bayes_gaussian_cv",
-            desc="Federated Gaussian Naive Bayes with K-fold cross-validation. Features are treated as numerical; missing values are not imputed.",
+            desc="Gaussian Naive Bayes evaluated with K-fold cross-validation.",
+            documentation=(
+                "Evaluate a Gaussian Naive Bayes classifier with K-fold "
+                "cross-validation across workers. Features are treated as "
+                "numerical and missing values are not imputed. Class labels are "
+                "taken from metadata and aggregated securely across workers.\n\n"
+                "The 'n_splits' setting controls the number of cross-validation "
+                "folds. It must be between 2 and 20. Default is 5.\n\n"
+                "The result includes multiclass classification metrics and a "
+                "summary across folds."
+            ),
             label="Gaussian Naive Bayes (K-fold CV)",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
@@ -45,7 +55,6 @@ class NaiveBayesGaussianCV(Algorithm):
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
                 x=specs.InputDataSpecification(
                     label="Covariates (independent)",
@@ -54,21 +63,16 @@ class NaiveBayesGaussianCV(Algorithm):
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=True,
-                    enumslen=None,
                 ),
-                validation=None,
             ),
             parameters={
                 "n_splits": specs.ParameterSpecification(
                     label="Number of splits",
-                    desc="Number of splits for cross-validation.",
+                    desc="Fold count used for cross-validation.",
                     types=[specs.ParameterType.INT],
                     required=True,
                     multiple=False,
                     default=5,
-                    enums=None,
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
                     min=2,
                     max=20,
                 ),

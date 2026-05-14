@@ -14,6 +14,7 @@ class ComputeAverage(Algorithm):
         return specs.AlgorithmSpecification(
             name=ALGORITHM_NAME,
             desc="Compute the average value of a column",
+            documentation="Compute the average value of a column",
             label="Compute Average",
             enabled=True,
             inputdata=specs.InputDataSpecifications(

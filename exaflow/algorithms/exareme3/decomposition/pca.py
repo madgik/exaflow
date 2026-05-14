@@ -20,7 +20,15 @@ class PCA(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="pca",
-            desc="Federated PCA that computes eigenvalues and eigenvectors from aggregated covariances to summarize multivariate structure.",
+            desc="Principal component analysis for numerical variables.",
+            documentation=(
+                "Compute principal components from aggregated covariance "
+                "information across workers. PCA summarizes multivariate "
+                "structure by producing eigenvalues and eigenvectors for the "
+                "selected numerical variables.\n\n"
+                "The result includes the observation count, eigenvalues, and "
+                "eigenvectors."
+            ),
             label="Principal Component Analysis",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
@@ -31,12 +39,8 @@ class PCA(Algorithm):
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=True,
-                    enumslen=None,
                 ),
-                x=None,
-                validation=None,
             ),
-            parameters=None,
             type=specs.AlgorithmType.EXAREME3,
             components=[specs.ComponentType.AGGREGATION_SERVER],
         )

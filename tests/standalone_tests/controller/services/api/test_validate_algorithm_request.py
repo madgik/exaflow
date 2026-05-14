@@ -143,6 +143,7 @@ def algorithms_specs():
         "algorithm_with_y_int": AlgorithmSpecification(
             name="algorithm_with_y_int",
             desc="algorithm_with_y_int",
+            documentation="algorithm_with_y_int",
             label="algorithm_with_y_int",
             enabled=True,
             type=AlgorithmType.EXAREME3,
@@ -161,6 +162,7 @@ def algorithms_specs():
         "algorithm_with_y_int_and_validation": AlgorithmSpecification(
             name="algorithm_with_y_int_and_validation",
             desc="algorithm_with_y_int_and_validation",
+            documentation="algorithm_with_y_int_and_validation",
             label="algorithm_with_y_int_and_validation",
             enabled=True,
             type=AlgorithmType.EXAREME3,
@@ -180,6 +182,7 @@ def algorithms_specs():
         "algorithm_with_x_int_and_y_text": AlgorithmSpecification(
             name="algorithm_with_x_int_and_y_text",
             desc="algorithm_with_x_int_and_y_text",
+            documentation="algorithm_with_x_int_and_y_text",
             label="algorithm_with_x_int_and_y_text",
             enabled=True,
             type=AlgorithmType.EXAREME3,
@@ -206,6 +209,7 @@ def algorithms_specs():
         "algorithm_with_y_text_multiple_true": AlgorithmSpecification(
             name="algorithm_with_y_text_multiple_true",
             desc="algorithm_with_y_text_multiple_true",
+            documentation="algorithm_with_y_text_multiple_true",
             label="algorithm_with_y_text_multiple_true",
             enabled=True,
             type=AlgorithmType.EXAREME3,
@@ -224,6 +228,7 @@ def algorithms_specs():
         "algorithm_with_y_text_categ": AlgorithmSpecification(
             name="algorithm_with_y_text_categ",
             desc="algorithm_with_y_text_categ",
+            documentation="algorithm_with_y_text_categ",
             label="algorithm_with_y_text_categ",
             enabled=True,
             type=AlgorithmType.EXAREME3,
@@ -242,6 +247,7 @@ def algorithms_specs():
         "algorithm_with_y_text_non_categ": AlgorithmSpecification(
             name="algorithm_with_y_text_non_categ",
             desc="algorithm_with_y_text_non_categ",
+            documentation="algorithm_with_y_text_non_categ",
             label="algorithm_with_y_text_non_categ",
             enabled=True,
             type=AlgorithmType.EXAREME3,
@@ -260,6 +266,7 @@ def algorithms_specs():
         "algorithm_with_variable_enumslen": AlgorithmSpecification(
             name="algorithm_with_variable_enumslen",
             desc="algorithm_with_variable_enumslen",
+            documentation="algorithm_with_variable_enumslen",
             label="algorithm_with_variable_enumslen",
             enabled=True,
             type=AlgorithmType.EXAREME3,
@@ -279,6 +286,7 @@ def algorithms_specs():
         "algorithm_with_y_and_x_optional": AlgorithmSpecification(
             name="algorithm_with_y_and_x_optional",
             desc="algorithm_with_y_and_x_optional",
+            documentation="algorithm_with_y_and_x_optional",
             label="algorithm_with_y_and_x_optional",
             enabled=True,
             type=AlgorithmType.EXAREME3,
@@ -305,6 +313,7 @@ def algorithms_specs():
         "algorithm_with_required_param": AlgorithmSpecification(
             name="algorithm_with_required_param",
             desc="algorithm_with_required_param",
+            documentation="algorithm_with_required_param",
             label="algorithm_with_required_param",
             enabled=True,
             type=AlgorithmType.EXAREME3,
@@ -339,6 +348,7 @@ def algorithms_specs():
         "algorithm_with_many_params": AlgorithmSpecification(
             name="algorithm_with_many_params",
             desc="algorithm_with_many_params",
+            documentation="algorithm_with_many_params",
             label="algorithm_with_many_params",
             enabled=True,
             type=AlgorithmType.EXAREME3,
@@ -486,6 +496,7 @@ def algorithms_specs():
         "algorithm_with_x_single_and_enum_param": AlgorithmSpecification(
             name="algorithm_with_x_single_and_enum_param",
             desc="algorithm_with_x_single_and_enum_param",
+            documentation="algorithm_with_x_single_and_enum_param",
             label="algorithm_with_x_single_and_enum_param",
             enabled=True,
             type=AlgorithmType.EXAREME3,
@@ -525,6 +536,7 @@ def algorithms_specs():
         "algorithm_with_transformer": AlgorithmSpecification(
             name="algorithm_with_transformer",
             desc="algorithm_with_transformer",
+            documentation="algorithm_with_transformer",
             label="algorithm_with_transformer",
             enabled=True,
             type=AlgorithmType.EXAREME3,
@@ -549,6 +561,7 @@ def preprocessing_steps_specs():
         "transformer_with_real_param": PreprocessingStepSpecification(
             name="transformer_with_real_param",
             desc="transformer_with_real_param",
+            documentation="transformer_with_real_param",
             label="transformer_with_real_param",
             type=PreprocessingStepType.EXAREME3_PREPROCESSING_STEP,
             components=[],
@@ -573,6 +586,7 @@ def preprocessing_steps_specs():
         "transformer_compatible_with_all_algorithms": PreprocessingStepSpecification(
             name="transformer_compatible_with_all_algorithms",
             desc="transformer_compatible_with_all_algorithms",
+            documentation="transformer_compatible_with_all_algorithms",
             label="transformer_compatible_with_all_algorithms",
             type=PreprocessingStepType.EXAREME3_PREPROCESSING_STEP,
             components=[],
@@ -581,6 +595,7 @@ def preprocessing_steps_specs():
         "rename_to_real": PreprocessingStepSpecification(
             name="rename_to_real",
             desc="rename_to_real",
+            documentation="rename_to_real",
             label="rename_to_real",
             type=PreprocessingStepType.EXAREME3_PREPROCESSING_STEP,
             components=[],
@@ -589,6 +604,7 @@ def preprocessing_steps_specs():
         "step_using_transformed_inputdata": PreprocessingStepSpecification(
             name="step_using_transformed_inputdata",
             desc="step_using_transformed_inputdata",
+            documentation="step_using_transformed_inputdata",
             label="step_using_transformed_inputdata",
             type=PreprocessingStepType.EXAREME3_PREPROCESSING_STEP,
             components=[],
@@ -921,6 +937,7 @@ class RenameYToRealStep(PreprocessingStep):
         return PreprocessingStepSpecification(
             name="rename_to_real",
             desc="rename_to_real",
+            documentation="rename_to_real",
             label="rename_to_real",
             enabled=True,
             order=PreprocessingStepOrder.FIRST,
@@ -952,6 +969,7 @@ class NoopPreprocessingStep(PreprocessingStep):
         return PreprocessingStepSpecification(
             name="noop_preprocessing_step",
             desc="noop_preprocessing_step",
+            documentation="noop_preprocessing_step",
             label="noop_preprocessing_step",
             enabled=True,
             order=PreprocessingStepOrder.FOURTH,

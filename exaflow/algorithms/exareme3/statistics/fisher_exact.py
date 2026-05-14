@@ -26,7 +26,13 @@ class FisherExact(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="fisher_exact",
-            desc="v5 - Federated Fisher's Exact test for two categorical variables.",
+            desc="Fisher's exact test for categorical variables.",
+            documentation=(
+                "Test association between two categorical variables using "
+                "Fisher's exact test.\n\n"
+                "The result includes the contingency table, odds ratio, and "
+                "p-value."
+            ),
             label="Fisher's Exact Test",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
@@ -37,7 +43,6 @@ class FisherExact(Algorithm):
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
                 x=specs.InputDataSpecification(
                     label="Factor (independent)",
@@ -46,11 +51,8 @@ class FisherExact(Algorithm):
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
-                validation=None,
             ),
-            parameters=None,
             type=specs.AlgorithmType.EXAREME3,
             components=[specs.ComponentType.AGGREGATION_SERVER],
         )
