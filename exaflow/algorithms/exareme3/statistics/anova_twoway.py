@@ -45,7 +45,7 @@ class AnovaTwoWay(Algorithm):
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
-                    multiple=False,
+                    max_count=1,
                 ),
                 x=specs.InputDataSpecification(
                     label="Factors (independent)",
@@ -53,9 +53,8 @@ class AnovaTwoWay(Algorithm):
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=True,
-                    min=2,
-                    max=2,
+                    min_count=2,
+                    max_count=2,
                 ),
             ),
             parameters={

@@ -36,10 +36,9 @@ class InputDataSpecificationDTO(ImmutableBaseModel):
     desc: str
     types: List[InputDataType]
     required: bool
-    multiple: bool
     stattypes: Optional[List[InputDataStatType]] = None
-    min: Optional[int] = None
-    max: Optional[int] = None
+    min_count: Optional[int] = None
+    max_count: Optional[int] = None
 
 
 class InputDataSpecificationsDTO(ImmutableBaseModel):
@@ -111,9 +110,8 @@ def _convert_inputdata_specification_to_dto(self: InputDataSpecification):
         types=self.types,
         stattypes=self.stattypes,
         required=self.required,
-        multiple=self.multiple,
-        min=self.min,
-        max=self.max,
+        min_count=self.min_count,
+        max_count=self.max_count,
     )
 
 
@@ -123,10 +121,9 @@ def _get_data_model_input_data_specification_dto():
         desc="The data model that the algorithm will run on.",
         types=[InputDataType.TEXT],
         required=True,
-        multiple=False,
         stattypes=None,
-        min=None,
-        max=None,
+        min_count=None,
+        max_count=1,
     )
 
 
@@ -136,10 +133,9 @@ def _get_validation_datasets_input_data_specification_dto():
         desc="The set of data to validate the algorithm model on.",
         types=[InputDataType.TEXT],
         required=True,
-        multiple=True,
         stattypes=None,
-        min=None,
-        max=None,
+        min_count=None,
+        max_count=None,
     )
 
 
@@ -149,10 +145,9 @@ def _get_datasets_input_data_specification_dto():
         desc="The set of data to run the algorithm on.",
         types=[InputDataType.TEXT],
         required=True,
-        multiple=True,
         stattypes=None,
-        min=None,
-        max=None,
+        min_count=None,
+        max_count=None,
     )
 
 
@@ -162,10 +157,9 @@ def _get_filters_input_data_specification_dto():
         desc="Features used in my algorithm.",
         types=[InputDataType.JSONOBJECT],
         required=False,
-        multiple=False,
         stattypes=None,
-        min=None,
-        max=None,
+        min_count=None,
+        max_count=1,
     )
 
 

@@ -42,7 +42,7 @@ class NaiveBayesGaussian(Algorithm):
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=False,
+                    max_count=1,
                 ),
                 x=specs.InputDataSpecification(
                     label="Covariates (independent)",
@@ -50,7 +50,6 @@ class NaiveBayesGaussian(Algorithm):
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
-                    multiple=True,
                 ),
             ),
             type=specs.AlgorithmType.EXAREME3,

@@ -56,7 +56,7 @@ class Histogram(Algorithm):
                         specs.InputDataStatType.NOMINAL,
                     ],
                     required=True,
-                    multiple=False,
+                    max_count=1,
                 ),
                 x=specs.InputDataSpecification(
                     label="Grouping variables",
@@ -64,7 +64,6 @@ class Histogram(Algorithm):
                     types=[specs.InputDataType.INT, specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=False,
-                    multiple=True,
                 ),
             ),
             parameters={

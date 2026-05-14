@@ -62,7 +62,7 @@ class GLMMOrdinal(Algorithm):
                     types=[specs.InputDataType.INT, specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=False,
+                    max_count=1,
                 ),
                 x=specs.InputDataSpecification(
                     label="Covariates and grouping variable",
@@ -77,8 +77,7 @@ class GLMMOrdinal(Algorithm):
                         specs.InputDataStatType.NOMINAL,
                     ],
                     required=True,
-                    multiple=True,
-                    min=2,
+                    min_count=2,
                 ),
             ),
             parameters={

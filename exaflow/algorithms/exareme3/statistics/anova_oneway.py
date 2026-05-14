@@ -49,7 +49,7 @@ class AnovaOneWay(Algorithm):
                     types=[InputDataType.REAL, InputDataType.INT],
                     stattypes=[InputDataStatType.NUMERICAL],
                     required=True,
-                    multiple=False,
+                    max_count=1,
                 ),
                 x=InputDataSpecification(
                     label="Factor (independent)",
@@ -57,7 +57,7 @@ class AnovaOneWay(Algorithm):
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=False,
+                    max_count=1,
                 ),
             ),
             type=AlgorithmType.EXAREME3,

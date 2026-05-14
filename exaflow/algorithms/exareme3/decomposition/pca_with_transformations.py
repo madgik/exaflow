@@ -43,7 +43,6 @@ class PCAWithTransformation(Algorithm):
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
-                    multiple=True,
                 ),
             ),
             parameters={

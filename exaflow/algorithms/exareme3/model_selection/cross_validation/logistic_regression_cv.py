@@ -110,7 +110,7 @@ class LogisticRegressionCV(Algorithm):
                     types=[specs.InputDataType.INT, specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
-                    multiple=False,
+                    max_count=1,
                 ),
                 x=specs.InputDataSpecification(
                     label="Covariates (independent)",
@@ -125,7 +125,6 @@ class LogisticRegressionCV(Algorithm):
                         specs.InputDataStatType.NOMINAL,
                     ],
                     required=True,
-                    multiple=True,
                 ),
             ),
             parameters={
