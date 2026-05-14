@@ -7,6 +7,9 @@ from sklearn.svm import SVC
 from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
+from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
+    NumpyAggregator,
+)
 from exaflow.worker_communication import BadUserInput
 
 
@@ -76,19 +79,12 @@ class LinearSVM(Algorithm):
                 ),
             },
             type=specs.AlgorithmType.EXAREME3,
-            components=[],
+            components=[specs.ComponentType.AGGREGATION_SERVER],
         )
 
     def run(self):
         y_var = self.inputdata.y[0]
         x_vars = self.inputdata.x
-        y_enums = (self.metadata.get(y_var) or {}).get("enumerations") or {}
-        y_levels = list(y_enums.keys())
-        if len(y_levels) < 2:
-            raise BadUserInput(
-                f"The variable {y_var} has less than 2 levels and SVM cannot be "
-                "performed. Please choose another variable."
-            )
 
         gamma = self.get_parameter("gamma")
         C = self.get_parameter("C")
@@ -98,7 +94,6 @@ class LinearSVM(Algorithm):
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
-                "y_levels": y_levels,
                 "gamma": float(gamma),
                 "C": float(C),
             },
@@ -124,24 +119,21 @@ class LinearSVM(Algorithm):
         )
 
 
-@exareme3_udf()
-def local_step(data, y_var, x_vars, y_levels, gamma, C):
+@exareme3_udf(with_aggregation_server=True)
+def local_step(agg_client, data, y_var, x_vars, gamma, C):
     """
     Train a linear SVM locally and return local model summaries for global aggregation.
     """
-    # Keep only required columns and drop rows with missing values
-    cols = list(dict.fromkeys(list(x_vars) + [y_var]))
-    data = data[cols].dropna()
-
     n_features = len(x_vars)
     if n_features == 0:
         raise BadUserInput("SVM requires at least one covariate (x).")
 
     X = data[x_vars].to_numpy(dtype=float, copy=False)
     y = data[y_var].to_numpy(copy=False)
+    aggregator = NumpyAggregator(agg_client)
 
     n_obs_local = float(len(y))
-    unique_y = np.unique(y)
+    unique_y = aggregator.fed_union(y)
     if unique_y.size < 2:
         raise BadUserInput("Cannot perform SVM. Covariable has only one level.")
 

@@ -330,26 +330,6 @@ def algorithms_specs():
                 ),
             ),
         ),
-        "algorithm_with_variable_enumslen": AlgorithmSpecification(
-            name="algorithm_with_variable_enumslen",
-            desc="algorithm_with_variable_enumslen",
-            documentation="algorithm_with_variable_enumslen",
-            label="algorithm_with_variable_enumslen",
-            enabled=True,
-            type=AlgorithmType.EXAREME3,
-            components=[],
-            inputdata=InputDataSpecifications(
-                y=InputDataSpecification(
-                    label="target",
-                    desc="Target variable",
-                    types=[InputDataType.TEXT],
-                    stattypes=[InputDataStatType.NOMINAL],
-                    required=True,
-                    multiple=False,
-                    enumslen=2,
-                ),
-            ),
-        ),
         "algorithm_with_y_and_x_optional": AlgorithmSpecification(
             name="algorithm_with_y_and_x_optional",
             desc="algorithm_with_y_and_x_optional",
@@ -751,17 +731,6 @@ def get_parametrization_list_success_cases():
                 ),
             ),
             id="variables multiple true",
-        ),
-        pytest.param(
-            "algorithm_with_variable_enumslen",
-            AlgorithmRequestDTO(
-                inputdata=AlgorithmInputDataDTO(
-                    data_model="data_model_with_all_cde_types:0.1",
-                    datasets=["sample_dataset1"],
-                    y=["text_cde_categ"],
-                ),
-            ),
-            id="variable enumslen",
         ),
         pytest.param(
             "algorithm_with_y_and_x_optional",
@@ -1389,18 +1358,6 @@ def get_parametrization_list_exception_cases():
             ),
             (BadUserInput, "The CDE .* should NOT be categorical."),
             id="Inputdata variable requires non categorical CDE given categorical.",
-        ),
-        pytest.param(
-            "algorithm_with_variable_enumslen",
-            AlgorithmRequestDTO(
-                inputdata=AlgorithmInputDataDTO(
-                    data_model="data_model_with_all_cde_types:0.1",
-                    datasets=["sample_dataset1"],
-                    y=["text_cde_3_enums"],
-                ),
-            ),
-            (BadUserInput, "The CDE .* should have .* enumerations."),
-            id="Inputdata variable requires 2 enumerations, CDE has 3 enums.",
         ),
         pytest.param(
             "algorithm_with_required_param",

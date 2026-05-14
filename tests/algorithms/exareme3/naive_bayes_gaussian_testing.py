@@ -36,7 +36,6 @@ class GaussianNBTestingPredict(Algorithm):
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
                 x=specs.InputDataSpecification(
                     label="Covariates (independent)",
@@ -45,7 +44,6 @@ class GaussianNBTestingPredict(Algorithm):
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=True,
-                    enumslen=None,
                 ),
                 validation=None,
             ),

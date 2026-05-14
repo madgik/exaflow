@@ -25,7 +25,6 @@ class StandardDeviationAlgorithm(Algorithm):
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
                 x=None,
                 validation=None,

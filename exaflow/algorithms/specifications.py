@@ -129,7 +129,6 @@ class InputDataSpecification(ImmutableBaseModel):
     stattypes: List[InputDataStatType]
     required: bool
     multiple: bool
-    enumslen: Optional[int] = None
     min: Optional[int] = None
     max: Optional[int] = None
 

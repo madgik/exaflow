@@ -4,7 +4,6 @@ from pydantic import BaseModel
 
 from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
-from exaflow.algorithms.exareme3.utils.metadata_enums import get_enum_codes
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.fisher_exact import (
     FisherExact as FedFisherExact,
@@ -12,6 +11,7 @@ from exaflow.algorithms.federated.statistics.fisher_exact import (
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
+from exaflow.worker_communication import BadUserInput
 
 
 class FisherExactResult(BaseModel):
@@ -43,7 +43,6 @@ class FisherExact(Algorithm):
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
-                    enumslen=2,
                 ),
                 x=specs.InputDataSpecification(
                     label="Factor (independent)",
@@ -52,7 +51,6 @@ class FisherExact(Algorithm):
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
-                    enumslen=2,
                 ),
             ),
             type=specs.AlgorithmType.EXAREME3,
@@ -84,9 +82,15 @@ class FisherExact(Algorithm):
 
 @exareme3_udf(with_aggregation_server=True)
 def fisher_exact_local_step(agg_client, data, metadata, factor, outcome):
-    factor_categories = get_enum_codes(metadata, factor)
-    outcome_categories = get_enum_codes(metadata, outcome)
     aggregator = NumpyAggregator(agg_client)
+    factor_categories = aggregator.fed_union(data[factor].to_numpy(copy=False)).tolist()
+    outcome_categories = aggregator.fed_union(
+        data[outcome].to_numpy(copy=False)
+    ).tolist()
+    if len(factor_categories) != 2 or len(outcome_categories) != 2:
+        raise BadUserInput(
+            "Fisher's Exact Test requires exactly 2 observed levels for both x and y."
+        )
     model = FedFisherExact(aggregator=aggregator)
     res = model.compute(
         dataset=data,

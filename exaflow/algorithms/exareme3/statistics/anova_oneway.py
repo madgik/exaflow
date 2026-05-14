@@ -6,9 +6,11 @@ import pandas as pd
 from pydantic import BaseModel
 
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
-from exaflow.algorithms.exareme3.utils.metadata_enums import get_enum_codes
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.anova_oneway import FederatedAnovaOneWay
+from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
+    NumpyAggregator,
+)
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import AlgorithmType
 from exaflow.algorithms.specifications import ComponentType
@@ -69,7 +71,6 @@ class AnovaOneWay(Algorithm):
         """
         y_var_name = self.inputdata.y[0]
         x_var_name = self.inputdata.x[0]
-        covar_enums = get_enum_codes(self.metadata, x_var_name)
 
         # Run a single distributed ANOVA UDF
         result = self.run_local_udf(
@@ -77,7 +78,6 @@ class AnovaOneWay(Algorithm):
             kw_args={
                 "x_var": x_var_name,
                 "y_var": y_var_name,
-                "covar_enums": covar_enums,
             },
             identical_results=True,
         )
@@ -135,7 +135,7 @@ class AnovaOneWay(Algorithm):
 
 
 @exareme3_udf(with_aggregation_server=True)
-def local_step(agg_client, data, x_var, y_var, covar_enums):
+def local_step(agg_client, data, x_var, y_var):
     # --- Local stats like original local1, but force 1D arrays ---
     y_col = data[y_var]
     x_col = data[x_var]
@@ -148,6 +148,8 @@ def local_step(agg_client, data, x_var, y_var, covar_enums):
 
     y_col = y_col.reset_index(drop=True)
     x_col = x_col.reset_index(drop=True)
+    aggregator = NumpyAggregator(agg_client)
+    covar_enums = aggregator.fed_union(x_col.to_numpy(copy=False)).tolist()
 
     if len(covar_enums) < 2:
         raise BadUserInput(
