@@ -26,7 +26,19 @@ class TTestOneSample(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="ttest_onesample",
-            desc="Federated Student's one-sample t-test compares the mean of a numeric sample to a specified value (mu). It reports confidence intervals and Cohen's d, with df = n - 1.",
+            desc="One-sample t-test against a specified mean.",
+            documentation=(
+                "Compare the mean of a numerical sample to a specified null "
+                "hypothesis mean. Degrees of freedom are n - 1.\n\n"
+                "The 'alt_hypothesis' setting selects the alternative hypothesis: "
+                "'two-sided', 'less', or 'greater'. Default is 'two-sided'.\n\n"
+                "The 'alpha' setting controls the significance level used for "
+                "confidence intervals. Default is 0.05.\n\n"
+                "The 'mu' setting controls the null hypothesis mean. Default is 0.0.\n\n"
+                "The result includes the t statistic, p-value, confidence "
+                "interval, sample mean, standard deviation, observation count, "
+                "and Cohen's d."
+            ),
             label="Student's One-Sample T-Test",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
@@ -37,15 +49,12 @@ class TTestOneSample(Algorithm):
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
-                x=None,
-                validation=None,
             ),
             parameters={
                 "alt_hypothesis": specs.ParameterSpecification(
                     label="Alternative Hypothesis",
-                    desc="Specifies the alternative hypothesis (two-sided, less, or greater).",
+                    desc="Alternative hypothesis for the mean comparison.",
                     types=[specs.ParameterType.TEXT],
                     required=True,
                     multiple=False,
@@ -54,34 +63,24 @@ class TTestOneSample(Algorithm):
                         type=specs.ParameterEnumType.LIST,
                         source=["two-sided", "less", "greater"],
                     ),
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
-                    min=None,
-                    max=None,
                 ),
                 "alpha": specs.ParameterSpecification(
                     label="Alpha",
-                    desc="The significance level. The probability of rejecting the null hypothesis when it is true.",
+                    desc="Significance level for the test.",
                     types=[specs.ParameterType.REAL],
                     required=True,
                     multiple=False,
                     default=0.05,
-                    enums=None,
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
                     min=0.0,
                     max=1.0,
                 ),
                 "mu": specs.ParameterSpecification(
                     label="Population mean",
-                    desc="Null hypothesis mean value (mu0).",
+                    desc="Mean value under the null hypothesis.",
                     types=[specs.ParameterType.REAL],
                     required=True,
                     multiple=False,
                     default=0.0,
-                    enums=None,
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
                     min=-10.0,
                     max=10.0,
                 ),

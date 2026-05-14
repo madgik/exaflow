@@ -51,6 +51,23 @@ class MissingValuesHandler(PreprocessingStep):
         return specs.PreprocessingStepSpecification(
             name="missing_values_handler",
             desc="Handle missing values per selected variable strategy.",
+            documentation=(
+                "Handle missing values using a selected strategy for each "
+                "variable.\n\n"
+                "Configure one missing-value strategy per variable with "
+                "'strategies':\n"
+                "  - 'drop' removes rows with missing values for the variable.\n"
+                "  - 'mean' fills missing numerical values with the mean computed "
+                "from each worker's local dataset, not the global mean.\n"
+                "  - 'median' fills missing numerical values with the median computed "
+                "from each worker's local dataset, not the global median.\n"
+                "  - 'most_frequent' fills missing values with the most frequent "
+                "value computed from each worker's local dataset, not the global "
+                "mode.\n"
+                "  - 'constant' fills missing values with the value from 'fill_values'.\n\n"
+                "The optional 'fill_values' setting provides scalar replacement "
+                "values for variables using the 'constant' strategy."
+            ),
             label="Missing Values Handler",
             enabled=True,
             parameters={
@@ -60,8 +77,6 @@ class MissingValuesHandler(PreprocessingStep):
                     types=[specs.ParameterType.DICT],
                     required=True,
                     multiple=False,
-                    default=None,
-                    enums=None,
                     dict_keys_enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_NAMES,
                         source=["x", "y"],
@@ -70,24 +85,17 @@ class MissingValuesHandler(PreprocessingStep):
                         type=specs.ParameterEnumType.LIST,
                         source=allowed_values,
                     ),
-                    min=None,
-                    max=None,
                 ),
                 "fill_values": specs.ParameterSpecification(
                     label="Fill Values",
-                    desc="Per-variable fill values used when strategy is 'constant'.",
+                    desc="Replacement value for each constant-fill variable.",
                     types=[specs.ParameterType.DICT],
                     required=False,
                     multiple=False,
-                    default=None,
-                    enums=None,
                     dict_keys_enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_NAMES,
                         source=["x", "y"],
                     ),
-                    dict_values_enums=None,
-                    min=None,
-                    max=None,
                 ),
             },
             type=specs.PreprocessingStepType.EXAREME3_PREPROCESSING_STEP,

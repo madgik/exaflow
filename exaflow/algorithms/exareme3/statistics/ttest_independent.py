@@ -24,7 +24,23 @@ class TTestIndependent(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="ttest_independent",
-            desc="Federated Student's independent t-test for the difference in means between two independent groups (pooled variance; df = n_a + n_b - 2). Reports confidence intervals and Cohen's d (pooled SD).",
+            desc="Independent t-test for two groups.",
+            documentation=(
+                "Compare the means of a numerical variable between two "
+                "independent groups using pooled variance. Degrees of freedom "
+                "are n_a + n_b - 2, and Cohen's d is computed from the pooled "
+                "standard deviation.\n\n"
+                "The 'alt_hypothesis' setting selects whether group A is "
+                "different from, less than, or greater than group B. Default is "
+                "'two-sided'.\n\n"
+                "The 'alpha' setting controls the significance level used for "
+                "confidence intervals. Default is 0.05.\n\n"
+                "The 'groupA' and 'groupB' settings select the grouping-variable "
+                "categories compared by the test.\n\n"
+                "The result includes the t statistic, p-value, confidence "
+                "interval, group means, group sizes, degrees of freedom, and "
+                "Cohen's d."
+            ),
             label="Student's Independent T-Test",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
@@ -35,7 +51,6 @@ class TTestIndependent(Algorithm):
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
                 x=specs.InputDataSpecification(
                     label="Grouping variable",
@@ -44,14 +59,12 @@ class TTestIndependent(Algorithm):
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
-                validation=None,
             ),
             parameters={
                 "alt_hypothesis": specs.ParameterSpecification(
                     label="Alternative Hypothesis",
-                    desc="Specifies whether group A is different from, greater than, or less than group B.",
+                    desc="Alternative hypothesis for the group comparison.",
                     types=[specs.ParameterType.TEXT],
                     required=True,
                     multiple=False,
@@ -60,55 +73,38 @@ class TTestIndependent(Algorithm):
                         type=specs.ParameterEnumType.LIST,
                         source=["two-sided", "less", "greater"],
                     ),
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
-                    min=None,
-                    max=None,
                 ),
                 "alpha": specs.ParameterSpecification(
                     label="Alpha",
-                    desc="The significance level.",
+                    desc="Significance level for the test.",
                     types=[specs.ParameterType.REAL],
                     required=True,
                     multiple=False,
                     default=0.05,
-                    enums=None,
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
                     min=0.0,
                     max=1.0,
                 ),
                 "groupA": specs.ParameterSpecification(
                     label="Group A",
-                    desc="Category of the grouping variable used as group A.",
+                    desc="Grouping-variable category used as group A.",
                     types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
                     required=True,
                     multiple=False,
-                    default=None,
                     enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_CDE_ENUMS,
                         source=["x"],
                     ),
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
-                    min=None,
-                    max=None,
                 ),
                 "groupB": specs.ParameterSpecification(
                     label="Group B",
-                    desc="Category of the grouping variable used as group B.",
+                    desc="Grouping-variable category used as group B.",
                     types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
                     required=True,
                     multiple=False,
-                    default=None,
                     enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_CDE_ENUMS,
                         source=["x"],
                     ),
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
-                    min=None,
-                    max=None,
                 ),
             },
             type=specs.AlgorithmType.EXAREME3,

@@ -295,6 +295,7 @@ class WorkflowStepSpecification(ImmutableBaseModel):
 class AlgorithmSpecification(WorkflowStepSpecification):
     name: str
     desc: str
+    documentation: str
     label: str
     enabled: bool
     inputdata: InputDataSpecifications
@@ -306,6 +307,7 @@ class AlgorithmSpecification(WorkflowStepSpecification):
 class PreprocessingStepSpecification(WorkflowStepSpecification):
     name: str
     desc: str
+    documentation: str
     label: str
     enabled: bool
     parameters: Optional[Dict[str, ParameterSpecification]] = None

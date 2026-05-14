@@ -22,7 +22,17 @@ class PearsonCorrelation(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="pearson_correlation",
-            desc="Federated Pearson correlation with p-values and confidence intervals. Computes correlations for all pairs between variables and optional covariates.",
+            desc="Pearson correlation with p-values and confidence intervals.",
+            documentation=(
+                "Compute Pearson correlations for all pairs between the primary "
+                "variables and optional secondary variables. When no secondary "
+                "variables are provided, correlations are computed among the "
+                "primary variables.\n\n"
+                "The 'alpha' setting controls the confidence level for "
+                "correlation coefficient intervals. Default is 0.95.\n\n"
+                "The result includes correlation coefficients, p-values, "
+                "confidence intervals, and observation counts."
+            ),
             label="Pearson Correlation",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
@@ -33,7 +43,6 @@ class PearsonCorrelation(Algorithm):
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=True,
-                    enumslen=None,
                 ),
                 x=specs.InputDataSpecification(
                     label="Covariates (optional)",
@@ -42,21 +51,16 @@ class PearsonCorrelation(Algorithm):
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=False,
                     multiple=True,
-                    enumslen=None,
                 ),
-                validation=None,
             ),
             parameters={
                 "alpha": specs.ParameterSpecification(
                     label="Confidence level",
-                    desc="Confidence level used to compute correlation coefficient intervals.",
+                    desc="Confidence level for correlation intervals.",
                     types=[specs.ParameterType.REAL],
                     required=True,
                     multiple=False,
                     default=0.95,
-                    enums=None,
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
                     min=0.0,
                     max=1.0,
                 ),

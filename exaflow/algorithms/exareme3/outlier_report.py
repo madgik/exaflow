@@ -48,29 +48,33 @@ class OutlierReport(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         strategy_values = [strategy.value for strategy in OutlierStrategy]
         tail_values = [tail.value for tail in OutlierTail]
-        desc = (
-            "Report numerical outliers per dataset using local winsorization "
-            "bounds computed on each worker. The report returns the strategy, "
-            "tail, fold, computed lower and upper bounds, outlier counts, and "
-            "outlier percentage for each configured variable.\n\n"
-            "Configure one strategy per variable with the 'strategies' parameter:\n"
+        documentation = (
+            "Report numerical outliers per dataset using winsorization bounds "
+            "computed independently on each worker's local dataset, not from "
+            "global statistics. The report returns the strategy, tail, fold, "
+            "computed lower and upper bounds, outlier counts, and outlier "
+            "percentage for each configured variable.\n\n"
+            "Configure one reporting strategy per variable with 'strategies':\n"
             "  - 'gaussian' reports values outside mean +/- fold * sample "
-            "standard deviation. Default fold is 3.0.\n"
+            "standard deviation, computed locally on each worker. Default fold "
+            "is 3.0.\n"
             "  - 'iqr' reports values outside Q1 - fold * IQR and Q3 + fold * "
-            "IQR, where IQR=Q3-Q1. Default fold is 1.5.\n"
+            "IQR, where IQR=Q3-Q1, computed locally on each worker. Default fold "
+            "is 1.5.\n"
             "  - 'mad' reports values outside median +/- fold * normalized MAD, "
             "where normalized MAD=1.4826 * median absolute deviation. Default "
-            "fold is 3.0.\n"
+            "fold is 3.0. The median and MAD are computed locally on each worker.\n"
             "  - 'quantile' reports values below the fold quantile and above "
-            "the 1-fold quantile. Default fold is 0.05. Its fold must be "
-            "greater than 0 and less than 0.5.\n\n"
-            "The optional 'tails' parameter controls which side is inspected "
+            "the 1 - fold quantile. Default fold is 0.05. Its fold must be "
+            "greater than 0 and less than 0.5. Quantiles are computed locally "
+            "on each worker.\n\n"
+            "The optional 'tails' setting controls which side is inspected "
             "per variable:\n"
             "  - 'left' reports only values below the lower bound.\n"
             "  - 'right' reports only values above the upper bound.\n"
             "  - 'both' (default) reports both sides for variables without an "
             "explicit tail.\n\n"
-            "The optional 'folds' parameter overrides the strategy default per "
+            "The optional 'folds' setting overrides the strategy default per "
             "variable:\n"
             "  - 'gaussian', 'iqr', and 'mad' folds must be positive finite "
             "numbers.\n"
@@ -78,7 +82,8 @@ class OutlierReport(Algorithm):
         )
         return specs.AlgorithmSpecification(
             name="outlier_report",
-            desc=desc,
+            desc="Report numerical outliers per dataset using winsorization bounds.",
+            documentation=documentation,
             label="Outlier Report",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
@@ -89,7 +94,6 @@ class OutlierReport(Algorithm):
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=True,
-                    enumslen=None,
                 ),
                 x=specs.InputDataSpecification(
                     label="Additional variables",
@@ -98,25 +102,12 @@ class OutlierReport(Algorithm):
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=False,
                     multiple=True,
-                    enumslen=None,
                 ),
-                validation=None,
             ),
             parameters={
                 "strategies": specs.ParameterSpecification(
                     label="Strategies",
-                    desc=(
-                        "Required dictionary mapping each numerical variable to "
-                        "one outlier reporting strategy: gaussian, iqr, mad, or "
-                        "quantile.\n"
-                        "  - 'gaussian' uses mean +/- fold * sample standard "
-                        "deviation.\n"
-                        "  - 'iqr' uses Q1 - fold * IQR and Q3 + fold * IQR.\n"
-                        "  - 'mad' uses median +/- fold * 1.4826 * median "
-                        "absolute deviation.\n"
-                        "  - 'quantile' uses the fold and 1-fold empirical "
-                        "quantiles."
-                    ),
+                    desc="Outlier reporting strategy for each variable.",
                     types=[specs.ParameterType.DICT],
                     required=True,
                     multiple=False,
@@ -131,14 +122,7 @@ class OutlierReport(Algorithm):
                 ),
                 "tails": specs.ParameterSpecification(
                     label="Tails",
-                    desc=(
-                        "Optional dictionary mapping variables from 'strategies' "
-                        "to the side to inspect.\n"
-                        "  - 'left' reports only values below the lower bound.\n"
-                        "  - 'right' reports only values above the upper bound.\n"
-                        "  - 'both' (default) reports both sides for variables "
-                        "without an explicit tail."
-                    ),
+                    desc="Side of the distribution to inspect for each variable.",
                     types=[specs.ParameterType.DICT],
                     required=False,
                     multiple=False,
@@ -153,19 +137,7 @@ class OutlierReport(Algorithm):
                 ),
                 "folds": specs.ParameterSpecification(
                     label="Folds",
-                    desc=(
-                        "Optional dictionary mapping variables from 'strategies' "
-                        "to numeric fold values.\n"
-                        "  - 'gaussian' fold is a positive multiplier for the "
-                        "sample standard deviation. Default is 3.0.\n"
-                        "  - 'iqr' fold is a positive multiplier for the "
-                        "interquartile range. Default is 1.5.\n"
-                        "  - 'mad' fold is a positive multiplier for the "
-                        "normalized median absolute deviation. Default is 3.0.\n"
-                        "  - 'quantile' fold is the tail probability used for "
-                        "the lower quantile and 1-fold upper quantile. It must "
-                        "be greater than 0 and less than 0.5. Default is 0.05."
-                    ),
+                    desc="Strategy-specific reporting threshold for each variable.",
                     types=[specs.ParameterType.DICT],
                     required=False,
                     multiple=False,

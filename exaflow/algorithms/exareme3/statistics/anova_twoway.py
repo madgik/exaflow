@@ -24,7 +24,16 @@ class AnovaTwoWay(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="anova_twoway",
-            desc="Federated two-way (factorial) ANOVA for hypothesis testing with two categorical factors, including main effects and interaction (Type I or II sums of squares).",
+            desc="Two-way ANOVA with two categorical factors.",
+            documentation=(
+                "Test whether a numerical outcome differs across combinations "
+                "of two categorical factors. The model includes main effects "
+                "and their interaction.\n\n"
+                "The 'sstype' setting selects the sums-of-squares type:\n"
+                "  - 1 computes Type I sequential sums of squares.\n"
+                "  - 2 computes Type II marginal sums of squares. Default is 2.\n\n"
+                "The result includes an ANOVA table for the fitted factorial model."
+            ),
             label="Two-way ANOVA (OLS)",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
@@ -35,7 +44,6 @@ class AnovaTwoWay(Algorithm):
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
                 x=specs.InputDataSpecification(
                     label="Factors (independent)",
@@ -44,21 +52,16 @@ class AnovaTwoWay(Algorithm):
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=True,
-                    enumslen=None,
                 ),
-                validation=None,
             ),
             parameters={
                 "sstype": specs.ParameterSpecification(
                     label="Sum of squares type",
-                    desc="Sum of squares type: 1 (Type I, sequential) or 2 (Type II, marginal).",
+                    desc="Sums-of-squares method for the ANOVA table.",
                     types=[specs.ParameterType.INT],
                     required=True,
                     multiple=False,
                     default="2",
-                    enums=None,
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
                     min=1,
                     max=2,
                 ),

@@ -44,7 +44,18 @@ class LMM(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="lmm",
-            desc="Federated linear mixed model with a single random-intercept grouping variable.",
+            desc="Linear mixed model with a random intercept.",
+            documentation=(
+                "Fit a linear mixed model for a continuous outcome with fixed "
+                "covariate effects and a single random-intercept grouping "
+                "variable.\n\n"
+                "The 'grouping_var' setting selects the variable from x used as "
+                "the random-intercept grouping factor.\n\n"
+                "The result includes fixed-effect coefficients, standard errors, "
+                "z-scores, p-values, confidence intervals, random-effect "
+                "variance, residual variance, log-likelihood, AIC, BIC, "
+                "convergence status, and iteration count."
+            ),
             label="Linear Mixed Model",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
@@ -55,11 +66,10 @@ class LMM(Algorithm):
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
                 x=specs.InputDataSpecification(
                     label="Covariates and grouping variable",
-                    desc="One or more covariates plus exactly one grouping variable, referenced by the 'grouping_var' parameter.",
+                    desc="Covariates plus the random-intercept grouping variable.",
                     types=[
                         specs.InputDataType.REAL,
                         specs.InputDataType.INT,
@@ -71,26 +81,19 @@ class LMM(Algorithm):
                     ],
                     required=True,
                     multiple=True,
-                    enumslen=None,
                 ),
-                validation=None,
             ),
             parameters={
                 "grouping_var": specs.ParameterSpecification(
                     label="Grouping variable",
-                    desc="Variable from x to use as the random-intercept grouping factor.",
+                    desc="Random-intercept grouping factor.",
                     types=[specs.ParameterType.TEXT],
                     required=True,
                     multiple=False,
-                    default=None,
                     enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_NAMES,
                         source=["x"],
                     ),
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
-                    min=None,
-                    max=None,
                 ),
             },
             type=specs.AlgorithmType.EXAREME3,

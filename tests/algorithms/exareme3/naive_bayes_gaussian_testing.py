@@ -25,6 +25,7 @@ class GaussianNBTestingPredict(Algorithm):
         return specs.AlgorithmSpecification(
             name=ALGNAME_PRED,
             desc="Uses Bayes' theorem to calculate the probability of each class given a set of numerical features assuming independence between features. It then classifies data points ba sed on the class with the highest probability.",
+            documentation="Uses Bayes' theorem to calculate the probability of each class given a set of numerical features assuming independence between features. It then classifies data points ba sed on the class with the highest probability.",
             label="Gaussian Naive Bayes classifier with cross-validation",
             enabled=True,
             inputdata=specs.InputDataSpecifications(

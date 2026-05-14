@@ -40,7 +40,16 @@ class LinearRegression(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="linear_regression",
-            desc="Federated ordinary least squares (OLS) linear regression with global coefficients, standard errors, t-tests, p-values, confidence intervals, and fit statistics.",
+            desc="Ordinary least squares linear regression.",
+            documentation=(
+                "Fit an ordinary least squares (OLS) linear regression model "
+                "across workers. Categorical covariates are dummy-encoded before "
+                "estimation.\n\n"
+                "The result includes global coefficients, standard errors, "
+                "t-tests, p-values, confidence intervals, residual and model "
+                "degrees of freedom, residual standard error, R-squared values, "
+                "F statistic, log-likelihood, AIC, and BIC."
+            ),
             label="Linear Regression (OLS)",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
@@ -51,11 +60,10 @@ class LinearRegression(Algorithm):
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
                 x=specs.InputDataSpecification(
                     label="Covariates (independent)",
-                    desc="One or more variables (numerical or categorical). Categorical covariates are dummy-encoded.",
+                    desc="Numerical or categorical covariates.",
                     types=[
                         specs.InputDataType.REAL,
                         specs.InputDataType.INT,
@@ -67,11 +75,8 @@ class LinearRegression(Algorithm):
                     ],
                     required=True,
                     multiple=True,
-                    enumslen=None,
                 ),
-                validation=None,
             ),
-            parameters=None,
             type=specs.AlgorithmType.EXAREME3,
             components=[specs.ComponentType.AGGREGATION_SERVER],
         )

@@ -89,6 +89,19 @@ Runtime checks:
   lint findings; automated tools handle those mechanical edits.
 - Strict tier: fast tier + targeted prod_env tests.
 
+Manual specification review:
+
+- `desc` values should be compact UI copy, 1-2 lines max.
+- Detailed formulas/defaults/ranges, parameter option lists, and output
+  interpretation belong in the parent algorithm/preprocessing step
+  `documentation` field.
+- Parameter `desc` values should describe what the setting does, not restate
+  schema shape, requiredness, or dictionary structure. Do not add
+  parameter-level `documentation`.
+- Omit explicit optional `None` specification arguments such as
+  `parameters=None`, `validation=None`, `enumslen=None`, `default=None`,
+  `enums=None`, `dict_values_enums=None`, `min=None`, and `max=None`.
+
 Path policy:
 
 - Required implementation, test, fixture, and documentation paths are enforced directly.

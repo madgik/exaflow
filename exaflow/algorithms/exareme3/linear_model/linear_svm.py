@@ -22,7 +22,17 @@ class LinearSVM(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="linear_svm",
-            desc="Federated linear SVM trained locally and averaged across workers (coefficients and intercept).",
+            desc="Linear SVM with averaged worker parameters.",
+            documentation=(
+                "Train a linear support vector machine locally on each worker and "
+                "average the learned coefficients and intercept across workers.\n\n"
+                "The 'gamma' setting is passed to scikit-learn's SVC with a "
+                "linear kernel. Default is 0.1.\n\n"
+                "The 'C' setting controls regularization strength as the penalty "
+                "for misclassification. Default is 1.0.\n\n"
+                "The result includes the total observation count, averaged "
+                "weights, and averaged intercept."
+            ),
             label="Linear SVM",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
@@ -33,7 +43,6 @@ class LinearSVM(Algorithm):
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=True,
-                    enumslen=None,
                 ),
                 x=specs.InputDataSpecification(
                     label="Features",
@@ -42,34 +51,26 @@ class LinearSVM(Algorithm):
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=True,
-                    enumslen=None,
                 ),
-                validation=None,
             ),
             parameters={
                 "gamma": specs.ParameterSpecification(
                     label="Gamma",
-                    desc="Gamma parameter passed to scikit-learn's SVC (linear kernel).",
+                    desc="Kernel coefficient passed to the linear SVM.",
                     types=[specs.ParameterType.REAL],
                     required=True,
                     multiple=False,
                     default=0.1,
-                    enums=None,
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
                     min=0.0,
                     max=1.0,
                 ),
                 "C": specs.ParameterSpecification(
                     label="C",
-                    desc="Regularization parameter (penalty for misclassification).",
+                    desc="Regularization penalty for misclassification.",
                     types=[specs.ParameterType.REAL],
                     required=True,
                     multiple=False,
                     default=1.0,
-                    enums=None,
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
                     min=0.0,
                     max=1.0,
                 ),

@@ -27,7 +27,16 @@ class NaiveBayesCategorical(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="naive_bayes_categorical",
-            desc="Federated categorical Naive Bayes. Features are ordinal-encoded using metadata category order; unknown categories are rejected. Class labels are discovered during training and aggregated securely across workers.",
+            desc="Categorical Naive Bayes for nominal features.",
+            documentation=(
+                "Fit a categorical Naive Bayes classifier across workers. "
+                "Features are ordinal-encoded using metadata category order; "
+                "unknown categories are rejected. Class labels are discovered "
+                "during training and aggregated securely across workers.\n\n"
+                "The result includes class labels, class counts, class log "
+                "priors, per-feature category counts, per-feature category log "
+                "probabilities, category labels, and feature names."
+            ),
             label="Categorical Naive Bayes",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
@@ -38,7 +47,6 @@ class NaiveBayesCategorical(Algorithm):
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
                 x=specs.InputDataSpecification(
                     label="Covariates (independent)",
@@ -47,11 +55,8 @@ class NaiveBayesCategorical(Algorithm):
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=True,
-                    enumslen=None,
                 ),
-                validation=None,
             ),
-            parameters=None,
             type=specs.AlgorithmType.EXAREME3,
             components=[specs.ComponentType.AGGREGATION_SERVER],
         )

@@ -44,22 +44,32 @@ class LogisticRegression(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="logistic_regression",
-            desc="Federated logistic regression for a binary outcome, with one-hot encoding for categorical covariates.",
+            desc="Logistic regression for a binary outcome.",
+            documentation=(
+                "Fit a logistic regression model across workers. The dependent "
+                "variable is converted to binary by assigning 1 to the selected "
+                "positive class and 0 to all other classes. Categorical "
+                "covariates are one-hot encoded before estimation.\n\n"
+                "The 'positive_class' setting selects the y category treated as "
+                "the positive outcome.\n\n"
+                "The result includes coefficients, standard errors, z-scores, "
+                "p-values, confidence intervals, degrees of freedom, pseudo "
+                "R-squared values, log-likelihoods, AIC, and BIC."
+            ),
             label="Logistic Regression",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Dependent variable (binary)",
-                    desc="A unique nominal variable. The variable is converted to binary by assigning 1 to the positive class and 0 to all other classes.",
+                    desc="Nominal outcome converted using the positive class.",
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
                 x=specs.InputDataSpecification(
                     label="Covariates (independent)",
-                    desc="One or more covariates (numerical or categorical). Categorical variables are one-hot encoded.",
+                    desc="Numerical or categorical covariates.",
                     types=[
                         specs.InputDataType.INT,
                         specs.InputDataType.REAL,
@@ -71,26 +81,19 @@ class LogisticRegression(Algorithm):
                     ],
                     required=True,
                     multiple=True,
-                    enumslen=None,
                 ),
-                validation=None,
             ),
             parameters={
                 "positive_class": specs.ParameterSpecification(
                     label="Positive class (y=1)",
-                    desc="Positive class of y. All other classes are considered negative.",
+                    desc="Outcome category treated as the positive class.",
                     types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
                     required=True,
                     multiple=False,
-                    default=None,
                     enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_CDE_ENUMS,
                         source=["y"],
                     ),
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
-                    min=None,
-                    max=None,
                 ),
             },
             type=specs.AlgorithmType.EXAREME3,

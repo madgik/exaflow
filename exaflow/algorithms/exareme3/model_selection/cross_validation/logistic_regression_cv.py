@@ -87,22 +87,34 @@ class LogisticRegressionCV(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="logistic_regression_cv",
-            desc="Federated K-fold cross-validation for logistic regression with one-hot encoded categorical covariates.",
+            desc="Logistic regression evaluated with K-fold cross-validation.",
+            documentation=(
+                "Evaluate a logistic regression model with K-fold "
+                "cross-validation across workers. The dependent variable is "
+                "converted to binary by assigning 1 to the selected positive "
+                "class and 0 to all other classes. Categorical covariates are "
+                "one-hot encoded before estimation.\n\n"
+                "The 'positive_class' setting selects the y category treated as "
+                "the positive outcome.\n\n"
+                "The 'n_splits' setting controls the number of cross-validation "
+                "folds. It must be between 2 and 20. Default is 5.\n\n"
+                "The result includes binary classification metrics and a summary "
+                "across folds."
+            ),
             label="Logistic Regression Cross-validation",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Dependent variable (binary)",
-                    desc="A unique nominal variable. The variable is converted to binary by assigning 1 to the positive class and 0 to all other classes. ",
+                    desc="Nominal outcome converted using the positive class.",
                     types=[specs.InputDataType.INT, specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
                 x=specs.InputDataSpecification(
                     label="Covariates (independent)",
-                    desc="One or more covariates (numerical or categorical). Categorical variables are one-hot encoded.",
+                    desc="Numerical or categorical covariates.",
                     types=[
                         specs.InputDataType.REAL,
                         specs.InputDataType.INT,
@@ -114,37 +126,27 @@ class LogisticRegressionCV(Algorithm):
                     ],
                     required=True,
                     multiple=True,
-                    enumslen=None,
                 ),
-                validation=None,
             ),
             parameters={
                 "positive_class": specs.ParameterSpecification(
                     label="Positive class (y=1)",
-                    desc="Positive class of y. All other classes are considered negative.",
+                    desc="Outcome category treated as the positive class.",
                     types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
                     required=True,
                     multiple=False,
-                    default=None,
                     enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_CDE_ENUMS,
                         source=["y"],
                     ),
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
-                    min=None,
-                    max=None,
                 ),
                 "n_splits": specs.ParameterSpecification(
                     label="Number of folds",
-                    desc="Number of folds for K-fold cross-validation.",
+                    desc="Fold count used for cross-validation.",
                     types=[specs.ParameterType.INT],
                     required=True,
                     multiple=False,
                     default=5,
-                    enums=None,
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
                     min=2,
                     max=20,
                 ),

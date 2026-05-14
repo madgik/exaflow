@@ -36,22 +36,36 @@ class GLMMBinary(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="glmm_binary",
-            desc="Federated binary generalized linear mixed model with one random-intercept grouping variable.",
+            desc="Binary generalized linear mixed model.",
+            documentation=(
+                "Fit a binary generalized linear mixed model with fixed "
+                "covariate effects and a single random-intercept grouping "
+                "variable. The dependent variable is converted to binary by "
+                "assigning 1 to the selected positive class and 0 to all other "
+                "classes.\n\n"
+                "The 'positive_class' setting selects the y category treated as "
+                "the positive outcome.\n\n"
+                "The 'grouping_var' setting selects the variable from x used as "
+                "the random-intercept grouping factor.\n\n"
+                "The result includes fixed-effect coefficients, standard errors, "
+                "z-scores, p-values, confidence intervals, random-effect "
+                "variance, log-likelihood, AIC, BIC, convergence status, and "
+                "iteration count."
+            ),
             label="Binary GLMM",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Dependent variable (binary)",
-                    desc="A unique nominal variable converted to 0/1 using the positive_class parameter.",
+                    desc="Nominal outcome converted using the positive class.",
                     types=[specs.InputDataType.INT, specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     multiple=False,
-                    enumslen=None,
                 ),
                 x=specs.InputDataSpecification(
                     label="Covariates and grouping variable",
-                    desc="One or more covariates plus exactly one grouping variable, referenced by the 'grouping_var' parameter.",
+                    desc="Covariates plus the random-intercept grouping variable.",
                     types=[
                         specs.InputDataType.REAL,
                         specs.InputDataType.INT,
@@ -63,42 +77,30 @@ class GLMMBinary(Algorithm):
                     ],
                     required=True,
                     multiple=True,
-                    enumslen=None,
                 ),
-                validation=None,
             ),
             parameters={
                 "positive_class": specs.ParameterSpecification(
                     label="Positive class (y=1)",
-                    desc="Positive class of y. All other classes are considered negative.",
+                    desc="Outcome category treated as the positive class.",
                     types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
                     required=True,
                     multiple=False,
-                    default=None,
                     enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_CDE_ENUMS,
                         source=["y"],
                     ),
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
-                    min=None,
-                    max=None,
                 ),
                 "grouping_var": specs.ParameterSpecification(
                     label="Grouping variable",
-                    desc="Variable from x to use as the random-intercept grouping factor.",
+                    desc="Random-intercept grouping factor.",
                     types=[specs.ParameterType.TEXT],
                     required=True,
                     multiple=False,
-                    default=None,
                     enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_NAMES,
                         source=["x"],
                     ),
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
-                    min=None,
-                    max=None,
                 ),
             },
             type=specs.AlgorithmType.EXAREME3,

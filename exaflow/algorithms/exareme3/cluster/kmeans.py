@@ -19,59 +19,58 @@ class KMeans(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="kmeans",
-            desc="Secure federated K-Means clustering with an aggregation-server-backed initialization",
+            desc="K-Means clustering for numerical variables.",
+            documentation=(
+                "Cluster selected numerical variables with K-Means using "
+                "aggregation-server-backed initialization.\n\n"
+                "The 'k' setting controls the number of clusters. Default is 4.\n\n"
+                "The 'maxiter' setting controls the maximum number of fitting "
+                "iterations. Default is 1.\n\n"
+                "The 'tol' setting controls the convergence tolerance. Default "
+                "is 0.01.\n\n"
+                "The result includes cluster assignments and fitted cluster "
+                "centers."
+            ),
             label="Federated K-Means",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="y",
-                    desc="data",
+                    desc="Numerical variables used for clustering.",
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     multiple=True,
-                    enumslen=None,
                 ),
-                x=None,
-                validation=None,
             ),
             parameters={
                 "k": specs.ParameterSpecification(
                     label="k",
-                    desc="k",
+                    desc="Number of clusters to fit.",
                     types=[specs.ParameterType.INT],
                     required=True,
                     multiple=False,
                     default=4,
-                    enums=None,
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
                     min=1,
                     max=100,
                 ),
                 "maxiter": specs.ParameterSpecification(
                     label="maxiter",
-                    desc="Maximum number of iterations",
+                    desc="Maximum number of fitting iterations.",
                     types=[specs.ParameterType.INT],
                     required=True,
                     multiple=False,
                     default=1,
-                    enums=None,
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
                     min=1,
                     max=100,
                 ),
                 "tol": specs.ParameterSpecification(
                     label="tol",
-                    desc="Tolerance",
+                    desc="Convergence tolerance for fitting.",
                     types=[specs.ParameterType.REAL],
                     required=True,
                     multiple=False,
                     default=0.01,
-                    enums=None,
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
                     min=0.0,
                     max=1.0,
                 ),
