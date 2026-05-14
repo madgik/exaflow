@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from exaflow.algorithms import specifications as specs
-from exaflow.algorithms.exareme3.outlier_report import OutlierReport
+from exaflow.algorithms.exareme3.statistics.outlier_report import OutlierReport
 from exaflow.algorithms.federated.statistics.outlier_report import (
     FederatedOutlierReport,
 )
