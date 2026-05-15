@@ -31,7 +31,7 @@ class KMeans(Algorithm):
                 "The result includes cluster assignments and fitted cluster "
                 "centers."
             ),
-            label="Federated K-Means",
+            label="K-Means",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
