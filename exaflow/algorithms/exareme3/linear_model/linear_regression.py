@@ -1,3 +1,4 @@
+import math
 from typing import List
 
 from pydantic import BaseModel
@@ -23,6 +24,10 @@ class LinearRegressionResult(BaseModel):
     r_squared_adjusted: float
     f_stat: float
     f_pvalue: float
+    f_stat_status: str
+    f_stat_display: str
+    f_pvalue_display: str
+    f_stat_note: str
     ll: float
     aic: float
     bic: float
@@ -36,6 +41,48 @@ class LinearRegressionResult(BaseModel):
 
 
 class LinearRegression(Algorithm):
+    @staticmethod
+    def _format_f_stat_display(f_stat: float, status: str) -> str:
+        if status == "perfect_fit":
+            return "Perfect fit"
+        if status == "undefined":
+            return "Undefined"
+        return f"{f_stat:.3f}"
+
+    @staticmethod
+    def _format_f_pvalue_display(f_pvalue: float, status: str) -> str:
+        if status == "undefined":
+            return "Undefined"
+        if status == "perfect_fit" or f_pvalue < 0.001:
+            return "<0.001"
+        return f"{f_pvalue:.3f}"
+
+    @staticmethod
+    def _build_f_stat_display_fields(f_stat: float, f_pvalue: float) -> dict:
+        if math.isfinite(f_stat):
+            status = "finite"
+            note = "Overall F-test for the fitted regression model."
+        elif math.isinf(f_stat) and f_stat > 0:
+            status = "perfect_fit"
+            note = (
+                "Residual sum of squares is zero or numerically indistinguishable "
+                "from zero, so the overall F-statistic diverges."
+            )
+        else:
+            status = "undefined"
+            note = (
+                "The overall F-statistic is not defined for intercept-only "
+                "models or when the outcome has no total variation."
+            )
+        return {
+            "f_stat_status": status,
+            "f_stat_display": LinearRegression._format_f_stat_display(f_stat, status),
+            "f_pvalue_display": LinearRegression._format_f_pvalue_display(
+                f_pvalue, status
+            ),
+            "f_stat_note": note,
+        }
+
     @classmethod
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
@@ -100,6 +147,9 @@ class LinearRegression(Algorithm):
             },
             identical_results=True,
         )
+        f_stat_fields = self._build_f_stat_display_fields(
+            model_stats["f_stat"], model_stats["f_pvalue"]
+        )
 
         return LinearRegressionResult(
             dependent_var=y_var,
@@ -112,6 +162,10 @@ class LinearRegression(Algorithm):
             r_squared_adjusted=model_stats["r_squared_adjusted"],
             f_stat=model_stats["f_stat"],
             f_pvalue=model_stats["f_pvalue"],
+            f_stat_status=f_stat_fields["f_stat_status"],
+            f_stat_display=f_stat_fields["f_stat_display"],
+            f_pvalue_display=f_stat_fields["f_pvalue_display"],
+            f_stat_note=f_stat_fields["f_stat_note"],
             ll=model_stats["ll"],
             aic=model_stats["aic"],
             bic=model_stats["bic"],
