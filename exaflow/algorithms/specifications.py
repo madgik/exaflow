@@ -85,6 +85,7 @@ class PreprocessingStepName(str, Enum):
 class AlgorithmName(str, Enum):
     ANOVA_ONEWAY = "anova_oneway"
     ANOVA_TWOWAY = "anova_twoway"
+    COX_REGRESSION_CLASSICAL = "cox_regression_classical"
     DESCRIBE = "describe"
     KMEANS = "kmeans"
     LINEAR_REGRESSION = "linear_regression"
@@ -106,6 +107,7 @@ class AlgorithmName(str, Enum):
     TTEST_INDEPENDENT = "ttest_independent"
     TTEST_ONESAMPLE = "ttest_onesample"
     TTEST_PAIRED = "ttest_paired"
+    COX_REGRESSION_STACKED = "cox_regression_stacked"
     OUTLIER_REPORT = "outlier_report"
 
     def __str__(self) -> str:

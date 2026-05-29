@@ -19,6 +19,20 @@ def test_get_logistic_regression():
     assert "logistic_regression" in algorithm_names
 
 
+def test_get_cox_regression_stacked():
+    request = requests.get(algorithms_url)
+    algorithms = json.loads(request.text)
+    algorithm_names = [algorithm["name"] for algorithm in algorithms]
+    assert "cox_regression_stacked" in algorithm_names
+
+
+def test_get_cox_regression_classical():
+    request = requests.get(algorithms_url)
+    algorithms = json.loads(request.text)
+    algorithm_names = [algorithm["name"] for algorithm in algorithms]
+    assert "cox_regression_classical" in algorithm_names
+
+
 def test_logistic_regression_has_longitudinal_transformer():
     request = requests.get(algorithms_url)
     result = json.loads(request.text)
