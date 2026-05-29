@@ -213,7 +213,9 @@ def test_lmm_wrapper(case):
         assert len(result["coefficients"]) == len(result["indep_vars"])
         assert len(result["std_err"]) == len(result["indep_vars"])
         assert len(result["t_stats"]) == len(result["indep_vars"])
+        assert result["pvalue_label"] == "P(>|t|)"
         assert len(result["pvalues"]) == len(result["indep_vars"])
+        assert len(result["pvalues_display"]) == len(result["indep_vars"])
         assert len(result["lower_ci"]) == len(result["indep_vars"])
         assert len(result["upper_ci"]) == len(result["indep_vars"])
 

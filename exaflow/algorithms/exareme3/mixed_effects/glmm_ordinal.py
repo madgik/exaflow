@@ -38,7 +38,12 @@ class GLMMOrdinal(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="glmm_ordinal",
-            desc="Ordinal generalized linear mixed model.",
+            desc=(
+                "Federated ordinal generalized linear mixed model with one "
+                "random-intercept grouping variable for ordered categorical "
+                "or integer-coded ordered outcomes. This model is not a "
+                "general-purpose count model."
+            ),
             documentation=(
                 "Fit an ordinal generalized linear mixed model with fixed "
                 "covariate effects and a single random-intercept grouping "
@@ -57,10 +62,19 @@ class GLMMOrdinal(Algorithm):
             enabled=True,
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Dependent variable (ordinal)",
-                    desc="Ordered categorical outcome variable.",
+                    label="Dependent variable (ordered outcome)",
+                    desc=(
+                        "A unique ordered categorical or integer-coded ordered "
+                        "outcome. The category order must be provided "
+                        "explicitly by the 'category_order' parameter. This "
+                        "is not intended as a general-purpose count-model "
+                        "interface."
+                    ),
                     types=[specs.InputDataType.INT, specs.InputDataType.TEXT],
-                    stattypes=[specs.InputDataStatType.NOMINAL],
+                    stattypes=[
+                        specs.InputDataStatType.NOMINAL,
+                        specs.InputDataStatType.NUMERICAL,
+                    ],
                     required=True,
                     max_count=1,
                 ),
@@ -94,7 +108,11 @@ class GLMMOrdinal(Algorithm):
                 ),
                 "category_order": specs.ParameterSpecification(
                     label="Ordinal category order",
-                    desc="Outcome categories ordered from lowest to highest.",
+                    desc=(
+                        "Ordered list of outcome levels from lowest to highest. "
+                        "Use this for ordered categorical labels or integer-coded "
+                        "ordered/discrete levels."
+                    ),
                     types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
                     required=True,
                     multiple=True,

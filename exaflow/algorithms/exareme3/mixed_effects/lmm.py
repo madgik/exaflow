@@ -27,7 +27,9 @@ class LMMResult(BaseModel):
     coefficients: List[float]
     std_err: List[float]
     t_stats: List[float]
+    pvalue_label: str
     pvalues: List[float]
+    pvalues_display: List[str]
     lower_ci: List[float]
     upper_ci: List[float]
     sigma2: float
@@ -40,6 +42,14 @@ class LMMResult(BaseModel):
 
 
 class LMM(Algorithm):
+    @staticmethod
+    def _format_pvalue_display(pvalue: float) -> str:
+        if pvalue != pvalue:
+            return "NaN"
+        if pvalue < 0.001:
+            return "<0.001"
+        return f"{pvalue:.3f}"
+
     @classmethod
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
@@ -60,9 +70,13 @@ class LMM(Algorithm):
             enabled=True,
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Outcome (continuous)",
-                    desc="Single numerical dependent variable.",
-                    types=[specs.InputDataType.REAL],
+                    label="Outcome (numerical)",
+                    desc=(
+                        "Single numerical dependent variable. Continuous or "
+                        "integer-valued outcomes are supported when a linear "
+                        "mixed-model assumption is appropriate."
+                    ),
+                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     max_count=1,
@@ -117,6 +131,7 @@ class LMM(Algorithm):
             },
         )
         model_stats = udf_results[0]
+        pvalues = model_stats["pvalues"]
         return LMMResult(
             dependent_var=y_var,
             grouping_var=grouping_var,
@@ -128,7 +143,11 @@ class LMM(Algorithm):
             coefficients=model_stats["coefficients"],
             std_err=model_stats["std_err"],
             t_stats=model_stats["t_stats"],
-            pvalues=model_stats["pvalues"],
+            pvalue_label="P(>|t|)",
+            pvalues=pvalues,
+            pvalues_display=[
+                self._format_pvalue_display(float(pvalue)) for pvalue in pvalues
+            ],
             lower_ci=model_stats["lower_ci"],
             upper_ci=model_stats["upper_ci"],
             sigma2=model_stats["sigma2"],
