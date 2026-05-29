@@ -15,6 +15,8 @@
 
 ## linear_model
 
+- [COX_REGRESSION_CLASSICAL](docs/cox_regression_classical.md)
+- [COX_REGRESSION_STACKED](docs/cox_regression_stacked.md)
 - [LOGISTIC_REGRESSION](docs/logistic_regression.md)
 - [OLS](docs/ols.md)
 

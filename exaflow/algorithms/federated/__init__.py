@@ -1,8 +1,10 @@
 from exaflow.algorithms.federated.compose import FederatedColumnTransformer
 from exaflow.algorithms.federated.compose import make_column_selector
 from exaflow.algorithms.federated.decomposition import FederatedPCA
+from exaflow.algorithms.federated.linear_model import FederatedClassicalCoxRegression
 from exaflow.algorithms.federated.linear_model import FederatedLogisticRegression
 from exaflow.algorithms.federated.linear_model import FederatedOLS
+from exaflow.algorithms.federated.linear_model import FederatedStackedCoxRegression
 from exaflow.algorithms.federated.mixed_effects import FederatedGLMMBinary
 from exaflow.algorithms.federated.mixed_effects import FederatedGLMMOrdinal
 from exaflow.algorithms.federated.mixed_effects import FederatedLMM
@@ -26,6 +28,7 @@ __all__ = [
     "FederatedAnovaOneWay",
     "FederatedAnovaTwoWay",
     "FederatedDescriptiveStatistics",
+    "FederatedClassicalCoxRegression",
     "FederatedCrossValidator",
     "FederatedOLS",
     "FederatedLogisticRegression",
@@ -41,6 +44,7 @@ __all__ = [
     "FederatedOrdinalEncoder",
     "FederatedPassthrough",
     "FederatedPipeline",
+    "FederatedStackedCoxRegression",
     "FederatedColumnTransformer",
     "make_column_selector",
     "FederatedRegressionScorer",
