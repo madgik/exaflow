@@ -192,7 +192,10 @@ class NumpyAggregator:
             A numpy array with reduced dimensions (axis=0 removed),
             containing the element-wise nanmin across all clients.
         """
-        local_min = np.nanmin(np.where(np.isnan(array), np.inf, array), axis=0)
+        if array.size == 0:
+            local_min = np.array(np.inf)
+        else:
+            local_min = np.nanmin(np.where(np.isnan(array), np.inf, array), axis=0)
         result = self.client.min(local_min)
         return np.where(np.isposinf(result), np.nan, result)
 
@@ -209,7 +212,10 @@ class NumpyAggregator:
             A numpy array with reduced dimensions (axis=0 removed),
             containing the element-wise nanmax across all clients.
         """
-        local_max = np.nanmax(np.where(np.isnan(array), -np.inf, array), axis=0)
+        if array.size == 0:
+            local_max = np.array(-np.inf)
+        else:
+            local_max = np.nanmax(np.where(np.isnan(array), -np.inf, array), axis=0)
         result = self.client.max(local_max)
         return np.where(np.isneginf(result), np.nan, result)
 
