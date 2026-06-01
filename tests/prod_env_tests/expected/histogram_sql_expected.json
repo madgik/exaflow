@@ -1,0 +1,581 @@
+{
+    "test_cases": [
+        {
+            "input": {
+                "inputdata": {
+                    "y": [
+                        "leftptplanumtemporale"
+                    ],
+                    "x": [],
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "desd-synthdata3",
+                        "ppmi9",
+                        "ppmi8",
+                        "edsd2",
+                        "desd-synthdata5",
+                        "edsd3",
+                        "ppmi3",
+                        "desd-synthdata1",
+                        "edsd8",
+                        "desd-synthdata9",
+                        "edsd7",
+                        "ppmi6",
+                        "ppmi5",
+                        "desd-synthdata7",
+                        "desd-synthdata4",
+                        "edsd5",
+                        "edsd0",
+                        "desd-synthdata2"
+                    ],
+                    "filters": null
+                },
+                "parameters": {
+                    "bins": 20
+                },
+                "test_case_num": 0
+            },
+            "output": {
+                "histogram": [
+                    {
+                        "var": "leftptplanumtemporale",
+                        "grouping_var": null,
+                        "grouping_enum": null,
+                        "bins": [
+                            0.26866,
+                            0.42438200000000004,
+                            0.580104,
+                            0.735826,
+                            0.891548,
+                            1.0472700000000001,
+                            1.202992,
+                            1.358714,
+                            1.514436,
+                            1.6701579999999998,
+                            1.8258800000000002,
+                            1.981602,
+                            2.137324,
+                            2.293046,
+                            2.4487680000000003,
+                            2.60449,
+                            2.760212,
+                            2.915934,
+                            3.071656,
+                            3.2273780000000003,
+                            3.3831
+                        ],
+                        "counts": [
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            51,
+                            131,
+                            250,
+                            280,
+                            275,
+                            180,
+                            97,
+                            66,
+                            16,
+                            12,
+                            null,
+                            null,
+                            null
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "input": {
+                "inputdata": {
+                    "y": [
+                        "neurodegenerativescategories"
+                    ],
+                    "x": [],
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "ppmi2",
+                        "desd-synthdata9",
+                        "desd-synthdata6",
+                        "edsd2",
+                        "edsd7",
+                        "edsd6",
+                        "desd-synthdata5",
+                        "edsd8",
+                        "desd-synthdata8",
+                        "ppmi9",
+                        "edsd5",
+                        "ppmi6",
+                        "desd-synthdata7",
+                        "edsd1",
+                        "edsd0",
+                        "desd-synthdata2",
+                        "desd-synthdata1",
+                        "desd-synthdata3",
+                        "ppmi3",
+                        "edsd3"
+                    ],
+                    "filters": null
+                },
+                "parameters": {
+                    "bins": 75
+                },
+                "test_case_num": 1
+            },
+            "output": {
+                "histogram": [
+                    {
+                        "var": "neurodegenerativescategories",
+                        "grouping_var": null,
+                        "grouping_enum": null,
+                        "bins": [
+                            "PD",
+                            "AD",
+                            "HD",
+                            "ALS",
+                            "BD",
+                            "MCI",
+                            "LBD",
+                            "CJD",
+                            "FTD",
+                            "MS",
+                            "CN"
+                        ],
+                        "counts": [
+                            158,
+                            404,
+                            null,
+                            null,
+                            null,
+                            185,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "input": {
+                "inputdata": {
+                    "y": [
+                        "gender"
+                    ],
+                    "x": [],
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "ppmi7",
+                        "ppmi6",
+                        "desd-synthdata0",
+                        "ppmi1",
+                        "desd-synthdata5",
+                        "desd-synthdata8",
+                        "desd-synthdata4",
+                        "ppmi5"
+                    ],
+                    "filters": null
+                },
+                "parameters": {
+                    "bins": 50
+                },
+                "test_case_num": 2
+            },
+            "output": {
+                "histogram": [
+                    {
+                        "var": "gender",
+                        "grouping_var": null,
+                        "grouping_enum": null,
+                        "bins": [
+                            "M",
+                            "F"
+                        ],
+                        "counts": [
+                            319,
+                            289
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "input": {
+                "inputdata": {
+                    "y": [
+                        "rightscasubcallosalarea"
+                    ],
+                    "x": [],
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "edsd5",
+                        "desd-synthdata9"
+                    ],
+                    "filters": null
+                },
+                "parameters": {
+                    "bins": 96
+                },
+                "test_case_num": 3
+            },
+            "output": {
+                "histogram": [
+                    {
+                        "var": "rightscasubcallosalarea",
+                        "grouping_var": null,
+                        "grouping_enum": null,
+                        "bins": [
+                            0.43488,
+                            0.4463364583333333,
+                            0.45779291666666666,
+                            0.46924937499999997,
+                            0.48070583333333333,
+                            0.49216229166666664,
+                            0.50361875,
+                            0.5150752083333333,
+                            0.5265316666666666,
+                            0.537988125,
+                            0.5494445833333333,
+                            0.5609010416666667,
+                            0.5723575,
+                            0.5838139583333333,
+                            0.5952704166666667,
+                            0.606726875,
+                            0.6181833333333333,
+                            0.6296397916666667,
+                            0.64109625,
+                            0.6525527083333333,
+                            0.6640091666666667,
+                            0.675465625,
+                            0.6869220833333334,
+                            0.6983785416666667,
+                            0.709835,
+                            0.7212914583333334,
+                            0.7327479166666666,
+                            0.744204375,
+                            0.7556608333333333,
+                            0.7671172916666666,
+                            0.7785737500000001,
+                            0.7900302083333334,
+                            0.8014866666666667,
+                            0.812943125,
+                            0.8243995833333333,
+                            0.8358560416666667,
+                            0.8473125,
+                            0.8587689583333333,
+                            0.8702254166666668,
+                            0.881681875,
+                            0.8931383333333334,
+                            0.9045947916666667,
+                            0.91605125,
+                            0.9275077083333334,
+                            0.9389641666666666,
+                            0.950420625,
+                            0.9618770833333334,
+                            0.9733335416666666,
+                            0.98479,
+                            0.9962464583333333,
+                            1.0077029166666667,
+                            1.019159375,
+                            1.0306158333333333,
+                            1.0420722916666667,
+                            1.0535287500000001,
+                            1.0649852083333333,
+                            1.0764416666666667,
+                            1.087898125,
+                            1.0993545833333334,
+                            1.1108110416666668,
+                            1.1222675,
+                            1.1337239583333334,
+                            1.1451804166666668,
+                            1.156636875,
+                            1.1680933333333334,
+                            1.1795497916666666,
+                            1.19100625,
+                            1.2024627083333335,
+                            1.2139191666666667,
+                            1.225375625,
+                            1.2368320833333333,
+                            1.2482885416666667,
+                            1.2597450000000001,
+                            1.2712014583333333,
+                            1.2826579166666667,
+                            1.2941143750000001,
+                            1.3055708333333333,
+                            1.3170272916666668,
+                            1.32848375,
+                            1.3399402083333334,
+                            1.3513966666666668,
+                            1.362853125,
+                            1.3743095833333334,
+                            1.3857660416666666,
+                            1.3972225,
+                            1.4086789583333335,
+                            1.4201354166666667,
+                            1.431591875,
+                            1.4430483333333333,
+                            1.4545047916666667,
+                            1.46596125,
+                            1.4774177083333333,
+                            1.4888741666666667,
+                            1.500330625,
+                            1.5117870833333333,
+                            1.5232435416666668,
+                            1.5347
+                        ],
+                        "counts": [
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "input": {
+                "inputdata": {
+                    "y": [
+                        "leftmogmiddleoccipitalgyrus"
+                    ],
+                    "x": [],
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "ppmi5",
+                        "ppmi7",
+                        "ppmi4",
+                        "edsd8",
+                        "desd-synthdata9",
+                        "ppmi9",
+                        "ppmi0",
+                        "edsd7",
+                        "ppmi2",
+                        "edsd2",
+                        "ppmi3",
+                        "desd-synthdata1",
+                        "desd-synthdata0",
+                        "desd-synthdata3",
+                        "desd-synthdata7",
+                        "desd-synthdata8",
+                        "ppmi1",
+                        "edsd9",
+                        "desd-synthdata5",
+                        "desd-synthdata4",
+                        "edsd5",
+                        "desd-synthdata6",
+                        "desd-synthdata2"
+                    ],
+                    "filters": null
+                },
+                "parameters": {
+                    "bins": 45
+                },
+                "test_case_num": 4
+            },
+            "output": {
+                "histogram": [
+                    {
+                        "var": "leftmogmiddleoccipitalgyrus",
+                        "grouping_var": null,
+                        "grouping_enum": null,
+                        "bins": [
+                            3.9079,
+                            4.017882222222222,
+                            4.127864444444445,
+                            4.237846666666667,
+                            4.347828888888889,
+                            4.457811111111111,
+                            4.567793333333333,
+                            4.677775555555556,
+                            4.787757777777778,
+                            4.897740000000001,
+                            5.007722222222222,
+                            5.117704444444445,
+                            5.227686666666667,
+                            5.3376688888888895,
+                            5.447651111111112,
+                            5.557633333333333,
+                            5.667615555555556,
+                            5.777597777777778,
+                            5.887580000000001,
+                            5.997562222222223,
+                            6.107544444444445,
+                            6.217526666666667,
+                            6.3275088888888895,
+                            6.437491111111112,
+                            6.547473333333334,
+                            6.657455555555556,
+                            6.767437777777778,
+                            6.877420000000001,
+                            6.987402222222223,
+                            7.097384444444446,
+                            7.207366666666667,
+                            7.31734888888889,
+                            7.427331111111112,
+                            7.537313333333334,
+                            7.647295555555557,
+                            7.757277777777778,
+                            7.867260000000001,
+                            7.977242222222223,
+                            8.087224444444445,
+                            8.197206666666668,
+                            8.30718888888889,
+                            8.417171111111113,
+                            8.527153333333334,
+                            8.637135555555556,
+                            8.74711777777778,
+                            8.8571
+                        ],
+                        "counts": [
+                            null,
+                            null,
+                            null,
+                            16,
+                            null,
+                            15,
+                            20,
+                            43,
+                            21,
+                            33,
+                            49,
+                            66,
+                            63,
+                            57,
+                            76,
+                            79,
+                            112,
+                            94,
+                            74,
+                            90,
+                            94,
+                            92,
+                            63,
+                            86,
+                            83,
+                            52,
+                            57,
+                            45,
+                            53,
+                            36,
+                            34,
+                            12,
+                            11,
+                            16,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}
