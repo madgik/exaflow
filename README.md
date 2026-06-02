@@ -1,5 +1,12 @@
 # Exaflow [![Maintainability](https://qlty.sh/gh/madgik/projects/exaflow/maintainability.svg)](https://qlty.sh/gh/madgik/projects/exaflow) [![Code Coverage](https://qlty.sh/gh/madgik/projects/exaflow/coverage.svg)](https://qlty.sh/gh/madgik/projects/exaflow)
 
+### For AI agents and reviewers
+
+Start with [`AGENTS.md`](AGENTS.md) for repository rules, algorithm workflow,
+and scope. Durable reference material lives under
+[`documentation/context/`](documentation/context/README.md) (architecture,
+commands, testing matrix, risk register, and review checklists).
+
 ### Prerequisites
 
 1. Install [python3.10](https://www.python.org/downloads/ "python3.10")
