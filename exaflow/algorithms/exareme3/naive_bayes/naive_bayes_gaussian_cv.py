@@ -51,7 +51,7 @@ class NaiveBayesGaussianCV(Algorithm):
                 y=specs.InputDataSpecification(
                     label="Variable (dependent)",
                     desc="A unique nominal variable.",
-                    types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                    types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     max_count=1,

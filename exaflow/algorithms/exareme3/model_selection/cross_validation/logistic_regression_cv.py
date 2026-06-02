@@ -107,7 +107,7 @@ class LogisticRegressionCV(Algorithm):
                 y=specs.InputDataSpecification(
                     label="Dependent variable (binary)",
                     desc="Nominal outcome converted using the positive class.",
-                    types=[specs.InputDataType.INT, specs.InputDataType.TEXT],
+                    types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     max_count=1,

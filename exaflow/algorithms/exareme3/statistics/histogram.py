@@ -61,7 +61,7 @@ class Histogram(Algorithm):
                 x=specs.InputDataSpecification(
                     label="Grouping variables",
                     desc="Optional categorical variables used to produce grouped histograms.",
-                    types=[specs.InputDataType.INT, specs.InputDataType.TEXT],
+                    types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=False,
                 ),
