@@ -59,35 +59,45 @@ class ClassicalCoxRegression(Algorithm):
         return specs.AlgorithmSpecification(
             name="cox_regression_classical",
             desc=(
-                "Federated classical Cox proportional hazards regression fitted "
-                "through partial likelihood with Breslow handling of tied event "
-                "times."
+                "Federated Cox proportional hazards regression for time-to-event data."
             ),
             documentation=(
-                "Fit a federated classical Cox proportional hazards regression "
-                "model. The algorithm estimates hazard ratios for covariates "
-                "while accounting for baseline hazard differences using partial "
-                "likelihood with Breslow handling of tied event times."
+                "Fit a classical Cox proportional hazards model across workers "
+                "using partial likelihood and Breslow handling of tied event "
+                "times. Select the follow-up duration in y, then select the "
+                "event variable and covariates in x. The 'event_var' setting "
+                "identifies which x variable is used to build the event vector; all other "
+                "selected x variables are modeled as covariates.\n\n"
+                "The event variable is never one-hot encoded. It is converted "
+                "to a single binary event vector where 1 means the selected "
+                "event occurred and 0 means censoring or any other category. "
+                "Variables stored as 0/1 or false/true are detected "
+                "automatically. Use 'positive_class' when the event variable is "
+                "categorical, such as diagnosis category or vital status; that "
+                "level is converted to event=1 and all other observed levels "
+                "are converted to event=0. Because "
+                "'event_var' is selected from a multi-variable x input, the "
+                "current specification schema cannot expose 'positive_class' "
+                "as a dynamic dropdown from the selected event variable.\n\n"
+                "Categorical covariates are one-hot encoded before estimation. "
+                "The result includes coefficients, hazard ratios, Wald "
+                "statistics, p-values, 95% confidence intervals, partial "
+                "log-likelihood, and convergence diagnostics."
             ),
-            label="Cox Regression Classical",
+            label="Cox Proportional Hazards Regression",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Time-to-event variable",
-                    desc=(
-                        "Single positive numerical variable containing follow-up times."
-                    ),
+                    label="Follow-up time",
+                    desc="Positive numerical duration until event or censoring.",
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     max_count=1,
                 ),
                 x=specs.InputDataSpecification(
-                    label="Covariates and event indicator",
-                    desc=(
-                        "One or more covariates plus exactly one event indicator "
-                        "variable, referenced by the 'event_var' parameter."
-                    ),
+                    label="Event variable and covariates",
+                    desc="Select the event variable and one or more covariates.",
                     types=[
                         specs.InputDataType.REAL,
                         specs.InputDataType.INT,
@@ -98,41 +108,30 @@ class ClassicalCoxRegression(Algorithm):
                         specs.InputDataStatType.NOMINAL,
                     ],
                     required=True,
+                    min_count=2,
                 ),
-                validation=None,
             ),
             parameters={
                 "event_var": specs.ParameterSpecification(
-                    label="Event indicator variable",
-                    desc="Variable from x to use as the binary event indicator.",
+                    label="Event variable",
+                    desc="Variable from x used to build the binary event vector.",
                     types=[specs.ParameterType.TEXT],
                     required=True,
                     multiple=False,
-                    default=None,
                     enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_NAMES,
                         source=["x"],
                     ),
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
-                    min=None,
-                    max=None,
                 ),
                 "positive_class": specs.ParameterSpecification(
-                    label="Positive event class",
+                    label="Event of interest",
                     desc=(
-                        "Optional event label treated as event=1 when the event "
-                        "indicator is not already encoded as 0/1."
+                        "Event level mapped to 1; other observed levels are "
+                        "mapped to 0."
                     ),
                     types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
                     required=False,
                     multiple=False,
-                    default=None,
-                    enums=None,
-                    dict_keys_enums=None,
-                    dict_values_enums=None,
-                    min=None,
-                    max=None,
                 ),
             },
             type=specs.AlgorithmType.EXAREME3,
@@ -200,7 +199,7 @@ def _to_binary_event_array(series, *, positive_class, agg_client) -> np.ndarray:
         if coerced not in coerced_global_levels:
             raise BadInputError(
                 "positive_class for event_var should match one of the observed "
-                "event indicator levels."
+                "event variable levels."
             )
         return series.eq(coerced).to_numpy(dtype=float, copy=False)
 
@@ -219,8 +218,8 @@ def _to_binary_event_array(series, *, positive_class, agg_client) -> np.ndarray:
         return series.astype(float).to_numpy(copy=False)
 
     raise BadInputError(
-        "Event indicator must be binary. Provide positive_class when the event "
-        "variable is not encoded as 0/1."
+        "Event variable must be stored as 0/1 or false/true, or positive_class "
+        "must be provided to define which observed level maps to event=1."
     )
 
 
