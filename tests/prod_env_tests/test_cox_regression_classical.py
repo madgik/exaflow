@@ -55,7 +55,7 @@ def test_cox_regression_classical_invalid_positive_class():
     response = algorithm_request(algorithm_name, request)
     assert response.status_code == 460, response.text
     assert re.search(
-        r"positive_class.*observed event indicator levels",
+        r"positive_class.*observed event variable levels",
         response.text,
     ), response.text
 
@@ -70,6 +70,4 @@ def test_cox_regression_classical_rejects_multiple_time_variables():
 
     response = algorithm_request(algorithm_name, request)
     assert response.status_code == 460, response.text
-    assert re.search(r"Time-to-event variable.*at most 1 values", response.text), (
-        response.text
-    )
+    assert re.search(r"Follow-up time.*at most 1 values", response.text), response.text

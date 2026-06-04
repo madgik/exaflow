@@ -16,12 +16,33 @@ while the time-bin nuisance terms act as the baseline hazard.
 #### Inputs
 
 - `y`: one positive numerical follow-up time variable
-- `x`: one or more covariates plus exactly one event-indicator variable
-- `event_var`: parameter naming which variable from `x` is the event indicator
-- `positive_class`: optional event label treated as event=1 when `event_var` is
-  not already encoded as `0/1`
+- `x`: the event variable plus one or more covariates
+- `event_var`: parameter naming which variable from `x` is used to build the
+  binary event vector
+- `positive_class`: event level mapped to event `1`; all other observed levels
+  are mapped to event `0`
 - `time_grid_strategy`: `distinct_event_times` (default) or `uniform`
 - `n_time_bins`: number of bins for the `uniform` strategy
+
+#### Event Coding
+
+The Cox-like stacked model is fitted with a binary event vector. If `event_var`
+is stored as `0`/`1` or `false`/`true`, leave `positive_class` empty; the
+algorithm detects that coding automatically.
+
+Use `positive_class` when `event_var` is categorical, for example diagnosis
+category or vital status. The selected level is converted to event `1`, and all
+other observed levels are converted to event `0`. For example,
+`positive_class="AD"` models AD as the event of interest and treats CN, MCI, and
+other categories as event `0`.
+
+The event variable is not one-hot encoded. Categorical covariates are one-hot
+encoded before survival stacking; the event variable is converted separately.
+
+The current specification schema can populate dropdowns from selected `y` values
+or from a single selected `x` value. In this algorithm, `event_var` is selected
+from a multi-variable `x` input, so `positive_class` cannot currently be exposed
+as a dynamic dropdown of the selected event variable's CDE enumerations.
 
 #### Exareme3 Notes
 
