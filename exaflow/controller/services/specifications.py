@@ -50,6 +50,7 @@ class Specifications:
         }
         self._load_specifications()
         self._filter_specifications()
+        self._validate_required_preprocessing()
 
     def _load_specifications(self) -> None:
         self._load_exareme3_specifications()
@@ -113,6 +114,18 @@ class Specifications:
                 self.enabled_algorithms[spec.name] = spec
             else:
                 self.enabled_preprocessing_steps[spec.name] = spec
+
+    def _validate_required_preprocessing(self) -> None:
+        enabled_preprocessing_step_names = set(self.enabled_preprocessing_steps)
+        for spec in self.enabled_algorithms.values():
+            missing_required_preprocessing = sorted(
+                set(spec.required_preprocessing) - enabled_preprocessing_step_names
+            )
+            if missing_required_preprocessing:
+                raise ValueError(
+                    f"Algorithm '{spec.name}' requires preprocessing steps that are "
+                    f"not enabled: {missing_required_preprocessing}."
+                )
 
     @staticmethod
     def _choose_spec_class(raw: dict) -> Type[SpecType]:

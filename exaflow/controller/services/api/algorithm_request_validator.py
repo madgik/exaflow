@@ -98,6 +98,11 @@ def _validate_algorithm_request_body(
         data_model_cdes=data_model_cdes,
     )
 
+    _validate_required_preprocessing(
+        algorithm_specs=algorithm_specs,
+        preprocessing=algorithm_request_dto.preprocessing,
+    )
+
     transformed_inputdata, transformed_data_model_cdes = (
         _validate_and_apply_preprocessing(
             algorithm_request_dto=algorithm_request_dto,
@@ -122,6 +127,23 @@ def _validate_algorithm_request_body(
         smpc_enabled=smpc_enabled,
         smpc_optional=smpc_optional,
     )
+
+
+def _validate_required_preprocessing(
+    algorithm_specs: AlgorithmSpecification,
+    preprocessing: Optional[Dict[str, Any]],
+):
+    requested_preprocessing = set((preprocessing or {}).keys())
+    missing_required_preprocessing = [
+        name
+        for name in algorithm_specs.required_preprocessing
+        if name not in requested_preprocessing
+    ]
+    if missing_required_preprocessing:
+        raise BadUserInput(
+            f"Algorithm '{algorithm_specs.name}' requires preprocessing steps: "
+            f"{missing_required_preprocessing}."
+        )
 
 
 def _validate_inputdata_base(

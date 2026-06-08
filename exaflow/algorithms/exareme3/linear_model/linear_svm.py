@@ -38,6 +38,7 @@ class LinearSVM(Algorithm):
             ),
             label="Linear SVM",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Target classes",

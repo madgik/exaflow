@@ -93,7 +93,8 @@ Example:
 | `label` | `string` | Human-readable algorithm name. | Use as display label. |
 | `inputdata` | `InputDataSpecificationsDTO` | Describes required data model, datasets, filter, variable slots, and validation datasets. | Drives the `inputdata` part of the request form. |
 | `parameters` | `object \| null` | Map of parameter name to `ParameterSpecificationDTO`. | Request parameter keys outside this map are rejected. |
-| `preprocessing` | `PreprocessingStepSpecificationDTO[] \| null` | Preprocessing steps available for this algorithm. | Request preprocessing step names outside this list are rejected. |
+| `preprocessing` | `PreprocessingStepSpecificationDTO[] \| null` | Enabled preprocessing steps exposed with this algorithm. | Required steps are listed separately in `required_preprocessing`. |
+| `required_preprocessing` | `string[]` | Preprocessing step ids that must be included in execution requests. | The server rejects requests that omit any listed step. |
 | `type` | `string` | Algorithm backend type, for example `exareme3`. | Informational for clients; execution still uses `POST /algorithms/<name>`. |
 
 During request validation, the server uses this DTO to decide which variables
@@ -212,7 +213,9 @@ Enum types:
 
 Preprocessing behavior:
 
-- Request step names must exist in the selected algorithm's `preprocessing` list.
+- Request step names must exist in the enabled preprocessing specifications.
+- Step names listed in `required_preprocessing` must be present under request
+  `preprocessing`; the server does not inject required steps automatically.
 - Step parameters are validated with the same rules as algorithm parameters.
 - Each step then runs implementation-specific `validate_params`.
 - Steps may transform selected `x`/`y` variable names and metadata before final algorithm validation.
@@ -275,7 +278,7 @@ Example:
 | `request_id` | `string \| null` | Optional client request id. | If omitted, the server generates one. |
 | `inputdata` | `AlgorithmInputDataDTO` | Data model, dataset, filter, and variable selection. | Required. |
 | `parameters` | `object \| null` | Algorithm parameter values. | Keys must exist in selected algorithm `parameters` spec. |
-| `preprocessing` | `object \| null` | Preprocessing step configuration. | Step names must exist in selected algorithm `preprocessing` spec. |
+| `preprocessing` | `object \| null` | Preprocessing step configuration. | Step names must exist in enabled preprocessing specs, and required preprocessing steps must be included. |
 
 ### `AlgorithmInputDataDTO`
 

@@ -324,6 +324,7 @@ class AlgorithmSpecification(WorkflowStepSpecification):
     parameters: Optional[Dict[str, ParameterSpecification]] = None
     type: AlgorithmType = AlgorithmType.EXAREME3
     components: List[ComponentType] = Field(default_factory=list)
+    required_preprocessing: List[str] = Field(default_factory=list)
 
 
 class PreprocessingStepSpecification(WorkflowStepSpecification):

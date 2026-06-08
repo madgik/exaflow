@@ -31,6 +31,7 @@ class PCA(Algorithm):
             ),
             label="Principal Component Analysis",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Variables (features)",

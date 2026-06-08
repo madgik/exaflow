@@ -54,6 +54,7 @@ class GLMMBinary(Algorithm):
             ),
             label="Binary GLMM",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Dependent variable (binary)",

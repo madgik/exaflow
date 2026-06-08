@@ -37,6 +37,7 @@ class TTestPaired(Algorithm):
             ),
             label="Student's Paired T-Test",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Measurement 1",

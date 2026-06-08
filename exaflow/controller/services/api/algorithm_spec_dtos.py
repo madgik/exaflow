@@ -87,6 +87,7 @@ class AlgorithmSpecificationDTO(ImmutableBaseModel):
     inputdata: InputDataSpecificationsDTO
     parameters: Optional[Dict[str, ParameterSpecificationDTO]] = None
     preprocessing: Optional[List[PreprocessingStepSpecificationDTO]] = None
+    required_preprocessing: List[str]
     flags: Optional[List[str]] = None
     type: AlgorithmType
 
@@ -264,6 +265,7 @@ def _convert_algorithm_specification_to_dto(
             _convert_transformer_specification_to_dto(spec)
             for spec in preprocessing_steps
         ],
+        required_preprocessing=spec.required_preprocessing,
         flags=[AlgorithmRequestSystemFlags.SMPC],
         type=spec.type,
     )

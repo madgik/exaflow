@@ -61,6 +61,7 @@ class LinearRegressionCV(Algorithm):
             ),
             label="Linear Regression (K-Fold CV)",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Dependent Variable",

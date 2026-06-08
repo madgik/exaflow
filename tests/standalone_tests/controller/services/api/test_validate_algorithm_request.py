@@ -1117,6 +1117,46 @@ def test_validate_algorithm_preprocessing_raises_when_implementation_is_missing(
                 )
 
 
+def test_validate_algorithm_preprocessing_raises_when_required_step_is_missing(
+    worker_landscape_aggregator,
+    algorithms_specs,
+    preprocessing_steps_specs,
+):
+    required_algorithm_specs = dict(algorithms_specs)
+    required_algorithm_specs["algorithm_with_transformer"] = algorithms_specs[
+        "algorithm_with_transformer"
+    ].model_copy(update={"required_preprocessing": ["transformer_with_real_param"]})
+    request_dto = AlgorithmRequestDTO(
+        inputdata=AlgorithmInputDataDTO(
+            data_model="data_model_with_all_cde_types:0.1",
+            datasets=["sample_dataset1"],
+            y=["real_cde"],
+        ),
+    )
+
+    with patch.object(
+        worker_landscape_aggregator,
+        "get_global_worker",
+        return_value=mocked_worker_info,
+    ):
+        with pytest.raises(
+            BadUserInput,
+            match=(
+                "Algorithm 'algorithm_with_transformer' requires preprocessing "
+                "steps: .*transformer_with_real_param.*"
+            ),
+        ):
+            validate_algorithm_request(
+                algorithm_name="algorithm_with_transformer",
+                algorithm_request_dto=request_dto,
+                algorithms_specs=required_algorithm_specs,
+                preprocessing_steps_specs=preprocessing_steps_specs,
+                worker_landscape_aggregator=worker_landscape_aggregator,
+                smpc_enabled=False,
+                smpc_optional=False,
+            )
+
+
 def get_parametrization_list_exception_cases():
     parametrization_list = [
         pytest.param(

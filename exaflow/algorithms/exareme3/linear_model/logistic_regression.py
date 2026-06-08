@@ -58,6 +58,7 @@ class LogisticRegression(Algorithm):
             ),
             label="Logistic Regression",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Dependent variable (binary)",

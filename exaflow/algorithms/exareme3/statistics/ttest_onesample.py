@@ -41,6 +41,7 @@ class TTestOneSample(Algorithm):
             ),
             label="Student's One-Sample T-Test",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Variable",

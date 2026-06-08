@@ -103,6 +103,7 @@ class LogisticRegressionCV(Algorithm):
             ),
             label="Logistic Regression Cross-validation",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Dependent variable (binary)",

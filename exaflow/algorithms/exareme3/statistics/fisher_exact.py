@@ -35,6 +35,7 @@ class FisherExact(Algorithm):
             ),
             label="Fisher's Exact Test",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Outcome (dependent)",

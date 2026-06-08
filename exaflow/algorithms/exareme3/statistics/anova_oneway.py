@@ -42,6 +42,7 @@ class AnovaOneWay(Algorithm):
             ),
             label="One-way ANOVA",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=InputDataSpecifications(
                 y=InputDataSpecification(
                     label="Outcome (dependent)",

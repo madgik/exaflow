@@ -22,7 +22,7 @@ def test_histogram_sql(test_input, expected):
         test_input["parameters"] = {}
     test_input["parameters"]["histogram_type"] = "simple"
 
-    response = algorithm_request(algorithm_name, test_input, drop_na=False)
+    response = algorithm_request(algorithm_name, test_input)
     result = parse_response(response)
 
     # this test only ensures that the algorithm runs smoothly without errors
