@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from copy import deepcopy
 from enum import Enum
 from typing import Any
 from typing import Dict
@@ -11,6 +10,9 @@ import pandas as pd
 from sklearn.impute import SimpleImputer
 
 from exaflow.algorithms import specifications as specs
+from exaflow.algorithms.exareme3.preprocessing.metadata import (
+    promote_int_variables_to_real,
+)
 from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.worker_communication import BadUserInput
@@ -175,7 +177,10 @@ class MissingValuesHandler(PreprocessingStep):
         *,
         metadata: Dict[str, dict],
     ) -> Dict[str, dict]:
-        return deepcopy(metadata)
+        return promote_int_variables_to_real(
+            metadata=metadata,
+            variables=self._variables_promoted_to_real(),
+        )
 
     def transform_data(
         self,
@@ -273,6 +278,20 @@ class MissingValuesHandler(PreprocessingStep):
                 ) from exc
 
         return transformed
+
+    def _variables_promoted_to_real(self) -> List[str]:
+        promoted_variables = []
+        for variable, strategy in self._strategies.items():
+            if strategy in (
+                MissingValueStrategy.MEAN.value,
+                MissingValueStrategy.MEDIAN.value,
+            ):
+                promoted_variables.append(variable)
+            elif strategy == MissingValueStrategy.CONSTANT.value and isinstance(
+                self._fill_values.get(variable), float
+            ):
+                promoted_variables.append(variable)
+        return promoted_variables
 
     def _validate_categorical_constant_fill_values(
         self,
