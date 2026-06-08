@@ -38,6 +38,7 @@ class AnovaTwoWay(Algorithm):
             ),
             label="Two-way ANOVA (OLS)",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Outcome (dependent)",

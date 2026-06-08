@@ -33,6 +33,7 @@ class KMeans(Algorithm):
             ),
             label="K-Means",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="y",

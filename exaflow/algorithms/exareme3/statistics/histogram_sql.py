@@ -51,6 +51,7 @@ class HistogramSQL(Algorithm):
             ),
             label="Histogram (SQL)",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Target variable",

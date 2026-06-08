@@ -35,6 +35,7 @@ class NaiveBayesGaussian(Algorithm):
             ),
             label="Gaussian Naive Bayes",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Variable (dependent)",

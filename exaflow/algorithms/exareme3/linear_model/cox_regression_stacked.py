@@ -90,6 +90,7 @@ class StackedCoxRegression(Algorithm):
             ),
             label="Cox Regression Stacked",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Follow-up time",

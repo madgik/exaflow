@@ -50,6 +50,7 @@ class NaiveBayesCategorical(Algorithm):
             ),
             label="Categorical Naive Bayes (K-fold CV)",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Variable (dependent)",

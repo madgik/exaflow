@@ -11,6 +11,77 @@ from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterEnumType
 from exaflow.algorithms.specifications import ParameterSpecification
 from exaflow.algorithms.specifications import ParameterType
+from exaflow.algorithms.specifications import PreprocessingStepSpecification
+from exaflow.controller.services.api.algorithm_spec_dtos import (
+    _convert_algorithm_specification_to_dto,
+)
+from exaflow.controller.services.specifications import Specifications
+
+
+def _sample_algorithm_spec(**updates):
+    values = {
+        "name": "sample_algo",
+        "desc": "sample",
+        "documentation": "sample",
+        "label": "sample_algo",
+        "enabled": True,
+        "inputdata": InputDataSpecifications(
+            y=InputDataSpecification(
+                label="y",
+                desc="y",
+                types=[InputDataType.TEXT],
+                stattypes=[InputDataStatType.NOMINAL],
+                required=True,
+                max_count=1,
+            )
+        ),
+    }
+    values.update(updates)
+    return AlgorithmSpecification(**values)
+
+
+def _sample_preprocessing_spec(name="sample_preprocessing", *, enabled=True):
+    return PreprocessingStepSpecification(
+        name=name,
+        desc=name,
+        documentation=name,
+        label=name,
+        enabled=enabled,
+    )
+
+
+def test_algorithm_spec_required_preprocessing_defaults_to_empty_list():
+    spec = _sample_algorithm_spec()
+
+    assert spec.required_preprocessing == []
+
+
+def test_algorithm_spec_dto_exposes_required_preprocessing():
+    spec = _sample_algorithm_spec(required_preprocessing=["sample_preprocessing"])
+    preprocessing_spec = _sample_preprocessing_spec()
+
+    dto = _convert_algorithm_specification_to_dto(spec, [preprocessing_spec])
+
+    assert dto.required_preprocessing == ["sample_preprocessing"]
+
+
+def test_specifications_raise_when_required_preprocessing_is_missing_or_disabled():
+    specifications = Specifications.__new__(Specifications)
+    specifications.enabled_algorithms = {
+        "sample_algo": _sample_algorithm_spec(
+            required_preprocessing=["sample_preprocessing"]
+        )
+    }
+    specifications.enabled_preprocessing_steps = {}
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "Algorithm 'sample_algo' requires preprocessing steps that are not "
+            "enabled: .*sample_preprocessing.*"
+        ),
+    ):
+        specifications._validate_required_preprocessing()
 
 
 def test_validate_parameter_spec_input_var_CDE_enums_source_is_x_or_y():

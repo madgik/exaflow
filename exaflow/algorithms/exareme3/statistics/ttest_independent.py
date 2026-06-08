@@ -43,6 +43,7 @@ class TTestIndependent(Algorithm):
             ),
             label="Student's Independent T-Test",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Variable of interest",

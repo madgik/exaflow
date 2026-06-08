@@ -60,6 +60,7 @@ class GLMMOrdinal(Algorithm):
             ),
             label="Ordinal GLMM",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Dependent variable (ordered outcome)",

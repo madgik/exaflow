@@ -35,6 +35,7 @@ class PearsonCorrelation(Algorithm):
             ),
             label="Pearson Correlation",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Variables",

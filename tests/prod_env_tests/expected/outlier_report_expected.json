@@ -217,6 +217,13 @@
           "strategies": {
             "alzheimerbroadcategory": "iqr"
           }
+        },
+        "preprocessing": {
+          "missing_values_handler": {
+            "strategies": {
+              "alzheimerbroadcategory": "drop"
+            }
+          }
         }
       },
       "output": {
@@ -245,6 +252,13 @@
           "folds": {
             "lefthippocampus": 0.5
           }
+        },
+        "preprocessing": {
+          "missing_values_handler": {
+            "strategies": {
+              "lefthippocampus": "drop"
+            }
+          }
         }
       },
       "output": {
@@ -272,6 +286,13 @@
           },
           "folds": {
             "lefthippocampus": "nan"
+          }
+        },
+        "preprocessing": {
+          "missing_values_handler": {
+            "strategies": {
+              "lefthippocampus": "drop"
+            }
           }
         }
       },

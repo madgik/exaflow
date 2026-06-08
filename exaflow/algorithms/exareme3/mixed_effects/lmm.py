@@ -68,6 +68,7 @@ class LMM(Algorithm):
             ),
             label="Linear Mixed Model",
             enabled=True,
+            required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Outcome (numerical)",
