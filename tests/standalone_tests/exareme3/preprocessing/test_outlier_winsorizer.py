@@ -118,6 +118,20 @@ def test_transform_metadata_returns_copy():
     assert metadata["x1"]["is_categorical"] is False
 
 
+def test_transform_metadata_promotes_configured_int_variable_to_real():
+    metadata = {
+        "x1": {"is_categorical": False, "sql_type": "int"},
+        "x2": {"is_categorical": False, "sql_type": "int"},
+    }
+    winsorizer = _make_winsorizer({"strategies": {"x1": "iqr"}})
+
+    transformed = winsorizer.transform_metadata(metadata=metadata)
+
+    assert transformed["x1"]["sql_type"] == "real"
+    assert transformed["x2"]["sql_type"] == "int"
+    assert metadata["x1"]["sql_type"] == "int"
+
+
 def test_clip_data_returns_same_dataframe_when_no_rules():
     data = pd.DataFrame({"v": [1.0, 2.0], "passthrough": ["a", "b"]})
 
@@ -227,7 +241,14 @@ def test_transform_data_and_metadata_updates_metadata_from_bounds(monkeypatch):
             "x1": [10.0, 11.0, 12.0, 13.0, 14.0, 100.0],
         }
     )
-    metadata = {"x1": {"is_categorical": False, "min": -100.0, "max": 100.0}}
+    metadata = {
+        "x1": {
+            "is_categorical": False,
+            "sql_type": "int",
+            "min": -100.0,
+            "max": 100.0,
+        }
+    }
     winsorizer = _make_winsorizer({"strategies": {"x1": "iqr"}})
 
     transformed, transformed_metadata = winsorizer.transform_data_and_metadata(
@@ -239,4 +260,5 @@ def test_transform_data_and_metadata_updates_metadata_from_bounds(monkeypatch):
     assert transformed["x1"].max() == 17.5
     assert transformed_metadata["x1"]["min"] == 7.5
     assert transformed_metadata["x1"]["max"] == 17.5
+    assert transformed_metadata["x1"]["sql_type"] == "real"
     assert metadata["x1"]["min"] == -100.0

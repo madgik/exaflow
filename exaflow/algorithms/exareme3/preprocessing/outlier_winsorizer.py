@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from copy import deepcopy
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -8,6 +7,9 @@ from typing import Optional
 import pandas as pd
 
 from exaflow.algorithms import specifications as specs
+from exaflow.algorithms.exareme3.preprocessing.metadata import (
+    promote_int_variables_to_real,
+)
 from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
 from exaflow.algorithms.federated.statistics.outlier_report import DEFAULT_FOLDS
 from exaflow.algorithms.federated.statistics.outlier_report import OutlierBounds
@@ -177,7 +179,10 @@ class OutlierWinsorizer(PreprocessingStep):
         *,
         metadata: Dict[str, dict],
     ) -> Dict[str, dict]:
-        transformed_metadata = deepcopy(metadata)
+        transformed_metadata = promote_int_variables_to_real(
+            metadata=metadata,
+            variables=self._strategies,
+        )
         for variable, (lower, upper) in self._metadata_bounds.items():
             if lower is not None:
                 transformed_metadata.setdefault(variable, {})["min"] = lower
