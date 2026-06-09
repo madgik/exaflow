@@ -1,26 +1,141 @@
-<b><h2><center>One Sample T-Test </center></h1></b>
+# One-sample t-test
 
-<b><h4>Aggregation Server</h4></b>
-Some algorithms use the aggregation server to combine partial vectors (e.g., sums)
-from workers into a single global result. The controller coordinates the flow and
-workers send partial aggregates to the aggregation server via gRPC; the combined
-result is then used in the algorithm’s global step.
+## Table of contents
 
-<b><h4> Notation </h4></b>
-Each local dataset *D<sup>(l)</sup>*, where *l*=1,...,*L*, is represented as a matrix of size *n* x *p*, where *L* is the number of medical centers, *n* is the number of points (patients) and *p* is the number of attributes. The elements of the above matrix can either be continuous or discrete (categorical).
+- [Overview](#overview)
+- [Inputs](#inputs)
+  - [Required inputs](#required-inputs)
+  - [Parameters](#parameters)
+- [Statistical model](#statistical-model)
+- [Federated computation](#federated-computation)
+  - [Aggregated quantities](#aggregated-quantities)
+  - [Federated flow](#federated-flow)
+- [Technical decisions](#technical-decisions)
+- [Outputs](#outputs)
+- [Validation against state-of-the-art implementation](#validation-against-state-of-the-art-implementation)
+- [Limitations and assumptions](#limitations-and-assumptions)
 
-In each local dataset, the independent attributes are denoted as a matrix *X<sup>(l)</sup>* and the dependent variable is denoted as a vector *y<sup>(l)</sup>*. *x*<sub>(*ij*)</sub><sup>(*l*)</sup> is the value of the *i*<sup>(*th*)</sup> patient of the *j*<sup>(*th*)</sup> attribute in the *l*<sup>(*th*)</sup> hospital, while *x*<sub>(*j*)</sub><sup>(*l*)</sup> denotes the vector of the *j*<sup>(*th*)</sup> attribute in the *l*<sup>(*th*)</sup> hospital. For categorical attributes, we use the notation *C*<sub>m</sub> <img src="https://render.githubusercontent.com/render/math?math=\epsilon"> { *C*<sub>1</sub>, *C*<sub>2</sub>, ..., *C*<sub>M</sub>} for their domain.
+## Overview
 
-<b><h4> Algorithm Description </h4></b>
-The Student’s One-sample t-test is used to test the null hypothesis that the true mean is equal to a particular value (typically zero). A low p-value suggests that the null hypothesis is not true, and therefore the true mean (μ) must be different from the test value. In each local dataset, let *x<sub>j</sub>* be the variable of interest.
+The one-sample t-test compares the mean of a numerical variable with a reference
+mean `mu`. It returns the t statistic, p-value, confidence interval, standard
+error, and Cohen's d.
 
-![pseudo](images/one_sample_pseudocode.png)
+## Inputs
 
-<b><h4>Exareme3 Notes</h4></b>
+### Required inputs
 
-- Tests whether the mean of a single variable differs from a specified value.
-- Returns t-statistic, p-value and confidence interval.
+| Input | Description |
+|---|---|
+| `y` | Numerical variable to test. |
 
-<b><h4>Algorithm Implementation</b></h4>
+### Parameters
 
-[One Sample T-test](../../exaflow/algorithms/exareme3/ttest_onesample.py)
+| Parameter | Description | Default |
+|---|---|---|
+| `mu` | Mean value under the null hypothesis. | `0.0` |
+| `alpha` | Significance level for confidence intervals. | `0.05` |
+| `alt_hypothesis` | Alternative hypothesis: `two-sided`, `less`, or `greater`. | `two-sided` |
+
+## Statistical model
+
+The null hypothesis is:
+
+```text
+H0: mean(y) = mu
+```
+
+The test statistic is:
+
+```text
+t = (mean(y) - mu) / (s / sqrt(n))
+```
+
+with `df = n - 1`, where `s` is the sample standard deviation.
+
+## Federated computation
+
+The test is computed without sharing row-level data. Each site contributes
+sample sufficient statistics, and the statistic is computed from aggregated
+totals.
+
+### Aggregated quantities
+
+| Quantity | Purpose |
+|---|---|
+| Number of observations | Compute mean, standard error, and degrees of freedom. |
+| Sum of values | Compute sample mean. |
+| Sum of squared values | Compute sample variance. |
+| Sum of deviations from `mu` | Compute mean difference. |
+| Sum of squared deviations from `mu` | Compute standard deviation around the null mean. |
+
+### Federated flow
+
+```text
+Input:
+    y: numerical variable
+    mu: null mean
+    alpha: significance level
+    alternative: two-sided, less, or greater
+
+Step 1:
+    At each site:
+        remove missing y values
+        compute n, sum(y), sum(y^2)
+        compute sum(y - mu) and sum((y - mu)^2)
+
+Step 2:
+    Aggregate all scalar sufficient statistics.
+
+Step 3:
+    Validate that the total number of observations is greater than one.
+
+Step 4:
+    Compute mean, standard deviation, standard error, t statistic,
+    degrees of freedom, p-value, confidence interval, and Cohen's d.
+
+Output:
+    one-sample t-test summary
+```
+
+## Technical decisions
+
+- Confidence intervals use the Student t distribution.
+- One-sided alternatives replace one confidence bound with infinity.
+- Cohen's d is computed as `(mean - mu) / standard_deviation`.
+- Missing-value removal is handled before the sample reaches the test routine.
+
+## Outputs
+
+| Field | Description |
+|---|---|
+| `n_obs` | Number of observations used. |
+| `std` | Sample standard deviation. |
+| `t_stat` | t statistic. |
+| `df` | Degrees of freedom. |
+| `p` | P-value. |
+| `mean_diff` | Sample mean. |
+| `se_diff` | Standard error of the mean. |
+| `ci_lower` | Lower confidence interval bound. |
+| `ci_upper` | Upper confidence interval bound. |
+| `cohens_d` | Standardized mean difference. |
+
+## Validation against state-of-the-art implementation
+
+Standalone tests compare the result with `statsmodels.stats.weightstats.DescrStatsW`
+using:
+
+```text
+DescrStatsW(sample).ttest_mean(value=mu, alternative="two-sided")
+```
+
+The method is also aligned with standard one-sample t-test formulas used by
+`scipy.stats`.
+
+## Limitations and assumptions
+
+- The variable must be numerical.
+- At least two observations are required.
+- Observations are assumed independent.
+- The test assumes the sample mean is approximately t-distributed under the null.
+- Cohen's d is undefined when the sample standard deviation is zero.

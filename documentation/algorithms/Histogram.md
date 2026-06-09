@@ -1,70 +1,165 @@
-## Histogram
+# Histogram
 
-<b><h4>Aggregation Server</h4></b>
-Some algorithms use the aggregation server to combine partial vectors (e.g., sums)
-from workers into a single global result. The controller coordinates the flow and
-workers send partial aggregates to the aggregation server via gRPC; the combined
-result is then used in the algorithm's global step.
+## Table of contents
 
-#### Overview
+- [Overview](#overview)
+- [Inputs](#inputs)
+  - [Required inputs](#required-inputs)
+  - [Parameters](#parameters)
+- [Method](#method)
+- [Federated computation](#federated-computation)
+  - [Aggregated quantities](#aggregated-quantities)
+  - [Federated flow](#federated-flow)
+- [Technical decisions](#technical-decisions)
+- [Outputs](#outputs)
+- [Validation against state-of-the-art implementation](#validation-against-state-of-the-art-implementation)
+- [Limitations and assumptions](#limitations-and-assumptions)
 
-Computes a federated histogram for a target variable `y`, optionally grouped by
-one or more categorical variables `x`. Workers compute local bin counts and the
-aggregation server returns the global counts in a single round per histogram.
-Counts below the privacy threshold are masked as `null`.
+## Overview
 
-The algorithm supports three binning strategies:
+Histogram computes counts for one numerical or categorical variable, optionally
+split by categorical grouping variables. Counts below the configured minimum
+row-count threshold are masked as `null`.
 
-- **Simple** (default) — equal-width bins for numerical targets between the
-  global min and max. Selected via `histogram_type = "simple"`.
-- **Wilkinson** — produces "nice-number" bin boundaries for numerical targets,
-  chosen so that bin edges are easy to read. Selected via
-  `histogram_type = "wilkinson"`. For integer-valued targets (detected from
-  metadata `sql_type = int`), the bin step is floored at `1` and bin edges
-  are whole numbers, so a single bin never splits adjacent integers apart.
-  For example, an integer column ranging `0`–`7` with `bins = 20` requested
-  would naturally snap to a `0.2` step (35 bins, cutting individual
-  integers into pieces); the floor instead produces a step of `1` with
-  edges `0, 1, …, 8` (one bin per integer value).
-- **Categorical** — used automatically when `y` is a nominal variable. When the
-  variable has enumerations declared in metadata, the order from metadata is
-  honoured; otherwise the global category set is discovered via a federated
-  union.
+## Inputs
 
-When grouping variables `x` are provided, one histogram is returned per group
-level (with the same bin edges as the ungrouped histogram for numerical `y`).
+### Required inputs
 
-#### Parameters
+| Input | Description |
+|---|---|
+| `y` | One numerical or categorical variable to summarize. |
+| `x` | Optional categorical grouping variables for grouped histograms. |
 
-- `y`: target variable to bin. Numerical (`REAL`/`INT`) or categorical (`TEXT`).
-- `x`: optional list of categorical grouping variables (`INT`/`TEXT`,
-  `NOMINAL`).
-- `bins`: integer in `[1, 100]`, default `20`. Number of bins for numerical
-  targets; ignored for categorical targets.
-- `histogram_type`: `"simple"` or `"wilkinson"`, default `"simple"`. Ignored
-  for categorical targets.
+### Parameters
 
-#### Result
+| Parameter | Description | Default |
+|---|---|---|
+| `bins` | Bin count used for numerical histograms. Ignored for categorical variables. | `20` |
+| `histogram_type` | Binning strategy for numerical histograms: `simple` or `wilkinson`. Ignored for categorical variables. | `simple` |
 
-- `bins`: list of bin edges (numerical) or category labels (categorical).
-- `counts`: per-bin global counts, with values below the worker's
-  `minimum_row_count` privacy threshold replaced by `null`.
-- `grouped`: per-grouping-variable, per-group counts, using the same bins as
-  the ungrouped histogram.
+## Method
 
-#### Exareme3 Notes
+For numerical variables, the algorithm supports two binning strategies:
 
-- `y` accepts at most one variable (`max_count=1`); `x` accepts any number of
-  optional grouping variables.
-- Rows with `NA` in the selected columns (`y` and any chosen `x`) are dropped
-  before computation.
-- Enforces a minimum row count per worker via the worker privacy config
-  (`worker.privacy.minimum_row_count`).
-- For categorical targets without metadata enumerations, the global category
-  set is discovered with a single `fed_union` call before counting.
-- Grouped histograms reuse the bin edges established by the ungrouped
-  histogram, ensuring consistency across groups.
+- `simple`: equal-width bins between the aggregated minimum and maximum.
+- `wilkinson`: bin boundaries are snapped to readable 1/2/5 x 10^n step sizes,
+  and the range is extended outward to those boundaries.
 
-#### Algorithm Implementation
+For integer-valued numerical variables with `wilkinson` binning, the step size
+is floored at `1.0`, so adjacent integer values are not split by sub-integer bin
+edges.
 
-[Histogram](../../exaflow/algorithms/exareme3/statistics/histogram.py)
+For categorical variables, bins are category labels. Metadata enumerations are
+reported first in their declared order. Any observed categories not present in
+metadata are appended. When no enumeration is available, globally observed
+categories are discovered and sorted.
+
+When grouping variables are provided, each grouping level receives a histogram
+using the same numerical bin edges or categorical bin order as the base
+histogram.
+
+## Federated computation
+
+The histogram is computed without sharing row-level data. Each site contributes
+local extrema, category levels, and bin-count vectors. Aggregated quantities are
+used to build aligned bins and total counts.
+
+### Aggregated quantities
+
+| Quantity | Purpose |
+|---|---|
+| Numerical minimum and maximum | Define shared numerical bin ranges. |
+| Category levels | Align categorical bins across sites. |
+| Group levels | Align grouped histogram rows. |
+| Bin counts | Compute aggregate histogram counts. |
+| Group-specific count matrices | Compute counts for each group level and bin. |
+
+### Federated flow
+
+```text
+Input:
+    y: variable to summarize
+    x: optional grouping variables
+    bins: requested numerical bin count
+    histogram_type: numerical binning strategy
+
+Step 1:
+    Remove rows with missing values in y or the selected grouping variables.
+
+Step 2:
+    If y is categorical:
+        discover observed category levels
+        merge them with metadata enumerations when available
+        each site counts observations per category
+
+Step 3:
+    If y is numerical:
+        aggregate the global minimum and maximum
+        build simple or Wilkinson bin edges
+        each site counts observations in the shared bins
+
+Step 4:
+    For each grouping variable:
+        align group levels from metadata or observed values
+        compute local group-by-bin count matrices
+
+Step 5:
+    Aggregate base counts and group-specific count matrices.
+
+Step 6:
+    Mask counts below the minimum row-count threshold.
+
+Output:
+    base histogram and optional grouped histograms
+```
+
+## Technical decisions
+
+- The required missing-values preprocessing step removes missing values before
+  histogram counts are computed.
+- `y` accepts at most one variable.
+- Numerical `bins` is rounded to an integer and bounded by the public
+  specification range.
+- If a simple numerical histogram has identical minimum and maximum, the maximum
+  is increased by `1.0` to create a valid bin range.
+- Wilkinson binning may return a different number of bins than requested because
+  the requested value is treated as a hint for selecting readable boundaries.
+- Category and group metadata enumerations preserve their declared order.
+- Counts lower than the minimum row-count threshold are returned as `null`.
+
+## Outputs
+
+The response contains a `histogram` list. The first item is the base histogram
+for `y`. Additional items represent grouped histograms, one item per grouping
+variable level.
+
+| Field | Description |
+|---|---|
+| `histogram` | List of base and grouped histogram result items. |
+| `var` | Variable summarized. |
+| `grouping_var` | Grouping variable name, or `null` for the base histogram. |
+| `grouping_enum` | Group level, or `null` for the base histogram. |
+| `bins` | Numerical bin edges or categorical labels. |
+| `counts` | Counts per bin, with masked counts returned as `null`. |
+
+For numerical histograms, `bins` contains bin edges and therefore has one more
+entry than `counts`. For categorical histograms, `bins` contains category labels
+and has the same length as `counts`.
+
+## Validation against state-of-the-art implementation
+
+Numerical counting is aligned with `numpy.histogram` after shared bin edges are
+defined. Standalone tests cover simple numerical histograms, Wilkinson binning,
+integer-aware Wilkinson boundaries, categorical histograms, and grouped
+histograms.
+
+## Limitations and assumptions
+
+- The output reports counts, not densities or percentages.
+- Numerical bin edges are derived from aggregated extrema, so extreme values can
+  affect bin width.
+- Counts below the privacy threshold are masked and cannot be distinguished from
+  absent low-count bins in the response.
+- Grouped histograms can be sparse when many grouping levels are selected.
+- Wilkinson binning prioritizes readable boundaries over preserving the exact
+  requested number of bins.

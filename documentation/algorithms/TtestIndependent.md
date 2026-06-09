@@ -1,26 +1,140 @@
-<b><h2><center>Independent T-Test </center></h1></b>
+# Independent t-test
 
-<b><h4>Aggregation Server</h4></b>
-Some algorithms use the aggregation server to combine partial vectors (e.g., sums)
-from workers into a single global result. The controller coordinates the flow and
-workers send partial aggregates to the aggregation server via gRPC; the combined
-result is then used in the algorithm’s global step.
+## Table of contents
 
-<b><h4> Notation </h4></b>
-Each local dataset *D<sup>(l)</sup>*, where *l*=1,...,*L*, is represented as a matrix of size *n* x *p*, where *L* is the number of medical centers, *n* is the number of points (patients) and *p* is the number of attributes. The elements of the above matrix can either be continuous or discrete (categorical).
+- [Overview](#overview)
+- [Inputs](#inputs)
+  - [Required inputs](#required-inputs)
+  - [Parameters](#parameters)
+- [Statistical model](#statistical-model)
+- [Federated computation](#federated-computation)
+  - [Aggregated quantities](#aggregated-quantities)
+  - [Federated flow](#federated-flow)
+- [Technical decisions](#technical-decisions)
+- [Outputs](#outputs)
+- [Validation against state-of-the-art implementation](#validation-against-state-of-the-art-implementation)
+- [Limitations and assumptions](#limitations-and-assumptions)
 
-In each local dataset, the independent attributes are denoted as a matrix *X<sup>(l)</sup>* and the dependent variable is denoted as a vector *y<sup>(l)</sup>*. *x*<sub>(*ij*)</sub><sup>(*l*)</sup> is the value of the *i*<sup>(*th*)</sup> patient of the *j*<sup>(*th*)</sup> attribute in the *l*<sup>(*th*)</sup> hospital, while *x*<sub>(*j*)</sub><sup>(*l*)</sup> denotes the vector of the *j*<sup>(*th*)</sup> attribute in the *l*<sup>(*th*)</sup> hospital. For categorical attributes, we use the notation *C*<sub>m</sub> <img src="https://render.githubusercontent.com/render/math?math=\epsilon"> { *C*<sub>1</sub>, *C*<sub>2</sub>, ..., *C*<sub>M</sub>} for their domain.
+## Overview
 
-<b><h4> Algorithm Description </h4></b>
-The Student’s Independent samples t-test (sometimes called a two-samples t-test) is used to test the null hypothesis that two groups have the same mean. A low p-value suggests that the null hypothesis is not true, and therefore the group means are different. In each local dataset, let *x* and *y* be the variables of interest.*y* is the grouping variable with two levels.
+The independent t-test compares the mean of a numerical variable between two
+independent groups. This implementation uses the pooled-variance Student t-test
+and reports the t statistic, p-value, confidence interval, standard error, and
+Cohen's d.
 
-![pseudo](images/independent_ttest_pseudocode.png)
+## Inputs
 
-<b><h4>Exareme3 Notes</h4></b>
+### Required inputs
 
-- The grouping variable must have exactly two levels.
-- Returns t-statistic, p-value, confidence interval and group statistics.
+| Input | Description |
+|---|---|
+| `y` | Numerical outcome variable. |
+| `x` | Categorical grouping variable. |
 
-<b><h4>Algorithm Implementation</b></h4>
+### Parameters
 
-[Independent T-test](../../exaflow/algorithms/exareme3/ttest_independent.py)
+| Parameter | Description | Default |
+|---|---|---|
+| `groupA` | First group category. | Required |
+| `groupB` | Second group category. | Required |
+| `alpha` | Significance level for confidence intervals. | `0.05` |
+| `alt_hypothesis` | Alternative hypothesis: `two-sided`, `less`, or `greater`. | `two-sided` |
+
+## Statistical model
+
+The null hypothesis is:
+
+```text
+H0: mean_A = mean_B
+```
+
+With pooled variance:
+
+```text
+s_p^2 = ((n_A - 1)s_A^2 + (n_B - 1)s_B^2) / (n_A + n_B - 2)
+t = (mean_A - mean_B) / sqrt(s_p^2 * (1 / n_A + 1 / n_B))
+df = n_A + n_B - 2
+```
+
+## Federated computation
+
+The test is computed without sharing row-level data. Each site contributes
+group-specific counts, sums, and sums of squares for the selected categories.
+
+### Aggregated quantities
+
+| Quantity | Purpose |
+|---|---|
+| Count for group A and group B | Compute means, standard error, and degrees of freedom. |
+| Sum for each group | Compute group means. |
+| Sum of squares for each group | Compute group variances and pooled variance. |
+
+### Federated flow
+
+```text
+Input:
+    y: numerical outcome
+    x: grouping variable
+    groupA, groupB: selected categories
+    alpha: significance level
+    alternative: two-sided, less, or greater
+
+Step 1:
+    At each site:
+        select observations in groupA and groupB
+        compute count, sum, and sum of squares for each group
+
+Step 2:
+    Aggregate group counts, sums, and sums of squares.
+
+Step 3:
+    Validate that both groups have observations and enough total degrees of freedom.
+
+Step 4:
+    Compute group means, pooled variance, standard error, t statistic,
+    p-value, confidence interval, and Cohen's d.
+
+Output:
+    independent t-test summary
+```
+
+## Technical decisions
+
+- The implementation uses pooled variance, equivalent to an equal-variance
+  independent t-test.
+- The selected `groupA` and `groupB` define the sign of the mean difference.
+- One-sided alternatives replace one confidence bound with infinity.
+- Cohen's d is computed from the pooled standard deviation.
+- Missing-value handling is performed before the selected samples are tested.
+
+## Outputs
+
+| Field | Description |
+|---|---|
+| `t_stat` | t statistic. |
+| `df` | Degrees of freedom. |
+| `p` | P-value. |
+| `mean_diff` | `mean(groupA) - mean(groupB)`. |
+| `se_diff` | Standard error of the mean difference. |
+| `ci_lower` | Lower confidence interval bound. |
+| `ci_upper` | Upper confidence interval bound. |
+| `cohens_d` | Standardized mean difference using pooled standard deviation. |
+
+## Validation against state-of-the-art implementation
+
+Standalone tests compare the result with `statsmodels.stats.weightstats`:
+
+```text
+CompareMeans(DescrStatsW(sample_a), DescrStatsW(sample_b))
+    .ttest_ind(usevar="pooled", alternative="two-sided")
+```
+
+Reference behavior is aligned with an equal-variance independent t-test.
+
+## Limitations and assumptions
+
+- The outcome must be numerical.
+- Exactly two selected groups are compared.
+- The two groups are assumed independent.
+- The pooled-variance test assumes comparable group variances.
+- The method does not implement Welch's unequal-variance t-test.

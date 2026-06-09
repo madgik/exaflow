@@ -1,54 +1,128 @@
-## Fisher's Exact Test
+# Fisher's Exact Test
 
-<b><h4>Aggregation Server</h4></b>
-Some algorithms use the aggregation server to combine partial vectors (e.g., sums)
-from workers into a single global result. The controller coordinates the flow and
-workers send partial aggregates to the aggregation server via gRPC; the combined
-result is then used in the algorithm's global step.
+## Table of contents
 
-#### Overview
+- [Overview](#overview)
+- [Inputs](#inputs)
+  - [Required inputs](#required-inputs)
+  - [Parameters](#parameters)
+- [Statistical model](#statistical-model)
+- [Federated computation](#federated-computation)
+  - [Aggregated quantities](#aggregated-quantities)
+  - [Federated flow](#federated-flow)
+- [Technical decisions](#technical-decisions)
+- [Outputs](#outputs)
+- [Validation against state-of-the-art implementation](#validation-against-state-of-the-art-implementation)
+- [Limitations and assumptions](#limitations-and-assumptions)
 
-Tests whether there is a statistically significant association between two binary
-categorical variables. Computes an **exact p-value** using the hypergeometric
-distribution — no large-sample approximation needed, making it reliable for small
-datasets.
+## Overview
 
-#### Algorithm Description
+Fisher's exact test evaluates association between two binary categorical
+variables using the exact probability of observing a 2 by 2 contingency table
+under fixed margins.
 
-Each worker builds its local 2×2 cell counts for the (factor, outcome) pair and
-sends them to the aggregation server. The controller assembles the global
-contingency table and runs `scipy.stats.fisher_exact`.
+## Inputs
 
-Given the 2×2 table with cells *a*, *b*, *c*, *d*, the **odds ratio** is:
+### Required inputs
 
-`OR = (a × d) / (b × c)`
+| Input | Description |
+|---|---|
+| `y` | Binary nominal outcome variable. |
+| `x` | Binary nominal factor variable. |
 
-The **p-value** is the exact probability of observing a table at least as extreme
-as the one seen, under the null hypothesis of independence.
+### Parameters
 
-#### Inputs
+No user parameters are exposed for this algorithm.
 
-| Field | Type | Required | Description |
-|-------|--------|----------|-------------|
-| `x` | `TEXT` | Yes | Factor (independent variable) — nominal, exactly 2 categories |
-| `y` | `TEXT` | Yes | Outcome (dependent variable) — nominal, exactly 2 categories |
+## Statistical model
 
-#### Outputs
+For a 2 by 2 table:
 
-| Field | Type | Description |
-|--------------|-------------|-------------|
-| `odds_ratio` | `float` | Odds ratio of the 2×2 table. |
-| `p_value` | `float` | Exact p-value of the test. |
-| `x_labels` | `list[str]` | Factor category labels (row order). |
-| `y_labels` | `list[str]` | Outcome category labels (column order). |
+```text
+          y1   y2
+x1        a    b
+x2        c    d
+```
 
-#### Exareme3 Notes
+the odds ratio is:
 
-- Both variables must have **exactly 2 categories**. A `BadInputError` is raised if the resulting table is not 2×2.
-- Rows with missing values are always dropped; `NaN` cannot be treated as a category.
-- A zero cell count produces an undefined odds ratio (`inf` or `0`).
-- The implementation uses SciPy's default **two-tailed** alternative.
+```text
+OR = (a * d) / (b * c)
+```
 
-<b><h4>Algorithm Implementation</b></h4>
+The p-value is computed from the hypergeometric distribution over tables with
+the same margins.
 
-[Fisher's Exact Test](../../exaflow/algorithms/exareme3/fisher_exact.py)
+## Federated computation
+
+The test is computed without sharing row-level data. Each site contributes a
+2 by 2 table aligned to the same factor and outcome categories. The final
+statistic is computed from the aggregated table.
+
+### Aggregated quantities
+
+| Quantity | Purpose |
+|---|---|
+| Outcome categories | Ensure exactly two aligned columns. |
+| Factor categories | Ensure exactly two aligned rows. |
+| 2 by 2 cell counts | Compute odds ratio and exact p-value. |
+
+### Federated flow
+
+```text
+Input:
+    y: binary outcome
+    x: binary factor
+
+Step 1:
+    Determine the globally observed categories for y and x.
+
+Step 2:
+    Validate that the resulting table is 2 by 2.
+
+Step 3:
+    At each site:
+        build a 2 by 2 contingency table with the global category order
+
+Step 4:
+    Aggregate the four cell counts.
+
+Step 5:
+    Compute odds ratio and exact p-value from the aggregated table.
+
+Output:
+    odds ratio, p-value, and table labels
+```
+
+## Technical decisions
+
+- The exact test is applied to the aggregated 2 by 2 table.
+- Category alignment is performed before aggregation.
+- No continuity correction is applied by this implementation.
+- The SciPy default two-sided alternative is used.
+
+## Outputs
+
+| Field | Description |
+|---|---|
+| `odds_ratio` | Estimated odds ratio. |
+| `p_value` | Exact p-value. |
+| `x_labels` | Factor-level row labels. |
+| `y_labels` | Outcome-level column labels. |
+
+## Validation against state-of-the-art implementation
+
+Standalone tests compare the aggregated 2 by 2 table with:
+
+```text
+scipy.stats.fisher_exact(cross_tab)
+```
+
+Reference behavior is aligned with SciPy's default Fisher exact test.
+
+## Limitations and assumptions
+
+- Both variables must be binary.
+- The test is intended for a 2 by 2 contingency table.
+- The p-value conditions on fixed row and column margins.
+- The odds ratio can be infinite or undefined when cells contain zeros.

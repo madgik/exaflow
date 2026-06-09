@@ -110,6 +110,12 @@ Manual specification review:
 - Omit explicit optional `None` specification arguments such as
   `parameters=None`, `validation=None`, `enumslen=None`, `default=None`,
   `enums=None`, `dict_values_enums=None`, `min=None`, and `max=None`.
+- Human-facing algorithm Markdown under `documentation/algorithms/` should have
+  a technical structure: overview, inputs, method/model, computation without
+  row-level data, aggregated quantities, `### Federated flow` pseudocode,
+  technical decisions, outputs, validation reference, and limitations. Output
+  fields must match the wrapper Pydantic response model, and materially
+  different runtime variants should have separate pages.
 
 Path policy:
 

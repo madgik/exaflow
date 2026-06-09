@@ -1,52 +1,138 @@
-## Chi-Squared Test of Independence
+# Chi-squared Test
 
-<b><h4>Aggregation Server</h4></b>
-Some algorithms use the aggregation server to combine partial vectors (e.g., sums)
-from workers into a single global result. The controller coordinates the flow and
-workers send partial aggregates to the aggregation server via gRPC; the combined
-result is then used in the algorithm's global step.
+## Table of contents
 
-#### Overview
+- [Overview](#overview)
+- [Inputs](#inputs)
+  - [Required inputs](#required-inputs)
+  - [Parameters](#parameters)
+- [Statistical model](#statistical-model)
+- [Federated computation](#federated-computation)
+  - [Aggregated quantities](#aggregated-quantities)
+  - [Federated flow](#federated-flow)
+- [Technical decisions](#technical-decisions)
+- [Outputs](#outputs)
+- [Validation against state-of-the-art implementation](#validation-against-state-of-the-art-implementation)
+- [Limitations and assumptions](#limitations-and-assumptions)
 
-Tests whether two categorical variables are statistically independent by comparing
-observed cell counts against expected counts under the null hypothesis. Supports
-contingency tables of any size (R×C).
+## Overview
 
-#### Algorithm Description
+The chi-squared test evaluates whether two categorical variables are independent.
+It builds a contingency table for an outcome variable and a factor variable,
+then compares observed cell counts with expected counts under independence.
 
-Each worker builds its local cell counts for the (factor, outcome) pair and sends
-them to the aggregation server. The controller assembles the global contingency
-table and runs `scipy.stats.chi2_contingency`.
+## Inputs
 
-The **test statistic** and **degrees of freedom** are:
+### Required inputs
 
-`χ² = Σ_ij [ (O_ij − E_ij)² / E_ij ]` where `E_ij = (row_i × col_j) / n`
+| Input | Description |
+|---|---|
+| `y` | Nominal outcome variable. |
+| `x` | Nominal factor variable. |
 
-`dof = (R − 1) × (C − 1)`
+### Parameters
 
-#### Inputs
+No user parameters are exposed for this algorithm.
 
-| Field | Type | Required | Description |
-|-------|--------|----------|-------------|
-| `x` | `TEXT` | Yes | Factor (independent variable) — nominal, 2 or more categories |
-| `y` | `TEXT` | Yes | Outcome (dependent variable) — nominal, 2 or more categories |
+## Statistical model
 
-#### Outputs
+For a contingency table with observed counts `O_ij`, expected counts under
+independence are:
 
-| Field | Type | Description |
-|------------|---------------------|-------------|
-| `chi2` | `float` | Chi-Squared test statistic. |
-| `p_value` | `float` | Asymptotic p-value. |
-| `dof` | `int` | Degrees of freedom: `(R−1) × (C−1)`. |
-| `expected` | `list[list[float]]` | Expected frequency matrix (R×C) under independence. |
-| `x_labels` | `list[str]` | Factor category labels (row order). |
-| `y_labels` | `list[str]` | Outcome category labels (column order). |
+```text
+E_ij = row_sum_i * column_sum_j / n
+```
 
-#### Exareme3 Notes
+The test statistic is:
 
-- Rows with missing values are always dropped; `NaN` cannot be treated as a category.
-- For small 2×2 tables with low expected counts, prefer Fisher's Exact Test.
+```text
+chi2 = sum_ij (O_ij - E_ij)^2 / E_ij
+```
 
-<b><h4>Algorithm Implementation</b></h4>
+Degrees of freedom are:
 
-[Chi-Squared Test](../../exaflow/algorithms/exareme3/chi_squared.py)
+```text
+(rows - 1) * (columns - 1)
+```
+
+## Federated computation
+
+The test is computed without sharing row-level data. Each site builds a
+contingency table using globally aligned category labels. Cell counts are
+summed, and the chi-squared statistic is computed from the aggregated table.
+
+### Aggregated quantities
+
+| Quantity | Purpose |
+|---|---|
+| Outcome categories | Align contingency-table columns. |
+| Factor categories | Align contingency-table rows. |
+| Cell counts | Build the aggregated contingency table. |
+| Row and column totals | Compute expected counts under independence. |
+
+### Federated flow
+
+```text
+Input:
+    y: categorical outcome
+    x: categorical factor
+
+Step 1:
+    Determine the globally observed categories for y and x.
+
+Step 2:
+    At each site:
+        build a contingency table with the global row and column order
+        include zero-count cells where a category is absent
+
+Step 3:
+    Aggregate contingency-table cell counts.
+
+Step 4:
+    Compute expected counts under independence.
+
+Step 5:
+    Compute chi-squared statistic, degrees of freedom, and p-value.
+
+Output:
+    observed table, expected table, statistic, p-value, and degrees of freedom
+```
+
+## Technical decisions
+
+- Category alignment is performed before count aggregation.
+- Missing values may be represented as table categories when included by the
+  cross-tabulation helper.
+- The test uses the aggregated contingency table, not per-site test statistics.
+- Expected counts are derived after aggregation.
+
+## Outputs
+
+| Field | Description |
+|---|---|
+| `chi2` | Chi-squared statistic. |
+| `p` | P-value. |
+| `dof` | Degrees of freedom. |
+| `expected` | Expected counts under independence. |
+| `x_labels` | Factor-level row labels. |
+| `y_labels` | Outcome-level column labels. |
+
+## Validation against state-of-the-art implementation
+
+Standalone tests compare the aggregated contingency table result with:
+
+```text
+scipy.stats.chi2_contingency(cross_tab)
+```
+
+Reference behavior is aligned with SciPy's chi-squared test on the centralized
+contingency table.
+
+## Limitations and assumptions
+
+- Both variables must be categorical.
+- The usual chi-squared approximation assumes sufficiently large expected cell
+  counts.
+- Sparse tables can make the asymptotic p-value unreliable.
+- The test detects association but does not estimate effect direction or causal
+  relationships.

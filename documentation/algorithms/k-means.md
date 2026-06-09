@@ -1,28 +1,141 @@
-<b><h2><center>k-means</center></h1></b>
+# K-means
 
-<b><h4>Aggregation Server</h4></b>
-Some algorithms use the aggregation server to combine partial vectors (e.g., sums)
-from workers into a single global result. The controller coordinates the flow and
-workers send partial aggregates to the aggregation server via gRPC; the combined
-result is then used in the algorithm’s global step.
+## Table of contents
 
-<b><h4> Notation </h4></b>
-Each local dataset *D<sup>(l)</sup>*, where *l*=1,...,*L*, is represented as a matrix of size *n* x *p*, where *L* is the number of medical centers, *n* is the number of points (patients) and *p* is the number of attributes. The elements of the above matrix can either be continuous or discrete (categorical).
+- [Overview](#overview)
+- [Inputs](#inputs)
+  - [Required inputs](#required-inputs)
+  - [Parameters](#parameters)
+- [Clustering method](#clustering-method)
+- [Federated computation](#federated-computation)
+  - [Aggregated quantities](#aggregated-quantities)
+  - [Federated flow](#federated-flow)
+- [Technical decisions](#technical-decisions)
+- [Outputs](#outputs)
+- [Validation against state-of-the-art implementation](#validation-against-state-of-the-art-implementation)
+- [Limitations and assumptions](#limitations-and-assumptions)
 
-In each local dataset, the independent attributes are denoted as a matrix *X<sup>(l)</sup>* and the dependent variable is denoted as a vector *y<sup>(l)</sup>*. *x*<sub>(*ij*)</sub><sup>(*l*)</sup> is the value of the *i*<sup>(*th*)</sup> patient of the *j*<sup>(*th*)</sup> attribute in the *l*<sup>(*th*)</sup> hospital, while *x*<sub>(*j*)</sub><sup>(*l*)</sup> denotes the vector of the *j*<sup>(*th*)</sup> attribute in the *l*<sup>(*th*)</sup> hospital. For categorical attributes, we use the notation *C*<sub>m</sub> <img src="https://render.githubusercontent.com/render/math?math=\epsilon"> { *C*<sub>1</sub>, *C*<sub>2</sub>, ..., *C*<sub>M</sub>} for their domain.
+## Overview
 
-<b><h4> Algorithm Description </h4></b>
+K-means partitions observations into `k` clusters using numerical variables.
+Each cluster is represented by a center, and observations are assigned to the
+nearest center by squared Euclidean distance.
 
-The purpose of the k-means algorithm is to partition the data into *k* clusters. Here, all attributes should be numerical and we use the Euclidean distance as our metric.
+## Inputs
 
-<b><h4>k-MEANS Train</b></h4>
-![pseudo](images/kmeans_pseudocode.png)
+### Required inputs
 
-<b><h4>Exareme3 Notes</h4></b>
+| Input | Description |
+|---|---|
+| `y` | Numerical variables used for clustering. |
 
-- All predictors must be numeric.
-- The global centroids are computed by aggregating local sufficient statistics.
+### Parameters
 
-<b><h4>Algorithm Implementation</b></h4>
+| Parameter | Description | Default |
+|---|---|---|
+| `k` | Number of clusters. | `4` |
+| `maxiter` | Maximum number of Lloyd iterations. | `1` |
+| `tol` | Frobenius-norm convergence tolerance for center updates. | `0.01` |
 
-[K-Means](../../exaflow/algorithms/exareme3/kmeans.py)
+## Clustering method
+
+The method follows Lloyd K-means:
+
+```text
+minimize sum_i ||x_i - c_{z_i}||^2
+```
+
+where `c_k` is a cluster center and `z_i` is the assigned cluster for
+observation `i`.
+
+## Federated computation
+
+The algorithm is computed without sharing row-level data. Each site assigns its
+observations to the current centers and contributes cluster-wise sums and
+counts.
+
+### Aggregated quantities
+
+| Quantity | Purpose |
+|---|---|
+| Number of observations | Report sample size and handle empty input. |
+| Feature minima and maxima | Initialize centers from global feature ranges. |
+| Cluster-wise feature sums | Update cluster centers. |
+| Cluster-wise counts | Convert sums to means. |
+
+### Federated flow
+
+```text
+Input:
+    X: numerical data matrix
+    k: number of clusters
+    maxiter: maximum iterations
+    tol: convergence tolerance
+
+Step 1:
+    Aggregate the total number of observations.
+
+Step 2:
+    Aggregate feature-wise minima and maxima.
+
+Step 3:
+    Initialize k centers uniformly between global minima and maxima.
+
+Step 4:
+    Repeat up to maxiter:
+        each site assigns observations to nearest centers
+        each site computes cluster-wise feature sums and counts
+        aggregate sums and counts
+        update each center as sum / count
+        reset empty-cluster centers to zero
+        stop if the center-update norm is <= tol
+
+Output:
+    total observation count and fitted centers
+```
+
+## Technical decisions
+
+- Initialization samples uniformly from aggregated feature ranges.
+- Random seed `123` is used for reproducibility.
+- Squared Euclidean distance is used for assignment.
+- Empty clusters are reset to the origin.
+- Convergence uses the Frobenius norm of the center update.
+- The default `maxiter` is intentionally small and may need to be increased for
+  practical clustering.
+
+## Outputs
+
+| Field | Description |
+|---|---|
+| `title` | Result title. |
+| `n_obs` | Number of observations used for fitting. |
+| `centers` | Fitted cluster centers. |
+
+The result does not include per-observation cluster labels.
+
+## Validation against state-of-the-art implementation
+
+The method is aligned with classical Lloyd K-means as exposed by:
+
+```text
+sklearn.cluster.KMeans(algorithm="lloyd")
+```
+
+Important differences from common scikit-learn defaults:
+
+| Aspect | This method | scikit-learn default |
+|---|---|---|
+| Initialization | Uniform sampling from aggregated feature ranges | `k-means++` |
+| Number of initializations | One | Depends on `n_init` |
+| Empty clusters | Reset center to zero | Internal reassignment behavior |
+| Objective | Lloyd K-means | Lloyd K-means by default in current releases |
+
+## Limitations and assumptions
+
+- Only numerical variables are supported.
+- Feature scaling strongly affects results.
+- The solution can be a local optimum.
+- Empty-cluster handling can affect final centers.
+- The number of clusters must be selected before fitting.
+- Outliers can strongly influence centers.
