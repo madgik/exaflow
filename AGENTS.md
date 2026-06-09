@@ -155,9 +155,9 @@ ownership. Non-negotiable boundaries:
 - Keep algorithm ids lower snake_case and use the same id for module names,
   request names, spec names, tests, fixtures, and docs unless existing display
   docs intentionally differ.
-- Keep compact UI-facing `desc` fields short; put formulas, defaults, ranges,
-  options, and output interpretation in algorithm or preprocessing
-  `documentation`.
+- Keep specification metadata UI-ready: compact standard `label`, one concise
+  method-level `desc`, and detailed parent `documentation` for formulas,
+  defaults, ranges, options, assumptions, outputs, and reference anchors.
 - Prefer specification-level validation in `exaflow/algorithms/specifications.py`
   over ad-hoc algorithm checks when the constraint is part of the public
   algorithm contract.
@@ -377,18 +377,40 @@ ______________________________________________________________________
   `AlgorithmSpecification` / `PreprocessingStepSpecification`
   (`exaflow/algorithms/specifications.py`). Update the specification method and
   implementation together.
+- **Specification labels:** Keep `label` compact, standard, user-facing, and not
+  implementation-specific. Prefer labels such as "Logistic Regression",
+  "Two-way ANOVA", "Descriptive Statistics", and "K-means"; avoid labels such as
+  "Federated Logistic Regression", "Two-way ANOVA (OLS)", or implementation
+  helper names.
 - **UI-facing descriptions:** Keep algorithm/preprocessing step and parameter
-  `desc` values to 1-2 lines max, focused on observable behavior. Put detailed
-  explanations, formulas, defaults, ranges, option lists, and output
-  interpretation in the parent `documentation` field.
+  `desc` values compact and focused on observable method behavior. Algorithm
+  and preprocessing `desc` values should be one concise sentence suitable for
+  cards/tooltips. Put detailed explanations, formulas, defaults, ranges, option
+  lists, assumptions, outputs, and result interpretation in the parent
+  `documentation` field.
+- **Specification documentation:** Parent `documentation` should describe what
+  the method computes, important input interpretation, parameter behavior and
+  defaults, output contents, and a careful reference anchor where possible. Use
+  "aligned with" or "methodology consistent with" for packages or methods such
+  as `statsmodels`, `scipy.stats`, `scikit-learn`, or standard methodology; do
+  not claim exact equivalence when defaults or implementation details differ.
+- **User-facing terminology:** Do not mention platform or execution-engine terms
+  in user-facing spec text, including "Exaflow", "exareme", "MIP", "worker",
+  "engine", "federated implementation", or "aggregation-server-backed". Prefer
+  neutral phrasing such as "computed from aggregated sufficient statistics
+  without sharing raw data" when privacy-preserving computation is relevant.
+- **Input labels:** Replace raw variable labels such as `x`, `y`, `var`, or
+  `vars` with UI labels such as "Outcome", "Covariates", "Variables",
+  "Grouping variable", "Features", or "Additional variables".
 - **Parameter descriptions:** Parameter `desc` values should explain what the
-  setting does, not restate the schema shape. Prefer text like "Clipping
-  strategy for each variable." over "Required dictionary mapping variables to
-  strategies." Do not add `documentation` to parameter specifications; parameter
-  details belong in the parent step or algorithm `documentation`. Omit explicit
-  optional `None` specification arguments such as `parameters=None`,
-  `validation=None`, `enumslen=None`, `default=None`, `enums=None`,
-  `dict_values_enums=None`, `min=None`, and `max=None`.
+  setting does, not restate options, defaults, min/max bounds, requiredness, or
+  schema shape. Prefer text like "Clipping strategy for each variable." over
+  "Required dictionary mapping variables to strategies." Do not add
+  `documentation` to parameter specifications; parameter details belong in the
+  parent step or algorithm `documentation`. Omit explicit optional `None`
+  specification arguments such as `parameters=None`, `validation=None`,
+  `enumslen=None`, `default=None`, `enums=None`, `dict_values_enums=None`,
+  `min=None`, and `max=None`.
 - **Parameter specifications:** Prefer typed specification validation over
   ad-hoc algorithm checks. For dictionary parameters, use `dict_keys_enums` for
   allowed keys, `dict_values_enums` for allowed categorical values, and

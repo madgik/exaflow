@@ -48,32 +48,36 @@ class LinearRegressionCV(Algorithm):
             name="linear_regression_cv",
             desc="Linear regression evaluated with K-fold cross-validation.",
             documentation=(
-                "Evaluate a linear regression model with K-fold cross-validation "
-                "across workers. Each fold trains a global model and reports "
+                "Evaluates a linear regression model with K-fold "
+                "cross-validation. Each fold trains a model and reports "
                 "metrics over held-out data. Nominal predictors are one-hot "
-                "encoded with a global schema across workers.\n\n"
+                "encoded with a consistent global schema.\n\n"
                 "The 'n_splits' setting controls the number of cross-validation "
                 "folds. It must be between 2 and 20. Default is 5.\n\n"
                 "The result summarizes fold-level regression metrics including "
                 "R-squared, adjusted R-squared, residual standard error, mean "
                 "squared error, root mean squared error, mean absolute error, "
-                "and F statistic."
+                "and F statistic.\n\n"
+                "Reference behavior is aligned with scikit-learn KFold "
+                "cross-validation around an OLS-style linear regression model. "
+                "Fold metrics are computed from aggregated prediction and "
+                "residual statistics without sharing raw data."
             ),
-            label="Linear Regression (K-Fold CV)",
+            label="Linear Regression Cross-validation",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Dependent Variable",
-                    desc="Single numerical target variable.",
+                    label="Outcome",
+                    desc="Numerical outcome variable.",
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     max_count=1,
                 ),
                 x=specs.InputDataSpecification(
-                    label="Independent Variables",
-                    desc="Numerical or nominal predictors.",
+                    label="Covariates",
+                    desc="Numerical or categorical covariates.",
                     types=[
                         specs.InputDataType.REAL,
                         specs.InputDataType.INT,
@@ -88,7 +92,7 @@ class LinearRegressionCV(Algorithm):
             ),
             parameters={
                 "n_splits": specs.ParameterSpecification(
-                    label="Number of Folds",
+                    label="Number of folds",
                     desc="Fold count used for cross-validation.",
                     types=[specs.ParameterType.INT],
                     required=True,

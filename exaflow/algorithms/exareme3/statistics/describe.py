@@ -63,18 +63,33 @@ class Describe(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="describe",
-            desc="Descriptive statistics for selected variables.",
+            desc="Summary statistics for numerical and categorical variables.",
             documentation=(
-                "Compute descriptive statistics for numerical and nominal "
-                "variables with pairwise feature-level missing-value handling.\n\n"
-                "The result includes featurewise summaries and analysis-set "
-                "summaries for the selected variables."
+                "Computes descriptive summaries for selected numerical and "
+                "nominal variables. Results are reported feature-wise for each "
+                "dataset and as a global summary across all datasets.\n\n"
+                "For numerical variables, per-dataset summaries include the "
+                "number of non-missing values, number of missing values, total "
+                "number of rows, mean, standard deviation, minimum, first "
+                "quartile, median, third quartile, and maximum. Global "
+                "numerical summaries include non-missing values, missing "
+                "values, total rows, mean, standard deviation, minimum, and "
+                "maximum.\n\n"
+                "For nominal variables, summaries include non-missing values, "
+                "missing values, total rows, and counts per category. Category "
+                "counts are aggregated across datasets for the global summary.\n\n"
+                "Missing values are handled independently per variable. "
+                "Dataset-level results that do not satisfy the minimum "
+                "row-count privacy threshold are returned without summary "
+                "data. Global summaries are computed from aggregated "
+                "sufficient statistics and category counts without sharing "
+                "raw data."
             ),
-            label="Descriptive stats (Describe)",
+            label="Descriptive Statistics",
             enabled=True,
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="y",
+                    label="Variables",
                     desc="Variables to summarize.",
                     types=[
                         specs.InputDataType.INT,
@@ -88,7 +103,7 @@ class Describe(Algorithm):
                     required=True,
                 ),
                 x=specs.InputDataSpecification(
-                    label="x",
+                    label="Additional variables",
                     desc="Optional additional variables to summarize.",
                     types=[
                         specs.InputDataType.INT,

@@ -19,17 +19,37 @@ Priority order:
   - `get_specification()` with matching `name`
   - family-aware inputdata defaults
   - local UDF placeholder (or federated-core call when scaffolded)
-- Specification descriptions:
-  - Treat every `desc` as compact UI copy. Keep algorithm/preprocessing step,
-    input, and parameter `desc` values to 1-2 lines max.
+- Specification metadata:
+  - Treat `label` as compact, standard UI menu copy. Avoid implementation
+    details such as "federated", backend names, or helper names unless they are
+    clinically or methodologically necessary.
+
+  - Treat every `desc` as compact UI copy. Algorithm/preprocessing `desc`
+    values should be one concise method-level sentence suitable for cards or
+    tooltips. Input and parameter `desc` values should stay short and describe
+    observable behavior.
 
   - Use the parent algorithm/preprocessing step `documentation` field for the
     detailed explanation: formulas/defaults/ranges, strategy options, parameter
-    mechanics, and response fields.
+    mechanics, assumptions, output interpretation, response fields, and careful
+    reference anchors such as `statsmodels`, `scipy.stats`, `scikit-learn`, or
+    standard methodology. Use "aligned with" or "methodology consistent with";
+    do not claim exact equivalence when defaults or implementation details
+    differ.
+
+  - Avoid platform/execution terms in user-facing spec text, including
+    `Exaflow`, `exareme`, `MIP`, `worker`, `engine`, `federated implementation`,
+    and `aggregation-server-backed`. Prefer neutral wording such as "computed
+    from aggregated sufficient statistics without sharing raw data".
+
+  - Use UI-facing input labels such as `Outcome`, `Covariates`, `Variables`,
+    `Features`, `Grouping variable`, or `Additional variables`; do not expose
+    raw labels such as `x`, `y`, `var`, or `vars`.
 
   - Do not add `documentation` to `ParameterSpecification`. Parameter `desc`
     values should explain what the setting does, not restate schema shape,
-    requiredness, or dictionary structure. For example:
+    options, defaults, min/max bounds, requiredness, or dictionary structure.
+    For example:
 
     ```python
     "strategies": specs.ParameterSpecification(

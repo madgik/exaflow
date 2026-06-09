@@ -26,10 +26,11 @@ class TTestOneSample(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="ttest_onesample",
-            desc="One-sample t-test against a specified mean.",
+            desc="One-sample t-test comparing a numerical mean with a reference value.",
             documentation=(
                 "Compare the mean of a numerical sample to a specified null "
-                "hypothesis mean. Degrees of freedom are n - 1.\n\n"
+                "hypothesis mean. Degrees of freedom are n - 1 and Cohen's d "
+                "is computed relative to the null mean.\n\n"
                 "The 'alt_hypothesis' setting selects the alternative hypothesis: "
                 "'two-sided', 'less', or 'greater'. Default is 'two-sided'.\n\n"
                 "The 'alpha' setting controls the significance level used for "
@@ -37,15 +38,20 @@ class TTestOneSample(Algorithm):
                 "The 'mu' setting controls the null hypothesis mean. Default is 0.0.\n\n"
                 "The result includes the t statistic, p-value, confidence "
                 "interval, sample mean, standard deviation, observation count, "
-                "and Cohen's d."
+                "mean difference, standard error of the difference, and "
+                "Cohen's d.\n\n"
+                "Reference behavior is aligned with scipy.stats one-sample "
+                "t-test methodology, with additional confidence interval and "
+                "effect-size reporting computed from aggregated sample "
+                "statistics without sharing raw data."
             ),
-            label="Student's One-Sample T-Test",
+            label="One-sample t-test",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Variable",
-                    desc="Numeric variable of interest.",
+                    desc="Numerical variable to test.",
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
@@ -54,7 +60,7 @@ class TTestOneSample(Algorithm):
             ),
             parameters={
                 "alt_hypothesis": specs.ParameterSpecification(
-                    label="Alternative Hypothesis",
+                    label="Alternative hypothesis",
                     desc="Alternative hypothesis for the mean comparison.",
                     types=[specs.ParameterType.TEXT],
                     required=True,
@@ -66,8 +72,8 @@ class TTestOneSample(Algorithm):
                     ),
                 ),
                 "alpha": specs.ParameterSpecification(
-                    label="Alpha",
-                    desc="Significance level for the test.",
+                    label="Significance level",
+                    desc="Significance level used for confidence intervals.",
                     types=[specs.ParameterType.REAL],
                     required=True,
                     multiple=False,
@@ -76,7 +82,7 @@ class TTestOneSample(Algorithm):
                     max=1.0,
                 ),
                 "mu": specs.ParameterSpecification(
-                    label="Population mean",
+                    label="Reference mean",
                     desc="Mean value under the null hypothesis.",
                     types=[specs.ParameterType.REAL],
                     required=True,

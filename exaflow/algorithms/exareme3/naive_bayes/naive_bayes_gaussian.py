@@ -23,31 +23,34 @@ class NaiveBayesGaussian(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="naive_bayes_gaussian",
-            desc="Gaussian Naive Bayes for numerical features.",
+            desc="Gaussian Naive Bayes classification for numerical features.",
             documentation=(
-                "Fit a Gaussian Naive Bayes classifier across workers. Features "
-                "are treated as numerical and missing values are not imputed. "
-                "Class labels are taken from metadata and aggregated securely "
-                "across workers.\n\n"
+                "Fits a Gaussian Naive Bayes classifier for a nominal outcome "
+                "using numerical features. Feature values are modeled with "
+                "class-conditional Gaussian distributions, and missing values "
+                "are not imputed by the classifier.\n\n"
                 "The result includes class labels, class counts, class priors, "
                 "per-class feature means, per-class feature variances, and "
-                "feature names."
+                "feature names.\n\n"
+                "Reference behavior is aligned with scikit-learn GaussianNB "
+                "methodology, using aggregated class counts, means, and "
+                "variances without sharing raw data."
             ),
             label="Gaussian Naive Bayes",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Variable (dependent)",
-                    desc="A unique nominal variable.",
+                    label="Outcome",
+                    desc="Nominal outcome variable.",
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     max_count=1,
                 ),
                 x=specs.InputDataSpecification(
-                    label="Covariates (independent)",
-                    desc="One or more numerical variables.",
+                    label="Features",
+                    desc="Numerical features used for classification.",
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,

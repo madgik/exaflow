@@ -36,9 +36,9 @@ class GLMMBinary(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="glmm_binary",
-            desc="Binary generalized linear mixed model.",
+            desc="Binary generalized linear mixed model with a random intercept.",
             documentation=(
-                "Fit a binary generalized linear mixed model with fixed "
+                "Fits a binary generalized linear mixed model with fixed "
                 "covariate effects and a single random-intercept grouping "
                 "variable. The dependent variable is converted to binary by "
                 "assigning 1 to the selected positive class and 0 to all other "
@@ -50,14 +50,18 @@ class GLMMBinary(Algorithm):
                 "The result includes fixed-effect coefficients, standard errors, "
                 "z-scores, p-values, confidence intervals, random-effect "
                 "variance, log-likelihood, AIC, BIC, convergence status, and "
-                "iteration count."
+                "iteration count.\n\n"
+                "Reference behavior is aligned with standard random-intercept "
+                "binary GLMM methodology using a logistic link. Model "
+                "quantities are computed from aggregated sufficient statistics "
+                "without sharing raw data."
             ),
             label="Binary GLMM",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Dependent variable (binary)",
+                    label="Outcome",
                     desc="Nominal outcome converted using the positive class.",
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
@@ -82,8 +86,8 @@ class GLMMBinary(Algorithm):
             ),
             parameters={
                 "positive_class": specs.ParameterSpecification(
-                    label="Positive class (y=1)",
-                    desc="Outcome category treated as the positive class.",
+                    label="Positive class",
+                    desc="Outcome category treated as the positive outcome.",
                     types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
                     required=True,
                     multiple=False,

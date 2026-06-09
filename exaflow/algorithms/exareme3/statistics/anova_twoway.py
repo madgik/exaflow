@@ -26,31 +26,43 @@ class AnovaTwoWay(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="anova_twoway",
-            desc="Two-way ANOVA with two categorical factors.",
+            desc=(
+                "Two-way ANOVA for a numerical outcome and two categorical "
+                "factors, including their interaction."
+            ),
             documentation=(
-                "Test whether a numerical outcome differs across combinations "
-                "of two categorical factors. The model includes main effects "
-                "and their interaction.\n\n"
+                "Tests whether a numerical outcome differs across the levels "
+                "of two categorical factors in a factorial model with main "
+                "effects and their interaction. The fitted model is equivalent "
+                "to y ~ A * B, where A and B are the two selected factors.\n\n"
+                "The ANOVA table contains rows for the first factor, the "
+                "second factor, their interaction, and residuals. For each "
+                "testable term it reports sum of squares, degrees of freedom, "
+                "F statistic, and p-value; residual rows report sum of squares "
+                "and degrees of freedom only.\n\n"
                 "The 'sstype' setting selects the sums-of-squares type:\n"
                 "  - 1 computes Type I sequential sums of squares.\n"
                 "  - 2 computes Type II marginal sums of squares. Default is 2.\n\n"
-                "The result includes an ANOVA table for the fitted factorial model."
+                "Reference behavior is aligned with statsmodels OLS two-way "
+                "ANOVA using ols('y ~ A * B') and sm.stats.anova_lm(lm, "
+                "typ=sstype). The method computes the same ANOVA quantities "
+                "from aggregated sufficient statistics without sharing raw data."
             ),
-            label="Two-way ANOVA (OLS)",
+            label="Two-way ANOVA",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Outcome (dependent)",
-                    desc="Single numerical outcome variable.",
+                    label="Outcome",
+                    desc="Numerical outcome variable.",
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                     max_count=1,
                 ),
                 x=specs.InputDataSpecification(
-                    label="Factors (independent)",
-                    desc="Exactly two categorical (nominal) factors.",
+                    label="Factors",
+                    desc="Two categorical factors.",
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
@@ -61,7 +73,7 @@ class AnovaTwoWay(Algorithm):
             parameters={
                 "sstype": specs.ParameterSpecification(
                     label="Sum of squares type",
-                    desc="Sums-of-squares method for the ANOVA table.",
+                    desc="Sums-of-squares decomposition used for the ANOVA table.",
                     types=[specs.ParameterType.INT],
                     required=True,
                     multiple=False,

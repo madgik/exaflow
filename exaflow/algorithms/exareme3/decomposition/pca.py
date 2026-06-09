@@ -22,20 +22,24 @@ class PCA(Algorithm):
             name="pca",
             desc="Principal component analysis for numerical variables.",
             documentation=(
-                "Compute principal components from aggregated covariance "
-                "information across workers. PCA summarizes multivariate "
-                "structure by producing eigenvalues and eigenvectors for the "
-                "selected numerical variables.\n\n"
+                "Computes principal components for selected numerical "
+                "variables from their covariance structure. PCA summarizes "
+                "multivariate variation by producing eigenvalues and "
+                "eigenvectors for orthogonal component directions.\n\n"
                 "The result includes the observation count, eigenvalues, and "
-                "eigenvectors."
+                "eigenvectors.\n\n"
+                "Reference behavior is aligned with covariance-based PCA "
+                "methodology as exposed by scikit-learn PCA. The method "
+                "computes the covariance quantities from aggregated sufficient "
+                "statistics without sharing raw data."
             ),
             label="Principal Component Analysis",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Variables (features)",
-                    desc="List of numerical variables used to compute the covariance matrix.",
+                    label="Variables",
+                    desc="Numerical variables used to compute principal components.",
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,

@@ -24,7 +24,7 @@ class TTestIndependent(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="ttest_independent",
-            desc="Independent t-test for two groups.",
+            desc="Independent-samples t-test comparing a numerical variable across two groups.",
             documentation=(
                 "Compare the means of a numerical variable between two "
                 "independent groups using pooled variance. Degrees of freedom "
@@ -39,15 +39,19 @@ class TTestIndependent(Algorithm):
                 "categories compared by the test.\n\n"
                 "The result includes the t statistic, p-value, confidence "
                 "interval, group means, group sizes, degrees of freedom, and "
-                "Cohen's d."
+                "Cohen's d.\n\n"
+                "Reference behavior is aligned with the equal-variance "
+                "independent t-test methodology used by scipy.stats.ttest_ind "
+                "with equal_var=True. The method computes the test quantities "
+                "from aggregated group statistics without sharing raw data."
             ),
-            label="Student's Independent T-Test",
+            label="Independent t-test",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Variable of interest",
-                    desc="A numerical variable.",
+                    label="Outcome",
+                    desc="Numerical variable compared between groups.",
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
@@ -55,7 +59,7 @@ class TTestIndependent(Algorithm):
                 ),
                 x=specs.InputDataSpecification(
                     label="Grouping variable",
-                    desc="A nominal variable.",
+                    desc="Categorical variable containing the two groups.",
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
@@ -64,7 +68,7 @@ class TTestIndependent(Algorithm):
             ),
             parameters={
                 "alt_hypothesis": specs.ParameterSpecification(
-                    label="Alternative Hypothesis",
+                    label="Alternative hypothesis",
                     desc="Alternative hypothesis for the group comparison.",
                     types=[specs.ParameterType.TEXT],
                     required=True,
@@ -76,8 +80,8 @@ class TTestIndependent(Algorithm):
                     ),
                 ),
                 "alpha": specs.ParameterSpecification(
-                    label="Alpha",
-                    desc="Significance level for the test.",
+                    label="Significance level",
+                    desc="Significance level used for confidence intervals.",
                     types=[specs.ParameterType.REAL],
                     required=True,
                     multiple=False,

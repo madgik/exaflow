@@ -29,12 +29,20 @@ Definition of Done:
 - All generated placeholder text is replaced (`TODO`, `NotImplementedError`,
   `__REPLACE_ME_*__`).
 - Exareme3 wrapper and federated core import successfully.
-- `get_specification()` keeps `desc` values compact and UI-facing, with detailed
-  formulas/defaults/ranges, option lists, parameter mechanics, and outputs in the
-  parent algorithm/preprocessing step `documentation` field.
+- `get_specification()` uses UI-ready metadata: compact standard `label`, one
+  concise method-level `desc`, and detailed parent algorithm/preprocessing step
+  `documentation` for formulas/defaults/ranges, option lists, assumptions,
+  parameter mechanics, outputs, and careful reference anchors.
+- User-facing spec text avoids platform/execution terms such as `Exaflow`,
+  `exareme`, `MIP`, `worker`, `engine`, `federated implementation`, and
+  `aggregation-server-backed`; use neutral wording such as "computed from
+  aggregated sufficient statistics without sharing raw data" where relevant.
+- Input labels are UI-facing, not raw identifiers such as `x`, `y`, `var`, or
+  `vars`; prefer labels like `Outcome`, `Covariates`, `Variables`, `Features`,
+  `Grouping variable`, or `Additional variables`.
 - Parameter `desc` values explain what the setting does, not schema shape. Do
-  not add parameter-level `documentation`; put parameter details in the parent
-  `documentation`.
+  not repeat options/defaults/min/max/requiredness. Do not add parameter-level
+  `documentation`; put parameter details in the parent `documentation`.
 - Parameter specs use typed validation (`dict_keys_enums`, `dict_values_enums`,
   `dict_values_type`) instead of duplicating shape/type checks in algorithm
   runtime code.
@@ -108,13 +116,13 @@ poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_alg
 
 1. Run scaffold with `--algorithms <name>` and `--family <family>`.
 1. Implement Exareme3 wrapper logic in `exaflow/algorithms/exareme3/<name>.py`.
-1. Write `get_specification()` text for the UI: keep every `desc` to 1-2 lines
-   max, focused on observable behavior. Use the parent `documentation` field for
-   detailed formulas/defaults/ranges, parameter option lists, and output
-   interpretation. Parameter `desc` values should say what the setting does
-   (for example, "Clipping strategy for each variable."), not whether it is a
-   dictionary or required. Avoid advisory "when to use" language unless it is
-   required product copy.
+1. Write `get_specification()` text for the UI: use compact standard labels,
+   one concise method-level `desc`, and parent `documentation` for formulas,
+   defaults, ranges, strategy options, assumptions, outputs, result
+   interpretation, and reference anchors. Parameter `desc` values should say
+   what the setting does rather than restating schema shape, options, defaults,
+   min/max bounds, or requiredness. Avoid advisory "when to use" language unless
+   it is required product copy.
 1. Implement federated core in `exaflow/algorithms/federated/<family>/<name>.py`.
 1. Confirm registration patches:
    - `exaflow/algorithms/federated/<family>/__init__.py`

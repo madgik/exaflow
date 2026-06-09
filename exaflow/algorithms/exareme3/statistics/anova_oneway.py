@@ -33,28 +33,36 @@ class AnovaOneWay(Algorithm):
     def get_specification(cls) -> AlgorithmSpecification:
         return AlgorithmSpecification(
             name="anova_oneway",
-            desc="One-way ANOVA across groups.",
+            desc="One-way ANOVA for a numerical outcome and one categorical factor.",
             documentation=(
-                "Test whether a numerical outcome differs across groups defined "
-                "by one categorical factor.\n\n"
+                "Tests whether a numerical outcome differs across groups "
+                "defined by one categorical factor. The ANOVA table decomposes "
+                "variation into between-group and within-group components and "
+                "reports the F statistic and p-value for the group effect.\n\n"
                 "The result includes the ANOVA table, Tukey HSD pairwise "
-                "comparisons, and group min/max summaries."
+                "comparisons, group min/max summaries, group means, sample "
+                "standard deviations, and confidence interval information.\n\n"
+                "Reference behavior is aligned with classical one-way ANOVA "
+                "and Tukey HSD methodology as exposed by statsmodels and "
+                "scipy.stats. The method computes the ANOVA quantities from "
+                "aggregated group counts, means, and sums of squares without "
+                "sharing raw data."
             ),
             label="One-way ANOVA",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=InputDataSpecifications(
                 y=InputDataSpecification(
-                    label="Outcome (dependent)",
-                    desc="Single continuous outcome variable.",
+                    label="Outcome",
+                    desc="Numerical outcome variable.",
                     types=[InputDataType.REAL, InputDataType.INT],
                     stattypes=[InputDataStatType.NUMERICAL],
                     required=True,
                     max_count=1,
                 ),
                 x=InputDataSpecification(
-                    label="Factor (independent)",
-                    desc="Single categorical (nominal) factor defining the groups.",
+                    label="Grouping variable",
+                    desc="Categorical variable defining the groups.",
                     types=[InputDataType.TEXT],
                     stattypes=[InputDataStatType.NOMINAL],
                     required=True,

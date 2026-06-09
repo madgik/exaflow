@@ -89,8 +89,8 @@ class LogisticRegressionCV(Algorithm):
             name="logistic_regression_cv",
             desc="Logistic regression evaluated with K-fold cross-validation.",
             documentation=(
-                "Evaluate a logistic regression model with K-fold "
-                "cross-validation across workers. The dependent variable is "
+                "Evaluates a logistic regression model with K-fold "
+                "cross-validation. The dependent variable is "
                 "converted to binary by assigning 1 to the selected positive "
                 "class and 0 to all other classes. Categorical covariates are "
                 "one-hot encoded before estimation.\n\n"
@@ -99,14 +99,19 @@ class LogisticRegressionCV(Algorithm):
                 "The 'n_splits' setting controls the number of cross-validation "
                 "folds. It must be between 2 and 20. Default is 5.\n\n"
                 "The result includes binary classification metrics and a summary "
-                "across folds."
+                "across folds, including confusion-matrix totals and ROC "
+                "curves.\n\n"
+                "Reference behavior is aligned with scikit-learn KFold "
+                "cross-validation around a logistic regression model with an "
+                "intercept. Fold metrics are computed from aggregated "
+                "confusion matrices and ROC statistics without sharing raw data."
             ),
             label="Logistic Regression Cross-validation",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Dependent variable (binary)",
+                    label="Outcome",
                     desc="Nominal outcome converted using the positive class.",
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
@@ -114,7 +119,7 @@ class LogisticRegressionCV(Algorithm):
                     max_count=1,
                 ),
                 x=specs.InputDataSpecification(
-                    label="Covariates (independent)",
+                    label="Covariates",
                     desc="Numerical or categorical covariates.",
                     types=[
                         specs.InputDataType.REAL,
@@ -130,8 +135,8 @@ class LogisticRegressionCV(Algorithm):
             ),
             parameters={
                 "positive_class": specs.ParameterSpecification(
-                    label="Positive class (y=1)",
-                    desc="Outcome category treated as the positive class.",
+                    label="Positive class",
+                    desc="Outcome category treated as the positive outcome.",
                     types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
                     required=True,
                     multiple=False,

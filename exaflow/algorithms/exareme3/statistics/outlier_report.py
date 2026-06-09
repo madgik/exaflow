@@ -49,25 +49,23 @@ class OutlierReport(Algorithm):
         strategy_values = [strategy.value for strategy in OutlierStrategy]
         tail_values = [tail.value for tail in OutlierTail]
         documentation = (
-            "Report numerical outliers per dataset using winsorization bounds "
-            "computed independently on each worker's local dataset, not from "
-            "global statistics. The report returns the strategy, tail, fold, "
-            "computed lower and upper bounds, outlier counts, and outlier "
-            "percentage for each configured variable.\n\n"
+            "Reports numerical outliers per dataset using configurable "
+            "distribution-based bounds. The report returns the strategy, tail, "
+            "fold, computed lower and upper bounds, outlier counts, and "
+            "outlier percentage for each configured variable.\n\n"
             "Configure one reporting strategy per variable with 'strategies':\n"
             "  - 'gaussian' reports values outside mean +/- fold * sample "
-            "standard deviation, computed locally on each worker. Default fold "
+            "standard deviation. Default fold "
             "is 3.0.\n"
             "  - 'iqr' reports values outside Q1 - fold * IQR and Q3 + fold * "
-            "IQR, where IQR=Q3-Q1, computed locally on each worker. Default fold "
+            "IQR, where IQR=Q3-Q1. Default fold "
             "is 1.5.\n"
             "  - 'mad' reports values outside median +/- fold * normalized MAD, "
             "where normalized MAD=1.4826 * median absolute deviation. Default "
-            "fold is 3.0. The median and MAD are computed locally on each worker.\n"
+            "fold is 3.0.\n"
             "  - 'quantile' reports values below the fold quantile and above "
             "the 1 - fold quantile. Default fold is 0.05. Its fold must be "
-            "greater than 0 and less than 0.5. Quantiles are computed locally "
-            "on each worker.\n\n"
+            "greater than 0 and less than 0.5.\n\n"
             "The optional 'tails' setting controls which side is inspected "
             "per variable:\n"
             "  - 'left' reports only values below the lower bound.\n"
@@ -78,7 +76,11 @@ class OutlierReport(Algorithm):
             "variable:\n"
             "  - 'gaussian', 'iqr', and 'mad' folds must be positive finite "
             "numbers.\n"
-            "  - 'quantile' folds must be finite probabilities in (0, 0.5)."
+            "  - 'quantile' folds must be finite probabilities in (0, 0.5).\n\n"
+            "Reference behavior is aligned with common Gaussian, IQR, MAD, "
+            "and quantile outlier-screening rules. Bounds and counts are "
+            "computed per dataset so the report can show dataset-level "
+            "outlier patterns without sharing raw data."
         )
         return specs.AlgorithmSpecification(
             name="outlier_report",
@@ -105,7 +107,7 @@ class OutlierReport(Algorithm):
             ),
             parameters={
                 "strategies": specs.ParameterSpecification(
-                    label="Strategies",
+                    label="Outlier strategies",
                     desc="Outlier reporting strategy for each variable.",
                     types=[specs.ParameterType.DICT],
                     required=True,
@@ -120,7 +122,7 @@ class OutlierReport(Algorithm):
                     ),
                 ),
                 "tails": specs.ParameterSpecification(
-                    label="Tails",
+                    label="Tails to inspect",
                     desc="Side of the distribution to inspect for each variable.",
                     types=[specs.ParameterType.DICT],
                     required=False,
@@ -135,7 +137,7 @@ class OutlierReport(Algorithm):
                     ),
                 ),
                 "folds": specs.ParameterSpecification(
-                    label="Folds",
+                    label="Threshold folds",
                     desc="Strategy-specific reporting threshold for each variable.",
                     types=[specs.ParameterType.DICT],
                     required=False,

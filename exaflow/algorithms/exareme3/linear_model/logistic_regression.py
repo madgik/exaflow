@@ -44,24 +44,32 @@ class LogisticRegression(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="logistic_regression",
-            desc="Logistic regression for a binary outcome.",
+            desc="Logistic regression for a binary outcome and one or more covariates.",
             documentation=(
-                "Fit a logistic regression model across workers. The dependent "
-                "variable is converted to binary by assigning 1 to the selected "
-                "positive class and 0 to all other classes. Categorical "
-                "covariates are one-hot encoded before estimation.\n\n"
-                "The 'positive_class' setting selects the y category treated as "
-                "the positive outcome.\n\n"
+                "Fits a logistic regression model for a binary outcome using "
+                "numerical and/or categorical covariates. The dependent "
+                "variable is converted to binary by assigning 1 to the "
+                "selected positive class and 0 to all other classes. "
+                "Categorical covariates are one-hot encoded before estimation.\n\n"
+                "The model includes an intercept and estimates coefficients by "
+                "maximizing the binomial log-likelihood with the logistic link "
+                "function. The positive class is selected using the "
+                "positive_class parameter.\n\n"
                 "The result includes coefficients, standard errors, z-scores, "
                 "p-values, confidence intervals, degrees of freedom, pseudo "
-                "R-squared values, log-likelihoods, AIC, and BIC."
+                "R-squared values, log-likelihoods, AIC, and BIC.\n\n"
+                "Reference behavior is aligned with statsmodels logistic "
+                "regression using smf.logit(formula, data).fit(method='newton') "
+                "for a model with an intercept. The method computes the same "
+                "model quantities from aggregated gradient, Hessian, and "
+                "log-likelihood statistics without sharing raw data."
             ),
             label="Logistic Regression",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Dependent variable (binary)",
+                    label="Outcome",
                     desc="Nominal outcome converted using the positive class.",
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
@@ -69,7 +77,7 @@ class LogisticRegression(Algorithm):
                     max_count=1,
                 ),
                 x=specs.InputDataSpecification(
-                    label="Covariates (independent)",
+                    label="Covariates",
                     desc="Numerical or categorical covariates.",
                     types=[
                         specs.InputDataType.INT,
@@ -85,8 +93,8 @@ class LogisticRegression(Algorithm):
             ),
             parameters={
                 "positive_class": specs.ParameterSpecification(
-                    label="Positive class (y=1)",
-                    desc="Outcome category treated as the positive class.",
+                    label="Positive class",
+                    desc="Outcome category treated as the positive outcome.",
                     types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
                     required=True,
                     multiple=False,

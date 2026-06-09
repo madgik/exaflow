@@ -22,16 +22,22 @@ class PearsonCorrelation(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="pearson_correlation",
-            desc="Pearson correlation with p-values and confidence intervals.",
+            desc="Pearson correlations for selected numerical variables.",
             documentation=(
                 "Compute Pearson correlations for all pairs between the primary "
                 "variables and optional secondary variables. When no secondary "
                 "variables are provided, correlations are computed among the "
-                "primary variables.\n\n"
+                "primary variables. Missing values are handled by the selected "
+                "preprocessing step before correlations are computed.\n\n"
                 "The 'alpha' setting controls the confidence level for "
                 "correlation coefficient intervals. Default is 0.95.\n\n"
                 "The result includes correlation coefficients, p-values, "
-                "confidence intervals, and observation counts."
+                "confidence intervals, and observation counts.\n\n"
+                "Reference behavior is aligned with standard Pearson product-"
+                "moment correlation methodology as exposed by scipy.stats. "
+                "The method computes the correlation matrix and inferential "
+                "quantities from aggregated sufficient statistics without "
+                "sharing raw data."
             ),
             label="Pearson Correlation",
             enabled=True,
@@ -39,14 +45,14 @@ class PearsonCorrelation(Algorithm):
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Variables",
-                    desc="Numerical variables for the primary axis of the correlation matrix.",
+                    desc="Numerical variables for the primary correlation axis.",
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
                 ),
                 x=specs.InputDataSpecification(
-                    label="Covariates (optional)",
-                    desc="Optional numerical variables for the secondary axis. If empty, uses the same variables.",
+                    label="Additional variables",
+                    desc="Optional numerical variables for the secondary axis.",
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=False,

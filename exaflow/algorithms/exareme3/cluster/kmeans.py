@@ -19,24 +19,33 @@ class KMeans(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="kmeans",
-            desc="K-Means clustering for numerical variables.",
+            desc="K-means clustering for numerical variables.",
             documentation=(
-                "Cluster selected numerical variables with K-Means using "
-                "aggregation-server-backed initialization.\n\n"
-                "The 'k' setting controls the number of clusters. Default is 4.\n\n"
-                "The 'maxiter' setting controls the maximum number of fitting "
-                "iterations. Default is 1.\n\n"
-                "The 'tol' setting controls the convergence tolerance. Default "
-                "is 0.01.\n\n"
-                "The result includes cluster assignments and fitted cluster "
-                "centers."
+                "Partitions observations into k clusters based on selected "
+                "numerical variables. Cluster centers are initialized from the "
+                "global feature ranges and refined with Lloyd iterations.\n\n"
+                "The k parameter controls the number of clusters. The maxiter "
+                "parameter controls the maximum number of fitting iterations. "
+                "The tol parameter controls the convergence tolerance, based "
+                "on the Frobenius norm of the cluster-center update.\n\n"
+                "At each iteration, observations are assigned to the nearest "
+                "cluster center using squared Euclidean distance. New centers "
+                "are computed from aggregated cluster-wise sums and counts. "
+                "Empty clusters are reset to the origin.\n\n"
+                "Reference behavior is aligned with classical Lloyd K-means, "
+                "as exposed by scikit-learn KMeans with algorithm='lloyd'. "
+                "This method uses initialization from global feature ranges "
+                "and updates centers from aggregated cluster-wise sums and "
+                "counts without sharing raw data.\n\n"
+                "The result includes the total number of observations used for "
+                "fitting and the fitted cluster centers."
             ),
-            label="K-Means",
+            label="K-means",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="y",
+                    label="Variables",
                     desc="Numerical variables used for clustering.",
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
@@ -45,7 +54,7 @@ class KMeans(Algorithm):
             ),
             parameters={
                 "k": specs.ParameterSpecification(
-                    label="k",
+                    label="Number of clusters",
                     desc="Number of clusters to fit.",
                     types=[specs.ParameterType.INT],
                     required=True,
@@ -55,7 +64,7 @@ class KMeans(Algorithm):
                     max=100,
                 ),
                 "maxiter": specs.ParameterSpecification(
-                    label="maxiter",
+                    label="Maximum iterations",
                     desc="Maximum number of fitting iterations.",
                     types=[specs.ParameterType.INT],
                     required=True,
@@ -65,8 +74,8 @@ class KMeans(Algorithm):
                     max=100,
                 ),
                 "tol": specs.ParameterSpecification(
-                    label="tol",
-                    desc="Convergence tolerance for fitting.",
+                    label="Convergence tolerance",
+                    desc="Tolerance used to decide convergence.",
                     types=[specs.ParameterType.REAL],
                     required=True,
                     multiple=False,

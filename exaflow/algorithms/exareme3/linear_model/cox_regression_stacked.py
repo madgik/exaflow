@@ -63,10 +63,10 @@ class StackedCoxRegression(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="cox_regression_stacked",
-            desc=("Federated stacked Cox-like regression for time-to-event data."),
+            desc="Stacked Cox-style regression for time-to-event data.",
             documentation=(
-                "Fit a stacked Cox-like model across workers using survival "
-                "stacking and federated logistic regression. Select the "
+                "Fits a stacked Cox-style model using survival stacking and "
+                "logistic regression. Select the "
                 "follow-up duration in y, then select the event variable and "
                 "covariates in x. The 'event_var' setting identifies which x "
                 "variable is used to build the binary event vector; all other "
@@ -83,12 +83,20 @@ class StackedCoxRegression(Algorithm):
                 "schema cannot expose 'positive_class' as a dynamic dropdown "
                 "from the selected event variable.\n\n"
                 "Categorical covariates are one-hot encoded before stacking. "
+                "The time_grid_strategy parameter controls how event-time "
+                "bins are constructed, and n_time_bins is used only for the "
+                "uniform time-grid strategy.\n\n"
                 "The result includes covariate coefficients, approximate "
                 "hazard ratios, Wald statistics, p-values, confidence "
                 "intervals, pseudo R-squared values, information criteria, and "
-                "the number of time bins used."
+                "the number of time bins used.\n\n"
+                "Reference behavior is aligned with discrete-time survival "
+                "stacking methodology using logistic regression on expanded "
+                "risk-set rows. It is not identical to classical Cox partial "
+                "likelihood; use the classical Cox option when exact Cox "
+                "partial-likelihood behavior is required."
             ),
-            label="Cox Regression Stacked",
+            label="Stacked Cox Regression",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
