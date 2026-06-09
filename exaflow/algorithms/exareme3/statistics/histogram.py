@@ -8,7 +8,6 @@ from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated import FederatedDescriptiveStatistics
-from exaflow.worker_communication import InsufficientDataError
 
 HistogramBin = Union[float, str]
 
@@ -37,6 +36,10 @@ class Histogram(Algorithm):
                 "are privacy-masked according to worker privacy rules.\n\n"
                 "The 'bins' setting controls the number of bins for numerical "
                 "targets and is ignored for categorical targets. Default is 20.\n\n"
+                "The 'histogram_type' setting controls the binning strategy for "
+                "numerical targets: 'simple' (default) divides the range into "
+                "equal-width bins, 'wilkinson' snaps bin edges to nice numbers. "
+                "Ignored for categorical targets.\n\n"
                 "The result includes histogram bins or categories and their "
                 "counts, with grouped series when grouping variables are provided."
             ),
@@ -78,6 +81,22 @@ class Histogram(Algorithm):
                     min=1,
                     max=100,
                 ),
+                "histogram_type": specs.ParameterSpecification(
+                    label="Histogram type",
+                    desc=(
+                        "Binning strategy for numerical histograms: "
+                        "'simple' for equal-width bins, "
+                        "'wilkinson' for nice-number boundaries."
+                    ),
+                    types=[specs.ParameterType.TEXT],
+                    required=False,
+                    multiple=False,
+                    default="simple",
+                    enums=specs.ParameterEnumSpecification(
+                        type=specs.ParameterEnumType.LIST,
+                        source=["wilkinson", "simple"],
+                    ),
+                ),
             },
             type=specs.AlgorithmType.EXAREME3,
             components=[specs.ComponentType.AGGREGATION_SERVER],
@@ -92,12 +111,24 @@ class Histogram(Algorithm):
         if bins is None:
             bins = default_bins
 
+        default_histogram_type = "simple"
+        histogram_type = self.get_parameter("histogram_type", default_histogram_type)
+        if histogram_type is None:
+            histogram_type = default_histogram_type
+
+        is_integer = (
+            self.metadata.get(y_var, {}).get("sql_type")
+            == specs.InputDataType.INT.value
+        )
+
         payload = self.run_local_udf(
             func=local_step,
             kw_args={
                 "y_var": y_var,
                 "x_vars": x_vars,
                 "bins": bins,
+                "histogram_type": histogram_type,
+                "is_integer": is_integer,
             },
             identical_results=True,
         )
@@ -132,17 +163,13 @@ class Histogram(Algorithm):
 
 
 @exareme3_udf(with_aggregation_server=True)
-def local_step(agg_client, data, y_var, x_vars, metadata, bins):
+def local_step(
+    agg_client, data, y_var, x_vars, metadata, bins, histogram_type, is_integer
+):
     from exaflow.worker import config as worker_config
 
     selected_columns = list(dict.fromkeys([y_var, *x_vars]))
-    # Align with missing-values drop strategy: exclude rows with missing inputs
-    # across all variables participating in the histogram computation.
-    data = data[selected_columns].dropna(axis=0, how="any")
-    _check_min_rows_or_raise(
-        data=data,
-        min_required=worker_config.privacy.minimum_row_count,
-    )
+    data = data[selected_columns]
 
     metadata_subset = {var: metadata[var] for var in {y_var, *x_vars}}
     min_row_count = worker_config.privacy.minimum_row_count
@@ -153,14 +180,8 @@ def local_step(agg_client, data, y_var, x_vars, metadata, bins):
         x_vars=x_vars,
         metadata=metadata_subset,
         bins=bins,
+        histogram_type=histogram_type,
+        is_integer=is_integer,
         min_row_count=min_row_count,
     )
     return result.as_payload()
-
-
-def _check_min_rows_or_raise(*, data, min_required: int) -> None:
-    num_rows = len(data)
-    if num_rows < min_required:
-        raise InsufficientDataError(
-            f"Insufficient data returned {num_rows} rows; minimum required is {min_required}."
-        )

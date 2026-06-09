@@ -3,8 +3,8 @@ import pandas as pd
 import pytest
 
 from exaflow.algorithms.federated.sql.sql import FederatedSQL
-from exaflow.algorithms.federated.statistics.histogram_base import CategoricalHistogram
-from exaflow.algorithms.federated.statistics.histogram_base import SimpleHistogram
+from exaflow.algorithms.federated.statistics.histogram import CategoricalHistogram
+from exaflow.algorithms.federated.statistics.histogram import SimpleHistogram
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )

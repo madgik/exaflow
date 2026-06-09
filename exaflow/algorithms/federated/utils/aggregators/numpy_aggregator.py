@@ -193,7 +193,7 @@ class NumpyAggregator:
             containing the element-wise nanmin across all clients.
         """
         if array.size == 0:
-            local_min = np.array(np.inf)
+            local_min = np.full(array.shape[1:] or (), np.inf)
         else:
             local_min = np.nanmin(np.where(np.isnan(array), np.inf, array), axis=0)
         result = self.client.min(local_min)
@@ -213,7 +213,7 @@ class NumpyAggregator:
             containing the element-wise nanmax across all clients.
         """
         if array.size == 0:
-            local_max = np.array(-np.inf)
+            local_max = np.full(array.shape[1:] or (), -np.inf)
         else:
             local_max = np.nanmax(np.where(np.isnan(array), -np.inf, array), axis=0)
         result = self.client.max(local_max)

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from exaflow.algorithms.federated.statistics.histogram_base import SimpleHistogram
+from exaflow.algorithms.federated.statistics.histogram import SimpleHistogram
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,

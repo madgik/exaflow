@@ -7,7 +7,7 @@ import pandas as pd
 
 from exaflow.algorithms.federated.statistics.describe import DescribeResult
 from exaflow.algorithms.federated.statistics.describe import FederatedDescribe
-from exaflow.algorithms.federated.statistics.histogram import FederatedHistogram
+from exaflow.algorithms.federated.statistics.histogram import FederatedGroupedHistogram
 from exaflow.algorithms.federated.statistics.histogram import HistogramResult
 from exaflow.algorithms.federated.statistics.pearson_correlation import (
     FederatedPearsonCorrelation,
@@ -41,7 +41,7 @@ class FederatedDescriptiveStatistics:
     def __init__(self, agg_client):
         self.agg_client = agg_client
         self._describe = FederatedDescribe(agg_client)
-        self._hist = FederatedHistogram(agg_client)
+        self._hist = FederatedGroupedHistogram(agg_client)
         self._pearson = FederatedPearsonCorrelation(agg_client)
 
     def describe(
@@ -70,15 +70,29 @@ class FederatedDescriptiveStatistics:
         y_var: str,
         x_vars: List[str],
         metadata: Dict,
-        bins: int,
+        bins: int = 20,
+        histogram_type: str = "wilkinson",
+        is_integer: bool = False,
         min_row_count: int,
     ) -> HistogramResult:
-        return self._hist.hist(
+        """Compute federated histogram with discovery-based categorization.
+
+        Always discovers actual categories from data, ensuring no values are
+        silently dropped when metadata enumerations are outdated. Supports
+        both numerical (Wilkinson/Simple binning) and categorical histograms
+        with optional grouping and privacy masking.
+
+        ``is_integer`` tells the Wilkinson strategy that ``y_var`` holds
+        integer values, so it never produces a sub-unit bin step.
+        """
+        return self._hist.histogram(
             data=data,
             y_var=y_var,
             x_vars=x_vars,
             metadata=metadata,
             bins=bins,
+            histogram_type=histogram_type,
+            is_integer=is_integer,
             min_row_count=min_row_count,
         )
 
