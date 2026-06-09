@@ -3,8 +3,8 @@ import math
 import numpy as np
 import pytest
 
-from exaflow.algorithms.federated.statistics.histogram_base import WilkinsonHistogram
-from exaflow.algorithms.federated.statistics.histogram_base import _wilkinson_step
+from exaflow.algorithms.federated.statistics.histogram import WilkinsonHistogram
+from exaflow.algorithms.federated.statistics.histogram import _wilkinson_step
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
@@ -147,19 +147,84 @@ class TestWilkinsonHistogram(FederatedAlgorithmTest):
             return
         self.run_comparison(X=x, y=np.zeros(len(x)), n_workers=3, bins=case["bins"])
 
-    def test_bin_edges_are_nice_numbers(self):
-        """Verify bin edges align to the Wilkinson step (multiples of 1/2/5 × 10^n)."""
-        x = np.array(list(range(0, 101)), dtype=float)
-        step, new_min, new_max, new_num_bins = _wilkinson_step(0.0, 100.0, 10)
-        assert step in {1, 2, 5, 10, 20, 50, 100}
-        assert new_min % step == pytest.approx(0)
-        assert new_max % step == pytest.approx(0)
-
     def test_actual_bins_may_differ_from_requested(self):
         """Confirm that snapping can change the bin count relative to the hint."""
         # [0, 1] with 7 bins → raw_step ≈ 0.143 → snaps to step=0.1 → 10 bins
         _, _, _, new_num_bins = _wilkinson_step(0.0, 1.0, 7)
         assert new_num_bins != 7
+
+    @pytest.mark.parametrize(
+        "data_min, data_max, num_bins, min_step, expected_step",
+        [
+            (0.0, 7.0, 20, 0.0, 0.2),
+            (0.0, 7.0, 20, 1.0, 1.0),
+            (0.0, 100.0, 10, 1.0, 10.0),
+            (3.0, 3.0, 5, 1.0, 1.0),
+        ],
+        ids=[
+            "no_floor_allows_sub_unit_step",
+            "floor_raises_sub_unit_step_to_one",
+            "floor_below_natural_step_is_a_noop",
+            "degenerate_range_respects_floor",
+        ],
+    )
+    def test_min_step_governs_resulting_step(
+        self, data_min, data_max, num_bins, min_step, expected_step
+    ):
+        """min_step floors the step from below without overriding a larger
+        natural step — including for a zero-width (degenerate) range."""
+        step, *_ = _wilkinson_step(data_min, data_max, num_bins, min_step=min_step)
+        assert step == expected_step
+
+    @pytest.mark.parametrize(
+        "data_min, data_max, expect_integer_edges",
+        [
+            (0.0, 1.0, True),
+            (1.0, 5.0, True),
+            (0.0, 7.0, True),
+            (3.0, 15.0, True),
+            (0.0, 1_000_000.0, False),
+        ],
+        ids=["binary", "likert", "small_range", "gcs_admiss", "wide_range_unaffected"],
+    )
+    def test_min_step_uses_integer_edges_when_step_collapses_to_one(
+        self, data_min, data_max, expect_integer_edges
+    ):
+        """When min_step=1.0 collapses the step to exactly 1, bin edges must
+        be whole numbers with one bin per integer value. Wider steps keep the
+        regular nice-number alignment where multiple integers per bin is expected."""
+        step, new_min, new_max, new_num_bins = _wilkinson_step(
+            data_min, data_max, 20, min_step=1.0
+        )
+        if expect_integer_edges:
+            assert step == 1.0
+            assert new_min == math.floor(data_min)
+            assert new_max == math.ceil(data_max) + 1
+            assert new_num_bins == int(new_max - new_min)
+            x = np.arange(data_min, data_max + 1)
+            counts, edges = np.histogram(x, bins=new_num_bins, range=(new_min, new_max))
+            assert np.allclose(edges, np.arange(new_min, new_max + 1))
+            assert counts.tolist() == [1] * len(x), (
+                f"expected one count per distinct integer, got {counts.tolist()}"
+            )
+        else:
+            assert step > 1.0
+            assert new_min % step == 0
+            assert new_max % step == 0
+
+    def test_compute_with_min_step_keeps_integers_distinct(self):
+        """WilkinsonHistogram.compute must thread min_step through so that
+        each integer value gets counted in its own bin instead of being
+        merged with its neighbour."""
+        coordinator = AggregationCoordinator(n_workers=1)
+        agg_client = SimulatedAggClient(worker_id=0, coordinator=coordinator)
+        hist = WilkinsonHistogram(NumpyAggregator(agg_client))
+        x = np.array(list(range(0, 8)), dtype=float)
+
+        counts, bin_edges = hist.compute(x, num_bins=20, min_step=1.0)
+
+        assert np.allclose(bin_edges, np.arange(0, 9))
+        assert counts.tolist() == [1.0] * len(x)
 
     def test_invalid_ndim(self):
         x = np.array([[1.0, 2.0], [3.0, 4.0]])
