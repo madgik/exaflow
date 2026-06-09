@@ -41,6 +41,16 @@
   `exaflow/algorithms/exareme3`.
 - Federated algorithm core logic lives under `exaflow/algorithms/federated`.
 - Algorithm specifications are code-defined through `get_specification()`.
+- Specification metadata should be UI-ready: compact standard `label`,
+  one-sentence method-level `desc`, and detailed parent `documentation` for
+  formulas, defaults, ranges, options, assumptions, outputs, and reference
+  anchors. Avoid platform/execution terms in user-facing text; prefer neutral
+  wording such as "computed from aggregated sufficient statistics without
+  sharing raw data" where relevant.
+- Input labels should be UI-facing, not raw identifiers such as `x`, `y`,
+  `var`, or `vars`. Parameter descriptions should say what the setting does and
+  should not repeat schema shape, options, defaults, min/max bounds, or
+  requiredness.
 - UDF helpers are registered through `@exareme3_udf`.
 - New algorithm work should use `.agents/skills/exaflow-algorithm-scaffold` and
   `.agents/skills/exaflow-algorithm-validate`.

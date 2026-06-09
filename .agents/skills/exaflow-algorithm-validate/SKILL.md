@@ -91,13 +91,22 @@ Runtime checks:
 
 Manual specification review:
 
-- `desc` values should be compact UI copy, 1-2 lines max.
+- `label` values should be compact, standard, user-facing, and not
+  implementation-specific.
+- Algorithm/preprocessing `desc` values should be compact UI copy: one concise
+  method-level sentence suitable for cards/tooltips.
 - Detailed formulas/defaults/ranges, parameter option lists, and output
   interpretation belong in the parent algorithm/preprocessing step
-  `documentation` field.
+  `documentation` field, along with important assumptions and careful reference
+  anchors to packages or standard methodology where applicable.
+- User-facing spec text should avoid platform/execution terms such as `Exaflow`,
+  `exareme`, `MIP`, `worker`, `engine`, `federated implementation`, and
+  `aggregation-server-backed`.
+- Input labels should be UI-facing and should not be raw identifiers such as
+  `x`, `y`, `var`, or `vars`.
 - Parameter `desc` values should describe what the setting does, not restate
-  schema shape, requiredness, or dictionary structure. Do not add
-  parameter-level `documentation`.
+  schema shape, options, defaults, min/max bounds, requiredness, or dictionary
+  structure. Do not add parameter-level `documentation`.
 - Omit explicit optional `None` specification arguments such as
   `parameters=None`, `validation=None`, `enumslen=None`, `default=None`,
   `enums=None`, `dict_values_enums=None`, `min=None`, and `max=None`.

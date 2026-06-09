@@ -36,30 +36,33 @@ class NaiveBayesGaussianCV(Algorithm):
             name="naive_bayes_gaussian_cv",
             desc="Gaussian Naive Bayes evaluated with K-fold cross-validation.",
             documentation=(
-                "Evaluate a Gaussian Naive Bayes classifier with K-fold "
-                "cross-validation across workers. Features are treated as "
-                "numerical and missing values are not imputed. Class labels are "
-                "taken from metadata and aggregated securely across workers.\n\n"
+                "Evaluates a Gaussian Naive Bayes classifier with K-fold "
+                "cross-validation for a nominal outcome and numerical "
+                "features. Missing values are not imputed by the classifier.\n\n"
                 "The 'n_splits' setting controls the number of cross-validation "
                 "folds. It must be between 2 and 20. Default is 5.\n\n"
                 "The result includes multiclass classification metrics and a "
-                "summary across folds."
+                "summary across folds.\n\n"
+                "Reference behavior is aligned with scikit-learn GaussianNB "
+                "and KFold cross-validation methodology, using aggregated "
+                "class counts, means, variances, and confusion matrices "
+                "without sharing raw data."
             ),
             label="Gaussian Naive Bayes (K-fold CV)",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Variable (dependent)",
-                    desc="A unique nominal variable.",
+                    label="Outcome",
+                    desc="Nominal outcome variable.",
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     max_count=1,
                 ),
                 x=specs.InputDataSpecification(
-                    label="Covariates (independent)",
-                    desc="One or more numerical variables.",
+                    label="Features",
+                    desc="Numerical features used for classification.",
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
@@ -67,7 +70,7 @@ class NaiveBayesGaussianCV(Algorithm):
             ),
             parameters={
                 "n_splits": specs.ParameterSpecification(
-                    label="Number of splits",
+                    label="Number of folds",
                     desc="Fold count used for cross-validation.",
                     types=[specs.ParameterType.INT],
                     required=True,

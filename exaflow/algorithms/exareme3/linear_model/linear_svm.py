@@ -25,23 +25,28 @@ class LinearSVM(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="linear_svm",
-            desc="Linear SVM with averaged worker parameters.",
+            desc="Linear support vector machine for classification with numerical features.",
             documentation=(
-                "Train a linear support vector machine locally on each worker and "
-                "average the learned coefficients and intercept across workers.\n\n"
-                "The 'gamma' setting is passed to scikit-learn's SVC with a "
-                "linear kernel. Default is 0.1.\n\n"
-                "The 'C' setting controls regularization strength as the penalty "
-                "for misclassification. Default is 1.0.\n\n"
+                "Trains a linear support vector machine for a categorical "
+                "target using selected numerical features. A linear SVC model "
+                "is fitted separately on each dataset, then learned "
+                "coefficients and intercepts are averaged.\n\n"
+                "The gamma parameter is passed to scikit-learn SVC with a "
+                "linear kernel. The C parameter controls the misclassification "
+                "penalty and regularization strength.\n\n"
                 "The result includes the total observation count, averaged "
-                "weights, and averaged intercept."
+                "weights, and averaged intercept.\n\n"
+                "Reference behavior is aligned with scikit-learn SVC using "
+                "kernel='linear' for each local fit. This method differs from "
+                "a single pooled SVC because it averages fitted parameters "
+                "rather than optimizing one global margin."
             ),
             label="Linear SVM",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Target classes",
+                    label="Target",
                     desc="Nominal target variable defining the classes.",
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
@@ -67,7 +72,7 @@ class LinearSVM(Algorithm):
                     max=1.0,
                 ),
                 "C": specs.ParameterSpecification(
-                    label="C",
+                    label="Regularization",
                     desc="Regularization penalty for misclassification.",
                     types=[specs.ParameterType.REAL],
                     required=True,

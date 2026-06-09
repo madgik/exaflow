@@ -54,9 +54,9 @@ class LMM(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="lmm",
-            desc="Linear mixed model with a random intercept.",
+            desc="Linear mixed model for a numerical outcome with a random intercept.",
             documentation=(
-                "Fit a linear mixed model for a continuous outcome with fixed "
+                "Fits a linear mixed model for a continuous outcome with fixed "
                 "covariate effects and a single random-intercept grouping "
                 "variable.\n\n"
                 "The 'grouping_var' setting selects the variable from x used as "
@@ -64,14 +64,18 @@ class LMM(Algorithm):
                 "The result includes fixed-effect coefficients, standard errors, "
                 "z-scores, p-values, confidence intervals, random-effect "
                 "variance, residual variance, log-likelihood, AIC, BIC, "
-                "convergence status, and iteration count."
+                "convergence status, and iteration count.\n\n"
+                "Reference behavior is aligned with standard random-intercept "
+                "linear mixed-model methodology, similar to statsmodels MixedLM "
+                "for a single grouping factor. Model quantities are computed "
+                "from aggregated sufficient statistics without sharing raw data."
             ),
             label="Linear Mixed Model",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Outcome (numerical)",
+                    label="Outcome",
                     desc=(
                         "Single numerical dependent variable. Continuous or "
                         "integer-valued outcomes are supported when a linear "

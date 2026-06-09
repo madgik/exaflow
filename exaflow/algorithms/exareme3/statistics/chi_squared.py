@@ -28,19 +28,26 @@ class ChiSquared(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="chi_squared",
-            desc="Chi-squared test of independence for categorical variables.",
+            desc="Chi-squared test of independence for two categorical variables.",
             documentation=(
-                "Test whether two categorical variables are independent using "
-                "the chi-squared test.\n\n"
-                "The result includes the contingency table, chi-squared "
-                "statistic, p-value, degrees of freedom, and expected counts."
+                "Tests whether two categorical variables are independent by "
+                "forming a contingency table and comparing observed counts "
+                "with expected counts under independence. Rows with missing "
+                "values in either selected variable are excluded.\n\n"
+                "The result includes the chi-squared statistic, p-value, "
+                "degrees of freedom, expected counts, and category labels for "
+                "both variables.\n\n"
+                "Reference behavior is aligned with scipy.stats.chi2_contingency "
+                "for a contingency table built from the selected variables. "
+                "The method computes the table and expected counts from "
+                "aggregated category counts without sharing raw data."
             ),
-            label="Chi-Squared Test",
+            label="Chi-squared Test",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Outcome (dependent)",
+                    label="Outcome",
                     desc="Categorical outcome variable.",
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
@@ -48,7 +55,7 @@ class ChiSquared(Algorithm):
                     max_count=1,
                 ),
                 x=specs.InputDataSpecification(
-                    label="Factor (independent)",
+                    label="Factor",
                     desc="Categorical factor variable.",
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],

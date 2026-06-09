@@ -87,22 +87,27 @@ class LinearRegression(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="linear_regression",
-            desc="Ordinary least squares linear regression.",
+            desc="Ordinary least squares regression for a numerical outcome and covariates.",
             documentation=(
-                "Fit an ordinary least squares (OLS) linear regression model "
-                "across workers. Categorical covariates are dummy-encoded before "
-                "estimation.\n\n"
+                "Fits an ordinary least squares (OLS) linear regression model "
+                "for a numerical outcome using numerical and/or categorical "
+                "covariates. Categorical covariates are one-hot encoded before "
+                "estimation and the model includes an intercept.\n\n"
                 "The result includes global coefficients, standard errors, "
                 "t-tests, p-values, confidence intervals, residual and model "
                 "degrees of freedom, residual standard error, R-squared values, "
-                "F statistic, log-likelihood, AIC, and BIC."
+                "F statistic, log-likelihood, AIC, and BIC.\n\n"
+                "Reference behavior is aligned with statsmodels OLS for a "
+                "model with an intercept. The method computes the same model "
+                "quantities from aggregated cross-products and residual "
+                "statistics without sharing raw data."
             ),
-            label="Linear Regression (OLS)",
+            label="Linear Regression",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Outcome (dependent)",
+                    label="Outcome",
                     desc="Single numerical outcome variable.",
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
@@ -110,7 +115,7 @@ class LinearRegression(Algorithm):
                     max_count=1,
                 ),
                 x=specs.InputDataSpecification(
-                    label="Covariates (independent)",
+                    label="Covariates",
                     desc="Numerical or categorical covariates.",
                     types=[
                         specs.InputDataType.REAL,

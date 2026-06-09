@@ -22,7 +22,7 @@ class TTestPaired(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="ttest_paired",
-            desc="Paired t-test for two related measurements.",
+            desc="Paired-samples t-test comparing two related numerical measurements.",
             documentation=(
                 "Compare the mean of paired differences between two related "
                 "numerical measurements. Degrees of freedom are n - 1, and "
@@ -33,15 +33,19 @@ class TTestPaired(Algorithm):
                 "confidence intervals. Default is 0.05.\n\n"
                 "The result includes the t statistic, p-value, confidence "
                 "interval, mean difference, standard error of the difference, "
-                "degrees of freedom, and Cohen's d."
+                "degrees of freedom, and Cohen's d.\n\n"
+                "Reference behavior is aligned with scipy.stats.ttest_rel "
+                "paired t-test methodology, with additional confidence "
+                "interval and effect-size reporting computed from aggregated "
+                "paired-difference statistics without sharing raw data."
             ),
-            label="Student's Paired T-Test",
+            label="Paired t-test",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Measurement 1",
-                    desc="First numeric measurement (paired with Measurement 2).",
+                    desc="First numerical measurement in each pair.",
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
@@ -49,7 +53,7 @@ class TTestPaired(Algorithm):
                 ),
                 x=specs.InputDataSpecification(
                     label="Measurement 2",
-                    desc="Second numeric measurement (paired with Measurement 1).",
+                    desc="Second numerical measurement in each pair.",
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
@@ -58,7 +62,7 @@ class TTestPaired(Algorithm):
             ),
             parameters={
                 "alt_hypothesis": specs.ParameterSpecification(
-                    label="Alternative Hypothesis",
+                    label="Alternative hypothesis",
                     desc="Alternative hypothesis for the paired difference.",
                     types=[specs.ParameterType.TEXT],
                     required=True,
@@ -70,8 +74,8 @@ class TTestPaired(Algorithm):
                     ),
                 ),
                 "alpha": specs.ParameterSpecification(
-                    label="Alpha",
-                    desc="Significance level for the test.",
+                    label="Significance level",
+                    desc="Significance level used for confidence intervals.",
                     types=[specs.ParameterType.REAL],
                     required=True,
                     multiple=False,

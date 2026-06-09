@@ -39,16 +39,15 @@ class GLMMOrdinal(Algorithm):
         return specs.AlgorithmSpecification(
             name="glmm_ordinal",
             desc=(
-                "Federated ordinal generalized linear mixed model with one "
-                "random-intercept grouping variable for ordered categorical "
-                "or integer-coded ordered outcomes. This model is not a "
-                "general-purpose count model."
+                "Ordinal generalized linear mixed model with a random "
+                "intercept for ordered outcomes."
             ),
             documentation=(
-                "Fit an ordinal generalized linear mixed model with fixed "
+                "Fits an ordinal generalized linear mixed model with fixed "
                 "covariate effects and a single random-intercept grouping "
                 "variable. The dependent variable categories are interpreted "
-                "using the explicitly provided order.\n\n"
+                "using the explicitly provided order. This model is not a "
+                "general-purpose count model.\n\n"
                 "The 'grouping_var' setting selects the variable from x used as "
                 "the random-intercept grouping factor.\n\n"
                 "The 'category_order' setting provides y categories from lowest "
@@ -56,14 +55,18 @@ class GLMMOrdinal(Algorithm):
                 "The result includes threshold and fixed-effect coefficients, "
                 "standard errors, z-scores, p-values, confidence intervals, "
                 "random-effect variance, log-likelihood, AIC, BIC, convergence "
-                "status, and iteration count."
+                "status, and iteration count.\n\n"
+                "Reference behavior is aligned with standard ordinal "
+                "random-intercept GLMM methodology, similar to cumulative-link "
+                "mixed models. Model quantities are computed from aggregated "
+                "sufficient statistics without sharing raw data."
             ),
             label="Ordinal GLMM",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Dependent variable (ordered outcome)",
+                    label="Ordered outcome",
                     desc=(
                         "A unique ordered categorical or integer-coded ordered "
                         "outcome. The category order must be provided "
@@ -109,11 +112,7 @@ class GLMMOrdinal(Algorithm):
                 ),
                 "category_order": specs.ParameterSpecification(
                     label="Ordinal category order",
-                    desc=(
-                        "Ordered list of outcome levels from lowest to highest. "
-                        "Use this for ordered categorical labels or integer-coded "
-                        "ordered/discrete levels."
-                    ),
+                    desc="Ordered outcome levels from lowest to highest.",
                     types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
                     required=True,
                     multiple=True,

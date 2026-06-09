@@ -23,24 +23,32 @@ class PCAWithTransformation(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="pca_with_transformation",
-            desc="Principal component analysis with variable transformations.",
+            desc="Principal component analysis after optional variable transformations.",
             documentation=(
-                "Compute principal components for selected numerical variables "
+                "Computes principal components for selected numerical variables "
                 "after optional per-variable transformations. Principal "
                 "components can represent the original variables with reduced "
                 "dimensionality.\n\n"
-                "The 'data_transformation' setting selects transformations such "
-                "as log, exp, center, or standardize for selected variables.\n\n"
+                "The data_transformation parameter selects transformations "
+                "such as log, exp, center, or standardize for selected "
+                "variables. Centering and standardization use global means and "
+                "standard deviations; log transformation requires positive "
+                "values.\n\n"
                 "The result includes the observation count, eigenvalues, and "
-                "eigenvectors."
+                "eigenvectors.\n\n"
+                "Reference behavior is aligned with covariance-based PCA "
+                "methodology as exposed by scikit-learn PCA, after applying "
+                "the requested transformations. Covariance quantities are "
+                "computed from aggregated sufficient statistics without "
+                "sharing raw data."
             ),
-            label="Principal Component Analysis (PCA)",
+            label="Principal Component Analysis",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
                     label="Variables",
-                    desc="A list of numerical variables.",
+                    desc="Numerical variables used to compute principal components.",
                     types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                     stattypes=[specs.InputDataStatType.NUMERICAL],
                     required=True,
@@ -48,7 +56,7 @@ class PCAWithTransformation(Algorithm):
             ),
             parameters={
                 "data_transformation": specs.ParameterSpecification(
-                    label="Data Transformation",
+                    label="Data transformation",
                     desc="Transformation applied to each selected variable.",
                     types=[specs.ParameterType.DICT],
                     required=False,

@@ -58,16 +58,14 @@ class ClassicalCoxRegression(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="cox_regression_classical",
-            desc=(
-                "Federated Cox proportional hazards regression for time-to-event data."
-            ),
+            desc="Cox proportional hazards regression for time-to-event data.",
             documentation=(
-                "Fit a classical Cox proportional hazards model across workers "
-                "using partial likelihood and Breslow handling of tied event "
-                "times. Select the follow-up duration in y, then select the "
+                "Fits a classical Cox proportional hazards model using partial "
+                "likelihood and Breslow handling of tied event times. Select "
+                "the follow-up duration in y, then select the "
                 "event variable and covariates in x. The 'event_var' setting "
-                "identifies which x variable is used to build the event vector; all other "
-                "selected x variables are modeled as covariates.\n\n"
+                "identifies which x variable is used to build the event vector; "
+                "all other selected x variables are modeled as covariates.\n\n"
                 "The event variable is never one-hot encoded. It is converted "
                 "to a single binary event vector where 1 means the selected "
                 "event occurred and 0 means censoring or any other category. "
@@ -82,7 +80,11 @@ class ClassicalCoxRegression(Algorithm):
                 "Categorical covariates are one-hot encoded before estimation. "
                 "The result includes coefficients, hazard ratios, Wald "
                 "statistics, p-values, 95% confidence intervals, partial "
-                "log-likelihood, and convergence diagnostics."
+                "log-likelihood, and convergence diagnostics.\n\n"
+                "Reference behavior is aligned with standard Cox proportional "
+                "hazards partial-likelihood methodology, using Breslow tie "
+                "handling. Model quantities are computed from aggregated "
+                "sufficient statistics without sharing raw data."
             ),
             label="Cox Proportional Hazards Regression",
             enabled=True,

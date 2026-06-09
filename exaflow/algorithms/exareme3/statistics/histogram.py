@@ -29,11 +29,12 @@ class Histogram(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="histogram",
-            desc="Histogram with optional grouping.",
+            desc="Histogram counts for a numerical or categorical variable, with optional grouping.",
             documentation=(
                 "Compute a histogram for a numerical or categorical target "
                 "variable, optionally grouped by categorical variables. Counts "
-                "are privacy-masked according to worker privacy rules.\n\n"
+                "that do not satisfy the minimum row-count privacy threshold "
+                "are masked.\n\n"
                 "The 'bins' setting controls the number of bins for numerical "
                 "targets and is ignored for categorical targets. Default is 20.\n\n"
                 "The 'histogram_type' setting controls the binning strategy for "
@@ -41,14 +42,19 @@ class Histogram(Algorithm):
                 "equal-width bins, 'wilkinson' snaps bin edges to nice numbers. "
                 "Ignored for categorical targets.\n\n"
                 "The result includes histogram bins or categories and their "
-                "counts, with grouped series when grouping variables are provided."
+                "counts, with grouped series when grouping variables are "
+                "provided.\n\n"
+                "Reference behavior is aligned with standard histogram "
+                "counting methodology. Numerical histograms use selected bin "
+                "boundaries and categorical histograms count observed category "
+                "levels from aggregated counts without sharing raw data."
             ),
             label="Histogram",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Target variable",
+                    label="Variable",
                     desc="Numerical or categorical variable to bin into a histogram.",
                     types=[
                         specs.InputDataType.REAL,
@@ -64,7 +70,7 @@ class Histogram(Algorithm):
                 ),
                 x=specs.InputDataSpecification(
                     label="Grouping variables",
-                    desc="Optional categorical variables used to produce grouped histograms.",
+                    desc="Optional categorical variables for grouped histograms.",
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=False,

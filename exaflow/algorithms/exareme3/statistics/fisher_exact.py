@@ -26,19 +26,24 @@ class FisherExact(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="fisher_exact",
-            desc="Fisher's exact test for categorical variables.",
+            desc="Fisher's exact test for association between two binary categorical variables.",
             documentation=(
-                "Test association between two categorical variables using "
-                "Fisher's exact test.\n\n"
-                "The result includes the contingency table, odds ratio, and "
-                "p-value."
+                "Tests association between two categorical variables by "
+                "building a 2x2 contingency table and applying Fisher's exact "
+                "test. Each selected variable must have exactly two observed "
+                "levels after rows with missing values are excluded.\n\n"
+                "The result includes the odds ratio, p-value, and category "
+                "labels for both variables.\n\n"
+                "Reference behavior is aligned with scipy.stats.fisher_exact "
+                "for a 2x2 contingency table. The method computes the table "
+                "from aggregated category counts without sharing raw data."
             ),
             label="Fisher's Exact Test",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Outcome (dependent)",
+                    label="Outcome",
                     desc="Categorical outcome variable.",
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
@@ -46,7 +51,7 @@ class FisherExact(Algorithm):
                     max_count=1,
                 ),
                 x=specs.InputDataSpecification(
-                    label="Factor (independent)",
+                    label="Factor",
                     desc="Categorical factor variable.",
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],

@@ -27,31 +27,34 @@ class NaiveBayesCategorical(Algorithm):
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
             name="naive_bayes_categorical",
-            desc="Categorical Naive Bayes for nominal features.",
+            desc="Categorical Naive Bayes classification for nominal features.",
             documentation=(
-                "Fit a categorical Naive Bayes classifier across workers. "
-                "Features are ordinal-encoded using metadata category order; "
-                "unknown categories are rejected. Class labels are discovered "
-                "during training and aggregated securely across workers.\n\n"
+                "Fits a categorical Naive Bayes classifier for a nominal "
+                "outcome using nominal features. Features are ordinal-encoded "
+                "using metadata category order; unknown categories are "
+                "rejected.\n\n"
                 "The result includes class labels, class counts, class log "
                 "priors, per-feature category counts, per-feature category log "
-                "probabilities, category labels, and feature names."
+                "probabilities, category labels, and feature names.\n\n"
+                "Reference behavior is aligned with scikit-learn CategoricalNB "
+                "methodology, using aggregated class and category counts "
+                "without sharing raw data."
             ),
             label="Categorical Naive Bayes",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             inputdata=specs.InputDataSpecifications(
                 y=specs.InputDataSpecification(
-                    label="Variable (dependent)",
-                    desc="A unique nominal variable.",
+                    label="Outcome",
+                    desc="Nominal outcome variable.",
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
                     max_count=1,
                 ),
                 x=specs.InputDataSpecification(
-                    label="Covariates (independent)",
-                    desc="One or more nominal variables.",
+                    label="Features",
+                    desc="Nominal features used for classification.",
                     types=[specs.InputDataType.TEXT],
                     stattypes=[specs.InputDataStatType.NOMINAL],
                     required=True,
