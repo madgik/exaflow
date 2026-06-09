@@ -33,6 +33,12 @@ Definition of Done:
   concise method-level `desc`, and detailed parent algorithm/preprocessing step
   `documentation` for formulas/defaults/ranges, option lists, assumptions,
   parameter mechanics, outputs, and careful reference anchors.
+- Human-facing docs under `documentation/algorithms/` use the technical
+  algorithm-doc structure: overview, inputs, method/model, computation without
+  row-level data, aggregated quantities, `### Federated flow` pseudocode,
+  technical decisions, outputs, validation reference, and limitations. The
+  outputs section must match the actual Pydantic response model returned by the
+  wrapper.
 - User-facing spec text avoids platform/execution terms such as `Exaflow`,
   `exareme`, `MIP`, `worker`, `engine`, `federated implementation`, and
   `aggregation-server-backed`; use neutral wording such as "computed from

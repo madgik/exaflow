@@ -138,7 +138,16 @@ Priority order:
 
 ### Documentation
 
-- Canonical algorithm doc: `documentation/algorithms/<algorithm>.md`
+- Canonical algorithm doc: `documentation/algorithms/<algorithm>.md`, except
+  existing display-style exceptions tracked by the validator path map.
+- Human-facing algorithm docs must be technical and implementation-grounded:
+  overview, inputs, method/model, computation without row-level data,
+  aggregated quantities, `### Federated flow` text pseudocode, technical
+  decisions, outputs, validation reference, and limitations.
+- Use one page per runtime algorithm when variants differ materially. Do not
+  create duplicate overview pages that repeat split pages.
+- Derive response fields from the wrapper's Pydantic result model, not from the
+  federated estimator's internal result object.
 - Federated docs index target: `exaflow/algorithms/federated/docs/<algorithm>.md`
 
 ### Optional auto-patching

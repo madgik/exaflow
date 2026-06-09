@@ -28,8 +28,8 @@ PLACEHOLDER_PATTERN = re.compile(
 )
 
 PREFERRED_DOC_PATHS = {
-    "anova_oneway": "documentation/algorithms/ANOVA.md",
-    "anova_twoway": "documentation/algorithms/ANOVA.md",
+    "anova_oneway": "documentation/algorithms/ANOVAOneWay.md",
+    "anova_twoway": "documentation/algorithms/ANOVATwoWay.md",
     "chi_squared": "documentation/algorithms/ChiSquared.md",
     "describe": "documentation/algorithms/Describe.md",
     "fisher_exact": "documentation/algorithms/FisherExact.md",
@@ -39,12 +39,12 @@ PREFERRED_DOC_PATHS = {
     "linear_regression_cv": "documentation/algorithms/LinearRegression.md",
     "logistic_regression": "documentation/algorithms/LogisticRegression.md",
     "logistic_regression_cv": "documentation/algorithms/LogisticRegression.md",
-    "naive_bayes_categorical": "documentation/algorithms/NaiveBayes.md",
-    "naive_bayes_categorical_cv": "documentation/algorithms/NaiveBayes.md",
-    "naive_bayes_gaussian": "documentation/algorithms/NaiveBayes.md",
-    "naive_bayes_gaussian_cv": "documentation/algorithms/NaiveBayes.md",
+    "naive_bayes_categorical": "documentation/algorithms/NaiveBayesCategorical.md",
+    "naive_bayes_categorical_cv": "documentation/algorithms/NaiveBayesCategoricalCV.md",
+    "naive_bayes_gaussian": "documentation/algorithms/NaiveBayesGaussian.md",
+    "naive_bayes_gaussian_cv": "documentation/algorithms/NaiveBayesGaussianCV.md",
     "pca": "documentation/algorithms/PCA.md",
-    "pca_with_transformation": "documentation/algorithms/PCA.md",
+    "pca_with_transformation": "documentation/algorithms/PCAWithTransformation.md",
     "pearson_correlation": "documentation/algorithms/Pearson.md",
     "linear_svm": "documentation/algorithms/SVM.md",
     "ttest_independent": "documentation/algorithms/TtestIndependent.md",

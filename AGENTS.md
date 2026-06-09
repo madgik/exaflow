@@ -158,6 +158,10 @@ ownership. Non-negotiable boundaries:
 - Keep specification metadata UI-ready: compact standard `label`, one concise
   method-level `desc`, and detailed parent `documentation` for formulas,
   defaults, ranges, options, assumptions, outputs, and reference anchors.
+- Keep human-facing algorithm Markdown under `documentation/algorithms/`
+  technical and implementation-grounded. Use one page per runtime algorithm
+  when variants differ materially; do not keep duplicate overview pages that
+  repeat split algorithm pages.
 - Prefer specification-level validation in `exaflow/algorithms/specifications.py`
   over ad-hoc algorithm checks when the constraint is part of the public
   algorithm contract.
@@ -394,6 +398,15 @@ ______________________________________________________________________
   "aligned with" or "methodology consistent with" for packages or methods such
   as `statsmodels`, `scipy.stats`, `scikit-learn`, or standard methodology; do
   not claim exact equivalence when defaults or implementation details differ.
+- **Algorithm Markdown documentation:** Files under `documentation/algorithms/`
+  should use a consistent technical structure: overview, inputs, statistical
+  model/method, computation without row-level data, aggregated quantities,
+  `### Federated flow` text pseudocode, technical decisions, outputs,
+  validation against a reference package or method, and limitations. Inspect the
+  Exareme3 wrapper, federated core, and tests before writing; output fields must
+  match the actual Pydantic response model returned by `.run()`. For variants
+  such as one-way vs two-way ANOVA or Gaussian vs categorical Naive Bayes, prefer
+  separate pages over combined duplicate pages.
 - **User-facing terminology:** Do not mention platform or execution-engine terms
   in user-facing spec text, including "Exaflow", "exareme", "MIP", "worker",
   "engine", "federated implementation", or "aggregation-server-backed". Prefer
