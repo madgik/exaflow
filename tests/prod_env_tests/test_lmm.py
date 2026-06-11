@@ -134,6 +134,24 @@ LMM_CASES = [
     ),
     pytest.param(
         {
+            "name": "composite_dataset_gender_grouping",
+            "request": {
+                "inputdata": {
+                    "y": ["righthippocampus"],
+                    "x": ["lefthippocampus", "dataset", "gender"],
+                    "data_model": "dementia:0.1",
+                    "datasets": ["ppmi0", "ppmi1", "ppmi2"],
+                    "filters": None,
+                },
+                "parameters": {"grouping_var": ["dataset", "gender"]},
+                "test_case_num": 7,
+            },
+            "expected_status": 200,
+        },
+        id="composite_dataset_gender_grouping",
+    ),
+    pytest.param(
+        {
             "name": "grouping_var_missing_from_x",
             "request": {
                 "inputdata": {
@@ -144,12 +162,15 @@ LMM_CASES = [
                     "filters": None,
                 },
                 "parameters": {"grouping_var": "dataset"},
-                "test_case_num": 7,
+                "test_case_num": 8,
             },
             "expected_status": 460,
             "expected_message": (
-                r"Parameter 'grouping_var'.*must match exactly one variable included in 'x'"
+                r"Parameter 'grouping_var'.*must match exactly one variable "
+                r"included in 'x'"
                 r"|Grouping variable.*inputdata \['x'\].*should be one of the following"
+                r"|Parameter 'grouping_var' must match variables included in "
+                r"inputdata 'x'"
             ),
         },
         id="grouping_var_missing_from_x",
@@ -166,10 +187,15 @@ LMM_CASES = [
                     "filters": None,
                 },
                 "parameters": {"grouping_var": "dataset"},
-                "test_case_num": 8,
+                "test_case_num": 9,
             },
             "expected_status": 460,
-            "expected_message": r"Inputdata 'Covariates and grouping variable' should include at least 2 values.",
+            "expected_message": (
+                r"Inputdata 'Covariates and grouping variable' should include "
+                r"at least 2 values."
+                r"|Inputdata 'Covariates and grouping variable' must include at least "
+                r"one fixed-effect covariate."
+            ),
         },
         id="only_grouping_var_no_fixed_left",
     ),
@@ -185,7 +211,7 @@ LMM_CASES = [
                     "filters": None,
                 },
                 "parameters": {"grouping_var": "dataset"},
-                "test_case_num": 9,
+                "test_case_num": 10,
             },
             "expected_status": 460,
             "expected_message": (
@@ -207,7 +233,11 @@ def test_lmm_wrapper(case):
         result = parse_response(response)
 
         assert result["dependent_var"] == case["request"]["inputdata"]["y"][0]
-        assert result["grouping_var"] == case["request"]["parameters"]["grouping_var"]
+        grouping_var = case["request"]["parameters"]["grouping_var"]
+        expected_grouping_var = (
+            grouping_var[0] if len(grouping_var) == 1 else grouping_var
+        )
+        assert result["grouping_var"] == expected_grouping_var
         assert result["indep_vars"][0] == "Intercept"
 
         assert len(result["coefficients"]) == len(result["indep_vars"])
@@ -241,5 +271,8 @@ def test_lmm_wrapper(case):
             "non_dataset_grouping_agegroup",
         }:
             assert result["grouping_var"] != "dataset"
+        if case["name"] == "composite_dataset_gender_grouping":
+            assert "gender" not in result["indep_vars"]
+            assert result["grouping_var"] == ["dataset", "gender"]
     else:
         assert re.search(case["expected_message"], response.text), response.text

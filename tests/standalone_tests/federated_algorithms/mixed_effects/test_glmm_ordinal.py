@@ -37,8 +37,17 @@ from tests.standalone_tests.federated_algorithms.utils.simulated_agg_client impo
 def _assert_results_equal(left, right, atol=5e-6, rtol=5e-6):
     assert np.allclose(left.theta, right.theta, atol=atol, rtol=rtol)
     assert np.allclose(left.params, right.params, atol=atol, rtol=rtol)
+    assert np.allclose(left.bse, right.bse, atol=atol, rtol=rtol)
+    assert np.allclose(left.zvalues, right.zvalues, atol=atol, rtol=rtol)
+    assert np.allclose(left.pvalues, right.pvalues, atol=atol, rtol=rtol)
+    assert np.allclose(left.conf_int_low, right.conf_int_low, atol=atol, rtol=rtol)
+    assert np.allclose(left.conf_int_high, right.conf_int_high, atol=atol, rtol=rtol)
+    assert np.allclose(left.cov_params, right.cov_params, atol=atol, rtol=rtol)
     assert np.allclose(left.cutpoints, right.cutpoints, atol=atol, rtol=rtol)
     assert np.isclose(left.sigma_u2, right.sigma_u2, atol=atol, rtol=rtol)
+    assert np.isclose(left.ll_laplace, right.ll_laplace, atol=atol, rtol=rtol)
+    assert np.isclose(left.aic, right.aic, atol=atol, rtol=rtol)
+    assert np.isclose(left.bic, right.bic, atol=atol, rtol=rtol)
     assert left.nobs == right.nobs
     assert left.n_groups == right.n_groups
     assert left.fit_intercept == right.fit_intercept
@@ -63,6 +72,20 @@ def _assert_behavior(case: GLMMCase, fed, *, X: np.ndarray, y: np.ndarray):
     assert fed.n_iter <= 50
     assert fed.history is not None
     assert len(fed.history) > 0
+    assert fed.bse.shape == fed.params.shape
+    assert fed.zvalues.shape == fed.params.shape
+    assert fed.pvalues.shape == fed.params.shape
+    assert fed.conf_int_low.shape == fed.params.shape
+    assert fed.conf_int_high.shape == fed.params.shape
+    assert fed.cov_params.shape == (fed.params.shape[0], fed.params.shape[0])
+    assert np.all(np.isfinite(fed.bse))
+    assert np.all(np.isfinite(fed.zvalues))
+    assert np.all(np.isfinite(fed.pvalues))
+    assert np.all((fed.pvalues >= 0.0) & (fed.pvalues <= 1.0))
+    assert np.all(fed.conf_int_low <= fed.conf_int_high)
+    assert np.isfinite(fed.ll_laplace)
+    assert np.isfinite(fed.aic)
+    assert np.isfinite(fed.bic)
 
     score_vals = np.array([row["score_norm"] for row in fed.history], dtype=float)
     dtheta_vals = np.array([row["dtheta_max"] for row in fed.history], dtype=float)

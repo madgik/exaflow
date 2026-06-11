@@ -245,12 +245,22 @@ def test_glmm_ordinal_wrapper(case):
         ]
         assert result["indep_vars"][0] == "Intercept"
         assert len(result["coefficients"]) == len(result["indep_vars"])
+        assert len(result["std_err"]) == len(result["indep_vars"])
+        assert len(result["z_stats"]) == len(result["indep_vars"])
+        assert result["pvalue_label"] == "P(>|z|)"
+        assert len(result["pvalues"]) == len(result["indep_vars"])
+        assert len(result["pvalues_display"]) == len(result["indep_vars"])
+        assert len(result["lower_ci"]) == len(result["indep_vars"])
+        assert len(result["upper_ci"]) == len(result["indep_vars"])
         assert len(result["cutpoints"]) == len(result["category_order"]) - 1
         assert result["n_obs"] > 0
         assert result["n_groups"] > 0
         assert result["n_iter"] >= 1
 
         assert "sigma_u2" in result
+        assert "ll_laplace" in result
+        assert "aic" in result
+        assert "bic" in result
         assert "converged" in result
 
         if case["name"] == "multiple_categorical_fixed_effects":

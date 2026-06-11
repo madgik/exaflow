@@ -511,6 +511,17 @@ def algorithms_specs():
                         source=["x"],
                     ),
                 ),
+                "grouping_var": ParameterSpecification(
+                    label="Grouping variable",
+                    desc="Grouping variable",
+                    types=[ParameterType.TEXT],
+                    required=False,
+                    multiple=True,
+                    enums=ParameterEnumSpecification(
+                        type=ParameterEnumType.INPUT_VAR_NAMES,
+                        source=["x"],
+                    ),
+                ),
                 "param_with_type_dict": ParameterSpecification(
                     label="param_with_type_dict",
                     desc="param_with_type_dict",
@@ -816,6 +827,19 @@ def get_parametrization_list_success_cases():
                 parameters={"param_with_enum_type_list_multiple_true": ["a", "c"]},
             ),
             id="parameter enums type list and multiple true",
+        ),
+        pytest.param(
+            "algorithm_with_many_params",
+            AlgorithmRequestDTO(
+                inputdata=AlgorithmInputDataDTO(
+                    data_model="data_model_with_all_cde_types:0.1",
+                    datasets=["sample_dataset1"],
+                    x=["real_cde"],
+                    y=["text_cde_categ"],
+                ),
+                parameters={"grouping_var": "real_cde"},
+            ),
+            id="scalar grouping_var accepted for compatibility",
         ),
         pytest.param(
             "algorithm_with_many_params",

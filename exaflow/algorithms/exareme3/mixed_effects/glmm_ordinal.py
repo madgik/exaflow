@@ -27,13 +27,31 @@ class GLMMOrdinalResult(BaseModel):
     n_obs: int
     n_groups: int
     coefficients: List[float]
+    std_err: List[float]
+    z_stats: List[float]
+    pvalue_label: str
+    pvalues: List[float]
+    pvalues_display: List[str]
+    lower_ci: List[float]
+    upper_ci: List[float]
     cutpoints: List[float]
     sigma_u2: float
+    ll_laplace: float
+    aic: float
+    bic: float
     converged: bool
     n_iter: int
 
 
 class GLMMOrdinal(Algorithm):
+    @staticmethod
+    def _format_pvalue_display(pvalue: float) -> str:
+        if pvalue != pvalue:
+            return "NaN"
+        if pvalue < 0.001:
+            return "<0.001"
+        return f"{pvalue:.3f}"
+
     @classmethod
     def get_specification(cls) -> specs.AlgorithmSpecification:
         return specs.AlgorithmSpecification(
@@ -52,10 +70,10 @@ class GLMMOrdinal(Algorithm):
                 "the random-intercept grouping factor.\n\n"
                 "The 'category_order' setting provides y categories from lowest "
                 "to highest outcome level.\n\n"
-                "The result includes threshold and fixed-effect coefficients, "
-                "standard errors, z-scores, p-values, confidence intervals, "
-                "random-effect variance, log-likelihood, AIC, BIC, convergence "
-                "status, and iteration count.\n\n"
+                "The result includes threshold coefficients, fixed-effect "
+                "coefficients with standard errors, z-scores, p-values, "
+                "confidence intervals, random-effect variance, log-likelihood, "
+                "AIC, BIC, convergence status, and iteration count.\n\n"
                 "Reference behavior is aligned with standard ordinal "
                 "random-intercept GLMM methodology, similar to cumulative-link "
                 "mixed models. Model quantities are computed from aggregated "
@@ -141,6 +159,7 @@ class GLMMOrdinal(Algorithm):
             },
         )
         model_stats = udf_results[0]
+        pvalues = model_stats["pvalues"]
         return GLMMOrdinalResult(
             dependent_var=y_var,
             grouping_var=grouping_var,
@@ -149,8 +168,20 @@ class GLMMOrdinal(Algorithm):
             n_obs=model_stats["n_obs"],
             n_groups=model_stats["n_groups"],
             coefficients=model_stats["coefficients"],
+            std_err=model_stats["std_err"],
+            z_stats=model_stats["z_stats"],
+            pvalue_label="P(>|z|)",
+            pvalues=pvalues,
+            pvalues_display=[
+                self._format_pvalue_display(float(pvalue)) for pvalue in pvalues
+            ],
+            lower_ci=model_stats["lower_ci"],
+            upper_ci=model_stats["upper_ci"],
             cutpoints=model_stats["cutpoints"],
             sigma_u2=model_stats["sigma_u2"],
+            ll_laplace=model_stats["ll_laplace"],
+            aic=model_stats["aic"],
+            bic=model_stats["bic"],
             converged=model_stats["converged"],
             n_iter=model_stats["n_iter"],
         )
@@ -201,8 +232,16 @@ def glmm_ordinal_local_step(
         "n_obs": results.nobs,
         "n_groups": results.n_groups,
         "coefficients": results.params.tolist(),
+        "std_err": results.bse.tolist(),
+        "z_stats": results.zvalues.tolist(),
+        "pvalues": results.pvalues.tolist(),
+        "lower_ci": results.conf_int_low.tolist(),
+        "upper_ci": results.conf_int_high.tolist(),
         "cutpoints": results.cutpoints.tolist(),
         "sigma_u2": results.sigma_u2,
+        "ll_laplace": results.ll_laplace,
+        "aic": results.aic,
+        "bic": results.bic,
         "converged": results.converged,
         "n_iter": results.n_iter,
     }

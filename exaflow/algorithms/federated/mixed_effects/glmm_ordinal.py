@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+from scipy import stats
 
 from exaflow.algorithms.federated.mixed_effects.common import validate_inputs
 from exaflow.algorithms.federated.utils import BadInputError
@@ -246,8 +247,17 @@ class FederatedGLMMOrdinalResults(FederatedEstimatorResults):
         *,
         theta: np.ndarray,
         params: np.ndarray,
+        bse: np.ndarray,
+        zvalues: np.ndarray,
+        pvalues: np.ndarray,
+        conf_int_low: np.ndarray,
+        conf_int_high: np.ndarray,
+        cov_params: np.ndarray,
         sigma_u2: float,
         cutpoints: np.ndarray,
+        ll_laplace: float,
+        aic: float,
+        bic: float,
         nobs: int,
         n_groups: int,
         converged: bool,
@@ -258,8 +268,17 @@ class FederatedGLMMOrdinalResults(FederatedEstimatorResults):
     ) -> None:
         self.theta = np.asarray(theta, dtype=float)
         self.params = np.asarray(params, dtype=float)
+        self.bse = np.asarray(bse, dtype=float)
+        self.zvalues = np.asarray(zvalues, dtype=float)
+        self.pvalues = np.asarray(pvalues, dtype=float)
+        self.conf_int_low = np.asarray(conf_int_low, dtype=float)
+        self.conf_int_high = np.asarray(conf_int_high, dtype=float)
+        self.cov_params = np.asarray(cov_params, dtype=float)
         self.sigma_u2 = float(sigma_u2)
         self.cutpoints = np.asarray(cutpoints, dtype=float)
+        self.ll_laplace = float(ll_laplace)
+        self.aic = float(aic)
+        self.bic = float(bic)
         self.nobs = int(nobs)
         self.n_groups = int(n_groups)
         self.converged = bool(converged)
@@ -601,6 +620,75 @@ class FederatedGLMMOrdinal(FederatedEstimator):
         )
         return objective, next_mode_state
 
+    def _observed_information_finite_difference(
+        self,
+        clusters: list[_OrdinalClusterData],
+        theta: np.ndarray,
+        *,
+        p: int,
+        mode_state: np.ndarray,
+        agg_client: AggregationClient,
+        eps: float = 1e-5,
+    ) -> np.ndarray:
+        theta = np.asarray(theta, dtype=float)
+        q = theta.shape[0]
+        jac = np.zeros((q, q), dtype=float)
+        for idx in range(q):
+            step = eps * max(1.0, abs(float(theta[idx])))
+            theta_plus = theta.copy()
+            theta_minus = theta.copy()
+            theta_plus[idx] += step
+            theta_minus[idx] -= step
+            theta_plus = self._clip_theta_bounds(theta_plus, p=p)
+            theta_minus = self._clip_theta_bounds(theta_minus, p=p)
+            _, score_plus, _ = self._aggregate_objective_gradient(
+                clusters,
+                theta_plus,
+                p=p,
+                mode_state=mode_state,
+                agg_client=agg_client,
+            )
+            _, score_minus, _ = self._aggregate_objective_gradient(
+                clusters,
+                theta_minus,
+                p=p,
+                mode_state=mode_state,
+                agg_client=agg_client,
+            )
+            jac[:, idx] = (score_plus - score_minus) / (2.0 * step)
+        observed_info = -0.5 * (jac + jac.T)
+        return observed_info
+
+    @staticmethod
+    def _wald_inference_from_observed_info(
+        observed_info: np.ndarray,
+        params: np.ndarray,
+        *,
+        alpha: float = 0.05,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        observed_info = 0.5 * (observed_info + observed_info.T)
+        eig_min = float(np.min(np.linalg.eigvalsh(observed_info)))
+        if eig_min <= 1e-10:
+            observed_info = observed_info + (1e-10 - eig_min) * np.eye(
+                observed_info.shape[0],
+                dtype=float,
+            )
+        cov_theta = np.linalg.pinv(observed_info)
+        p = params.shape[0]
+        cov_params = cov_theta[:p, :p]
+        bse = np.sqrt(np.maximum(np.diag(cov_params), 0.0))
+        zvalues = np.divide(
+            params,
+            bse,
+            out=np.full_like(params, np.nan, dtype=float),
+            where=bse > 0.0,
+        )
+        pvalues = 2.0 * stats.norm.sf(np.abs(zvalues))
+        zcrit = stats.norm.ppf(1.0 - alpha / 2.0)
+        conf_low = params - zcrit * bse
+        conf_high = params + zcrit * bse
+        return cov_params, bse, zvalues, pvalues, conf_low, conf_high
+
     def _backtracking_ascent(
         self,
         clusters: list[_OrdinalClusterData],
@@ -780,11 +868,34 @@ class FederatedGLMMOrdinal(FederatedEstimator):
             self.K,
             self.fit_intercept,
         )
+        observed_info = self._observed_information_finite_difference(
+            clusters,
+            theta,
+            p=p,
+            mode_state=mode_state,
+            agg_client=agg_client,
+        )
+        params = theta[:p]
+        cov_params, bse, zvalues, pvalues, conf_low, conf_high = (
+            self._wald_inference_from_observed_info(observed_info, params)
+        )
+        k_params = theta.shape[0]
+        aic = float(2.0 * k_params - 2.0 * objective)
+        bic = float(np.log(max(n_obs, 1)) * k_params - 2.0 * objective)
         results = FederatedGLMMOrdinalResults(
             theta=theta,
-            params=theta[:p],
+            params=params,
+            bse=bse,
+            zvalues=zvalues,
+            pvalues=pvalues,
+            conf_int_low=conf_low,
+            conf_int_high=conf_high,
+            cov_params=cov_params,
             sigma_u2=float(np.exp(log_su2)),
             cutpoints=kappas,
+            ll_laplace=float(objective),
+            aic=aic,
+            bic=bic,
             nobs=n_obs,
             n_groups=n_groups,
             converged=converged,
