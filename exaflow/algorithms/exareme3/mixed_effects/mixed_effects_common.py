@@ -7,20 +7,66 @@ import numpy as np
 from exaflow.worker_communication import BadUserInput
 
 
+def normalize_grouping_vars(grouping_var: str | list[str]) -> list[str]:
+    if isinstance(grouping_var, str):
+        grouping_vars = [grouping_var]
+    elif isinstance(grouping_var, list):
+        grouping_vars = grouping_var
+    else:
+        raise BadUserInput("Parameter 'grouping_var' must be a string or a list.")
+
+    if not 1 <= len(grouping_vars) <= 2:
+        raise BadUserInput(
+            "Parameter 'grouping_var' must include one or two variables."
+        )
+    if any(not isinstance(var, str) or not var for var in grouping_vars):
+        raise BadUserInput("Parameter 'grouping_var' must contain variable names.")
+    if len(set(grouping_vars)) != len(grouping_vars):
+        raise BadUserInput("Parameter 'grouping_var' must not contain duplicates.")
+    return grouping_vars
+
+
+def display_grouping_var(grouping_var: str | list[str]) -> str | list[str]:
+    grouping_vars = normalize_grouping_vars(grouping_var)
+    if len(grouping_vars) == 1:
+        return grouping_vars[0]
+    return grouping_vars
+
+
 def split_grouping_var(
     x_vars: Iterable[str],
-    grouping_var: str,
+    grouping_var: str | list[str],
     metadata: dict,
 ) -> tuple[list[str], list[str]]:
     x_vars = list(x_vars)
-    fixed_vars = [var for var in x_vars if var != grouping_var]
+    grouping_vars = normalize_grouping_vars(grouping_var)
+    missing = [var for var in grouping_vars if var not in x_vars]
+    if missing:
+        raise BadUserInput(
+            "Parameter 'grouping_var' must match variables included in inputdata 'x'."
+        )
+    fixed_vars = [var for var in x_vars if var not in grouping_vars]
+    if not fixed_vars:
+        raise BadUserInput(
+            "Inputdata 'Covariates and grouping variable' must include at least "
+            "one fixed-effect covariate."
+        )
     categorical_vars = [var for var in fixed_vars if metadata[var]["is_categorical"]]
     numerical_vars = [var for var in fixed_vars if not metadata[var]["is_categorical"]]
     return categorical_vars, numerical_vars
 
 
-def get_group_ids(data, grouping_var: str) -> np.ndarray:
-    return data[grouping_var].astype(str).to_numpy(copy=False)
+def get_group_ids(data, grouping_var: str | list[str]) -> np.ndarray:
+    grouping_vars = normalize_grouping_vars(grouping_var)
+    if len(grouping_vars) == 1:
+        return data[grouping_vars[0]].astype(str).to_numpy(copy=False)
+
+    group_frame = data[grouping_vars].astype(str)
+    labels = group_frame.apply(
+        lambda row: "|".join(f"{var}={row[var]}" for var in grouping_vars),
+        axis=1,
+    )
+    return labels.to_numpy(copy=False)
 
 
 def encode_ordinal_response(
@@ -28,7 +74,8 @@ def encode_ordinal_response(
 ) -> tuple[np.ndarray, list[str]]:
     if not isinstance(category_order, list) or len(category_order) < 2:
         raise BadUserInput(
-            "Parameter 'category_order' must be a list with at least two ordered categories."
+            "Parameter 'category_order' must be a list with at least two "
+            "ordered categories."
         )
 
     order = [str(value) for value in category_order]
@@ -41,7 +88,8 @@ def encode_ordinal_response(
     if not observed.issubset(allowed):
         missing = sorted(observed - allowed)
         raise BadUserInput(
-            f"Parameter 'category_order' does not cover all observed y categories: {missing}"
+            "Parameter 'category_order' does not cover all observed y "
+            f"categories: {missing}"
         )
 
     mapping = {label: idx for idx, label in enumerate(order)}

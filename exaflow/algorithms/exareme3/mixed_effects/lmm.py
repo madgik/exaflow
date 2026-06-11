@@ -3,6 +3,9 @@ from typing import List
 from pydantic import BaseModel
 
 from exaflow.algorithms import specifications as specs
+from exaflow.algorithms.exareme3.mixed_effects.mixed_effects_common import (
+    display_grouping_var,
+)
 from exaflow.algorithms.exareme3.mixed_effects.mixed_effects_common import get_group_ids
 from exaflow.algorithms.exareme3.mixed_effects.mixed_effects_common import (
     split_grouping_var,
@@ -18,7 +21,7 @@ from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
 
 class LMMResult(BaseModel):
     dependent_var: str
-    grouping_var: str
+    grouping_var: str | List[str]
     indep_vars: List[str]
     n_obs: int
     n_groups: int
@@ -56,13 +59,15 @@ class LMM(Algorithm):
             name="lmm",
             desc="Linear mixed model for a numerical outcome with a random intercept.",
             documentation=(
-                "Fits a linear mixed model for a continuous outcome with fixed "
-                "covariate effects and a single random-intercept grouping "
-                "variable.\n\n"
-                "The 'grouping_var' setting selects the variable from x used as "
-                "the random-intercept grouping factor.\n\n"
+                "Fit a linear mixed model for a continuous outcome with fixed "
+                "covariate effects and a random-intercept grouping factor.\n\n"
+                "The 'grouping_var' setting selects one variable from x used as "
+                "the random-intercept grouping factor, or two variables used to "
+                "build one composite nested-like grouping factor. Composite "
+                "grouping still estimates a single random-intercept variance "
+                "component.\n\n"
                 "The result includes fixed-effect coefficients, standard errors, "
-                "z-scores, p-values, confidence intervals, random-effect "
+                "t-statistics, p-values, confidence intervals, random-effect "
                 "variance, residual variance, log-likelihood, AIC, BIC, "
                 "convergence status, and iteration count.\n\n"
                 "Reference behavior is aligned with standard random-intercept "
@@ -88,7 +93,10 @@ class LMM(Algorithm):
                 ),
                 x=specs.InputDataSpecification(
                     label="Covariates and grouping variable",
-                    desc="Covariates plus the random-intercept grouping variable.",
+                    desc=(
+                        "Covariates plus one or two random-intercept grouping "
+                        "variables."
+                    ),
                     types=[
                         specs.InputDataType.REAL,
                         specs.InputDataType.INT,
@@ -105,10 +113,13 @@ class LMM(Algorithm):
             parameters={
                 "grouping_var": specs.ParameterSpecification(
                     label="Grouping variable",
-                    desc="Random-intercept grouping factor.",
+                    desc=(
+                        "One grouping factor, or two variables combined into one "
+                        "composite nested-like grouping factor."
+                    ),
                     types=[specs.ParameterType.TEXT],
                     required=True,
-                    multiple=False,
+                    multiple=True,
                     enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_NAMES,
                         source=["x"],
@@ -139,7 +150,7 @@ class LMM(Algorithm):
         pvalues = model_stats["pvalues"]
         return LMMResult(
             dependent_var=y_var,
-            grouping_var=grouping_var,
+            grouping_var=display_grouping_var(grouping_var),
             indep_vars=model_stats["feature_names"],
             n_obs=model_stats["n_obs"],
             n_groups=model_stats["n_groups"],

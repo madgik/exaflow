@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
+from scipy import stats
 
 from exaflow.algorithms.federated.mixed_effects.common import clip_probs
 from exaflow.algorithms.federated.mixed_effects.common import (
@@ -29,7 +30,16 @@ class FederatedGLMMBinaryResults(FederatedEstimatorResults):
         *,
         theta: np.ndarray,
         params: np.ndarray,
+        bse: np.ndarray,
+        zvalues: np.ndarray,
+        pvalues: np.ndarray,
+        conf_int_low: np.ndarray,
+        conf_int_high: np.ndarray,
+        cov_params: np.ndarray,
         sigma_u2: float,
+        ll_laplace: float,
+        aic: float,
+        bic: float,
         nobs: int,
         n_groups: int,
         converged: bool,
@@ -39,7 +49,16 @@ class FederatedGLMMBinaryResults(FederatedEstimatorResults):
     ) -> None:
         self.theta = np.asarray(theta, dtype=float)
         self.params = np.asarray(params, dtype=float)
+        self.bse = np.asarray(bse, dtype=float)
+        self.zvalues = np.asarray(zvalues, dtype=float)
+        self.pvalues = np.asarray(pvalues, dtype=float)
+        self.conf_int_low = np.asarray(conf_int_low, dtype=float)
+        self.conf_int_high = np.asarray(conf_int_high, dtype=float)
+        self.cov_params = np.asarray(cov_params, dtype=float)
         self.sigma_u2 = float(sigma_u2)
+        self.ll_laplace = float(ll_laplace)
+        self.aic = float(aic)
+        self.bic = float(bic)
         self.nobs = int(nobs)
         self.n_groups = int(n_groups)
         self.converged = bool(converged)
@@ -198,6 +217,36 @@ def _glmm_binary_random_intercept_mode_warm(
     return float(u), float(huu)
 
 
+def _wald_inference_from_hessian(
+    hessian: np.ndarray,
+    params: np.ndarray,
+    *,
+    alpha: float = 0.05,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    observed_info = -0.5 * (hessian + hessian.T)
+    eig_min = float(np.min(np.linalg.eigvalsh(observed_info)))
+    if eig_min <= 1e-10:
+        observed_info = observed_info + (1e-10 - eig_min) * np.eye(
+            observed_info.shape[0],
+            dtype=float,
+        )
+    cov_theta = np.linalg.pinv(observed_info)
+    p = params.shape[0]
+    cov_params = cov_theta[:p, :p]
+    bse = np.sqrt(np.maximum(np.diag(cov_params), 0.0))
+    zvalues = np.divide(
+        params,
+        bse,
+        out=np.full_like(params, np.nan, dtype=float),
+        where=bse > 0.0,
+    )
+    pvalues = 2.0 * stats.norm.sf(np.abs(zvalues))
+    zcrit = stats.norm.ppf(1.0 - alpha / 2.0)
+    conf_low = params - zcrit * bse
+    conf_high = params + zcrit * bse
+    return cov_params, bse, zvalues, pvalues, conf_low, conf_high
+
+
 class FederatedGLMMBinary(FederatedEstimator):
     def __init__(
         self,
@@ -324,6 +373,45 @@ class FederatedGLMMBinary(FederatedEstimator):
         h[p : p + 1, :p] = h_bs.T
         return score, h, next_warm_modes
 
+    def _site_objective(
+        self,
+        clusters: list[_BinaryClusterData],
+        theta: np.ndarray,
+        *,
+        warm_modes: np.ndarray,
+    ) -> tuple[float, np.ndarray]:
+        theta = np.asarray(theta, dtype=float).reshape(-1)
+        p = theta.shape[0] - 1
+        beta = theta[:p]
+        sigma_u2 = float(np.exp(theta[p]))
+        inv_su2 = 1.0 / sigma_u2
+        objective = 0.0
+        next_warm_modes = np.zeros_like(warm_modes, dtype=float)
+        for idx, cluster in enumerate(clusters):
+            eta_base = cluster.X @ beta
+            u_star, huu = _glmm_binary_random_intercept_mode_warm(
+                eta_base,
+                cluster.y,
+                cluster.w,
+                sigma_u2,
+                init_u=warm_modes[idx],
+                max_iter=self.mode_max_iter,
+                tol=self.mode_tol,
+            )
+            next_warm_modes[idx] = u_star
+            probs = clip_probs(logistic_sigmoid(eta_base + u_star))
+            loglik = np.sum(
+                cluster.w
+                * (cluster.y * np.log(probs) + (1.0 - cluster.y) * np.log(1.0 - probs))
+            )
+            objective += (
+                float(loglik)
+                - 0.5 * float(theta[p])
+                - 0.5 * u_star * u_star * inv_su2
+                - 0.5 * np.log(huu)
+            )
+        return float(objective), next_warm_modes
+
     def fit(
         self,
         X: np.ndarray,
@@ -415,10 +503,45 @@ class FederatedGLMMBinary(FederatedEstimator):
 
         params = theta[:p]
         sigma_u2 = float(np.exp(theta[p]))
+        score, h, _ = self._site_derivatives(
+            clusters,
+            theta,
+            warm_modes=warm_modes,
+        )
+        packed_h = np.asarray(pack_upper_triangle(h), dtype=float)
+        fused = np.concatenate([score, packed_h])
+        fused_sum = np.asarray(agg_client.sum(fused), dtype=float)
+        h_sum = unpack_upper_triangle(fused_sum[q:], q)
+        cov_params, bse, zvalues, pvalues, conf_low, conf_high = (
+            _wald_inference_from_hessian(h_sum, params)
+        )
+        objective_local, _ = self._site_objective(
+            clusters,
+            theta,
+            warm_modes=warm_modes,
+        )
+        ll_laplace = float(
+            np.asarray(
+                agg_client.sum(np.array([objective_local], dtype=float)),
+                dtype=float,
+            ).reshape(-1)[0]
+        )
+        k_params = theta.shape[0]
+        aic = float(2.0 * k_params - 2.0 * ll_laplace)
+        bic = float(np.log(max(n_obs, 1)) * k_params - 2.0 * ll_laplace)
         results = FederatedGLMMBinaryResults(
             theta=theta,
             params=params,
+            bse=bse,
+            zvalues=zvalues,
+            pvalues=pvalues,
+            conf_int_low=conf_low,
+            conf_int_high=conf_high,
+            cov_params=cov_params,
             sigma_u2=sigma_u2,
+            ll_laplace=ll_laplace,
+            aic=aic,
+            bic=bic,
             nobs=n_obs,
             n_groups=n_groups,
             converged=converged,
