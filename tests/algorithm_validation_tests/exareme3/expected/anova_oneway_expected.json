@@ -3,19 +3,26 @@
         {
             "input": {
                 "inputdata": {
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "ppmi8"
+                    ],
+                    "filters": null,
+                    "variables": [
+                        "ppmicategory",
+                        "brainstem"
+                    ]
+                },
+                "preprocessing": null,
+                "algorithm": {
                     "x": [
                         "ppmicategory"
                     ],
                     "y": [
                         "brainstem"
                     ],
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "ppmi8"
-                    ],
-                    "filters": null
-                },
-                "parameters": {}
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 80,
@@ -65,12 +72,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "dataset"
-                    ],
-                    "y": [
-                        "leftscasubcallosalarea"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi3",
@@ -103,9 +104,22 @@
                         "desd-synthdata1",
                         "edsd7"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "leftscasubcallosalarea"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "leftscasubcallosalarea"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1979,
@@ -4185,21 +4199,28 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "gender"
-                    ],
-                    "y": [
-                        "rightcalccalcarinecortex"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata2",
                         "desd-synthdata3",
                         "ppmi3"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "gender",
+                        "rightcalccalcarinecortex"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "gender"
+                    ],
+                    "y": [
+                        "rightcalccalcarinecortex"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 268,
@@ -4229,12 +4250,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "dataset"
-                    ],
-                    "y": [
-                        "rightmprgprecentralgyrusmedialsegment"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd7",
@@ -4250,9 +4265,22 @@
                         "desd-synthdata7",
                         "desd-synthdata4"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "rightmprgprecentralgyrusmedialsegment"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "rightmprgprecentralgyrusmedialsegment"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 721,
@@ -4932,12 +4960,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "parkinsonbroadcategory"
-                    ],
-                    "y": [
-                        "righthippocampus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi1",
@@ -4959,9 +4981,22 @@
                         "edsd8",
                         "ppmi2"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "righthippocampus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "y": [
+                        "righthippocampus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 474,
@@ -5011,12 +5046,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "y": [
-                        "subjectage"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi1",
@@ -5045,9 +5074,22 @@
                         "desd-synthdata6",
                         "edsd6"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "alzheimerbroadcategory",
+                        "subjectage"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "y": [
+                        "subjectage"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 588,
@@ -5093,16 +5135,10 @@
                 ]
             },
             "test_case_num": 5
-      },
+        },
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "edsdcategory"
-                    ],
-                    "y": [
-                        "leftmorgmedialorbitalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi2",
@@ -5114,9 +5150,22 @@
                         "ppmi6",
                         "desd-synthdata1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "edsdcategory",
+                        "leftmorgmedialorbitalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "edsdcategory"
+                    ],
+                    "y": [
+                        "leftmorgmedialorbitalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 247,
@@ -5166,12 +5215,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "y": [
-                        "leftcerebralwhitematter"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata5",
@@ -5199,9 +5242,22 @@
                         "ppmi0",
                         "desd-synthdata9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "alzheimerbroadcategory",
+                        "leftcerebralwhitematter"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "y": [
+                        "leftcerebralwhitematter"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1354,
@@ -5251,12 +5307,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "rightcocentraloperculum"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi4",
@@ -5288,9 +5338,22 @@
                         "edsd1",
                         "edsd4"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "rightcocentraloperculum"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "rightcocentraloperculum"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1951,
@@ -5410,12 +5473,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "dataset"
-                    ],
-                    "y": [
-                        "rightmprgprecentralgyrusmedialsegment"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd6",
@@ -5447,9 +5504,22 @@
                         "ppmi1",
                         "edsd3"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "rightmprgprecentralgyrusmedialsegment"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "rightmprgprecentralgyrusmedialsegment"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1900,
@@ -9249,12 +9319,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "ppmicategory"
-                    ],
-                    "y": [
-                        "rightpinsposteriorinsula"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd3",
@@ -9272,9 +9336,22 @@
                         "ppmi0",
                         "desd-synthdata9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "ppmicategory",
+                        "rightpinsposteriorinsula"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "ppmicategory"
+                    ],
+                    "y": [
+                        "rightpinsposteriorinsula"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 280,
@@ -9354,12 +9431,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "neurodegenerativescategories"
-                    ],
-                    "y": [
-                        "rightpogpostcentralgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd0",
@@ -9372,9 +9443,22 @@
                         "edsd7",
                         "desd-synthdata4"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "neurodegenerativescategories",
+                        "rightpogpostcentralgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "neurodegenerativescategories"
+                    ],
+                    "y": [
+                        "rightpogpostcentralgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 366,
@@ -9424,12 +9508,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "dataset"
-                    ],
-                    "y": [
-                        "rightententorhinalarea"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd5",
@@ -9437,9 +9515,22 @@
                         "ppmi2",
                         "ppmi8"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "rightententorhinalarea"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "rightententorhinalarea"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 366,
@@ -9519,12 +9610,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "ppmicategory"
-                    ],
-                    "y": [
-                        "rightphgparahippocampalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi7",
@@ -9537,9 +9622,22 @@
                         "desd-synthdata6",
                         "desd-synthdata1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "ppmicategory",
+                        "rightphgparahippocampalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "ppmicategory"
+                    ],
+                    "y": [
+                        "rightphgparahippocampalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 80,
@@ -9619,12 +9717,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "gender"
-                    ],
-                    "y": [
-                        "leftsplsuperiorparietallobule"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi1",
@@ -9658,9 +9750,22 @@
                         "edsd8",
                         "desd-synthdata2"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "gender",
+                        "leftsplsuperiorparietallobule"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "gender"
+                    ],
+                    "y": [
+                        "leftsplsuperiorparietallobule"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 2071,
@@ -9690,20 +9795,27 @@
         {
             "input": {
                 "inputdata": {
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "edsd3",
+                        "desd-synthdata5"
+                    ],
+                    "filters": null,
+                    "variables": [
+                        "neurodegenerativescategories",
+                        "leftorifgorbitalpartoftheinferiorfrontalgyrus"
+                    ]
+                },
+                "preprocessing": null,
+                "algorithm": {
                     "x": [
                         "neurodegenerativescategories"
                     ],
                     "y": [
                         "leftorifgorbitalpartoftheinferiorfrontalgyrus"
                     ],
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "edsd3",
-                        "desd-synthdata5"
-                    ],
-                    "filters": null
-                },
-                "parameters": {}
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 70,
@@ -9733,12 +9845,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "parkinsonbroadcategory"
-                    ],
-                    "y": [
-                        "rightmfgmiddlefrontalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata6",
@@ -9772,9 +9878,22 @@
                         "ppmi5",
                         "ppmi2"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "rightmfgmiddlefrontalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "y": [
+                        "rightmfgmiddlefrontalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 714,
@@ -9824,12 +9943,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "ppmicategory"
-                    ],
-                    "y": [
-                        "leftsogsuperioroccipitalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata6",
@@ -9861,9 +9974,22 @@
                         "desd-synthdata9",
                         "edsd1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "ppmicategory",
+                        "leftsogsuperioroccipitalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "ppmicategory"
+                    ],
+                    "y": [
+                        "leftsogsuperioroccipitalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 634,
@@ -9943,12 +10069,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "dataset"
-                    ],
-                    "y": [
-                        "leftmcggmiddlecingulategyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi1",
@@ -9982,9 +10102,22 @@
                         "desd-synthdata1",
                         "ppmi8"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "leftmcggmiddlecingulategyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "leftmcggmiddlecingulategyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 2071,
@@ -14354,12 +14487,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "parkinsonbroadcategory"
-                    ],
-                    "y": [
-                        "leftfugfusiformgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata6",
@@ -14377,9 +14504,22 @@
                         "edsd0",
                         "desd-synthdata7"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "leftfugfusiformgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "y": [
+                        "leftfugfusiformgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 320,
@@ -14429,12 +14569,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "rightorifgorbitalpartoftheinferiorfrontalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd8",
@@ -14445,9 +14579,22 @@
                         "edsd4",
                         "ppmi3"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "rightorifgorbitalpartoftheinferiorfrontalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "rightorifgorbitalpartoftheinferiorfrontalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 576,
@@ -14567,12 +14714,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "dataset"
-                    ],
-                    "y": [
-                        "rightsmgsupramarginalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata0",
@@ -14583,9 +14724,22 @@
                         "edsd0",
                         "desd-synthdata9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "rightsmgsupramarginalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "rightsmgsupramarginalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 393,
@@ -14815,12 +14969,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "edsdcategory"
-                    ],
-                    "y": [
-                        "leftporgposteriororbitalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi0",
@@ -14846,9 +14994,22 @@
                         "desd-synthdata7",
                         "edsd1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "edsdcategory",
+                        "leftporgposteriororbitalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "edsdcategory"
+                    ],
+                    "y": [
+                        "leftporgposteriororbitalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 837,
@@ -14898,21 +15059,28 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "ppmicategory"
-                    ],
-                    "y": [
-                        "rightpallidum"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi5",
                         "desd-synthdata8",
                         "ppmi3"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "ppmicategory",
+                        "rightpallidum"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "ppmicategory"
+                    ],
+                    "y": [
+                        "rightpallidum"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 160,
@@ -14942,12 +15110,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "neurodegenerativescategories"
-                    ],
-                    "y": [
-                        "rightpoparietaloperculum"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi9",
@@ -14965,9 +15127,22 @@
                         "desd-synthdata2",
                         "ppmi1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "neurodegenerativescategories",
+                        "rightpoparietaloperculum"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "neurodegenerativescategories"
+                    ],
+                    "y": [
+                        "rightpoparietaloperculum"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 466,
@@ -15017,12 +15192,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "rightententorhinalarea"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi0",
@@ -15036,9 +15205,22 @@
                         "ppmi3",
                         "desd-synthdata8"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "rightententorhinalarea"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "rightententorhinalarea"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 662,
@@ -15158,12 +15340,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "neurodegenerativescategories"
-                    ],
-                    "y": [
-                        "leftfofrontaloperculum"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi8",
@@ -15180,9 +15356,22 @@
                         "ppmi6",
                         "desd-synthdata9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "neurodegenerativescategories",
+                        "leftfofrontaloperculum"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "neurodegenerativescategories"
+                    ],
+                    "y": [
+                        "leftfofrontaloperculum"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 484,
@@ -15232,20 +15421,27 @@
         {
             "input": {
                 "inputdata": {
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "desd-synthdata6",
+                        "edsd3"
+                    ],
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "leftputamen"
+                    ]
+                },
+                "preprocessing": null,
+                "algorithm": {
                     "x": [
                         "dataset"
                     ],
                     "y": [
                         "leftputamen"
                     ],
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "desd-synthdata6",
-                        "edsd3"
-                    ],
-                    "filters": null
-                },
-                "parameters": {}
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 145,
@@ -15275,12 +15471,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "y": [
-                        "leftacgganteriorcingulategyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd2",
@@ -15309,9 +15499,22 @@
                         "ppmi9",
                         "desd-synthdata8"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "alzheimerbroadcategory",
+                        "leftacgganteriorcingulategyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "y": [
+                        "leftacgganteriorcingulategyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1551,
@@ -15361,12 +15564,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "dataset"
-                    ],
-                    "y": [
-                        "rightainsanteriorinsula"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi4",
@@ -15389,9 +15586,22 @@
                         "ppmi6",
                         "edsd5"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "rightainsanteriorinsula"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "rightainsanteriorinsula"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1284,
@@ -17121,12 +17331,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "gender"
-                    ],
-                    "y": [
-                        "rightphgparahippocampalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata9",
@@ -17159,9 +17363,22 @@
                         "ppmi8",
                         "ppmi5"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "gender",
+                        "rightphgparahippocampalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "gender"
+                    ],
+                    "y": [
+                        "rightphgparahippocampalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1979,
@@ -17191,12 +17408,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "parkinsonbroadcategory"
-                    ],
-                    "y": [
-                        "leftfrpfrontalpole"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata2",
@@ -17214,9 +17425,22 @@
                         "edsd9",
                         "desd-synthdata1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "leftfrpfrontalpole"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "y": [
+                        "leftfrpfrontalpole"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 320,
@@ -17266,12 +17490,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "parkinsonbroadcategory"
-                    ],
-                    "y": [
-                        "rightcuncuneus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata8",
@@ -17298,9 +17516,22 @@
                         "edsd0",
                         "desd-synthdata2"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "rightcuncuneus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "y": [
+                        "rightcuncuneus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 588,
@@ -17350,12 +17581,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "edsdcategory"
-                    ],
-                    "y": [
-                        "leftmpogpostcentralgyrusmedialsegment"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi1",
@@ -17369,9 +17594,22 @@
                         "desd-synthdata5",
                         "edsd8"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "edsdcategory",
+                        "leftmpogpostcentralgyrusmedialsegment"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "edsdcategory"
+                    ],
+                    "y": [
+                        "leftmpogpostcentralgyrusmedialsegment"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 298,
@@ -17421,12 +17659,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "edsdcategory"
-                    ],
-                    "y": [
-                        "rightgregyrusrectus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata1",
@@ -17438,9 +17670,22 @@
                         "ppmi6",
                         "edsd8"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "edsdcategory",
+                        "rightgregyrusrectus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "edsdcategory"
+                    ],
+                    "y": [
+                        "rightgregyrusrectus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 304,
@@ -17490,12 +17735,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "neurodegenerativescategories"
-                    ],
-                    "y": [
-                        "leftcuncuneus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata6",
@@ -17504,9 +17743,22 @@
                         "ppmi7",
                         "ppmi6"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "neurodegenerativescategories",
+                        "leftcuncuneus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "neurodegenerativescategories"
+                    ],
+                    "y": [
+                        "leftcuncuneus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 213,
@@ -17556,12 +17808,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "neurodegenerativescategories"
-                    ],
-                    "y": [
-                        "leftcocentraloperculum"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi0",
@@ -17573,9 +17819,22 @@
                         "edsd2",
                         "desd-synthdata1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "neurodegenerativescategories",
+                        "leftcocentraloperculum"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "neurodegenerativescategories"
+                    ],
+                    "y": [
+                        "leftcocentraloperculum"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 284,
@@ -17625,12 +17884,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "dataset"
-                    ],
-                    "y": [
-                        "leftsplsuperiorparietallobule"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi8",
@@ -17647,9 +17900,22 @@
                         "desd-synthdata9",
                         "edsd5"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "leftsplsuperiorparietallobule"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "leftsplsuperiorparietallobule"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 855,
@@ -18449,12 +18715,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "parkinsonbroadcategory"
-                    ],
-                    "y": [
-                        "leftmfgmiddlefrontalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata4",
@@ -18467,9 +18727,22 @@
                         "desd-synthdata6",
                         "ppmi9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "leftmfgmiddlefrontalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "y": [
+                        "leftmfgmiddlefrontalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 200,
@@ -18519,20 +18792,27 @@
         {
             "input": {
                 "inputdata": {
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "ppmi7",
+                        "edsd2"
+                    ],
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "rightangangulargyrus"
+                    ]
+                },
+                "preprocessing": null,
+                "algorithm": {
                     "x": [
                         "dataset"
                     ],
                     "y": [
                         "rightangangulargyrus"
                     ],
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "ppmi7",
-                        "edsd2"
-                    ],
-                    "filters": null
-                },
-                "parameters": {}
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 133,
@@ -18562,12 +18842,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "dataset"
-                    ],
-                    "y": [
-                        "leftsmgsupramarginalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata6",
@@ -18577,9 +18851,22 @@
                         "edsd9",
                         "desd-synthdata1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "leftsmgsupramarginalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "leftsmgsupramarginalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 467,
@@ -18749,12 +19036,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "edsdcategory"
-                    ],
-                    "y": [
-                        "righttrifgtriangularpartoftheinferiorfrontalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd9",
@@ -18766,9 +19047,22 @@
                         "edsd0",
                         "desd-synthdata8"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "edsdcategory",
+                        "righttrifgtriangularpartoftheinferiorfrontalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "edsdcategory"
+                    ],
+                    "y": [
+                        "righttrifgtriangularpartoftheinferiorfrontalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 322,
@@ -18818,12 +19112,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "dataset"
-                    ],
-                    "y": [
-                        "leftmogmiddleoccipitalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata3",
@@ -18848,9 +19136,22 @@
                         "edsd8",
                         "desd-synthdata0"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "leftmogmiddleoccipitalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "leftmogmiddleoccipitalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1520,
@@ -20970,21 +21271,28 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "gender"
-                    ],
-                    "y": [
-                        "minimentalstate"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi6",
                         "desd-synthdata4",
                         "edsd2"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "gender",
+                        "minimentalstate"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "gender"
+                    ],
+                    "y": [
+                        "minimentalstate"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 131,
@@ -21014,12 +21322,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "neurodegenerativescategories"
-                    ],
-                    "y": [
-                        "leftmtgmiddletemporalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd1",
@@ -21041,9 +21343,22 @@
                         "desd-synthdata3",
                         "ppmi0"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "neurodegenerativescategories",
+                        "leftmtgmiddletemporalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "neurodegenerativescategories"
+                    ],
+                    "y": [
+                        "leftmtgmiddletemporalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 683,
@@ -21093,12 +21408,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "leftputamen"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi5",
@@ -21127,9 +21436,22 @@
                         "desd-synthdata0",
                         "desd-synthdata6"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "leftputamen"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "leftputamen"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1851,
@@ -21249,12 +21571,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "gender"
-                    ],
-                    "y": [
-                        "subjectageyears"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata7",
@@ -21272,9 +21588,22 @@
                         "ppmi1",
                         "edsd1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "gender",
+                        "subjectageyears"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "gender"
+                    ],
+                    "y": [
+                        "subjectageyears"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 786,
@@ -21304,12 +21633,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "edsdcategory"
-                    ],
-                    "y": [
-                        "leftcalccalcarinecortex"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi5",
@@ -21327,9 +21650,22 @@
                         "edsd8",
                         "ppmi2"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "edsdcategory",
+                        "leftcalccalcarinecortex"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "edsdcategory"
+                    ],
+                    "y": [
+                        "leftcalccalcarinecortex"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 484,
@@ -21379,20 +21715,27 @@
         {
             "input": {
                 "inputdata": {
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "edsd8",
+                        "desd-synthdata6"
+                    ],
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "rightfofrontaloperculum"
+                    ]
+                },
+                "preprocessing": null,
+                "algorithm": {
                     "x": [
                         "agegroup"
                     ],
                     "y": [
                         "rightfofrontaloperculum"
                     ],
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "edsd8",
-                        "desd-synthdata6"
-                    ],
-                    "filters": null
-                },
-                "parameters": {}
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 145,
@@ -21512,12 +21855,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "gender"
-                    ],
-                    "y": [
-                        "rightmorgmedialorbitalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi6",
@@ -21542,9 +21879,22 @@
                         "ppmi7",
                         "desd-synthdata1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "gender",
+                        "rightmorgmedialorbitalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "gender"
+                    ],
+                    "y": [
+                        "rightmorgmedialorbitalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1500,
@@ -21574,12 +21924,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "y": [
-                        "rightioginferioroccipitalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi7",
@@ -21588,9 +21932,22 @@
                         "desd-synthdata8",
                         "ppmi3"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "alzheimerbroadcategory",
+                        "rightioginferioroccipitalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "y": [
+                        "rightioginferioroccipitalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 390,
@@ -21640,12 +21997,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "gender"
-                    ],
-                    "y": [
-                        "leftpogpostcentralgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi1",
@@ -21662,9 +22013,22 @@
                         "desd-synthdata3",
                         "ppmi8"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "gender",
+                        "leftpogpostcentralgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "gender"
+                    ],
+                    "y": [
+                        "leftpogpostcentralgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 948,
@@ -21694,12 +22058,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "parkinsonbroadcategory"
-                    ],
-                    "y": [
-                        "rightcuncuneus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd4",
@@ -21733,9 +22091,22 @@
                         "desd-synthdata0",
                         "ppmi3"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "rightcuncuneus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "y": [
+                        "rightcuncuneus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 714,
@@ -21785,12 +22156,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "leftainsanteriorinsula"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata1",
@@ -21824,9 +22189,22 @@
                         "desd-synthdata5",
                         "edsd3"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "leftainsanteriorinsula"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "leftainsanteriorinsula"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 2071,
@@ -21946,12 +22324,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "edsdcategory"
-                    ],
-                    "y": [
-                        "leftcuncuneus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata1",
@@ -21978,9 +22350,22 @@
                         "edsd5",
                         "desd-synthdata2"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "edsdcategory",
+                        "leftcuncuneus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "edsdcategory"
+                    ],
+                    "y": [
+                        "leftcuncuneus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 823,
@@ -22030,12 +22415,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "neurodegenerativescategories"
-                    ],
-                    "y": [
-                        "leftprgprecentralgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata8",
@@ -22066,9 +22445,22 @@
                         "edsd2",
                         "ppmi7"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "neurodegenerativescategories",
+                        "leftprgprecentralgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "neurodegenerativescategories"
+                    ],
+                    "y": [
+                        "leftprgprecentralgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 923,
@@ -22118,21 +22510,28 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "rightptplanumtemporale"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd7",
                         "edsd9",
                         "desd-synthdata0"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "rightptplanumtemporale"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "rightptplanumtemporale"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 99,
@@ -22252,12 +22651,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "neurodegenerativescategories"
-                    ],
-                    "y": [
-                        "rightmprgprecentralgyrusmedialsegment"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata1",
@@ -22265,9 +22658,22 @@
                         "desd-synthdata9",
                         "edsd6"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "neurodegenerativescategories",
+                        "rightmprgprecentralgyrusmedialsegment"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "neurodegenerativescategories"
+                    ],
+                    "y": [
+                        "rightmprgprecentralgyrusmedialsegment"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 175,
@@ -22297,12 +22703,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "ppmicategory"
-                    ],
-                    "y": [
-                        "leftcalccalcarinecortex"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi1",
@@ -22310,9 +22710,22 @@
                         "edsd6",
                         "edsd4"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "ppmicategory",
+                        "leftcalccalcarinecortex"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "ppmicategory"
+                    ],
+                    "y": [
+                        "leftcalccalcarinecortex"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 34,
@@ -22342,20 +22755,27 @@
         {
             "input": {
                 "inputdata": {
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "edsd7",
+                        "desd-synthdata9"
+                    ],
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "leftsmcsupplementarymotorcortex"
+                    ]
+                },
+                "preprocessing": null,
+                "algorithm": {
                     "x": [
                         "dataset"
                     ],
                     "y": [
                         "leftsmcsupplementarymotorcortex"
                     ],
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "edsd7",
-                        "desd-synthdata9"
-                    ],
-                    "filters": null
-                },
-                "parameters": {}
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 139,
@@ -22385,12 +22805,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "edsdcategory"
-                    ],
-                    "y": [
-                        "rightaccumbensarea"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi4",
@@ -22411,9 +22825,22 @@
                         "desd-synthdata7",
                         "ppmi3"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "edsdcategory",
+                        "rightaccumbensarea"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "edsdcategory"
+                    ],
+                    "y": [
+                        "rightaccumbensarea"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 650,
@@ -22463,12 +22890,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "edsdcategory"
-                    ],
-                    "y": [
-                        "rightacgganteriorcingulategyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd2",
@@ -22477,9 +22898,22 @@
                         "ppmi2",
                         "edsd9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "edsdcategory",
+                        "rightacgganteriorcingulategyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "edsdcategory"
+                    ],
+                    "y": [
+                        "rightacgganteriorcingulategyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 139,
@@ -22529,12 +22963,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "gender"
-                    ],
-                    "y": [
-                        "rightmfgmiddlefrontalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd0",
@@ -22548,9 +22976,22 @@
                         "ppmi5",
                         "ppmi4"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "gender",
+                        "rightmfgmiddlefrontalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "gender"
+                    ],
+                    "y": [
+                        "rightmfgmiddlefrontalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 663,
@@ -22580,12 +23021,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "parkinsonbroadcategory"
-                    ],
-                    "y": [
-                        "leftofugoccipitalfusiformgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd9",
@@ -22618,9 +23053,22 @@
                         "edsd1",
                         "edsd5"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "leftofugoccipitalfusiformgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "y": [
+                        "leftofugoccipitalfusiformgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 714,
@@ -22670,20 +23118,27 @@
         {
             "input": {
                 "inputdata": {
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "edsd9",
+                        "edsd0"
+                    ],
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "rightscasubcallosalarea"
+                    ]
+                },
+                "preprocessing": null,
+                "algorithm": {
                     "x": [
                         "agegroup"
                     ],
                     "y": [
                         "rightscasubcallosalarea"
                     ],
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "edsd9",
-                        "edsd0"
-                    ],
-                    "filters": null
-                },
-                "parameters": {}
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 35,
@@ -22763,12 +23218,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "y": [
-                        "leftstgsuperiortemporalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd8",
@@ -22794,9 +23243,22 @@
                         "ppmi1",
                         "ppmi2"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "alzheimerbroadcategory",
+                        "leftstgsuperiortemporalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "y": [
+                        "leftstgsuperiortemporalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1322,
@@ -22846,12 +23308,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "neurodegenerativescategories"
-                    ],
-                    "y": [
-                        "leftamygdala"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata5",
@@ -22864,9 +23320,22 @@
                         "ppmi4",
                         "edsd3"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "neurodegenerativescategories",
+                        "leftamygdala"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "neurodegenerativescategories"
+                    ],
+                    "y": [
+                        "leftamygdala"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 361,
@@ -22916,12 +23385,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "rightsmcsupplementarymotorcortex"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata9",
@@ -22949,9 +23412,22 @@
                         "edsd8",
                         "desd-synthdata0"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "rightsmcsupplementarymotorcortex"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "rightsmcsupplementarymotorcortex"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1627,
@@ -23071,12 +23547,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "gender"
-                    ],
-                    "y": [
-                        "rightptplanumtemporale"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata0",
@@ -23105,9 +23575,22 @@
                         "desd-synthdata6",
                         "ppmi7"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "gender",
+                        "rightptplanumtemporale"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "gender"
+                    ],
+                    "y": [
+                        "rightptplanumtemporale"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1683,
@@ -23137,12 +23620,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "rightmfgmiddlefrontalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd4",
@@ -23159,9 +23636,22 @@
                         "ppmi1",
                         "ppmi4"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "rightmfgmiddlefrontalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "rightmfgmiddlefrontalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 961,
@@ -23281,12 +23771,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "leftmpogpostcentralgyrusmedialsegment"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi7",
@@ -23300,9 +23784,22 @@
                         "edsd2",
                         "edsd0"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "leftmpogpostcentralgyrusmedialsegment"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "leftmpogpostcentralgyrusmedialsegment"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 642,
@@ -23422,12 +23919,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "edsdcategory"
-                    ],
-                    "y": [
-                        "leftppplanumpolare"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi7",
@@ -23438,9 +23929,22 @@
                         "ppmi3",
                         "edsd7"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "edsdcategory",
+                        "leftppplanumpolare"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "edsdcategory"
+                    ],
+                    "y": [
+                        "leftppplanumpolare"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 351,
@@ -23490,12 +23994,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "parkinsonbroadcategory"
-                    ],
-                    "y": [
-                        "rightcerebellumwhitematter"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi8",
@@ -23505,9 +24003,22 @@
                         "ppmi6",
                         "ppmi1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "rightcerebellumwhitematter"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "y": [
+                        "rightcerebellumwhitematter"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 194,
@@ -23557,12 +24068,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "rightpcggposteriorcingulategyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata1",
@@ -23579,9 +24084,22 @@
                         "ppmi3",
                         "edsd2"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "rightpcggposteriorcingulategyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "rightpcggposteriorcingulategyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 962,
@@ -23701,12 +24219,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "ppmicategory"
-                    ],
-                    "y": [
-                        "rightopifgopercularpartoftheinferiorfrontalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd1",
@@ -23723,9 +24235,22 @@
                         "ppmi7",
                         "desd-synthdata9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "ppmicategory",
+                        "rightopifgopercularpartoftheinferiorfrontalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "ppmicategory"
+                    ],
+                    "y": [
+                        "rightopifgopercularpartoftheinferiorfrontalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 280,
@@ -23805,12 +24330,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "ppmicategory"
-                    ],
-                    "y": [
-                        "rightcerebellumexterior"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd2",
@@ -23829,9 +24348,22 @@
                         "ppmi8",
                         "desd-synthdata1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "ppmicategory",
+                        "rightcerebellumexterior"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "ppmicategory"
+                    ],
+                    "y": [
+                        "rightcerebellumexterior"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 354,
@@ -23911,12 +24443,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "parkinsonbroadcategory"
-                    ],
-                    "y": [
-                        "leftainsanteriorinsula"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi0",
@@ -23925,9 +24451,22 @@
                         "desd-synthdata5",
                         "desd-synthdata4"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "leftainsanteriorinsula"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "y": [
+                        "leftainsanteriorinsula"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 126,
@@ -23957,12 +24496,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "gender"
-                    ],
-                    "y": [
-                        "rightainsanteriorinsula"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi8",
@@ -23981,9 +24514,22 @@
                         "desd-synthdata9",
                         "desd-synthdata5"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "gender",
+                        "rightainsanteriorinsula"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "gender"
+                    ],
+                    "y": [
+                        "rightainsanteriorinsula"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1173,
@@ -24013,12 +24559,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "edsdcategory"
-                    ],
-                    "y": [
-                        "leftfofrontaloperculum"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd9",
@@ -24026,9 +24566,22 @@
                         "ppmi6",
                         "desd-synthdata8"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "edsdcategory",
+                        "leftfofrontaloperculum"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "edsdcategory"
+                    ],
+                    "y": [
+                        "leftfofrontaloperculum"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 90,
@@ -24078,12 +24631,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "y": [
-                        "cerebellarvermallobulesviiix"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd8",
@@ -24104,9 +24651,22 @@
                         "ppmi7",
                         "edsd1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "alzheimerbroadcategory",
+                        "cerebellarvermallobulesviiix"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "y": [
+                        "cerebellarvermallobulesviiix"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 978,
@@ -24156,12 +24716,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "dataset"
-                    ],
-                    "y": [
-                        "minimentalstate"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata6",
@@ -24195,9 +24749,22 @@
                         "ppmi4",
                         "desd-synthdata4"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "minimentalstate"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "minimentalstate"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1116,
@@ -26117,12 +26684,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "y": [
-                        "leftmorgmedialorbitalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi4",
@@ -26153,9 +26714,22 @@
                         "ppmi2",
                         "edsd2"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "alzheimerbroadcategory",
+                        "leftmorgmedialorbitalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "y": [
+                        "leftmorgmedialorbitalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1602,
@@ -26205,12 +26779,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "y": [
-                        "leftententorhinalarea"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata0",
@@ -26239,9 +26807,22 @@
                         "ppmi3",
                         "ppmi7"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "alzheimerbroadcategory",
+                        "leftententorhinalarea"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "y": [
+                        "leftententorhinalarea"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1588,
@@ -26291,12 +26872,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "ppmicategory"
-                    ],
-                    "y": [
-                        "rightmtgmiddletemporalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi8",
@@ -26314,9 +26889,22 @@
                         "edsd5",
                         "ppmi0"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "ppmicategory",
+                        "rightmtgmiddletemporalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "ppmicategory"
+                    ],
+                    "y": [
+                        "rightmtgmiddletemporalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 240,
@@ -26396,12 +26984,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "leftcerebralwhitematter"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi6",
@@ -26420,9 +27002,22 @@
                         "ppmi8",
                         "ppmi0"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "leftcerebralwhitematter"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "leftcerebralwhitematter"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1041,
@@ -26542,12 +27137,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "y": [
-                        "rightocpoccipitalpole"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi6",
@@ -26571,9 +27160,22 @@
                         "desd-synthdata2",
                         "ppmi2"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "alzheimerbroadcategory",
+                        "rightocpoccipitalpole"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "y": [
+                        "rightocpoccipitalpole"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1222,
@@ -26623,20 +27225,27 @@
         {
             "input": {
                 "inputdata": {
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "ppmi3",
+                        "ppmi1"
+                    ],
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "leftpoparietaloperculum"
+                    ]
+                },
+                "preprocessing": null,
+                "algorithm": {
                     "x": [
                         "agegroup"
                     ],
                     "y": [
                         "leftpoparietaloperculum"
                     ],
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "ppmi3",
-                        "ppmi1"
-                    ],
-                    "filters": null
-                },
-                "parameters": {}
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 114,
@@ -26756,12 +27365,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "edsdcategory"
-                    ],
-                    "y": [
-                        "leftangangulargyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata5",
@@ -26782,9 +27385,22 @@
                         "ppmi4",
                         "desd-synthdata9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "edsdcategory",
+                        "leftangangulargyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "edsdcategory"
+                    ],
+                    "y": [
+                        "leftangangulargyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 605,
@@ -26834,12 +27450,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "ppmicategory"
-                    ],
-                    "y": [
-                        "rightainsanteriorinsula"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd0",
@@ -26873,9 +27483,22 @@
                         "ppmi7",
                         "edsd9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "ppmicategory",
+                        "rightainsanteriorinsula"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "ppmicategory"
+                    ],
+                    "y": [
+                        "rightainsanteriorinsula"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 714,
@@ -26955,12 +27578,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "y": [
-                        "leftmcggmiddlecingulategyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi4",
@@ -26974,9 +27591,22 @@
                         "desd-synthdata0",
                         "desd-synthdata6"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "alzheimerbroadcategory",
+                        "leftmcggmiddlecingulategyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "y": [
+                        "leftmcggmiddlecingulategyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 652,
@@ -27026,12 +27656,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "rightcuncuneus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd6",
@@ -27053,9 +27677,22 @@
                         "ppmi7",
                         "desd-synthdata7"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "rightcuncuneus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "rightcuncuneus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1183,
@@ -27175,12 +27812,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "gender"
-                    ],
-                    "y": [
-                        "rightcerebralwhitematter"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata6",
@@ -27214,9 +27845,22 @@
                         "ppmi6",
                         "ppmi0"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "gender",
+                        "rightcerebralwhitematter"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "gender"
+                    ],
+                    "y": [
+                        "rightcerebralwhitematter"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 2071,
@@ -27246,12 +27890,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "leftmprgprecentralgyrusmedialsegment"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi6",
@@ -27263,9 +27901,22 @@
                         "ppmi4",
                         "desd-synthdata7"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "leftmprgprecentralgyrusmedialsegment"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "leftmprgprecentralgyrusmedialsegment"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 560,
@@ -27385,12 +28036,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "gender"
-                    ],
-                    "y": [
-                        "leftmtgmiddletemporalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi3",
@@ -27417,9 +28062,22 @@
                         "desd-synthdata6",
                         "edsd8"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "gender",
+                        "leftmtgmiddletemporalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "gender"
+                    ],
+                    "y": [
+                        "leftmtgmiddletemporalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1522,
@@ -27449,12 +28107,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "righttrifgtriangularpartoftheinferiorfrontalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata7",
@@ -27479,9 +28131,22 @@
                         "desd-synthdata6",
                         "edsd1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "righttrifgtriangularpartoftheinferiorfrontalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "righttrifgtriangularpartoftheinferiorfrontalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1454,
@@ -27601,12 +28266,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "neurodegenerativescategories"
-                    ],
-                    "y": [
-                        "rightfrpfrontalpole"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi0",
@@ -27614,9 +28273,22 @@
                         "edsd1",
                         "desd-synthdata0"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "neurodegenerativescategories",
+                        "rightfrpfrontalpole"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "neurodegenerativescategories"
+                    ],
+                    "y": [
+                        "rightfrpfrontalpole"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 122,
@@ -27666,12 +28338,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "rightocpoccipitalpole"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi2",
@@ -27691,9 +28357,22 @@
                         "desd-synthdata2",
                         "edsd3"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "rightocpoccipitalpole"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "rightocpoccipitalpole"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1208,
@@ -27813,12 +28492,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "dataset"
-                    ],
-                    "y": [
-                        "leftpallidum"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata2",
@@ -27835,9 +28508,22 @@
                         "edsd5",
                         "ppmi4"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "leftpallidum"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "leftpallidum"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 802,
@@ -28637,12 +29323,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "neurodegenerativescategories"
-                    ],
-                    "y": [
-                        "rightsmcsupplementarymotorcortex"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd2",
@@ -28671,9 +29351,22 @@
                         "desd-synthdata7",
                         "ppmi3"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "neurodegenerativescategories",
+                        "rightsmcsupplementarymotorcortex"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "neurodegenerativescategories"
+                    ],
+                    "y": [
+                        "rightsmcsupplementarymotorcortex"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 909,
@@ -28723,12 +29416,6 @@
         {
             "input": {
                 "inputdata": {
-                    "x": [
-                        "dataset"
-                    ],
-                    "y": [
-                        "leftmfcmedialfrontalcortex"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi5",
@@ -28743,9 +29430,22 @@
                         "ppmi1",
                         "edsd9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "leftmfcmedialfrontalcortex"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "leftmfcmedialfrontalcortex"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 671,

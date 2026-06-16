@@ -31,7 +31,7 @@ class TestCategoricalNB:
         res_cc = result["category_count"]
         exp_cc = expected["category_count"]
 
-        x_vars = test_input["inputdata"]["x"]
+        x_vars = test_input["algorithm"]["x"]
         res_cc_list = [res_cc.get(var, []) for var in x_vars]
         self._assert_category_count_match(res_cc_list, exp_cc)
 

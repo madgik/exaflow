@@ -7,8 +7,7 @@ algorithm_name = "linear_svm"
 def test_linear_svm_properties():
     test_input = {
         "inputdata": {
-            "y": ["dataset"],
-            "x": ["rightgregyrusrectus"],
+            "variables": ["rightgregyrusrectus", "dataset"],
             "data_model": "dementia:0.1",
             "datasets": [
                 "ppmi2",
@@ -33,7 +32,11 @@ def test_linear_svm_properties():
             ],
             "filters": None,
         },
-        "parameters": {"gamma": 0.2, "C": 0.90},
+        "algorithm": {
+            "x": ["rightgregyrusrectus"],
+            "y": ["dataset"],
+            "parameters": {"gamma": 0.2, "C": 0.90},
+        },
         "test_case_num": 0,
     }
     response = algorithm_request(algorithm_name, test_input)

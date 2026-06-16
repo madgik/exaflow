@@ -1,4 +1,6 @@
 from abc import ABC
+from enum import Enum
+from enum import unique
 from typing import Any
 from typing import Dict
 from typing import List
@@ -19,7 +21,8 @@ from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterEnumType
 from exaflow.algorithms.specifications import ParameterSpecification
 from exaflow.algorithms.specifications import ParameterType
-from exaflow.algorithms.specifications import PreprocessingStepOrder
+from exaflow.algorithms.specifications import PreprocessingOutputSpecification
+from exaflow.algorithms.specifications import PreprocessingOutputType
 from exaflow.algorithms.specifications import PreprocessingStepSpecification
 from exaflow.controller.services.api.algorithm_request_dtos import (
     AlgorithmRequestSystemFlags,
@@ -70,13 +73,23 @@ class ParameterSpecificationDTO(ImmutableBaseModel):
     max: Optional[float] = None
 
 
+@unique
+class PreprocessingOutputTypeDTO(str, Enum):
+    NEW_CATEGORICAL_COLUMN = PreprocessingOutputType.NEW_CATEGORICAL_COLUMN.value
+
+
+class PreprocessingOutputSpecificationDTO(ImmutableBaseModel):
+    type: PreprocessingOutputTypeDTO
+    code_parameter: Optional[str] = None
+
+
 class PreprocessingStepSpecificationDTO(ImmutableBaseModel):
     name: str
     desc: str
     documentation: str
     label: str
     parameters: Optional[Dict[str, ParameterSpecificationDTO]] = None
-    order: PreprocessingStepOrder
+    output: Optional[PreprocessingOutputSpecificationDTO] = None
 
 
 class AlgorithmSpecificationDTO(ImmutableBaseModel):
@@ -220,19 +233,32 @@ def _convert_parameter_specification_to_dto(spec: ParameterSpecification):
     )
 
 
+def _convert_preprocessing_output_specification_to_dto(
+    spec: PreprocessingOutputSpecification,
+):
+    return PreprocessingOutputSpecificationDTO(
+        type=PreprocessingOutputTypeDTO(spec.type.value),
+        code_parameter=spec.code_parameter,
+    )
+
+
 def _convert_transformer_specification_to_dto(spec: PreprocessingStepSpecification):
     return PreprocessingStepSpecificationDTO(
         name=spec.name,
         desc=spec.desc,
         documentation=spec.documentation,
         label=spec.label,
-        order=spec.order,
         parameters=(
             {
                 name: _convert_parameter_specification_to_dto(value)
                 for name, value in spec.parameters.items()
             }
             if spec.parameters
+            else None
+        ),
+        output=(
+            _convert_preprocessing_output_specification_to_dto(spec.output)
+            if spec.output
             else None
         ),
     )

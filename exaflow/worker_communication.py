@@ -203,7 +203,7 @@ class RunUdfSystemArgs(BaseModel):
     metadata: Dict[str, Any]
     check_min_rows: bool
     add_dataset_variable: bool
-    preprocessing: Optional[Dict[str, Any]] = None
+    preprocessing: Optional[List[Dict[str, Any]]] = None
 
 
 # ~~~~~~~~~~~~~~~~~~~ Table Data DTOs ~~~~~~~~~~~~~~~~~~~~~~ #

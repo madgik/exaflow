@@ -23,7 +23,6 @@ class LongitudinalStrategy(str, Enum):
     DIFF = "diff"
 
 
-DIFF_SUFFIX = "_diff"
 VISIT1_VALUE_SUFFIX = "_v1"
 VISIT2_VALUE_SUFFIX = "_v2"
 
@@ -43,9 +42,9 @@ class LongitudinalTransformer(PreprocessingStep):
        - `diff`: compute `visit2 - visit1` (numeric variables only)
 
     Output contains only matched subjects and preserves key columns
-    (`subjectid`, plus `dataset`). Variables transformed with
-    `diff` are renamed with the `_diff` suffix; other strategies keep the
-    original variable name.
+    (`subjectid`, plus `dataset`). For the `diff` strategy, variable values
+    are transformed to `visit2 - visit1`, but the original variable code is
+    preserved.
 
     Validation enforces:
     - `visit1` and `visit2` are both provided and distinct.
@@ -132,7 +131,6 @@ class LongitudinalTransformer(PreprocessingStep):
                 ),
             },
             type=specs.PreprocessingStepType.EXAREME3_PREPROCESSING_STEP,
-            order=specs.PreprocessingStepOrder.FIFTH,
             components=[],
         )
 
@@ -203,15 +201,7 @@ class LongitudinalTransformer(PreprocessingStep):
         *,
         metadata: Dict[str, dict],
     ) -> Dict[str, dict]:
-        transformed_metadata = deepcopy(metadata)
-        for varname, strategy in self._strategies.items():
-            if strategy == LongitudinalStrategy.DIFF.value:
-                source_metadata = transformed_metadata.pop(varname, None)
-                if source_metadata is not None:
-                    transformed_metadata[_output_name(varname, strategy)] = (
-                        source_metadata
-                    )
-        return transformed_metadata
+        return deepcopy(metadata)
 
     def transform_data(
         self,
@@ -284,11 +274,7 @@ class LongitudinalTransformer(PreprocessingStep):
 
 
 def _output_name(varname: str, strategy: str) -> str:
-    return (
-        f"{varname}{DIFF_SUFFIX}"
-        if strategy == LongitudinalStrategy.DIFF.value
-        else varname
-    )
+    return varname
 
 
 def _deduplicate_preserve_order(values: Iterable[str]) -> List[str]:

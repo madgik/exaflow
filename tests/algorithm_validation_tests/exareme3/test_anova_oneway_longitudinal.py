@@ -10,8 +10,7 @@ def make_test_input(visit1: str, visit2: str) -> dict:
     return {
         "inputdata": {
             "data_model": "longitudinal_dementia:0.1",
-            "y": ["lefthippocampus"],
-            "x": ["agegroup"],
+            "variables": ["agegroup", "lefthippocampus"],
             "datasets": [
                 "longitudinal_dementia0",
                 "longitudinal_dementia1",
@@ -19,17 +18,24 @@ def make_test_input(visit1: str, visit2: str) -> dict:
             ],
             "filters": None,
         },
-        "preprocessing": {
-            "longitudinal_transformer": {
-                "visit1": visit1,
-                "visit2": visit2,
-                "strategies": {
-                    "lefthippocampus": "diff",
-                    "agegroup": "first",
+        "preprocessing": [
+            {
+                "name": "longitudinal_transformer",
+                "parameters": {
+                    "visit1": visit1,
+                    "visit2": visit2,
+                    "strategies": {
+                        "lefthippocampus": "diff",
+                        "agegroup": "first",
+                    },
                 },
             },
+        ],
+        "algorithm": {
+            "x": ["agegroup"],
+            "y": ["lefthippocampus"],
+            "parameters": {},
         },
-        "parameters": {},
     }
 
 
@@ -37,7 +43,7 @@ def assert_valid_anova_response(result: dict):
     anova_table = result["anova_table"]
     tukey_test = result["tuckey_test"]
 
-    assert anova_table["y_label"] == "lefthippocampus_diff"
+    assert anova_table["y_label"] == "lefthippocampus"
     assert anova_table["x_label"] == "agegroup"
     assert anova_table["n_obs"] > 0
 

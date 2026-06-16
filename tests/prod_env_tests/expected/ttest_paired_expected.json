@@ -2,13 +2,8 @@
     "test_cases": [
         {
             "input": {
+                "test_case_num": 0,
                 "inputdata": {
-                    "y": [
-                        "rightppplanumpolare"
-                    ],
-                    "x": [
-                        "rightorifgorbitalpartoftheinferiorfrontalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi0",
@@ -24,13 +19,25 @@
                         "desd-synthdata5",
                         "edsd9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "rightorifgorbitalpartoftheinferiorfrontalgyrus",
+                        "rightppplanumpolare"
+                    ]
                 },
-                "parameters": {
-                    "alt_hypothesis": "less",
-                    "alpha": 0.06109997172168302
-                },
-                "test_case_num": 0
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "rightorifgorbitalpartoftheinferiorfrontalgyrus"
+                    ],
+                    "y": [
+                        "rightppplanumpolare"
+                    ],
+                    "parameters": {
+                        "alt_hypothesis": "less",
+                        "alpha": 0.06109997172168302
+                    }
+                }
             },
             "output": {
                 "t_stat": -66.57208151704455,
@@ -45,13 +52,8 @@
         },
         {
             "input": {
+                "test_case_num": 1,
                 "inputdata": {
-                    "y": [
-                        "rightopifgopercularpartoftheinferiorfrontalgyrus"
-                    ],
-                    "x": [
-                        "cerebellarvermallobulesvivii"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd4",
@@ -75,13 +77,25 @@
                         "desd-synthdata4",
                         "desd-synthdata5"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "cerebellarvermallobulesvivii",
+                        "rightopifgopercularpartoftheinferiorfrontalgyrus"
+                    ]
                 },
-                "parameters": {
-                    "alt_hypothesis": "two-sided",
-                    "alpha": 0.3249261457856526
-                },
-                "test_case_num": 1
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "cerebellarvermallobulesvivii"
+                    ],
+                    "y": [
+                        "rightopifgopercularpartoftheinferiorfrontalgyrus"
+                    ],
+                    "parameters": {
+                        "alt_hypothesis": "two-sided",
+                        "alpha": 0.3249261457856526
+                    }
+                }
             },
             "output": {
                 "t_stat": -89.59703037036064,
@@ -96,24 +110,31 @@
         },
         {
             "input": {
+                "test_case_num": 2,
                 "inputdata": {
-                    "y": [
-                        "leftmcggmiddlecingulategyrus"
-                    ],
-                    "x": [
-                        "opticchiasm"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd4"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "opticchiasm",
+                        "leftmcggmiddlecingulategyrus"
+                    ]
                 },
-                "parameters": {
-                    "alt_hypothesis": "less",
-                    "alpha": 0.14757988322101523
-                },
-                "test_case_num": 2
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "opticchiasm"
+                    ],
+                    "y": [
+                        "leftmcggmiddlecingulategyrus"
+                    ],
+                    "parameters": {
+                        "alt_hypothesis": "less",
+                        "alpha": 0.14757988322101523
+                    }
+                }
             },
             "output": {
                 "t_stat": -75.76502693328537,
@@ -128,25 +149,32 @@
         },
         {
             "input": {
+                "test_case_num": 3,
                 "inputdata": {
-                    "y": [
-                        "rightsplsuperiorparietallobule"
-                    ],
-                    "x": [
-                        "rightmfgmiddlefrontalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd0",
                         "edsd4"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "rightmfgmiddlefrontalgyrus",
+                        "rightsplsuperiorparietallobule"
+                    ]
                 },
-                "parameters": {
-                    "alt_hypothesis": "greater",
-                    "alpha": 0.1399004584997704
-                },
-                "test_case_num": 3
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "rightmfgmiddlefrontalgyrus"
+                    ],
+                    "y": [
+                        "rightsplsuperiorparietallobule"
+                    ],
+                    "parameters": {
+                        "alt_hypothesis": "greater",
+                        "alpha": 0.1399004584997704
+                    }
+                }
             },
             "output": {
                 "t_stat": 55.158013248861316,
@@ -161,24 +189,31 @@
         },
         {
             "input": {
+                "test_case_num": 4,
                 "inputdata": {
-                    "y": [
-                        "leftopifgopercularpartoftheinferiorfrontalgyrus"
-                    ],
-                    "x": [
-                        "rightphgparahippocampalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd5"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "rightphgparahippocampalgyrus",
+                        "leftopifgopercularpartoftheinferiorfrontalgyrus"
+                    ]
                 },
-                "parameters": {
-                    "alt_hypothesis": "two-sided",
-                    "alpha": 0.23247473946718067
-                },
-                "test_case_num": 4
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "rightphgparahippocampalgyrus"
+                    ],
+                    "y": [
+                        "leftopifgopercularpartoftheinferiorfrontalgyrus"
+                    ],
+                    "parameters": {
+                        "alt_hypothesis": "two-sided",
+                        "alpha": 0.23247473946718067
+                    }
+                }
             },
             "output": {
                 "t_stat": -0.9085843965722782,

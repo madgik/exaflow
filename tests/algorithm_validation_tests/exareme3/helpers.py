@@ -11,12 +11,20 @@ MISSING_VALUE_DROP_STRATEGY = "drop"
 
 def algorithm_request(algorithm: str, input: dict, drop_na: bool = True):
     request_payload = dict(input)
+    request_payload.pop("test_case_num", None)
+    request_payload.pop("type", None)
     if drop_na:
-        preprocessing = dict(request_payload.get("preprocessing") or {})
-        if MISSING_VALUES_STEP_NAME not in preprocessing:
+        preprocessing = list(request_payload.get("preprocessing") or [])
+        if not any(step["name"] == MISSING_VALUES_STEP_NAME for step in preprocessing):
             strategies = _build_default_drop_strategies(request_payload)
             if strategies:
-                preprocessing[MISSING_VALUES_STEP_NAME] = {"strategies": strategies}
+                preprocessing.insert(
+                    0,
+                    {
+                        "name": MISSING_VALUES_STEP_NAME,
+                        "parameters": {"strategies": strategies},
+                    },
+                )
         request_payload["preprocessing"] = preprocessing
 
     url = "http://127.0.0.1:5100/algorithms" + f"/{algorithm}"
@@ -26,9 +34,9 @@ def algorithm_request(algorithm: str, input: dict, drop_na: bool = True):
 
 
 def _build_default_drop_strategies(request_payload: dict) -> dict:
-    inputdata = request_payload.get("inputdata") or {}
-    x_vars = inputdata.get("x") or []
-    y_vars = inputdata.get("y") or []
+    algorithm = request_payload.get("algorithm") or {}
+    x_vars = algorithm.get("x") or []
+    y_vars = algorithm.get("y") or []
     variables = list(dict.fromkeys(list(x_vars) + list(y_vars)))
     return {var: MISSING_VALUE_DROP_STRATEGY for var in variables}
 

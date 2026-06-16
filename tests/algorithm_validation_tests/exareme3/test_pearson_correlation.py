@@ -18,7 +18,7 @@ def test_pearson_algorithm(test_input, expected):
     result = parse_response(response)
 
     assert int(result["n_obs"]) == int(expected["n_obs"])
-    for var in test_input["inputdata"]["y"]:
+    for var in test_input["algorithm"]["y"]:
         np.testing.assert_allclose(
             result["correlations"][f"{var}"],
             expected["correlations"][f"{var}"],

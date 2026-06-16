@@ -178,20 +178,20 @@ def test_required_input_variables_returns_fixed_required_columns():
     [
         ({"age": STRATEGY_FIRST}, ["age"], [], ["age"], []),
         ({"age": STRATEGY_SECOND}, ["age"], [], ["age"], []),
-        ({"age": STRATEGY_DIFF}, ["age"], [], ["age_diff"], []),
-        ({"score": STRATEGY_DIFF}, [], ["score"], [], ["score_diff"]),
+        ({"age": STRATEGY_DIFF}, ["age"], [], ["age"], []),
+        ({"score": STRATEGY_DIFF}, [], ["score"], [], ["score"]),
         (
             {"age": STRATEGY_DIFF, "weight": STRATEGY_FIRST, "sex": STRATEGY_SECOND},
             ["age", "weight"],
             ["sex"],
-            ["age_diff", "weight"],
+            ["age", "weight"],
             ["sex"],
         ),
         ({"age": STRATEGY_DIFF}, ["unknown"], [], ["unknown"], []),
-        ({"age": STRATEGY_DIFF}, ["age", "age"], [], ["age_diff", "age_diff"], []),
-        ({"score": STRATEGY_DIFF}, [], ["score", "age"], [], ["score_diff", "age"]),
+        ({"age": STRATEGY_DIFF}, ["age", "age"], [], ["age", "age"], []),
+        ({"score": STRATEGY_DIFF}, [], ["score", "age"], [], ["score", "age"]),
         ({"age": STRATEGY_FIRST}, ["age", "score"], [], ["age", "score"], []),
-        ({"age": STRATEGY_DIFF}, ["age"], ["age"], ["age_diff"], ["age_diff"]),
+        ({"age": STRATEGY_DIFF}, ["age"], ["age"], ["age"], ["age"]),
     ],
 )
 def test_transform_inputdata_variables_10_cases(
@@ -218,7 +218,7 @@ def test_transform_inputdata_variables_10_cases(
                 "sex": {"is_categorical": True, "label": "Sex"},
                 "score": {"is_categorical": False, "label": "Score"},
                 "group": {"is_categorical": True, "label": "Group"},
-                "age_diff": {"is_categorical": False, "label": "Age"},
+                "age": {"is_categorical": False, "label": "Age"},
             },
         ),
         (
@@ -229,7 +229,7 @@ def test_transform_inputdata_variables_10_cases(
                 "sex": {"is_categorical": True, "label": "Sex"},
                 "score": {"is_categorical": False, "label": "Score"},
                 "group": {"is_categorical": True, "label": "Group"},
-                "age_diff": {"is_categorical": False, "label": "Age"},
+                "age": {"is_categorical": False, "label": "Age"},
             },
         ),
         (
@@ -239,8 +239,8 @@ def test_transform_inputdata_variables_10_cases(
                 "sex": {"is_categorical": True, "label": "Sex"},
                 "score": {"is_categorical": False, "label": "Score"},
                 "group": {"is_categorical": True, "label": "Group"},
-                "age_diff": {"is_categorical": False, "label": "Age"},
-                "weight_diff": {"is_categorical": False, "label": "Weight"},
+                "age": {"is_categorical": False, "label": "Age"},
+                "weight": {"is_categorical": False, "label": "Weight"},
             },
         ),
         ({"unknown": STRATEGY_DIFF}, BASE_METADATA, BASE_METADATA),
@@ -259,7 +259,7 @@ def test_transform_inputdata_variables_10_cases(
                 "weight": {"is_categorical": False, "label": "Weight"},
                 "sex": {"is_categorical": True, "label": "Sex"},
                 "group": {"is_categorical": True, "label": "Group"},
-                "score_diff": {"is_categorical": False, "label": "Score"},
+                "score": {"is_categorical": False, "label": "Score"},
             },
         ),
     ],
@@ -312,9 +312,9 @@ def test_transform_metadata_returns_deepcopy():
             _base_longitudinal_df(include_dataset=True),
             _expected_df(
                 [
-                    {SUBJECT_ID_COL: "s1", DATASET_COL: "d1", "age_diff": 1},
-                    {SUBJECT_ID_COL: "s2", DATASET_COL: "d1", "age_diff": 1},
-                    {SUBJECT_ID_COL: "s1", DATASET_COL: "d2", "age_diff": 1},
+                    {SUBJECT_ID_COL: "s1", DATASET_COL: "d1", "age": 1},
+                    {SUBJECT_ID_COL: "s2", DATASET_COL: "d1", "age": 1},
+                    {SUBJECT_ID_COL: "s1", DATASET_COL: "d2", "age": 1},
                 ]
             ),
         ),
@@ -326,19 +326,19 @@ def test_transform_metadata_returns_deepcopy():
                     {
                         SUBJECT_ID_COL: "s1",
                         DATASET_COL: "d1",
-                        "age_diff": 1,
+                        "age": 1,
                         "weight": 72,
                     },
                     {
                         SUBJECT_ID_COL: "s2",
                         DATASET_COL: "d1",
-                        "age_diff": 1,
+                        "age": 1,
                         "weight": 78,
                     },
                     {
                         SUBJECT_ID_COL: "s1",
                         DATASET_COL: "d2",
-                        "age_diff": 1,
+                        "age": 1,
                         "weight": 62,
                     },
                 ]
@@ -349,8 +349,8 @@ def test_transform_metadata_returns_deepcopy():
             _base_longitudinal_df(include_dataset=False),
             _expected_df(
                 [
-                    {SUBJECT_ID_COL: "s1", "age_diff": 1},
-                    {SUBJECT_ID_COL: "s2", "age_diff": 1},
+                    {SUBJECT_ID_COL: "s1", "age": 1},
+                    {SUBJECT_ID_COL: "s2", "age": 1},
                 ]
             ),
         ),
@@ -381,9 +381,9 @@ def test_transform_metadata_returns_deepcopy():
             _base_longitudinal_df(include_dataset=True),
             _expected_df(
                 [
-                    {SUBJECT_ID_COL: "s1", DATASET_COL: "d1", "weight_diff": 2},
-                    {SUBJECT_ID_COL: "s2", DATASET_COL: "d1", "weight_diff": -2},
-                    {SUBJECT_ID_COL: "s1", DATASET_COL: "d2", "weight_diff": 2},
+                    {SUBJECT_ID_COL: "s1", DATASET_COL: "d1", "weight": 2},
+                    {SUBJECT_ID_COL: "s2", DATASET_COL: "d1", "weight": -2},
+                    {SUBJECT_ID_COL: "s1", DATASET_COL: "d2", "weight": 2},
                 ]
             ),
         ),
@@ -400,9 +400,9 @@ def test_transform_metadata_returns_deepcopy():
             ),
             _expected_df(
                 [
-                    {SUBJECT_ID_COL: "s1", DATASET_COL: "d1", "weight_diff": 2.0},
-                    {SUBJECT_ID_COL: "s2", DATASET_COL: "d1", "weight_diff": np.nan},
-                    {SUBJECT_ID_COL: "s1", DATASET_COL: "d2", "weight_diff": 2.0},
+                    {SUBJECT_ID_COL: "s1", DATASET_COL: "d1", "weight": 2.0},
+                    {SUBJECT_ID_COL: "s2", DATASET_COL: "d1", "weight": np.nan},
+                    {SUBJECT_ID_COL: "s1", DATASET_COL: "d2", "weight": 2.0},
                 ]
             ),
         ),
@@ -415,21 +415,21 @@ def test_transform_metadata_returns_deepcopy():
                         SUBJECT_ID_COL: "s1",
                         DATASET_COL: "d1",
                         "weight": 70,
-                        "age_diff": 1,
+                        "age": 1,
                         "score": 3,
                     },
                     {
                         SUBJECT_ID_COL: "s2",
                         DATASET_COL: "d1",
                         "weight": 80,
-                        "age_diff": 1,
+                        "age": 1,
                         "score": 4,
                     },
                     {
                         SUBJECT_ID_COL: "s1",
                         DATASET_COL: "d2",
                         "weight": 60,
-                        "age_diff": 1,
+                        "age": 1,
                         "score": 11,
                     },
                 ]
@@ -470,12 +470,12 @@ def test_transform_data_and_metadata_combines_both_transformations():
 
     expected_data = _expected_df(
         [
-            {SUBJECT_ID_COL: "s1", DATASET_COL: "d1", "age_diff": 1},
-            {SUBJECT_ID_COL: "s2", DATASET_COL: "d1", "age_diff": 1},
-            {SUBJECT_ID_COL: "s1", DATASET_COL: "d2", "age_diff": 1},
+            {SUBJECT_ID_COL: "s1", DATASET_COL: "d1", "age": 1},
+            {SUBJECT_ID_COL: "s2", DATASET_COL: "d1", "age": 1},
+            {SUBJECT_ID_COL: "s1", DATASET_COL: "d2", "age": 1},
         ]
     )
-    expected_metadata = {"age_diff": {"is_categorical": False, "label": "Age"}}
+    expected_metadata = {"age": {"is_categorical": False, "label": "Age"}}
 
     _assert_frames_equal(transformed_data, expected_data)
     assert transformed_metadata == expected_metadata

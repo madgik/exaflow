@@ -37,7 +37,11 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
                 )
 
             self._controller.flower_execution_info.set_inputdata(
-                inputdata=self._algorithm_request_dto.inputdata.model_dump()
+                inputdata={
+                    **self._algorithm_request_dto.inputdata.model_dump(),
+                    "x": self._algorithm_request_dto.algorithm.x,
+                    "y": self._algorithm_request_dto.algorithm.y,
+                }
             )
             server_pid = None
             clients_pids = {}
@@ -68,7 +72,7 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
                     self._context_id,
                     self._algorithm_name,
                     self._algorithm_request_dto.inputdata.datasets,
-                    self._algorithm_request_dto.parameters,
+                    self._algorithm_request_dto.algorithm.parameters,
                     [h.worker_id for h in self._local_worker_tasks_handlers],
                 )
                 result = await self._controller.flower_execution_info.get_result_with_timeout()

@@ -2,22 +2,29 @@
     "test_cases": [
         {
             "input": {
+                "test_case_num": 0,
                 "inputdata": {
-                    "y": [
-                        "gender"
-                    ],
-                    "x": [
-                        "alzheimerbroadcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd0",
                         "ppmi0"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "alzheimerbroadcategory",
+                        "gender"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 0
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "y": [
+                        "gender"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "chi2": 0.1345461603613779,

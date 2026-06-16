@@ -39,13 +39,16 @@ def test_anova_algorithm(test_input, expected):
 def test_anova_algorithm_not_enough_categories():
     test_input = {
         "inputdata": {
-            "x": ["ppmicategory"],
-            "y": ["lefthippocampus"],
+            "variables": ["ppmicategory", "lefthippocampus"],
             "data_model": "dementia:0.1",
             "datasets": ["ppmi0"],
             "filters": None,
         },
-        "parameters": {},
+        "algorithm": {
+            "x": ["ppmicategory"],
+            "y": ["lefthippocampus"],
+            "parameters": {},
+        },
     }
 
     response = algorithm_request(algorithm_name, test_input)

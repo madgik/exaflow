@@ -1,5 +1,4 @@
 from enum import Enum
-from enum import IntEnum
 from enum import unique
 from typing import Any
 from typing import Dict
@@ -21,15 +20,6 @@ class AlgorithmType(Enum):
 @unique
 class PreprocessingStepType(Enum):
     EXAREME3_PREPROCESSING_STEP = "exareme3_preprocessing_step"
-
-
-@unique
-class PreprocessingStepOrder(IntEnum):
-    FIRST = 1
-    SECOND = 2
-    THIRD = 3
-    FOURTH = 4
-    FIFTH = 5
 
 
 @unique
@@ -61,6 +51,12 @@ class ParameterDictValueType(str, Enum):
     INT = "int"
     TEXT = "text"
     BOOLEAN = "boolean"
+    FILTER = "filter"
+
+
+@unique
+class PreprocessingOutputType(str, Enum):
+    NEW_CATEGORICAL_COLUMN = "new_categorical_column"
 
 
 @unique
@@ -73,6 +69,7 @@ class ParameterEnumType(str, Enum):
 
 @unique
 class PreprocessingStepName(str, Enum):
+    CATEGORICAL_COLUMN_CREATOR = "categorical_column_creator"
     LONGITUDINAL_TRANSFORMER = "longitudinal_transformer"
     MISSING_VALUES_HANDLER = "missing_values_handler"
     OUTLIER_WINSORIZER = "outlier_winsorizer"
@@ -178,6 +175,11 @@ class ParameterSpecification(ImmutableBaseModel):
     dict_values_enums: Optional[ParameterEnumSpecification] = None
     min: Optional[float] = None
     max: Optional[float] = None
+
+
+class PreprocessingOutputSpecification(ImmutableBaseModel):
+    type: PreprocessingOutputType
+    code_parameter: Optional[str] = None
 
 
 def _validate_parameter_with_enums_type_fixed_var_CDE_enums(param_value, cls_values):
@@ -334,6 +336,6 @@ class PreprocessingStepSpecification(WorkflowStepSpecification):
     label: str
     enabled: bool
     parameters: Optional[Dict[str, ParameterSpecification]] = None
+    output: Optional[PreprocessingOutputSpecification] = None
     type: PreprocessingStepType = PreprocessingStepType.EXAREME3_PREPROCESSING_STEP
-    order: PreprocessingStepOrder = PreprocessingStepOrder.FOURTH
     components: List[ComponentType] = Field(default_factory=list)

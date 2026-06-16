@@ -2,10 +2,25 @@
     "test_cases": [
         {
             "input": {
+                "test_case_num": 0,
                 "inputdata": {
-                    "y": [
-                        "alzheimerbroadcategory"
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "ppmi0",
+                        "desd-synthdata0"
                     ],
+                    "filters": null,
+                    "variables": [
+                        "rightttgtransversetemporalgyrus",
+                        "leftpinsposteriorinsula",
+                        "leftpoparietaloperculum",
+                        "rightptplanumtemporale",
+                        "leftventraldc",
+                        "alzheimerbroadcategory"
+                    ]
+                },
+                "preprocessing": null,
+                "algorithm": {
                     "x": [
                         "rightttgtransversetemporalgyrus",
                         "leftpinsposteriorinsula",
@@ -13,17 +28,13 @@
                         "rightptplanumtemporale",
                         "leftventraldc"
                     ],
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "ppmi0",
-                        "desd-synthdata0"
+                    "y": [
+                        "alzheimerbroadcategory"
                     ],
-                    "filters": null
-                },
-                "parameters": {
-                    "positive_class": "Other"
-                },
-                "test_case_num": 0
+                    "parameters": {
+                        "positive_class": "Other"
+                    }
+                }
             },
             "output": {
                 "n_obs": 77,
@@ -87,23 +98,8 @@
         },
         {
             "input": {
+                "test_case_num": 1,
                 "inputdata": {
-                    "y": [
-                        "gender"
-                    ],
-                    "x": [
-                        "leftopifgopercularpartoftheinferiorfrontalgyrus",
-                        "opticchiasm",
-                        "leftprgprecentralgyrus",
-                        "cerebellarvermallobulesiv",
-                        "rightcaudate",
-                        "leftlorglateralorbitalgyrus",
-                        "leftsplsuperiorparietallobule",
-                        "leftcerebellumwhitematter",
-                        "leftgregyrusrectus",
-                        "leftioginferioroccipitalgyrus",
-                        "rightpogpostcentralgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi3",
@@ -119,12 +115,44 @@
                         "desd-synthdata7",
                         "edsd3"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "leftopifgopercularpartoftheinferiorfrontalgyrus",
+                        "opticchiasm",
+                        "leftprgprecentralgyrus",
+                        "cerebellarvermallobulesiv",
+                        "rightcaudate",
+                        "leftlorglateralorbitalgyrus",
+                        "leftsplsuperiorparietallobule",
+                        "leftcerebellumwhitematter",
+                        "leftgregyrusrectus",
+                        "leftioginferioroccipitalgyrus",
+                        "rightpogpostcentralgyrus",
+                        "gender"
+                    ]
                 },
-                "parameters": {
-                    "positive_class": "M"
-                },
-                "test_case_num": 1
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "leftopifgopercularpartoftheinferiorfrontalgyrus",
+                        "opticchiasm",
+                        "leftprgprecentralgyrus",
+                        "cerebellarvermallobulesiv",
+                        "rightcaudate",
+                        "leftlorglateralorbitalgyrus",
+                        "leftsplsuperiorparietallobule",
+                        "leftcerebellumwhitematter",
+                        "leftgregyrusrectus",
+                        "leftioginferioroccipitalgyrus",
+                        "rightpogpostcentralgyrus"
+                    ],
+                    "y": [
+                        "gender"
+                    ],
+                    "parameters": {
+                        "positive_class": "M"
+                    }
+                }
             },
             "output": {
                 "n_obs": 837,
@@ -224,14 +252,8 @@
         },
         {
             "input": {
+                "test_case_num": 2,
                 "inputdata": {
-                    "y": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "x": [
-                        "leftsogsuperioroccipitalgyrus",
-                        "rightmfcmedialfrontalcortex"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata8",
@@ -247,12 +269,26 @@
                         "ppmi6",
                         "ppmi9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "leftsogsuperioroccipitalgyrus",
+                        "rightmfcmedialfrontalcortex",
+                        "alzheimerbroadcategory"
+                    ]
                 },
-                "parameters": {
-                    "positive_class": "AD"
-                },
-                "test_case_num": 2
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "leftsogsuperioroccipitalgyrus",
+                        "rightmfcmedialfrontalcortex"
+                    ],
+                    "y": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "parameters": {
+                        "positive_class": "AD"
+                    }
+                }
             },
             "output": {
                 "n_obs": 788,
@@ -298,10 +334,36 @@
         },
         {
             "input": {
+                "test_case_num": 3,
                 "inputdata": {
-                    "y": [
-                        "edsdcategory"
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "ppmi7",
+                        "edsd6",
+                        "edsd7",
+                        "edsd8",
+                        "edsd3"
                     ],
+                    "filters": null,
+                    "variables": [
+                        "leftsplsuperiorparietallobule",
+                        "rightsfgsuperiorfrontalgyrus",
+                        "leftporgposteriororbitalgyrus",
+                        "leftocpoccipitalpole",
+                        "leftainsanteriorinsula",
+                        "leftgregyrusrectus",
+                        "leftliglingualgyrus",
+                        "rightorifgorbitalpartoftheinferiorfrontalgyrus",
+                        "leftacgganteriorcingulategyrus",
+                        "leftinflatvent",
+                        "subjectageyears",
+                        "rightmprgprecentralgyrusmedialsegment",
+                        "leftamygdala",
+                        "edsdcategory"
+                    ]
+                },
+                "preprocessing": null,
+                "algorithm": {
                     "x": [
                         "leftsplsuperiorparietallobule",
                         "rightsfgsuperiorfrontalgyrus",
@@ -317,20 +379,13 @@
                         "rightmprgprecentralgyrusmedialsegment",
                         "leftamygdala"
                     ],
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "ppmi7",
-                        "edsd6",
-                        "edsd7",
-                        "edsd8",
-                        "edsd3"
+                    "y": [
+                        "edsdcategory"
                     ],
-                    "filters": null
-                },
-                "parameters": {
-                    "positive_class": "CN"
-                },
-                "test_case_num": 3
+                    "parameters": {
+                        "positive_class": "CN"
+                    }
+                }
             },
             "output": {
                 "n_obs": 192,
@@ -442,10 +497,30 @@
         },
         {
             "input": {
+                "test_case_num": 4,
                 "inputdata": {
-                    "y": [
-                        "agegroup"
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "desd-synthdata8",
+                        "desd-synthdata6"
                     ],
+                    "filters": null,
+                    "variables": [
+                        "rightfrpfrontalpole",
+                        "righthippocampus",
+                        "leftmtgmiddletemporalgyrus",
+                        "rightcaudate",
+                        "rightcocentraloperculum",
+                        "rightpallidum",
+                        "rightthalamusproper",
+                        "leftitginferiortemporalgyrus",
+                        "leftainsanteriorinsula",
+                        "righttrifgtriangularpartoftheinferiorfrontalgyrus",
+                        "agegroup"
+                    ]
+                },
+                "preprocessing": null,
+                "algorithm": {
                     "x": [
                         "rightfrpfrontalpole",
                         "righthippocampus",
@@ -458,17 +533,13 @@
                         "leftainsanteriorinsula",
                         "righttrifgtriangularpartoftheinferiorfrontalgyrus"
                     ],
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "desd-synthdata8",
-                        "desd-synthdata6"
+                    "y": [
+                        "agegroup"
                     ],
-                    "filters": null
-                },
-                "parameters": {
-                    "positive_class": "-50y"
-                },
-                "test_case_num": 4
+                    "parameters": {
+                        "positive_class": "-50y"
+                    }
+                }
             },
             "output": {
                 "n_obs": 184,

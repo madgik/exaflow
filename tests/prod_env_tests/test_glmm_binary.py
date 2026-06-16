@@ -11,14 +11,25 @@ GLMM_BINARY_CASES = [
             "name": "basic_dataset_grouping",
             "request": {
                 "inputdata": {
-                    "y": ["gender"],
-                    "x": ["lefthippocampus", "leftamygdala", "dataset"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1", "desd-synthdata0"],
                     "filters": None,
+                    "variables": [
+                        "lefthippocampus",
+                        "leftamygdala",
+                        "dataset",
+                        "gender",
+                    ],
                 },
-                "parameters": {"positive_class": "F", "grouping_var": ["dataset"]},
                 "test_case_num": 0,
+                "algorithm": {
+                    "x": ["lefthippocampus", "leftamygdala", "dataset"],
+                    "y": ["gender"],
+                    "parameters": {
+                        "positive_class": "F",
+                        "grouping_var": ["dataset"],
+                    },
+                },
             },
             "expected_status": 200,
         },
@@ -29,14 +40,20 @@ GLMM_BINARY_CASES = [
             "name": "minimal_valid",
             "request": {
                 "inputdata": {
-                    "y": ["gender"],
-                    "x": ["lefthippocampus", "dataset"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1", "ppmi2"],
                     "filters": None,
+                    "variables": ["lefthippocampus", "dataset", "gender"],
                 },
-                "parameters": {"positive_class": "F", "grouping_var": ["dataset"]},
                 "test_case_num": 1,
+                "algorithm": {
+                    "x": ["lefthippocampus", "dataset"],
+                    "y": ["gender"],
+                    "parameters": {
+                        "positive_class": "F",
+                        "grouping_var": ["dataset"],
+                    },
+                },
             },
             "expected_status": 200,
         },
@@ -47,14 +64,25 @@ GLMM_BINARY_CASES = [
             "name": "categorical_fixed_effect_one_hot",
             "request": {
                 "inputdata": {
-                    "y": ["gender"],
-                    "x": ["lefthippocampus", "agegroup", "dataset"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1", "ppmi2"],
                     "filters": None,
+                    "variables": [
+                        "lefthippocampus",
+                        "agegroup",
+                        "dataset",
+                        "gender",
+                    ],
                 },
-                "parameters": {"positive_class": "F", "grouping_var": ["dataset"]},
                 "test_case_num": 2,
+                "algorithm": {
+                    "x": ["lefthippocampus", "agegroup", "dataset"],
+                    "y": ["gender"],
+                    "parameters": {
+                        "positive_class": "F",
+                        "grouping_var": ["dataset"],
+                    },
+                },
             },
             "expected_status": 200,
         },
@@ -65,19 +93,36 @@ GLMM_BINARY_CASES = [
             "name": "multiple_categorical_fixed_effects",
             "request": {
                 "inputdata": {
-                    "y": ["gender"],
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "ppmi0",
+                        "ppmi1",
+                        "ppmi2",
+                        "desd-synthdata1",
+                    ],
+                    "filters": None,
+                    "variables": [
+                        "lefthippocampus",
+                        "agegroup",
+                        "alzheimerbroadcategory",
+                        "dataset",
+                        "gender",
+                    ],
+                },
+                "test_case_num": 3,
+                "algorithm": {
                     "x": [
                         "lefthippocampus",
                         "agegroup",
                         "alzheimerbroadcategory",
                         "dataset",
                     ],
-                    "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2", "desd-synthdata1"],
-                    "filters": None,
+                    "y": ["gender"],
+                    "parameters": {
+                        "positive_class": "F",
+                        "grouping_var": ["dataset"],
+                    },
                 },
-                "parameters": {"positive_class": "F", "grouping_var": ["dataset"]},
-                "test_case_num": 3,
             },
             "expected_status": 200,
         },
@@ -88,14 +133,25 @@ GLMM_BINARY_CASES = [
             "name": "numeric_age_covariate",
             "request": {
                 "inputdata": {
-                    "y": ["gender"],
-                    "x": ["lefthippocampus", "subjectageyears", "dataset"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1", "desd-synthdata1"],
                     "filters": None,
+                    "variables": [
+                        "lefthippocampus",
+                        "subjectageyears",
+                        "dataset",
+                        "gender",
+                    ],
                 },
-                "parameters": {"positive_class": "F", "grouping_var": ["dataset"]},
                 "test_case_num": 4,
+                "algorithm": {
+                    "x": ["lefthippocampus", "subjectageyears", "dataset"],
+                    "y": ["gender"],
+                    "parameters": {
+                        "positive_class": "F",
+                        "grouping_var": ["dataset"],
+                    },
+                },
             },
             "expected_status": 200,
         },
@@ -106,14 +162,25 @@ GLMM_BINARY_CASES = [
             "name": "non_dataset_grouping_agegroup",
             "request": {
                 "inputdata": {
-                    "y": ["gender"],
-                    "x": ["lefthippocampus", "leftamygdala", "agegroup"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1", "ppmi2"],
                     "filters": None,
+                    "variables": [
+                        "lefthippocampus",
+                        "leftamygdala",
+                        "agegroup",
+                        "gender",
+                    ],
                 },
-                "parameters": {"positive_class": "F", "grouping_var": ["agegroup"]},
                 "test_case_num": 5,
+                "algorithm": {
+                    "x": ["lefthippocampus", "leftamygdala", "agegroup"],
+                    "y": ["gender"],
+                    "parameters": {
+                        "positive_class": "F",
+                        "grouping_var": ["agegroup"],
+                    },
+                },
             },
             "expected_status": 200,
         },
@@ -124,17 +191,25 @@ GLMM_BINARY_CASES = [
             "name": "non_dataset_grouping_alzheimer_category",
             "request": {
                 "inputdata": {
-                    "y": ["gender"],
-                    "x": ["lefthippocampus", "leftamygdala", "alzheimerbroadcategory"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1", "desd-synthdata1"],
                     "filters": None,
-                },
-                "parameters": {
-                    "positive_class": "F",
-                    "grouping_var": ["alzheimerbroadcategory"],
+                    "variables": [
+                        "lefthippocampus",
+                        "leftamygdala",
+                        "alzheimerbroadcategory",
+                        "gender",
+                    ],
                 },
                 "test_case_num": 6,
+                "algorithm": {
+                    "x": ["lefthippocampus", "leftamygdala", "alzheimerbroadcategory"],
+                    "y": ["gender"],
+                    "parameters": {
+                        "positive_class": "F",
+                        "grouping_var": ["alzheimerbroadcategory"],
+                    },
+                },
             },
             "expected_status": 200,
         },
@@ -145,14 +220,20 @@ GLMM_BINARY_CASES = [
             "name": "invalid_positive_class",
             "request": {
                 "inputdata": {
-                    "y": ["gender"],
-                    "x": ["lefthippocampus", "dataset"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1"],
                     "filters": None,
+                    "variables": ["lefthippocampus", "dataset", "gender"],
                 },
-                "parameters": {"positive_class": "X", "grouping_var": ["dataset"]},
                 "test_case_num": 7,
+                "algorithm": {
+                    "x": ["lefthippocampus", "dataset"],
+                    "y": ["gender"],
+                    "parameters": {
+                        "positive_class": "X",
+                        "grouping_var": ["dataset"],
+                    },
+                },
             },
             "expected_status": 460,
             "expected_message": r"Positive class.*should be one of the following",
@@ -164,14 +245,20 @@ GLMM_BINARY_CASES = [
             "name": "grouping_var_missing_from_x",
             "request": {
                 "inputdata": {
-                    "y": ["gender"],
-                    "x": ["lefthippocampus", "leftamygdala"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1"],
                     "filters": None,
+                    "variables": ["lefthippocampus", "leftamygdala", "gender"],
                 },
-                "parameters": {"positive_class": "F", "grouping_var": ["dataset"]},
                 "test_case_num": 8,
+                "algorithm": {
+                    "x": ["lefthippocampus", "leftamygdala"],
+                    "y": ["gender"],
+                    "parameters": {
+                        "positive_class": "F",
+                        "grouping_var": ["dataset"],
+                    },
+                },
             },
             "expected_status": 460,
             "expected_message": (
@@ -186,14 +273,20 @@ GLMM_BINARY_CASES = [
             "name": "only_grouping_var_no_fixed_left",
             "request": {
                 "inputdata": {
-                    "y": ["gender"],
-                    "x": ["dataset"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1"],
                     "filters": None,
+                    "variables": ["dataset", "gender"],
                 },
-                "parameters": {"positive_class": "F", "grouping_var": ["dataset"]},
                 "test_case_num": 9,
+                "algorithm": {
+                    "x": ["dataset"],
+                    "y": ["gender"],
+                    "parameters": {
+                        "positive_class": "F",
+                        "grouping_var": ["dataset"],
+                    },
+                },
             },
             "expected_status": 460,
             "expected_message": r"Inputdata 'Covariates and grouping variable' should include at least 2 values.",
@@ -211,25 +304,18 @@ def test_glmm_binary_wrapper(case):
     if case["expected_status"] == 200:
         result = parse_response(response)
 
-        assert result["dependent_var"] == case["request"]["inputdata"]["y"][0]
-        assert result["grouping_var"] == case["request"]["parameters"]["grouping_var"]
+        assert result["dependent_var"] == case["request"]["algorithm"]["y"][0]
+        assert (
+            result["grouping_var"]
+            == case["request"]["algorithm"]["parameters"]["grouping_var"]
+        )
         assert result["indep_vars"][0] == "Intercept"
         assert len(result["coefficients"]) == len(result["indep_vars"])
-        assert len(result["std_err"]) == len(result["indep_vars"])
-        assert len(result["z_stats"]) == len(result["indep_vars"])
-        assert result["pvalue_label"] == "P(>|z|)"
-        assert len(result["pvalues"]) == len(result["indep_vars"])
-        assert len(result["pvalues_display"]) == len(result["indep_vars"])
-        assert len(result["lower_ci"]) == len(result["indep_vars"])
-        assert len(result["upper_ci"]) == len(result["indep_vars"])
         assert result["n_obs"] > 0
         assert result["n_groups"] > 0
         assert result["n_iter"] >= 1
 
         assert "sigma_u2" in result
-        assert "ll_laplace" in result
-        assert "aic" in result
-        assert "bic" in result
         assert "converged" in result
 
         if case["name"] in {

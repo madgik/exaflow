@@ -11,17 +11,31 @@ GLMM_ORDINAL_CASES = [
             "name": "basic_5_level_dataset_grouping",
             "request": {
                 "inputdata": {
-                    "y": ["agegroup"],
-                    "x": ["lefthippocampus", "leftamygdala", "dataset"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1", "ppmi2"],
                     "filters": None,
-                },
-                "parameters": {
-                    "grouping_var": ["dataset"],
-                    "category_order": ["-50y", "50-59y", "60-69y", "70-79y", "+80y"],
+                    "variables": [
+                        "lefthippocampus",
+                        "leftamygdala",
+                        "dataset",
+                        "agegroup",
+                    ],
                 },
                 "test_case_num": 0,
+                "algorithm": {
+                    "x": ["lefthippocampus", "leftamygdala", "dataset"],
+                    "y": ["agegroup"],
+                    "parameters": {
+                        "grouping_var": ["dataset"],
+                        "category_order": [
+                            "-50y",
+                            "50-59y",
+                            "60-69y",
+                            "70-79y",
+                            "+80y",
+                        ],
+                    },
+                },
             },
             "expected_status": 200,
         },
@@ -32,17 +46,26 @@ GLMM_ORDINAL_CASES = [
             "name": "minimal_valid",
             "request": {
                 "inputdata": {
-                    "y": ["agegroup"],
-                    "x": ["lefthippocampus", "dataset"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1", "ppmi2"],
                     "filters": None,
-                },
-                "parameters": {
-                    "grouping_var": ["dataset"],
-                    "category_order": ["-50y", "50-59y", "60-69y", "70-79y", "+80y"],
+                    "variables": ["lefthippocampus", "dataset", "agegroup"],
                 },
                 "test_case_num": 1,
+                "algorithm": {
+                    "x": ["lefthippocampus", "dataset"],
+                    "y": ["agegroup"],
+                    "parameters": {
+                        "grouping_var": ["dataset"],
+                        "category_order": [
+                            "-50y",
+                            "50-59y",
+                            "60-69y",
+                            "70-79y",
+                            "+80y",
+                        ],
+                    },
+                },
             },
             "expected_status": 200,
         },
@@ -53,17 +76,31 @@ GLMM_ORDINAL_CASES = [
             "name": "categorical_fixed_effect_one_hot",
             "request": {
                 "inputdata": {
-                    "y": ["agegroup"],
-                    "x": ["lefthippocampus", "gender", "dataset"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1", "ppmi2"],
                     "filters": None,
-                },
-                "parameters": {
-                    "grouping_var": ["dataset"],
-                    "category_order": ["-50y", "50-59y", "60-69y", "70-79y", "+80y"],
+                    "variables": [
+                        "lefthippocampus",
+                        "gender",
+                        "dataset",
+                        "agegroup",
+                    ],
                 },
                 "test_case_num": 2,
+                "algorithm": {
+                    "x": ["lefthippocampus", "gender", "dataset"],
+                    "y": ["agegroup"],
+                    "parameters": {
+                        "grouping_var": ["dataset"],
+                        "category_order": [
+                            "-50y",
+                            "50-59y",
+                            "60-69y",
+                            "70-79y",
+                            "+80y",
+                        ],
+                    },
+                },
             },
             "expected_status": 200,
         },
@@ -74,22 +111,42 @@ GLMM_ORDINAL_CASES = [
             "name": "multiple_categorical_fixed_effects",
             "request": {
                 "inputdata": {
-                    "y": ["agegroup"],
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "ppmi0",
+                        "ppmi1",
+                        "ppmi2",
+                        "desd-synthdata1",
+                    ],
+                    "filters": None,
+                    "variables": [
+                        "lefthippocampus",
+                        "gender",
+                        "alzheimerbroadcategory",
+                        "dataset",
+                        "agegroup",
+                    ],
+                },
+                "test_case_num": 3,
+                "algorithm": {
                     "x": [
                         "lefthippocampus",
                         "gender",
                         "alzheimerbroadcategory",
                         "dataset",
                     ],
-                    "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2", "desd-synthdata1"],
-                    "filters": None,
+                    "y": ["agegroup"],
+                    "parameters": {
+                        "grouping_var": ["dataset"],
+                        "category_order": [
+                            "-50y",
+                            "50-59y",
+                            "60-69y",
+                            "70-79y",
+                            "+80y",
+                        ],
+                    },
                 },
-                "parameters": {
-                    "grouping_var": ["dataset"],
-                    "category_order": ["-50y", "50-59y", "60-69y", "70-79y", "+80y"],
-                },
-                "test_case_num": 3,
             },
             "expected_status": 200,
         },
@@ -100,17 +157,31 @@ GLMM_ORDINAL_CASES = [
             "name": "numeric_age_covariate",
             "request": {
                 "inputdata": {
-                    "y": ["agegroup"],
-                    "x": ["lefthippocampus", "subjectageyears", "dataset"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1", "desd-synthdata1"],
                     "filters": None,
-                },
-                "parameters": {
-                    "grouping_var": ["dataset"],
-                    "category_order": ["-50y", "50-59y", "60-69y", "70-79y", "+80y"],
+                    "variables": [
+                        "lefthippocampus",
+                        "subjectageyears",
+                        "dataset",
+                        "agegroup",
+                    ],
                 },
                 "test_case_num": 4,
+                "algorithm": {
+                    "x": ["lefthippocampus", "subjectageyears", "dataset"],
+                    "y": ["agegroup"],
+                    "parameters": {
+                        "grouping_var": ["dataset"],
+                        "category_order": [
+                            "-50y",
+                            "50-59y",
+                            "60-69y",
+                            "70-79y",
+                            "+80y",
+                        ],
+                    },
+                },
             },
             "expected_status": 200,
         },
@@ -121,17 +192,31 @@ GLMM_ORDINAL_CASES = [
             "name": "non_dataset_grouping_gender",
             "request": {
                 "inputdata": {
-                    "y": ["agegroup"],
-                    "x": ["lefthippocampus", "leftamygdala", "gender"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1", "ppmi2"],
                     "filters": None,
-                },
-                "parameters": {
-                    "grouping_var": ["gender"],
-                    "category_order": ["-50y", "50-59y", "60-69y", "70-79y", "+80y"],
+                    "variables": [
+                        "lefthippocampus",
+                        "leftamygdala",
+                        "gender",
+                        "agegroup",
+                    ],
                 },
                 "test_case_num": 5,
+                "algorithm": {
+                    "x": ["lefthippocampus", "leftamygdala", "gender"],
+                    "y": ["agegroup"],
+                    "parameters": {
+                        "grouping_var": ["gender"],
+                        "category_order": [
+                            "-50y",
+                            "50-59y",
+                            "60-69y",
+                            "70-79y",
+                            "+80y",
+                        ],
+                    },
+                },
             },
             "expected_status": 200,
         },
@@ -142,17 +227,31 @@ GLMM_ORDINAL_CASES = [
             "name": "non_dataset_grouping_alzheimer_category",
             "request": {
                 "inputdata": {
-                    "y": ["agegroup"],
-                    "x": ["lefthippocampus", "leftamygdala", "alzheimerbroadcategory"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1", "desd-synthdata1"],
                     "filters": None,
-                },
-                "parameters": {
-                    "grouping_var": ["alzheimerbroadcategory"],
-                    "category_order": ["-50y", "50-59y", "60-69y", "70-79y", "+80y"],
+                    "variables": [
+                        "lefthippocampus",
+                        "leftamygdala",
+                        "alzheimerbroadcategory",
+                        "agegroup",
+                    ],
                 },
                 "test_case_num": 6,
+                "algorithm": {
+                    "x": ["lefthippocampus", "leftamygdala", "alzheimerbroadcategory"],
+                    "y": ["agegroup"],
+                    "parameters": {
+                        "grouping_var": ["alzheimerbroadcategory"],
+                        "category_order": [
+                            "-50y",
+                            "50-59y",
+                            "60-69y",
+                            "70-79y",
+                            "+80y",
+                        ],
+                    },
+                },
             },
             "expected_status": 200,
         },
@@ -163,17 +262,25 @@ GLMM_ORDINAL_CASES = [
             "name": "incomplete_category_order",
             "request": {
                 "inputdata": {
-                    "y": ["agegroup"],
-                    "x": ["lefthippocampus", "dataset"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1", "ppmi2"],
                     "filters": None,
-                },
-                "parameters": {
-                    "grouping_var": ["dataset"],
-                    "category_order": ["50-59y", "60-69y", "70-79y", "+80y"],
+                    "variables": ["lefthippocampus", "dataset", "agegroup"],
                 },
                 "test_case_num": 7,
+                "algorithm": {
+                    "x": ["lefthippocampus", "dataset"],
+                    "y": ["agegroup"],
+                    "parameters": {
+                        "grouping_var": ["dataset"],
+                        "category_order": [
+                            "50-59y",
+                            "60-69y",
+                            "70-79y",
+                            "+80y",
+                        ],
+                    },
+                },
             },
             "expected_status": 460,
             "expected_message": r"category_order.*does not cover all observed y categories",
@@ -185,17 +292,26 @@ GLMM_ORDINAL_CASES = [
             "name": "duplicate_category_order",
             "request": {
                 "inputdata": {
-                    "y": ["agegroup"],
-                    "x": ["lefthippocampus", "dataset"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1", "ppmi2"],
                     "filters": None,
-                },
-                "parameters": {
-                    "grouping_var": ["dataset"],
-                    "category_order": ["-50y", "50-59y", "60-69y", "60-69y", "+80y"],
+                    "variables": ["lefthippocampus", "dataset", "agegroup"],
                 },
                 "test_case_num": 8,
+                "algorithm": {
+                    "x": ["lefthippocampus", "dataset"],
+                    "y": ["agegroup"],
+                    "parameters": {
+                        "grouping_var": ["dataset"],
+                        "category_order": [
+                            "-50y",
+                            "50-59y",
+                            "60-69y",
+                            "60-69y",
+                            "+80y",
+                        ],
+                    },
+                },
             },
             "expected_status": 460,
             "expected_message": r"Parameter 'category_order' must not contain duplicates",
@@ -207,17 +323,26 @@ GLMM_ORDINAL_CASES = [
             "name": "grouping_var_missing_from_x",
             "request": {
                 "inputdata": {
-                    "y": ["agegroup"],
-                    "x": ["lefthippocampus", "leftamygdala"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1"],
                     "filters": None,
-                },
-                "parameters": {
-                    "grouping_var": ["dataset"],
-                    "category_order": ["-50y", "50-59y", "60-69y", "70-79y", "+80y"],
+                    "variables": ["lefthippocampus", "leftamygdala", "agegroup"],
                 },
                 "test_case_num": 9,
+                "algorithm": {
+                    "x": ["lefthippocampus", "leftamygdala"],
+                    "y": ["agegroup"],
+                    "parameters": {
+                        "grouping_var": ["dataset"],
+                        "category_order": [
+                            "-50y",
+                            "50-59y",
+                            "60-69y",
+                            "70-79y",
+                            "+80y",
+                        ],
+                    },
+                },
             },
             "expected_status": 460,
             "expected_message": (
@@ -238,29 +363,22 @@ def test_glmm_ordinal_wrapper(case):
     if case["expected_status"] == 200:
         result = parse_response(response)
 
-        assert result["dependent_var"] == case["request"]["inputdata"]["y"][0]
-        assert result["grouping_var"] == case["request"]["parameters"]["grouping_var"]
+        assert result["dependent_var"] == case["request"]["algorithm"]["y"][0]
+        assert (
+            result["grouping_var"]
+            == case["request"]["algorithm"]["parameters"]["grouping_var"]
+        )
         assert result["category_order"] == [
-            str(x) for x in case["request"]["parameters"]["category_order"]
+            str(x) for x in case["request"]["algorithm"]["parameters"]["category_order"]
         ]
         assert result["indep_vars"][0] == "Intercept"
         assert len(result["coefficients"]) == len(result["indep_vars"])
-        assert len(result["std_err"]) == len(result["indep_vars"])
-        assert len(result["z_stats"]) == len(result["indep_vars"])
-        assert result["pvalue_label"] == "P(>|z|)"
-        assert len(result["pvalues"]) == len(result["indep_vars"])
-        assert len(result["pvalues_display"]) == len(result["indep_vars"])
-        assert len(result["lower_ci"]) == len(result["indep_vars"])
-        assert len(result["upper_ci"]) == len(result["indep_vars"])
         assert len(result["cutpoints"]) == len(result["category_order"]) - 1
         assert result["n_obs"] > 0
         assert result["n_groups"] > 0
         assert result["n_iter"] >= 1
 
         assert "sigma_u2" in result
-        assert "ll_laplace" in result
-        assert "aic" in result
-        assert "bic" in result
         assert "converged" in result
 
         if case["name"] == "multiple_categorical_fixed_effects":

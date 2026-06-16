@@ -2,13 +2,8 @@
     "test_cases": [
         {
             "input": {
+                "test_case_num": 0,
                 "inputdata": {
-                    "y": [
-                        "edsdcategory"
-                    ],
-                    "x": [
-                        "gender"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd6",
@@ -37,10 +32,22 @@
                         "desd-synthdata7",
                         "desd-synthdata9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "gender",
+                        "edsdcategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 0
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "gender"
+                    ],
+                    "y": [
+                        "edsdcategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -68,13 +75,8 @@
         },
         {
             "input": {
+                "test_case_num": 1,
                 "inputdata": {
-                    "y": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "x": [
-                        "dataset"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi8",
@@ -99,10 +101,22 @@
                         "desd-synthdata5",
                         "ppmi1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "alzheimerbroadcategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 1
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -214,14 +228,8 @@
         },
         {
             "input": {
+                "test_case_num": 2,
                 "inputdata": {
-                    "y": [
-                        "neurodegenerativescategories"
-                    ],
-                    "x": [
-                        "edsdcategory",
-                        "gender"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata2",
@@ -234,10 +242,24 @@
                         "desd-synthdata8",
                         "ppmi5"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "edsdcategory",
+                        "gender",
+                        "neurodegenerativescategories"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 2
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "edsdcategory",
+                        "gender"
+                    ],
+                    "y": [
+                        "neurodegenerativescategories"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -272,23 +294,32 @@
         },
         {
             "input": {
+                "test_case_num": 3,
                 "inputdata": {
-                    "y": [
-                        "gender"
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "ppmi3"
                     ],
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "parkinsonbroadcategory",
+                        "agegroup",
+                        "gender"
+                    ]
+                },
+                "preprocessing": null,
+                "algorithm": {
                     "x": [
                         "dataset",
                         "parkinsonbroadcategory",
                         "agegroup"
                     ],
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "ppmi3"
+                    "y": [
+                        "gender"
                     ],
-                    "filters": null
-                },
-                "parameters": {},
-                "test_case_num": 3
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -383,13 +414,8 @@
         },
         {
             "input": {
+                "test_case_num": 4,
                 "inputdata": {
-                    "y": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "x": [
-                        "dataset"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd5",
@@ -397,10 +423,22 @@
                         "desd-synthdata7",
                         "desd-synthdata9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "alzheimerbroadcategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 4
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -506,14 +544,8 @@
         },
         {
             "input": {
+                "test_case_num": 5,
                 "inputdata": {
-                    "y": [
-                        "agegroup"
-                    ],
-                    "x": [
-                        "neurodegenerativescategories",
-                        "gender"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd4",
@@ -542,10 +574,24 @@
                         "edsd5",
                         "ppmi9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "neurodegenerativescategories",
+                        "gender",
+                        "agegroup"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 5
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "neurodegenerativescategories",
+                        "gender"
+                    ],
+                    "y": [
+                        "agegroup"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -650,13 +696,8 @@
         },
         {
             "input": {
+                "test_case_num": 6,
                 "inputdata": {
-                    "y": [
-                        "neurodegenerativescategories"
-                    ],
-                    "x": [
-                        "parkinsonbroadcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata0",
@@ -674,10 +715,22 @@
                         "edsd6",
                         "desd-synthdata7"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "neurodegenerativescategories"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 6
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "y": [
+                        "neurodegenerativescategories"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -696,13 +749,8 @@
         },
         {
             "input": {
+                "test_case_num": 7,
                 "inputdata": {
-                    "y": [
-                        "agegroup"
-                    ],
-                    "x": [
-                        "neurodegenerativescategories"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd7",
@@ -713,10 +761,22 @@
                         "edsd4",
                         "edsd1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "neurodegenerativescategories",
+                        "agegroup"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 7
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "neurodegenerativescategories"
+                    ],
+                    "y": [
+                        "agegroup"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -789,14 +849,8 @@
         },
         {
             "input": {
+                "test_case_num": 8,
                 "inputdata": {
-                    "y": [
-                        "ppmicategory"
-                    ],
-                    "x": [
-                        "parkinsonbroadcategory",
-                        "alzheimerbroadcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata1",
@@ -823,10 +877,24 @@
                         "edsd1",
                         "edsd2"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "alzheimerbroadcategory",
+                        "ppmicategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 8
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory",
+                        "alzheimerbroadcategory"
+                    ],
+                    "y": [
+                        "ppmicategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -889,13 +957,8 @@
         },
         {
             "input": {
+                "test_case_num": 9,
                 "inputdata": {
-                    "y": [
-                        "neurodegenerativescategories"
-                    ],
-                    "x": [
-                        "parkinsonbroadcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi2",
@@ -916,10 +979,22 @@
                         "desd-synthdata2",
                         "edsd5"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "neurodegenerativescategories"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 9
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "y": [
+                        "neurodegenerativescategories"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -938,22 +1013,29 @@
         },
         {
             "input": {
+                "test_case_num": 10,
                 "inputdata": {
-                    "y": [
-                        "neurodegenerativescategories"
-                    ],
-                    "x": [
-                        "dataset"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi3",
                         "desd-synthdata8"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "neurodegenerativescategories"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 10
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "neurodegenerativescategories"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -1047,23 +1129,30 @@
         },
         {
             "input": {
+                "test_case_num": 11,
                 "inputdata": {
-                    "y": [
-                        "ppmicategory"
-                    ],
-                    "x": [
-                        "parkinsonbroadcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd2",
                         "desd-synthdata9",
                         "ppmi1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "ppmicategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 11
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "y": [
+                        "ppmicategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -1086,13 +1175,8 @@
         },
         {
             "input": {
+                "test_case_num": 12,
                 "inputdata": {
-                    "y": [
-                        "neurodegenerativescategories"
-                    ],
-                    "x": [
-                        "agegroup"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata8",
@@ -1100,10 +1184,22 @@
                         "edsd6",
                         "edsd9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "neurodegenerativescategories"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 12
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "neurodegenerativescategories"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -1132,13 +1228,8 @@
         },
         {
             "input": {
+                "test_case_num": 13,
                 "inputdata": {
-                    "y": [
-                        "gender"
-                    ],
-                    "x": [
-                        "edsdcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata2",
@@ -1146,10 +1237,22 @@
                         "edsd0",
                         "ppmi1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "edsdcategory",
+                        "gender"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 13
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "edsdcategory"
+                    ],
+                    "y": [
+                        "gender"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -1174,13 +1277,8 @@
         },
         {
             "input": {
+                "test_case_num": 14,
                 "inputdata": {
-                    "y": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "x": [
-                        "edsdcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi5",
@@ -1197,10 +1295,22 @@
                         "desd-synthdata2",
                         "edsd2"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "edsdcategory",
+                        "alzheimerbroadcategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 14
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "edsdcategory"
+                    ],
+                    "y": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -1231,23 +1341,31 @@
         },
         {
             "input": {
+                "test_case_num": 15,
                 "inputdata": {
-                    "y": [
-                        "agegroup"
-                    ],
-                    "x": [
-                        "gender",
-                        "neurodegenerativescategories"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata9",
                         "desd-synthdata6"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "gender",
+                        "neurodegenerativescategories",
+                        "agegroup"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 15
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "gender",
+                        "neurodegenerativescategories"
+                    ],
+                    "y": [
+                        "agegroup"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -1342,24 +1460,32 @@
         },
         {
             "input": {
+                "test_case_num": 16,
                 "inputdata": {
-                    "y": [
-                        "ppmicategory"
-                    ],
-                    "x": [
-                        "dataset",
-                        "gender"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata3",
                         "desd-synthdata2",
                         "ppmi0"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "gender",
+                        "ppmicategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 16
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset",
+                        "gender"
+                    ],
+                    "y": [
+                        "ppmicategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -1402,13 +1528,8 @@
         },
         {
             "input": {
+                "test_case_num": 17,
                 "inputdata": {
-                    "y": [
-                        "edsdcategory"
-                    ],
-                    "x": [
-                        "gender"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi4",
@@ -1423,10 +1544,22 @@
                         "edsd0",
                         "desd-synthdata1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "gender",
+                        "edsdcategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 17
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "gender"
+                    ],
+                    "y": [
+                        "edsdcategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -1454,13 +1587,8 @@
         },
         {
             "input": {
+                "test_case_num": 18,
                 "inputdata": {
-                    "y": [
-                        "ppmicategory"
-                    ],
-                    "x": [
-                        "agegroup"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi7",
@@ -1475,10 +1603,22 @@
                         "edsd1",
                         "desd-synthdata5"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "ppmicategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 18
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "ppmicategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -1523,13 +1663,8 @@
         },
         {
             "input": {
+                "test_case_num": 19,
                 "inputdata": {
-                    "y": [
-                        "gender"
-                    ],
-                    "x": [
-                        "agegroup"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi2",
@@ -1542,10 +1677,22 @@
                         "ppmi4",
                         "desd-synthdata3"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "gender"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 19
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "gender"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -1574,13 +1721,8 @@
         },
         {
             "input": {
+                "test_case_num": 20,
                 "inputdata": {
-                    "y": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "x": [
-                        "dataset"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi8",
@@ -1601,10 +1743,22 @@
                         "desd-synthdata4",
                         "ppmi2"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "alzheimerbroadcategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 20
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -1716,13 +1870,8 @@
         },
         {
             "input": {
+                "test_case_num": 21,
                 "inputdata": {
-                    "y": [
-                        "dataset"
-                    ],
-                    "x": [
-                        "agegroup"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi1",
@@ -1747,10 +1896,22 @@
                         "edsd9",
                         "edsd7"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "dataset"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 21
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "dataset"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -1931,23 +2092,31 @@
         },
         {
             "input": {
+                "test_case_num": 22,
                 "inputdata": {
-                    "y": [
-                        "gender"
-                    ],
-                    "x": [
-                        "edsdcategory",
-                        "alzheimerbroadcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi3",
                         "edsd5"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "edsdcategory",
+                        "alzheimerbroadcategory",
+                        "gender"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 22
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "edsdcategory",
+                        "alzheimerbroadcategory"
+                    ],
+                    "y": [
+                        "gender"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -1986,13 +2155,8 @@
         },
         {
             "input": {
+                "test_case_num": 23,
                 "inputdata": {
-                    "y": [
-                        "agegroup"
-                    ],
-                    "x": [
-                        "parkinsonbroadcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi5",
@@ -2003,10 +2167,22 @@
                         "desd-synthdata7",
                         "ppmi7"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "agegroup"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 23
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "y": [
+                        "agegroup"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -2049,22 +2225,29 @@
         },
         {
             "input": {
+                "test_case_num": 24,
                 "inputdata": {
-                    "y": [
-                        "neurodegenerativescategories"
-                    ],
-                    "x": [
-                        "dataset"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi6",
                         "edsd7"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "neurodegenerativescategories"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 24
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "neurodegenerativescategories"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -2167,13 +2350,8 @@
         },
         {
             "input": {
+                "test_case_num": 25,
                 "inputdata": {
-                    "y": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "x": [
-                        "neurodegenerativescategories"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi8",
@@ -2187,10 +2365,22 @@
                         "edsd4",
                         "desd-synthdata7"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "neurodegenerativescategories",
+                        "alzheimerbroadcategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 25
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "neurodegenerativescategories"
+                    ],
+                    "y": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -2231,14 +2421,8 @@
         },
         {
             "input": {
+                "test_case_num": 26,
                 "inputdata": {
-                    "y": [
-                        "gender"
-                    ],
-                    "x": [
-                        "alzheimerbroadcategory",
-                        "parkinsonbroadcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd8",
@@ -2255,10 +2439,24 @@
                         "ppmi8",
                         "edsd0"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "alzheimerbroadcategory",
+                        "parkinsonbroadcategory",
+                        "gender"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 26
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "alzheimerbroadcategory",
+                        "parkinsonbroadcategory"
+                    ],
+                    "y": [
+                        "gender"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -2297,13 +2495,8 @@
         },
         {
             "input": {
+                "test_case_num": 27,
                 "inputdata": {
-                    "y": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "x": [
-                        "dataset"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd1",
@@ -2325,10 +2518,22 @@
                         "edsd7",
                         "edsd3"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "alzheimerbroadcategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 27
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -2437,13 +2642,8 @@
         },
         {
             "input": {
+                "test_case_num": 28,
                 "inputdata": {
-                    "y": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "x": [
-                        "neurodegenerativescategories"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi6",
@@ -2456,10 +2656,22 @@
                         "ppmi3",
                         "ppmi8"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "neurodegenerativescategories",
+                        "alzheimerbroadcategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 28
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "neurodegenerativescategories"
+                    ],
+                    "y": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -2500,13 +2712,8 @@
         },
         {
             "input": {
+                "test_case_num": 29,
                 "inputdata": {
-                    "y": [
-                        "gender"
-                    ],
-                    "x": [
-                        "neurodegenerativescategories"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi4",
@@ -2522,10 +2729,22 @@
                         "desd-synthdata8",
                         "ppmi1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "neurodegenerativescategories",
+                        "gender"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 29
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "neurodegenerativescategories"
+                    ],
+                    "y": [
+                        "gender"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -2566,13 +2785,8 @@
         },
         {
             "input": {
+                "test_case_num": 30,
                 "inputdata": {
-                    "y": [
-                        "parkinsonbroadcategory"
-                    ],
-                    "x": [
-                        "dataset"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd6",
@@ -2583,10 +2797,22 @@
                         "desd-synthdata9",
                         "edsd4"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "parkinsonbroadcategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 30
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -2653,14 +2879,8 @@
         },
         {
             "input": {
+                "test_case_num": 31,
                 "inputdata": {
-                    "y": [
-                        "neurodegenerativescategories"
-                    ],
-                    "x": [
-                        "parkinsonbroadcategory",
-                        "agegroup"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata7",
@@ -2671,10 +2891,24 @@
                         "ppmi4",
                         "ppmi9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "agegroup",
+                        "neurodegenerativescategories"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 31
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory",
+                        "agegroup"
+                    ],
+                    "y": [
+                        "neurodegenerativescategories"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -2702,14 +2936,8 @@
         },
         {
             "input": {
+                "test_case_num": 32,
                 "inputdata": {
-                    "y": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "x": [
-                        "parkinsonbroadcategory",
-                        "neurodegenerativescategories"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi5",
@@ -2729,10 +2957,24 @@
                         "edsd0",
                         "edsd2"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "neurodegenerativescategories",
+                        "alzheimerbroadcategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 32
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory",
+                        "neurodegenerativescategories"
+                    ],
+                    "y": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -2766,14 +3008,8 @@
         },
         {
             "input": {
+                "test_case_num": 33,
                 "inputdata": {
-                    "y": [
-                        "agegroup"
-                    ],
-                    "x": [
-                        "gender",
-                        "alzheimerbroadcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata5",
@@ -2791,10 +3027,24 @@
                         "edsd4",
                         "desd-synthdata4"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "gender",
+                        "alzheimerbroadcategory",
+                        "agegroup"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 33
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "gender",
+                        "alzheimerbroadcategory"
+                    ],
+                    "y": [
+                        "agegroup"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -2864,14 +3114,8 @@
         },
         {
             "input": {
+                "test_case_num": 34,
                 "inputdata": {
-                    "y": [
-                        "ppmicategory"
-                    ],
-                    "x": [
-                        "alzheimerbroadcategory",
-                        "gender"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd2",
@@ -2896,10 +3140,24 @@
                         "ppmi9",
                         "ppmi2"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "alzheimerbroadcategory",
+                        "gender",
+                        "ppmicategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 34
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "alzheimerbroadcategory",
+                        "gender"
+                    ],
+                    "y": [
+                        "ppmicategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -2958,13 +3216,8 @@
         },
         {
             "input": {
+                "test_case_num": 35,
                 "inputdata": {
-                    "y": [
-                        "neurodegenerativescategories"
-                    ],
-                    "x": [
-                        "dataset"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd9",
@@ -2981,10 +3234,22 @@
                         "ppmi5",
                         "desd-synthdata2"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "neurodegenerativescategories"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 35
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "neurodegenerativescategories"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -3087,13 +3352,8 @@
         },
         {
             "input": {
+                "test_case_num": 36,
                 "inputdata": {
-                    "y": [
-                        "neurodegenerativescategories"
-                    ],
-                    "x": [
-                        "dataset"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata7",
@@ -3102,10 +3362,22 @@
                         "edsd9",
                         "ppmi7"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "neurodegenerativescategories"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 36
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "neurodegenerativescategories"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -3211,13 +3483,8 @@
         },
         {
             "input": {
+                "test_case_num": 37,
                 "inputdata": {
-                    "y": [
-                        "ppmicategory"
-                    ],
-                    "x": [
-                        "parkinsonbroadcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata1",
@@ -3236,10 +3503,22 @@
                         "ppmi4",
                         "edsd3"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "ppmicategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 37
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "y": [
+                        "ppmicategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -3270,13 +3549,8 @@
         },
         {
             "input": {
+                "test_case_num": 38,
                 "inputdata": {
-                    "y": [
-                        "neurodegenerativescategories"
-                    ],
-                    "x": [
-                        "agegroup"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi8",
@@ -3306,10 +3580,22 @@
                         "ppmi7",
                         "edsd9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "neurodegenerativescategories"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 38
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "neurodegenerativescategories"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -3346,13 +3632,8 @@
         },
         {
             "input": {
+                "test_case_num": 39,
                 "inputdata": {
-                    "y": [
-                        "parkinsonbroadcategory"
-                    ],
-                    "x": [
-                        "dataset"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd9",
@@ -3376,10 +3657,22 @@
                         "desd-synthdata6",
                         "desd-synthdata9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "parkinsonbroadcategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 39
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -3491,13 +3784,8 @@
         },
         {
             "input": {
+                "test_case_num": 40,
                 "inputdata": {
-                    "y": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "x": [
-                        "edsdcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata8",
@@ -3517,10 +3805,22 @@
                         "desd-synthdata7",
                         "ppmi5"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "edsdcategory",
+                        "alzheimerbroadcategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 40
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "edsdcategory"
+                    ],
+                    "y": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -3551,13 +3851,8 @@
         },
         {
             "input": {
+                "test_case_num": 41,
                 "inputdata": {
-                    "y": [
-                        "agegroup"
-                    ],
-                    "x": [
-                        "dataset"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata4",
@@ -3565,10 +3860,22 @@
                         "ppmi9",
                         "edsd8"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "agegroup"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 41
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "agegroup"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -3746,24 +4053,32 @@
         },
         {
             "input": {
+                "test_case_num": 42,
                 "inputdata": {
-                    "y": [
-                        "neurodegenerativescategories"
-                    ],
-                    "x": [
-                        "dataset",
-                        "edsdcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata3",
                         "ppmi5",
                         "desd-synthdata4"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "edsdcategory",
+                        "neurodegenerativescategories"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 42
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset",
+                        "edsdcategory"
+                    ],
+                    "y": [
+                        "neurodegenerativescategories"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -3804,13 +4119,8 @@
         },
         {
             "input": {
+                "test_case_num": 43,
                 "inputdata": {
-                    "y": [
-                        "ppmicategory"
-                    ],
-                    "x": [
-                        "alzheimerbroadcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata6",
@@ -3829,10 +4139,22 @@
                         "edsd0",
                         "ppmi5"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "alzheimerbroadcategory",
+                        "ppmicategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 43
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "y": [
+                        "ppmicategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -3873,13 +4195,8 @@
         },
         {
             "input": {
+                "test_case_num": 44,
                 "inputdata": {
-                    "y": [
-                        "agegroup"
-                    ],
-                    "x": [
-                        "parkinsonbroadcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata1",
@@ -3895,10 +4212,22 @@
                         "desd-synthdata5",
                         "desd-synthdata0"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "agegroup"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 44
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "y": [
+                        "agegroup"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -3941,22 +4270,29 @@
         },
         {
             "input": {
+                "test_case_num": 45,
                 "inputdata": {
-                    "y": [
-                        "parkinsonbroadcategory"
-                    ],
-                    "x": [
-                        "neurodegenerativescategories"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi2",
                         "ppmi0"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "neurodegenerativescategories",
+                        "parkinsonbroadcategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 45
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "neurodegenerativescategories"
+                    ],
+                    "y": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -3983,13 +4319,8 @@
         },
         {
             "input": {
+                "test_case_num": 46,
                 "inputdata": {
-                    "y": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "x": [
-                        "dataset"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd6",
@@ -4000,10 +4331,22 @@
                         "desd-synthdata8",
                         "desd-synthdata1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "alzheimerbroadcategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 46
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -4109,22 +4452,29 @@
         },
         {
             "input": {
+                "test_case_num": 47,
                 "inputdata": {
-                    "y": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "x": [
-                        "gender"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi2",
                         "edsd9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "gender",
+                        "alzheimerbroadcategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 47
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "gender"
+                    ],
+                    "y": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -4152,13 +4502,8 @@
         },
         {
             "input": {
+                "test_case_num": 48,
                 "inputdata": {
-                    "y": [
-                        "edsdcategory"
-                    ],
-                    "x": [
-                        "dataset"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd3",
@@ -4167,10 +4512,22 @@
                         "desd-synthdata7",
                         "edsd8"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "edsdcategory"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 48
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "edsdcategory"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [
@@ -4249,22 +4606,29 @@
         },
         {
             "input": {
+                "test_case_num": 49,
                 "inputdata": {
-                    "y": [
-                        "neurodegenerativescategories"
-                    ],
-                    "x": [
-                        "gender"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata0",
                         "ppmi2"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "gender",
+                        "neurodegenerativescategories"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 49
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "gender"
+                    ],
+                    "y": [
+                        "neurodegenerativescategories"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "class_count": [

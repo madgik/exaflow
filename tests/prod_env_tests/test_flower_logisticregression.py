@@ -10,8 +10,6 @@ import pytest
 def test_logisticregression_algorithm():
     test_input = {
         "inputdata": {
-            "y": ["gender"],
-            "x": ["lefthippocampus"],
             "data_model": "dementia:0.1",
             "datasets": [
                 "ppmi0",
@@ -27,8 +25,13 @@ def test_logisticregression_algorithm():
             ],
             "validation_datasets": ["ppmi_test"],
             "filters": None,
+            "variables": ["lefthippocampus", "gender"],
         },
-        "parameters": {},
+        "algorithm": {
+            "x": ["lefthippocampus"],
+            "y": ["gender"],
+            "parameters": {},
+        },
     }
     response = algorithm_request(algorithm_name, test_input)
     result = parse_response(response)

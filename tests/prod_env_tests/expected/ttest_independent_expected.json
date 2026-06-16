@@ -2,13 +2,8 @@
     "test_cases": [
         {
             "input": {
+                "test_case_num": 0,
                 "inputdata": {
-                    "y": [
-                        "rightgregyrusrectus"
-                    ],
-                    "x": [
-                        "dataset"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi2",
@@ -31,15 +26,27 @@
                         "ppmi5",
                         "ppmi1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "dataset",
+                        "rightgregyrusrectus"
+                    ]
                 },
-                "parameters": {
-                    "alt_hypothesis": "less",
-                    "alpha": 0.5727207100545569,
-                    "groupA": "edsd1",
-                    "groupB": "ppmi2"
-                },
-                "test_case_num": 0
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "dataset"
+                    ],
+                    "y": [
+                        "rightgregyrusrectus"
+                    ],
+                    "parameters": {
+                        "alt_hypothesis": "less",
+                        "alpha": 0.5727207100545569,
+                        "groupA": "edsd1",
+                        "groupB": "ppmi2"
+                    }
+                }
             },
             "output": {
                 "statistic": -0.2367349582329612,
@@ -54,13 +61,8 @@
         },
         {
             "input": {
+                "test_case_num": 1,
                 "inputdata": {
-                    "y": [
-                        "lefttmptemporalpole"
-                    ],
-                    "x": [
-                        "gender"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi3",
@@ -81,15 +83,27 @@
                         "ppmi6",
                         "edsd7"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "gender",
+                        "lefttmptemporalpole"
+                    ]
                 },
-                "parameters": {
-                    "alt_hypothesis": "two-sided",
-                    "alpha": 0.6289411870096006,
-                    "groupA": "M",
-                    "groupB": "F"
-                },
-                "test_case_num": 1
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "gender"
+                    ],
+                    "y": [
+                        "lefttmptemporalpole"
+                    ],
+                    "parameters": {
+                        "alt_hypothesis": "two-sided",
+                        "alpha": 0.6289411870096006,
+                        "groupA": "M",
+                        "groupB": "F"
+                    }
+                }
             },
             "output": {
                 "statistic": 13.731167596313353,
@@ -104,13 +118,8 @@
         },
         {
             "input": {
+                "test_case_num": 2,
                 "inputdata": {
-                    "y": [
-                        "rightcocentraloperculum"
-                    ],
-                    "x": [
-                        "alzheimerbroadcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata1",
@@ -125,15 +134,27 @@
                         "edsd7",
                         "ppmi1"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "alzheimerbroadcategory",
+                        "rightcocentraloperculum"
+                    ]
                 },
-                "parameters": {
-                    "alt_hypothesis": "greater",
-                    "alpha": 0.6313593659938367,
-                    "groupA": "AD",
-                    "groupB": "CN"
-                },
-                "test_case_num": 2
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "y": [
+                        "rightcocentraloperculum"
+                    ],
+                    "parameters": {
+                        "alt_hypothesis": "greater",
+                        "alpha": 0.6313593659938367,
+                        "groupA": "AD",
+                        "groupB": "CN"
+                    }
+                }
             },
             "output": {
                 "statistic": -1.8802522631869083,
@@ -148,13 +169,8 @@
         },
         {
             "input": {
+                "test_case_num": 3,
                 "inputdata": {
-                    "y": [
-                        "leftsmgsupramarginalgyrus"
-                    ],
-                    "x": [
-                        "agegroup"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi3",
@@ -170,15 +186,27 @@
                         "edsd8",
                         "desd-synthdata9"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "agegroup",
+                        "leftsmgsupramarginalgyrus"
+                    ]
                 },
-                "parameters": {
-                    "alt_hypothesis": "two-sided",
-                    "alpha": 0.500807798669256,
-                    "groupA": "-50y",
-                    "groupB": "70-79y"
-                },
-                "test_case_num": 3
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "agegroup"
+                    ],
+                    "y": [
+                        "leftsmgsupramarginalgyrus"
+                    ],
+                    "parameters": {
+                        "alt_hypothesis": "two-sided",
+                        "alpha": 0.500807798669256,
+                        "groupA": "-50y",
+                        "groupB": "70-79y"
+                    }
+                }
             },
             "output": {
                 "statistic": -0.550742513701956,
@@ -193,13 +221,8 @@
         },
         {
             "input": {
+                "test_case_num": 4,
                 "inputdata": {
-                    "y": [
-                        "leftmorgmedialorbitalgyrus"
-                    ],
-                    "x": [
-                        "parkinsonbroadcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd9",
@@ -216,15 +239,27 @@
                         "ppmi0",
                         "edsd2"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "parkinsonbroadcategory",
+                        "leftmorgmedialorbitalgyrus"
+                    ]
                 },
-                "parameters": {
-                    "alt_hypothesis": "less",
-                    "alpha": 0.3320808160368658,
-                    "groupA": "PD",
-                    "groupB": "Other"
-                },
-                "test_case_num": 4
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "parkinsonbroadcategory"
+                    ],
+                    "y": [
+                        "leftmorgmedialorbitalgyrus"
+                    ],
+                    "parameters": {
+                        "alt_hypothesis": "less",
+                        "alpha": 0.3320808160368658,
+                        "groupA": "PD",
+                        "groupB": "Other"
+                    }
+                }
             },
             "output": {
                 "statistic": -1.0276893536209628,

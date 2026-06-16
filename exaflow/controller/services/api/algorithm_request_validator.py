@@ -5,9 +5,6 @@ from typing import List
 from typing import Optional
 
 from exaflow import exareme3_preprocessing_step_classes
-from exaflow.algorithms.exareme3.utils.preprocessing_step import (
-    get_ordered_preprocessing_items,
-)
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import InputDataSpecification
 from exaflow.algorithms.specifications import InputDataSpecifications
@@ -16,7 +13,9 @@ from exaflow.algorithms.specifications import InputDataType
 from exaflow.algorithms.specifications import ParameterDictValueType
 from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterSpecification
+from exaflow.algorithms.specifications import PreprocessingOutputType
 from exaflow.algorithms.specifications import PreprocessingStepSpecification
+from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.controller.services.api.algorithm_request_dtos import AlgorithmInputDataDTO
 from exaflow.controller.services.api.algorithm_request_dtos import AlgorithmRequestDTO
 from exaflow.controller.services.api.algorithm_request_dtos import (
@@ -116,7 +115,7 @@ def _validate_algorithm_request_body(
     )
 
     _validate_parameters(
-        algorithm_request_dto.parameters,
+        algorithm_request_dto.algorithm.parameters,
         algorithm_specs.parameters,
         transformed_inputdata,
         data_model_cdes=transformed_data_model_cdes,
@@ -131,9 +130,9 @@ def _validate_algorithm_request_body(
 
 def _validate_required_preprocessing(
     algorithm_specs: AlgorithmSpecification,
-    preprocessing: Optional[Dict[str, Any]],
+    preprocessing: Optional[List[Any]],
 ):
-    requested_preprocessing = set((preprocessing or {}).keys())
+    requested_preprocessing = {step.name for step in (preprocessing or [])}
     missing_required_preprocessing = [
         name
         for name in algorithm_specs.required_preprocessing
@@ -165,6 +164,7 @@ def _validate_inputdata_base(
         validation_datasets=validation_datasets,
     )
     _validate_inputdata_filter(inputdata.data_model, inputdata.filters, data_model_cdes)
+    _validate_source_variables(inputdata.variables, data_model_cdes)
 
 
 def _validate_and_apply_preprocessing(
@@ -172,29 +172,55 @@ def _validate_and_apply_preprocessing(
     preprocessing_steps_specs: Dict[str, PreprocessingStepSpecification],
     data_model_cdes: Dict[str, CommonDataElement],
 ):
-    transformed_inputdata = algorithm_request_dto.inputdata
-    transformed_metadata = _convert_data_model_cdes_to_metadata(data_model_cdes)
-    transformed_data_model_cdes = dict(data_model_cdes)
+    transformed_inputdata = _build_algorithm_inputdata(algorithm_request_dto)
+    transformed_data_model_cdes = _select_available_cdes(
+        algorithm_request_dto.inputdata.variables, data_model_cdes
+    )
+    transformed_metadata = _convert_data_model_cdes_to_metadata(
+        transformed_data_model_cdes
+    )
 
     if not algorithm_request_dto.preprocessing:
         return transformed_inputdata, transformed_data_model_cdes
 
-    for name, params in get_ordered_preprocessing_items(
-        preprocessing=algorithm_request_dto.preprocessing,
-        preprocessing_step_classes=exareme3_preprocessing_step_classes,
-        preprocessing_step_specs=preprocessing_steps_specs,
-    ):
+    for step in algorithm_request_dto.preprocessing:
+        name = step.name
+        params = step.parameters
         if name not in preprocessing_steps_specs.keys():
             raise BadUserInput(f"Transformer '{name}' does not exist.")
 
+        preprocessing_step_spec = preprocessing_steps_specs[name]
+        preprocessing_step_cls = exareme3_preprocessing_step_classes.get(name)
+        step_data_model_cdes = transformed_data_model_cdes
+        step_metadata = transformed_metadata
+        if preprocessing_step_cls:
+            required_data_model_cdes = {}
+            required_metadata = {}
+            for variable in preprocessing_step_cls.required_input_variables():
+                if variable in data_model_cdes:
+                    required_data_model_cdes[variable] = data_model_cdes[variable]
+                    required_metadata[variable] = data_model_cdes[variable].model_dump()
+            step_data_model_cdes = {
+                **transformed_data_model_cdes,
+                **required_data_model_cdes,
+            }
+            step_metadata = {
+                **transformed_metadata,
+                **required_metadata,
+            }
+
         _validate_parameters(
             parameters=params,
-            parameters_specs=preprocessing_steps_specs[name].parameters,
+            parameters_specs=preprocessing_step_spec.parameters,
             inputdata=transformed_inputdata,
-            data_model_cdes=transformed_data_model_cdes,
+            data_model_cdes=step_data_model_cdes,
+        )
+        _validate_preprocessing_output_name(
+            preprocessing_step_spec=preprocessing_step_spec,
+            params=params,
+            data_model_cdes={**data_model_cdes, **transformed_data_model_cdes},
         )
 
-        preprocessing_step_cls = exareme3_preprocessing_step_classes.get(name)
         if not preprocessing_step_cls:
             raise BadUserInput(
                 f"Preprocessing step '{name}' is enabled but its implementation was not found."
@@ -203,7 +229,7 @@ def _validate_and_apply_preprocessing(
         preprocessing_step = preprocessing_step_cls(params=params)
         preprocessing_step.validate_params(
             inputdata=transformed_inputdata,
-            metadata=transformed_metadata,
+            metadata=step_metadata,
         )
         transformed_x, transformed_y = preprocessing_step.transform_inputdata_variables(
             x=list(transformed_inputdata.x or []),
@@ -215,11 +241,124 @@ def _validate_and_apply_preprocessing(
         transformed_metadata = preprocessing_step.transform_metadata(
             metadata=transformed_metadata,
         )
+        _derive_preprocessing_output_metadata(
+            preprocessing_step_spec=preprocessing_step_spec,
+            params=params,
+            metadata=transformed_metadata,
+        )
         transformed_data_model_cdes = _convert_metadata_to_data_model_cdes(
             transformed_metadata
         )
 
     return transformed_inputdata, transformed_data_model_cdes
+
+
+def _build_algorithm_inputdata(
+    algorithm_request_dto: AlgorithmRequestDTO,
+) -> Inputdata:
+    return Inputdata(
+        data_model=algorithm_request_dto.inputdata.data_model,
+        datasets=algorithm_request_dto.inputdata.datasets,
+        validation_datasets=algorithm_request_dto.inputdata.validation_datasets,
+        filters=algorithm_request_dto.inputdata.filters,
+        x=algorithm_request_dto.algorithm.x,
+        y=algorithm_request_dto.algorithm.y,
+    )
+
+
+def _build_source_inputdata(
+    algorithm_request_dto: AlgorithmRequestDTO,
+) -> Inputdata:
+    return Inputdata(
+        data_model=algorithm_request_dto.inputdata.data_model,
+        datasets=algorithm_request_dto.inputdata.datasets,
+        validation_datasets=algorithm_request_dto.inputdata.validation_datasets,
+        filters=algorithm_request_dto.inputdata.filters,
+        x=algorithm_request_dto.inputdata.variables,
+        y=[],
+    )
+
+
+def _validate_source_variables(
+    variables: List[str],
+    data_model_cdes: Dict[str, CommonDataElement],
+) -> None:
+    if not variables:
+        raise BadUserInput("Inputdata 'variables' should be provided.")
+    duplicate_variables = sorted(
+        {variable for variable in variables if variables.count(variable) > 1}
+    )
+    if duplicate_variables:
+        raise BadUserInput(
+            f"Inputdata 'variables' should not contain duplicate variables: {duplicate_variables}."
+        )
+    missing_variables = [
+        variable for variable in variables if variable not in data_model_cdes
+    ]
+    if missing_variables:
+        raise BadUserInput(
+            f"Inputdata 'variables' contain CDEs that do not exist in the data model provided: {missing_variables}."
+        )
+
+
+def _select_available_cdes(
+    variables: List[str],
+    data_model_cdes: Dict[str, CommonDataElement],
+) -> Dict[str, CommonDataElement]:
+    return {variable: data_model_cdes[variable] for variable in variables}
+
+
+def _validate_preprocessing_output_name(
+    *,
+    preprocessing_step_spec: PreprocessingStepSpecification,
+    params: Dict[str, Any],
+    data_model_cdes: Dict[str, CommonDataElement],
+) -> None:
+    output = preprocessing_step_spec.output
+    if (
+        not output
+        or output.type != PreprocessingOutputType.NEW_CATEGORICAL_COLUMN
+        or not output.code_parameter
+    ):
+        return
+
+    code = params.get(output.code_parameter)
+    if code in data_model_cdes:
+        raise BadUserInput(
+            f"Preprocessing step '{preprocessing_step_spec.name}' cannot create CDE '{code}' because it already exists."
+        )
+
+
+def _derive_preprocessing_output_metadata(
+    *,
+    preprocessing_step_spec: PreprocessingStepSpecification,
+    params: Dict[str, Any],
+    metadata: Dict[str, dict],
+) -> None:
+    output = preprocessing_step_spec.output
+    if (
+        not output
+        or output.type != PreprocessingOutputType.NEW_CATEGORICAL_COLUMN
+        or not output.code_parameter
+    ):
+        return
+
+    code = params[output.code_parameter]
+    if code in metadata:
+        return
+
+    rules = params["rules"]
+    default_enumeration = params.get("default_enumeration")
+    enumerations = {key: key for key in rules.keys()}
+    if default_enumeration:
+        enumerations[default_enumeration] = default_enumeration
+    metadata[code] = {
+        "code": code,
+        "label": code,
+        "sql_type": "text",
+        "is_categorical": True,
+        "enumerations": enumerations,
+    }
 
 
 def _convert_data_model_cdes_to_metadata(
@@ -580,6 +719,9 @@ def _validate_parameter_value_type(
         "boolean": bool,
     }
 
+    if parameter_type == ParameterDictValueType.FILTER:
+        return
+
     if isinstance(parameter_value, exaflowtypes_to_python_types[parameter_type.value]):
         return
 
@@ -728,11 +870,14 @@ def _validate_param_dict_enums(
 
         for value in parameter_value.values():
             if parameter_spec.dict_values_type:
-                _validate_parameter_value_type(
-                    value,
-                    parameter_spec.dict_values_type,
-                    parameter_spec.label,
-                )
+                if parameter_spec.dict_values_type == ParameterDictValueType.FILTER:
+                    validate_filter(inputdata.data_model, value, data_model_cdes)
+                else:
+                    _validate_parameter_value_type(
+                        value,
+                        parameter_spec.dict_values_type,
+                        parameter_spec.label,
+                    )
 
             _validate_param_enums(
                 value,

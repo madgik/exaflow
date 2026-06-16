@@ -1,5 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
+from typing import Any
+from typing import Dict
 from typing import List
 from typing import Optional
 
@@ -20,7 +22,7 @@ class Exareme3AlgorithmFlowEngineInterface:
         tasks_handlers: List[Exareme3TasksHandler],
         inputdata: Inputdata,
         metadata: dict,
-        preprocessing: dict = None,
+        preprocessing: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
         self._logger = ctrl_logger.get_request_logger(request_id=request_id)
         self._context_id = context_id

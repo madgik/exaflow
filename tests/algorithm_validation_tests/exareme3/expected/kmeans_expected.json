@@ -1,84 +1,120 @@
 {
-	"test_cases": [{
-			"input": {
-				"inputdata": {
-					"y": [
-						"lefthippocampus", "righthippocampus"
-					],
-					"data_model": "dementia:0.1",
-					"datasets": [
-						"edsd0",
-						"edsd1",
-						"edsd2",
-						"edsd3",
-						"edsd4",
-						"edsd5",
-						"edsd6",
-						"edsd7",
-						"edsd8",
-						"edsd9"
-					],
-					"filters": null
-				},
-				"parameters": {
-					"k": 4,
-					"tol": 0.0001,
-					"maxiter": 100
-				},
-				"test_case_num": 0
-			},
-			"output": {
-
-				"centers": [
-					[1.3047, 1.1821000000000002],
-					[2.560746086956522, 2.75048],
-					[2.988410447761194, 3.1768885572139305],
-					[3.4118358333333334, 3.629786666666667]
-				]
-			}
-
-		},
-
-		{
-			"input": {
-				"inputdata": {
-					"y": [
-						"leftamygdala", "rightamygdala"
-					],
-					"data_model": "dementia:0.1",
-					"datasets": [
-						"edsd0",
-						"edsd1",
-						"edsd2",
-						"edsd3",
-						"edsd4",
-						"edsd5",
-						"edsd6",
-						"edsd7",
-						"edsd8",
-						"edsd9"
-					],
-					"filters": null
-				},
-				"parameters": {
-					"k": 4,
-					"tol": 0.0001,
-					"maxiter": 100
-				},
-				"test_case_num": 1
-			},
-			"output": {
-
-				"centers": [
-					[0.6262272289156626, 0.632151686746988],
-					[0.7522711538461538, 0.7595590384615385],
-					[0.8638509459459459, 0.8644704054054054],
-					[0.9913122, 0.9863206]
-				]
-			}
-
-		}
-
-
-	]
+    "test_cases": [
+        {
+            "input": {
+                "test_case_num": 0,
+                "inputdata": {
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "edsd0",
+                        "edsd1",
+                        "edsd2",
+                        "edsd3",
+                        "edsd4",
+                        "edsd5",
+                        "edsd6",
+                        "edsd7",
+                        "edsd8",
+                        "edsd9"
+                    ],
+                    "filters": null,
+                    "variables": [
+                        "lefthippocampus",
+                        "righthippocampus"
+                    ]
+                },
+                "preprocessing": null,
+                "algorithm": {
+                    "x": null,
+                    "y": [
+                        "lefthippocampus",
+                        "righthippocampus"
+                    ],
+                    "parameters": {
+                        "k": 4,
+                        "tol": 0.0001,
+                        "maxiter": 100
+                    }
+                }
+            },
+            "output": {
+                "centers": [
+                    [
+                        1.3047,
+                        1.1821000000000002
+                    ],
+                    [
+                        2.560746086956522,
+                        2.75048
+                    ],
+                    [
+                        2.988410447761194,
+                        3.1768885572139305
+                    ],
+                    [
+                        3.4118358333333334,
+                        3.629786666666667
+                    ]
+                ]
+            }
+        },
+        {
+            "input": {
+                "test_case_num": 1,
+                "inputdata": {
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "edsd0",
+                        "edsd1",
+                        "edsd2",
+                        "edsd3",
+                        "edsd4",
+                        "edsd5",
+                        "edsd6",
+                        "edsd7",
+                        "edsd8",
+                        "edsd9"
+                    ],
+                    "filters": null,
+                    "variables": [
+                        "leftamygdala",
+                        "rightamygdala"
+                    ]
+                },
+                "preprocessing": null,
+                "algorithm": {
+                    "x": null,
+                    "y": [
+                        "leftamygdala",
+                        "rightamygdala"
+                    ],
+                    "parameters": {
+                        "k": 4,
+                        "tol": 0.0001,
+                        "maxiter": 100
+                    }
+                }
+            },
+            "output": {
+                "centers": [
+                    [
+                        0.6262272289156626,
+                        0.632151686746988
+                    ],
+                    [
+                        0.7522711538461538,
+                        0.7595590384615385
+                    ],
+                    [
+                        0.8638509459459459,
+                        0.8644704054054054
+                    ],
+                    [
+                        0.9913122,
+                        0.9863206
+                    ]
+                ]
+            }
+        }
+    ]
 }

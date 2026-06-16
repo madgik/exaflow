@@ -46,7 +46,6 @@ def test_get_specification_has_expected_shape():
 
     assert spec.name == "outlier_winsorizer"
     assert spec.enabled is True
-    assert spec.order == 2
     assert set(spec.parameters.keys()) == {"strategies", "tails", "folds"}
     assert spec.parameters["strategies"].required is True
     assert spec.parameters["strategies"].dict_values_enums.source == [
