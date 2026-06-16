@@ -1,8 +1,12 @@
 from unittest.mock import patch
 
+import pandas as pd
 import pytest
 
 import exaflow.controller.services.api.algorithm_request_validator as algorithm_request_validator
+from exaflow.algorithms.exareme3.preprocessing.categorical_column_creator import (
+    CategoricalColumnCreator,
+)
 from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import AlgorithmType
@@ -15,15 +19,22 @@ from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterEnumType
 from exaflow.algorithms.specifications import ParameterSpecification
 from exaflow.algorithms.specifications import ParameterType
-from exaflow.algorithms.specifications import PreprocessingStepOrder
 from exaflow.algorithms.specifications import PreprocessingStepSpecification
 from exaflow.algorithms.specifications import PreprocessingStepType
 from exaflow.controller import DeploymentType
 from exaflow.controller import logger as ctrl_logger
-from exaflow.controller.services.api.algorithm_request_dtos import AlgorithmInputDataDTO
-from exaflow.controller.services.api.algorithm_request_dtos import AlgorithmRequestDTO
+from exaflow.controller.services.api.algorithm_request_dtos import AlgorithmExecutionDTO
+from exaflow.controller.services.api.algorithm_request_dtos import (
+    AlgorithmInputDataDTO as AlgorithmInputDataDTOModel,
+)
+from exaflow.controller.services.api.algorithm_request_dtos import (
+    AlgorithmRequestDTO as AlgorithmRequestDTOModel,
+)
 from exaflow.controller.services.api.algorithm_request_dtos import (
     AlgorithmRequestSystemFlags,
+)
+from exaflow.controller.services.api.algorithm_request_dtos import (
+    PreprocessingRequestStepDTO,
 )
 from exaflow.controller.services.api.algorithm_request_validator import BadRequest
 from exaflow.controller.services.api.algorithm_request_validator import (
@@ -44,9 +55,81 @@ from exaflow.controller.services.worker_landscape_aggregator.worker_landscape_ag
 from exaflow.controller.services.worker_landscape_aggregator.worker_landscape_aggregator import (
     _wlaRegistries,
 )
+from exaflow.data_filters import FilterError
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import CommonDataElement
 from exaflow.worker_communication import CommonDataElements
+
+
+class AlgorithmInputDataDTO:
+    def __init__(
+        self,
+        *,
+        data_model,
+        datasets,
+        validation_datasets=None,
+        filters=None,
+        x=None,
+        y=None,
+        variables=None,
+    ):
+        self.data_model = data_model
+        self.datasets = datasets
+        self.validation_datasets = validation_datasets
+        self.filters = filters
+        self.x = x
+        self.y = y
+        self.variables = variables or list(dict.fromkeys((x or []) + (y or [])))
+
+    def to_model(self):
+        return AlgorithmInputDataDTOModel(
+            data_model=self.data_model,
+            datasets=self.datasets,
+            validation_datasets=self.validation_datasets,
+            filters=self.filters,
+            variables=self.variables,
+        )
+
+
+def AlgorithmRequestDTO(
+    *,
+    inputdata,
+    parameters=None,
+    preprocessing=None,
+    flags=None,
+    request_id=None,
+    algorithm=None,
+):
+    if isinstance(inputdata, AlgorithmInputDataDTO):
+        inputdata_model = inputdata.to_model()
+        x = inputdata.x
+        y = inputdata.y
+    else:
+        inputdata_model = inputdata
+        x = None
+        y = None
+
+    if algorithm is None:
+        algorithm = AlgorithmExecutionDTO(x=x, y=y, parameters=parameters)
+    elif isinstance(algorithm, dict):
+        algorithm = AlgorithmExecutionDTO(**algorithm)
+
+    return AlgorithmRequestDTOModel(
+        request_id=request_id,
+        inputdata=inputdata_model,
+        preprocessing=_preprocessing_to_steps(preprocessing),
+        algorithm=algorithm,
+        flags=flags,
+    )
+
+
+def _preprocessing_to_steps(preprocessing):
+    if preprocessing is None or isinstance(preprocessing, list):
+        return preprocessing
+    return [
+        PreprocessingRequestStepDTO(name=name, parameters=params)
+        for name, params in preprocessing.items()
+    ]
 
 
 @pytest.fixture
@@ -103,6 +186,13 @@ def worker_landscape_aggregator():
                     sql_type="text",
                     is_categorical=True,
                     enumerations={"male": "male", "female": "female", "Other": "Other"},
+                ),
+                "visitid": CommonDataElement(
+                    code="visitid",
+                    label="visitid",
+                    sql_type="text",
+                    is_categorical=True,
+                    enumerations={"BL": "BL", "FL1": "FL1"},
                 ),
             }
         ),
@@ -683,6 +773,28 @@ def preprocessing_steps_specs():
                 )
             },
         ),
+        "step_with_required_fixed_enum_cde": PreprocessingStepSpecification(
+            name="step_with_required_fixed_enum_cde",
+            desc="step_with_required_fixed_enum_cde",
+            documentation="step_with_required_fixed_enum_cde",
+            label="step_with_required_fixed_enum_cde",
+            type=PreprocessingStepType.EXAREME3_PREPROCESSING_STEP,
+            components=[],
+            enabled=True,
+            parameters={
+                "visit": ParameterSpecification(
+                    label="visit",
+                    desc="visit",
+                    types=[ParameterType.TEXT],
+                    required=True,
+                    multiple=False,
+                    enums=ParameterEnumSpecification(
+                        type=ParameterEnumType.FIXED_VAR_CDE_ENUMS,
+                        source=["visitid"],
+                    ),
+                )
+            },
+        ),
     }
 
 
@@ -939,6 +1051,7 @@ def get_parametrization_list_success_cases():
                 inputdata=AlgorithmInputDataDTO(
                     data_model="data_model_with_all_cde_types:0.1",
                     datasets=["sample_dataset1"],
+                    variables=["text_cde_categ", "real_cde"],
                     y=["text_cde_categ"],
                 ),
                 preprocessing={"rename_to_real": {}},
@@ -951,6 +1064,7 @@ def get_parametrization_list_success_cases():
                 inputdata=AlgorithmInputDataDTO(
                     data_model="data_model_with_all_cde_types:0.1",
                     datasets=["sample_dataset1"],
+                    variables=["text_cde_categ", "real_cde"],
                     y=["text_cde_categ"],
                 ),
                 preprocessing={
@@ -966,14 +1080,30 @@ def get_parametrization_list_success_cases():
                 inputdata=AlgorithmInputDataDTO(
                     data_model="data_model_with_all_cde_types:0.1",
                     datasets=["sample_dataset1"],
+                    variables=["text_cde_categ", "real_cde"],
                     y=["text_cde_categ"],
                 ),
                 preprocessing={
-                    "step_using_transformed_inputdata": {"selected_var": "real_cde"},
                     "rename_to_real": {},
+                    "step_using_transformed_inputdata": {"selected_var": "real_cde"},
                 },
             ),
-            id="Preprocessing execution order is derived from step order enum, not request map order.",
+            id="Preprocessing execution order follows request order.",
+        ),
+        pytest.param(
+            "algorithm_with_y_int",
+            AlgorithmRequestDTO(
+                inputdata=AlgorithmInputDataDTO(
+                    data_model="data_model_with_all_cde_types:0.1",
+                    datasets=["sample_dataset1"],
+                    variables=["real_cde"],
+                    y=["real_cde"],
+                ),
+                preprocessing={
+                    "step_with_required_fixed_enum_cde": {"visit": "BL"},
+                },
+            ),
+            id="Preprocessing fixed enum parameters can use required input variables.",
         ),
     ]
     return parametrization_list
@@ -1001,7 +1131,6 @@ class RenameYToRealStep(PreprocessingStep):
             documentation="rename_to_real",
             label="rename_to_real",
             enabled=True,
-            order=PreprocessingStepOrder.FIRST,
         )
 
     def validate_params(self, *, inputdata, metadata):
@@ -1033,7 +1162,6 @@ class NoopPreprocessingStep(PreprocessingStep):
             documentation="noop_preprocessing_step",
             label="noop_preprocessing_step",
             enabled=True,
-            order=PreprocessingStepOrder.FOURTH,
         )
 
     def validate_params(self, *, inputdata, metadata):
@@ -1053,6 +1181,37 @@ class NoopPreprocessingStep(PreprocessingStep):
         return []
 
 
+class StepWithRequiredFixedEnumCDE(PreprocessingStep):
+    def __init__(self, *, params):
+        self._params = params
+
+    @classmethod
+    def get_specification(cls):
+        return PreprocessingStepSpecification(
+            name="step_with_required_fixed_enum_cde",
+            desc="step_with_required_fixed_enum_cde",
+            documentation="step_with_required_fixed_enum_cde",
+            label="step_with_required_fixed_enum_cde",
+            enabled=True,
+        )
+
+    def validate_params(self, *, inputdata, metadata):
+        return None
+
+    def transform_inputdata_variables(self, *, x, y):
+        return x, y
+
+    def transform_metadata(self, *, metadata):
+        return metadata
+
+    def transform_data(self, *, data):
+        return data
+
+    @classmethod
+    def required_input_variables(cls):
+        return ["visitid"]
+
+
 @pytest.mark.parametrize(
     "algorithm_name, request_dto", get_parametrization_list_success_cases()
 )
@@ -1070,6 +1229,7 @@ def test_validate_algorithm_success(
             "transformer_with_real_param": NoopPreprocessingStep,
             "transformer_compatible_with_all_algorithms": NoopPreprocessingStep,
             "step_using_transformed_inputdata": NoopPreprocessingStep,
+            "step_with_required_fixed_enum_cde": StepWithRequiredFixedEnumCDE,
         },
         clear=False,
     ):
@@ -1295,7 +1455,10 @@ def get_parametrization_list_exception_cases():
                     y=["non_existing"],
                 ),
             ),
-            (BadUserInput, "The CDE .* does not exist in the data model provided."),
+            (
+                BadUserInput,
+                "Inputdata 'variables' contain CDEs that do not exist in the data model provided.*",
+            ),
             id="CDE does not exist.",
         ),
         pytest.param(
@@ -1560,6 +1723,25 @@ def get_parametrization_list_exception_cases():
                 "Parameter's .* enums, that are taken from the CDE .* given in inputdata .* variable, should be one of the following: .*",
             ),
             id="Parameter with enumerations of type 'input_var_CDE_enums' given non existing enum.",
+        ),
+        pytest.param(
+            "algorithm_with_y_int",
+            AlgorithmRequestDTO(
+                inputdata=AlgorithmInputDataDTO(
+                    data_model="data_model_with_all_cde_types:0.1",
+                    datasets=["sample_dataset1"],
+                    variables=["real_cde"],
+                    y=["visitid"],
+                ),
+                preprocessing={
+                    "step_with_required_fixed_enum_cde": {"visit": "BL"},
+                },
+            ),
+            (
+                BadUserInput,
+                "The CDE 'visitid' does not exist in the data model provided.",
+            ),
+            id="Required preprocessing variables are not valid algorithm inputs.",
         ),
         pytest.param(
             "algorithm_with_x_single_and_enum_param",
@@ -1861,20 +2043,31 @@ def test_validate_algorithm_exceptions(
 ):
     exception_type, exception_message = exception
     with pytest.raises(exception_type, match=exception_message):
-        with patch.object(
-            worker_landscape_aggregator,
-            "get_global_worker",
-            return_value=mocked_worker_info,
+        with patch.dict(
+            algorithm_request_validator.exareme3_preprocessing_step_classes,
+            {
+                "rename_to_real": RenameYToRealStep,
+                "transformer_with_real_param": NoopPreprocessingStep,
+                "transformer_compatible_with_all_algorithms": NoopPreprocessingStep,
+                "step_using_transformed_inputdata": NoopPreprocessingStep,
+                "step_with_required_fixed_enum_cde": StepWithRequiredFixedEnumCDE,
+            },
+            clear=False,
         ):
-            validate_algorithm_request(
-                algorithm_name=algorithm_name,
-                algorithm_request_dto=request_dto,
-                algorithms_specs=algorithms_specs,
-                preprocessing_steps_specs=preprocessing_steps_specs,
-                worker_landscape_aggregator=worker_landscape_aggregator,
-                smpc_enabled=False,
-                smpc_optional=False,
-            )
+            with patch.object(
+                worker_landscape_aggregator,
+                "get_global_worker",
+                return_value=mocked_worker_info,
+            ):
+                validate_algorithm_request(
+                    algorithm_name=algorithm_name,
+                    algorithm_request_dto=request_dto,
+                    algorithms_specs=algorithms_specs,
+                    preprocessing_steps_specs=preprocessing_steps_specs,
+                    worker_landscape_aggregator=worker_landscape_aggregator,
+                    smpc_enabled=False,
+                    smpc_optional=False,
+                )
 
 
 def test_validate_algorithm_inputdata_returns_when_values_and_spec_are_missing(
@@ -1927,6 +2120,239 @@ def test_validate_param_enums_input_var_cde_enums_with_x_source_success(
         inputdata=inputdata,
         data_model_cdes=data_model_cdes,
     )
+
+
+def _categorical_creator_request(
+    *,
+    variables=None,
+    code="risk_group",
+    rules=None,
+    algorithm_x=None,
+):
+    return AlgorithmRequestDTOModel(
+        inputdata=AlgorithmInputDataDTOModel(
+            data_model="data_model_with_all_cde_types:0.1",
+            datasets=["sample_dataset1"],
+            variables=variables or ["int_cde", "text_cde_categ"],
+        ),
+        preprocessing=[
+            PreprocessingRequestStepDTO(
+                name="categorical_column_creator",
+                parameters={
+                    "code": code,
+                    "strategy": "filter_rules",
+                    "rules": rules
+                    or {
+                        "high": {
+                            "condition": "AND",
+                            "rules": [
+                                {
+                                    "id": "int_cde",
+                                    "operator": "greater_or_equal",
+                                    "value": 1,
+                                }
+                            ],
+                        }
+                    },
+                    "default_enumeration": "low",
+                },
+            )
+        ],
+        algorithm=AlgorithmExecutionDTO(
+            x=algorithm_x or ["risk_group"],
+            y=["text_cde_categ"],
+            parameters={},
+        ),
+    )
+
+
+def _preprocessing_specs_with_categorical(preprocessing_steps_specs):
+    return {
+        **preprocessing_steps_specs,
+        "categorical_column_creator": CategoricalColumnCreator.get_specification(),
+    }
+
+
+def _validate_categorical_request(
+    *,
+    request_dto,
+    worker_landscape_aggregator,
+    algorithms_specs,
+    preprocessing_steps_specs,
+):
+    with patch.object(
+        worker_landscape_aggregator,
+        "get_global_worker",
+        return_value=mocked_worker_info,
+    ):
+        validate_algorithm_request(
+            algorithm_name="algorithm_with_x_and_y_text_multiple_true",
+            algorithm_request_dto=request_dto,
+            algorithms_specs=algorithms_specs,
+            preprocessing_steps_specs=preprocessing_steps_specs,
+            worker_landscape_aggregator=worker_landscape_aggregator,
+            smpc_enabled=False,
+            smpc_optional=False,
+        )
+
+
+def test_validate_algorithm_allows_derived_categorical_column(
+    worker_landscape_aggregator,
+    algorithms_specs,
+    preprocessing_steps_specs,
+):
+    request_dto = _categorical_creator_request(
+        rules={
+            "high": {
+                "condition": "AND",
+                "rules": [
+                    {
+                        "id": "int_cde",
+                        "operator": "greater_or_equal",
+                        "value": 2,
+                    }
+                ],
+            },
+            "medium": {
+                "condition": "AND",
+                "rules": [
+                    {
+                        "id": "int_cde",
+                        "operator": "equal",
+                        "value": 1,
+                    }
+                ],
+            },
+        }
+    )
+    preprocessing_specs = _preprocessing_specs_with_categorical(
+        preprocessing_steps_specs
+    )
+
+    with patch.dict(
+        algorithm_request_validator.exareme3_preprocessing_step_classes,
+        {"categorical_column_creator": CategoricalColumnCreator},
+        clear=False,
+    ):
+        _validate_categorical_request(
+            request_dto=request_dto,
+            algorithms_specs=algorithms_specs,
+            preprocessing_steps_specs=preprocessing_specs,
+            worker_landscape_aggregator=worker_landscape_aggregator,
+        )
+        _, transformed_cdes = (
+            algorithm_request_validator._validate_and_apply_preprocessing(
+                algorithm_request_dto=request_dto,
+                preprocessing_steps_specs=preprocessing_specs,
+                data_model_cdes=worker_landscape_aggregator.get_cdes(
+                    "data_model_with_all_cde_types:0.1"
+                ),
+            )
+        )
+
+    assert transformed_cdes["risk_group"] == CommonDataElement(
+        code="risk_group",
+        label="risk_group",
+        sql_type="text",
+        is_categorical=True,
+        enumerations={"high": "high", "medium": "medium", "low": "low"},
+    )
+
+
+def test_validate_algorithm_rejects_invalid_filter_dict_value(
+    worker_landscape_aggregator,
+    algorithms_specs,
+    preprocessing_steps_specs,
+):
+    request_dto = _categorical_creator_request(
+        rules={"high": "not-a-filter"},
+    )
+    preprocessing_specs = _preprocessing_specs_with_categorical(
+        preprocessing_steps_specs
+    )
+
+    with pytest.raises(FilterError, match="Filter type can only be dict"):
+        _validate_categorical_request(
+            request_dto=request_dto,
+            algorithms_specs=algorithms_specs,
+            preprocessing_steps_specs=preprocessing_specs,
+            worker_landscape_aggregator=worker_landscape_aggregator,
+        )
+
+
+def test_validate_algorithm_rejects_preprocessing_filter_unavailable_variable(
+    worker_landscape_aggregator,
+    algorithms_specs,
+    preprocessing_steps_specs,
+):
+    request_dto = _categorical_creator_request(
+        variables=["int_cde", "text_cde_categ"],
+        rules={
+            "high": {
+                "condition": "AND",
+                "rules": [
+                    {
+                        "id": "real_cde",
+                        "operator": "greater",
+                        "value": 0,
+                    }
+                ],
+            }
+        },
+    )
+    preprocessing_specs = _preprocessing_specs_with_categorical(
+        preprocessing_steps_specs
+    )
+
+    with pytest.raises(FilterError, match="Column real_cde does not exist"):
+        _validate_categorical_request(
+            request_dto=request_dto,
+            algorithms_specs=algorithms_specs,
+            preprocessing_steps_specs=preprocessing_specs,
+            worker_landscape_aggregator=worker_landscape_aggregator,
+        )
+
+
+def test_validate_algorithm_rejects_categorical_creator_code_clash(
+    worker_landscape_aggregator,
+    algorithms_specs,
+    preprocessing_steps_specs,
+):
+    request_dto = _categorical_creator_request(code="int_cde")
+    preprocessing_specs = _preprocessing_specs_with_categorical(
+        preprocessing_steps_specs
+    )
+
+    with pytest.raises(BadUserInput, match="cannot create CDE 'int_cde'"):
+        _validate_categorical_request(
+            request_dto=request_dto,
+            algorithms_specs=algorithms_specs,
+            preprocessing_steps_specs=preprocessing_specs,
+            worker_landscape_aggregator=worker_landscape_aggregator,
+        )
+
+
+def test_categorical_column_creator_rejects_overlapping_rules():
+    creator = CategoricalColumnCreator(
+        params={
+            "code": "risk_group",
+            "strategy": "filter_rules",
+            "rules": {
+                "high": {
+                    "condition": "AND",
+                    "rules": [{"id": "age", "operator": "greater", "value": 1}],
+                },
+                "medium": {
+                    "condition": "AND",
+                    "rules": [{"id": "age", "operator": "greater", "value": 2}],
+                },
+            },
+            "default_enumeration": "low",
+        }
+    )
+
+    with pytest.raises(BadUserInput, match="multiple categorical_column_creator"):
+        creator.transform_data(data=pd.DataFrame({"age": [3]}))
 
 
 def test_validate_flags_with_smpc_calls_validate_smpc_usage():

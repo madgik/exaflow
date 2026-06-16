@@ -7,9 +7,17 @@ import requests
 
 
 def algorithm_request(algorithm: str, input: dict):
+    request_payload = dict(input)
+    request_payload.pop("test_case_num", None)
+    request_payload.pop("type", None)
+
     url = "http://127.0.0.1:5100/algorithms" + f"/{algorithm}"
     headers = {"Content-type": "application/json", "Accept": "text/plain"}
-    response = requests.post(url, data=json.dumps(input), headers=headers)
+    response = requests.post(
+        url,
+        data=json.dumps(request_payload),
+        headers=headers,
+    )
     return response
 
 

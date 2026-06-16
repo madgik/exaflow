@@ -73,7 +73,8 @@ use the difference:
 diff = value_at_visit2 - value_at_visit1
 ```
 
-Difference variables receive a `_diff` suffix.
+For the `diff` strategy, variable values are transformed to `visit2 - visit1`,
+but the original variable code is preserved.
 
 ## Federated computation
 
@@ -134,8 +135,8 @@ Output:
 - Longitudinal `diff` is restricted to numerical variables.
 - Longitudinal transformation requires exactly one strategy for every selected
   `x` and `y` variable.
-- Preprocessing order is defined by step order: missing values first, outlier
-  winsorization second, longitudinal transformation later.
+- Preprocessing order is defined by the request list. The server validates and
+  executes steps in the submitted order.
 
 ## Outputs
 

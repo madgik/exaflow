@@ -1,4 +1,7 @@
 import inspect
+from typing import Any
+from typing import Dict
+from typing import List
 from typing import Optional
 
 from exaflow import exareme3_preprocessing_step_classes
@@ -6,9 +9,6 @@ from exaflow.aggregation_clients.exareme3_udf_aggregation_client import (
     Exareme3UDFAggregationClient as AggregationClient,
 )
 from exaflow.algorithms.exareme3.utils.metadata_enums import enforce_enum_order
-from exaflow.algorithms.exareme3.utils.preprocessing_step import (
-    get_ordered_preprocessing_items,
-)
 from exaflow.algorithms.exareme3.utils.registry import exareme3_registry
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.utils.pandas_utils import convert_to_pandas_dataframe
@@ -94,12 +94,10 @@ def _create_aggregation_client_if_required(
     return AggregationClient(request_id, aggregator_dns=agg_dns)
 
 
-def _collect_extra_columns(preprocessing: dict) -> set[str]:
+def _collect_extra_columns(preprocessing: Optional[List[Dict[str, Any]]]) -> set[str]:
     extra_columns = set()
-    for preprocessing_step_name, _ in get_ordered_preprocessing_items(
-        preprocessing=preprocessing,
-        preprocessing_step_classes=exareme3_preprocessing_step_classes,
-    ):
+    for preprocessing_step in preprocessing or []:
+        preprocessing_step_name = preprocessing_step["name"]
         preprocessing_step_cls = exareme3_preprocessing_step_classes[
             preprocessing_step_name
         ]
@@ -110,7 +108,7 @@ def _collect_extra_columns(preprocessing: dict) -> set[str]:
 def _load_worker_data_for_udf(
     *,
     inputdata,
-    preprocessing: dict,
+    preprocessing: Optional[List[Dict[str, Any]]],
     add_dataset_variable: bool,
 ):
     include_dataset = False
@@ -149,7 +147,7 @@ def _check_min_rows_or_raise(
 def _apply_preprocessing_steps_to_data_and_metadata(
     data,
     metadata: dict,
-    preprocessing: dict,
+    preprocessing: Optional[List[Dict[str, Any]]],
     check_min_rows: bool,
     agg_client: Optional[AggregationClient],
 ):
@@ -160,13 +158,9 @@ def _apply_preprocessing_steps_to_data_and_metadata(
         agg_client=agg_client,
     )
 
-    for (
-        preprocessing_step_name,
-        preprocessing_step_params,
-    ) in get_ordered_preprocessing_items(
-        preprocessing=preprocessing,
-        preprocessing_step_classes=exareme3_preprocessing_step_classes,
-    ):
+    for preprocessing_step in preprocessing or []:
+        preprocessing_step_name = preprocessing_step["name"]
+        preprocessing_step_params = preprocessing_step.get("parameters", {})
         preprocessing_step_cls = exareme3_preprocessing_step_classes[
             preprocessing_step_name
         ]

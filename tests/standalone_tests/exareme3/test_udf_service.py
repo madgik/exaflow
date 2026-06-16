@@ -1,7 +1,6 @@
 import pandas as pd
 import pytest
 
-from exaflow.algorithms.specifications import PreprocessingStepOrder
 from exaflow.worker.exareme3.udf import udf_service
 from exaflow.worker_communication import InsufficientDataError
 
@@ -27,14 +26,8 @@ class _DropAllStep:
 
 
 class _FirstOrderedStep:
-    ORDER = PreprocessingStepOrder.FIRST
-
     def __init__(self, *, params):
         self._params = params
-
-    @classmethod
-    def get_specification(cls):
-        return type("Spec", (), {"order": cls.ORDER})()
 
     def transform_data_and_metadata(self, *, data, metadata):
         self._params["calls"].append("first")
@@ -42,14 +35,8 @@ class _FirstOrderedStep:
 
 
 class _SecondOrderedStep:
-    ORDER = PreprocessingStepOrder.SECOND
-
     def __init__(self, *, params):
         self._params = params
-
-    @classmethod
-    def get_specification(cls):
-        return type("Spec", (), {"order": cls.ORDER})()
 
     def transform_data_and_metadata(self, *, data, metadata):
         self._params["calls"].append("second")
@@ -85,7 +72,7 @@ def test_apply_preprocessing_checks_min_rows_after_each_step(monkeypatch):
         udf_service._apply_preprocessing_steps_to_data_and_metadata(
             data=data,
             metadata={"x": {"is_categorical": False}},
-            preprocessing={"drop_all": {}},
+            preprocessing=[{"name": "drop_all", "parameters": {}}],
             check_min_rows=True,
             agg_client=None,
         )
@@ -99,13 +86,13 @@ def test_apply_preprocessing_checks_min_rows_when_no_steps(monkeypatch):
         udf_service._apply_preprocessing_steps_to_data_and_metadata(
             data=data,
             metadata={"x": {"is_categorical": False}},
-            preprocessing={},
+            preprocessing=[],
             check_min_rows=True,
             agg_client=None,
         )
 
 
-def test_apply_preprocessing_uses_step_order_not_map_order(monkeypatch):
+def test_apply_preprocessing_uses_request_order(monkeypatch):
     calls = []
     monkeypatch.setattr(
         udf_service,
@@ -116,12 +103,12 @@ def test_apply_preprocessing_uses_step_order_not_map_order(monkeypatch):
     udf_service._apply_preprocessing_steps_to_data_and_metadata(
         data=pd.DataFrame({"x": [1, 2]}),
         metadata={"x": {"is_categorical": False}},
-        preprocessing={
-            "second": {"calls": calls},
-            "first": {"calls": calls},
-        },
+        preprocessing=[
+            {"name": "second", "parameters": {"calls": calls}},
+            {"name": "first", "parameters": {"calls": calls}},
+        ],
         check_min_rows=False,
         agg_client=None,
     )
 
-    assert calls == ["first", "second"]
+    assert calls == ["second", "first"]

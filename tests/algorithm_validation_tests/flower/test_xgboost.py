@@ -1,8 +1,6 @@
 def test_xgboost(get_algorithm_result):
     input = {
         "inputdata": {
-            "y": ["gender"],
-            "x": ["lefthippocampus"],
             "data_model": "dementia:0.1",
             "datasets": [
                 "ppmi0",
@@ -18,9 +16,14 @@ def test_xgboost(get_algorithm_result):
             ],
             "validation_datasets": ["ppmi_test"],
             "filters": None,
+            "variables": ["lefthippocampus", "gender"],
         },
-        "parameters": None,
         "test_case_num": 99,
+        "algorithm": {
+            "x": ["lefthippocampus"],
+            "y": ["gender"],
+            "parameters": None,
+        },
     }
     input["type"] = "flower"
     algorithm_result = get_algorithm_result("xgboost", input)

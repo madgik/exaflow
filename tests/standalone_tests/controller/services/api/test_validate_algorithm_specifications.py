@@ -11,7 +11,12 @@ from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterEnumType
 from exaflow.algorithms.specifications import ParameterSpecification
 from exaflow.algorithms.specifications import ParameterType
+from exaflow.algorithms.specifications import PreprocessingOutputSpecification
+from exaflow.algorithms.specifications import PreprocessingOutputType
 from exaflow.algorithms.specifications import PreprocessingStepSpecification
+from exaflow.controller.services.api.algorithm_spec_dtos import (
+    PreprocessingOutputTypeDTO,
+)
 from exaflow.controller.services.api.algorithm_spec_dtos import (
     _convert_algorithm_specification_to_dto,
 )
@@ -63,6 +68,40 @@ def test_algorithm_spec_dto_exposes_required_preprocessing():
     dto = _convert_algorithm_specification_to_dto(spec, [preprocessing_spec])
 
     assert dto.required_preprocessing == ["sample_preprocessing"]
+
+
+def test_algorithm_spec_dto_exposes_preprocessing_output():
+    spec = _sample_algorithm_spec()
+    preprocessing_spec = _sample_preprocessing_spec()
+    preprocessing_spec = preprocessing_spec.model_copy(
+        update={
+            "output": PreprocessingOutputSpecification(
+                type=PreprocessingOutputType.NEW_CATEGORICAL_COLUMN,
+                code_parameter="code",
+            )
+        }
+    )
+
+    dto = _convert_algorithm_specification_to_dto(spec, [preprocessing_spec])
+
+    assert (
+        dto.preprocessing[0].output.type
+        == PreprocessingOutputTypeDTO.NEW_CATEGORICAL_COLUMN
+    )
+    assert dto.preprocessing[0].output.code_parameter == "code"
+
+
+def test_parameter_dict_value_type_supports_filter():
+    parameter = ParameterSpecification(
+        label="Enumeration filters",
+        desc="Dictionary where each value is a filter.",
+        types=[ParameterType.DICT],
+        required=True,
+        multiple=False,
+        dict_values_type=ParameterDictValueType.FILTER,
+    )
+
+    assert parameter.dict_values_type == ParameterDictValueType.FILTER
 
 
 def test_specifications_raise_when_required_preprocessing_is_missing_or_disabled():

@@ -11,14 +11,24 @@ LMM_CASES = [
             "name": "basic_dataset_grouping",
             "request": {
                 "inputdata": {
-                    "y": ["righthippocampus"],
-                    "x": ["lefthippocampus", "leftamygdala", "dataset"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1", "desd-synthdata0"],
                     "filters": None,
+                    "variables": [
+                        "lefthippocampus",
+                        "leftamygdala",
+                        "dataset",
+                        "righthippocampus",
+                    ],
                 },
-                "parameters": {"grouping_var": ["dataset"]},
                 "test_case_num": 0,
+                "algorithm": {
+                    "x": ["lefthippocampus", "leftamygdala", "dataset"],
+                    "y": ["righthippocampus"],
+                    "parameters": {
+                        "grouping_var": ["dataset"],
+                    },
+                },
             },
             "expected_status": 200,
         },
@@ -29,14 +39,19 @@ LMM_CASES = [
             "name": "minimal_valid_single_fixed_plus_group",
             "request": {
                 "inputdata": {
-                    "y": ["righthippocampus"],
-                    "x": ["lefthippocampus", "dataset"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1", "ppmi2"],
                     "filters": None,
+                    "variables": ["lefthippocampus", "dataset", "righthippocampus"],
                 },
-                "parameters": {"grouping_var": ["dataset"]},
                 "test_case_num": 1,
+                "algorithm": {
+                    "x": ["lefthippocampus", "dataset"],
+                    "y": ["righthippocampus"],
+                    "parameters": {
+                        "grouping_var": ["dataset"],
+                    },
+                },
             },
             "expected_status": 200,
         },
@@ -47,14 +62,24 @@ LMM_CASES = [
             "name": "categorical_fixed_effect_one_hot",
             "request": {
                 "inputdata": {
-                    "y": ["righthippocampus"],
-                    "x": ["lefthippocampus", "gender", "dataset"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1", "ppmi2"],
                     "filters": None,
+                    "variables": [
+                        "lefthippocampus",
+                        "gender",
+                        "dataset",
+                        "righthippocampus",
+                    ],
                 },
-                "parameters": {"grouping_var": ["dataset"]},
                 "test_case_num": 2,
+                "algorithm": {
+                    "x": ["lefthippocampus", "gender", "dataset"],
+                    "y": ["righthippocampus"],
+                    "parameters": {
+                        "grouping_var": ["dataset"],
+                    },
+                },
             },
             "expected_status": 200,
         },
@@ -65,14 +90,35 @@ LMM_CASES = [
             "name": "multiple_categorical_fixed_effects",
             "request": {
                 "inputdata": {
-                    "y": ["righthippocampus"],
-                    "x": ["lefthippocampus", "gender", "agegroup", "dataset"],
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2", "desd-synthdata1"],
+                    "datasets": [
+                        "ppmi0",
+                        "ppmi1",
+                        "ppmi2",
+                        "desd-synthdata1",
+                    ],
                     "filters": None,
+                    "variables": [
+                        "lefthippocampus",
+                        "gender",
+                        "agegroup",
+                        "dataset",
+                        "righthippocampus",
+                    ],
                 },
-                "parameters": {"grouping_var": ["dataset"]},
                 "test_case_num": 3,
+                "algorithm": {
+                    "x": [
+                        "lefthippocampus",
+                        "gender",
+                        "agegroup",
+                        "dataset",
+                    ],
+                    "y": ["righthippocampus"],
+                    "parameters": {
+                        "grouping_var": ["dataset"],
+                    },
+                },
             },
             "expected_status": 200,
         },
@@ -83,14 +129,24 @@ LMM_CASES = [
             "name": "numeric_age_covariate",
             "request": {
                 "inputdata": {
-                    "y": ["righthippocampus"],
-                    "x": ["lefthippocampus", "subjectageyears", "dataset"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1", "desd-synthdata1"],
                     "filters": None,
+                    "variables": [
+                        "lefthippocampus",
+                        "subjectageyears",
+                        "dataset",
+                        "righthippocampus",
+                    ],
                 },
-                "parameters": {"grouping_var": ["dataset"]},
                 "test_case_num": 4,
+                "algorithm": {
+                    "x": ["lefthippocampus", "subjectageyears", "dataset"],
+                    "y": ["righthippocampus"],
+                    "parameters": {
+                        "grouping_var": ["dataset"],
+                    },
+                },
             },
             "expected_status": 200,
         },
@@ -101,14 +157,24 @@ LMM_CASES = [
             "name": "non_dataset_grouping_gender",
             "request": {
                 "inputdata": {
-                    "y": ["righthippocampus"],
-                    "x": ["lefthippocampus", "leftamygdala", "gender"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1", "ppmi2"],
                     "filters": None,
+                    "variables": [
+                        "lefthippocampus",
+                        "leftamygdala",
+                        "gender",
+                        "righthippocampus",
+                    ],
                 },
-                "parameters": {"grouping_var": ["gender"]},
                 "test_case_num": 5,
+                "algorithm": {
+                    "x": ["lefthippocampus", "leftamygdala", "gender"],
+                    "y": ["righthippocampus"],
+                    "parameters": {
+                        "grouping_var": ["gender"],
+                    },
+                },
             },
             "expected_status": 200,
         },
@@ -119,14 +185,29 @@ LMM_CASES = [
             "name": "non_dataset_grouping_agegroup",
             "request": {
                 "inputdata": {
-                    "y": ["righthippocampus"],
-                    "x": ["lefthippocampus", "leftamygdala", "agegroup"],
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2", "desd-synthdata1"],
+                    "datasets": [
+                        "ppmi0",
+                        "ppmi1",
+                        "ppmi2",
+                        "desd-synthdata1",
+                    ],
                     "filters": None,
+                    "variables": [
+                        "lefthippocampus",
+                        "leftamygdala",
+                        "agegroup",
+                        "righthippocampus",
+                    ],
                 },
-                "parameters": {"grouping_var": ["agegroup"]},
                 "test_case_num": 6,
+                "algorithm": {
+                    "x": ["lefthippocampus", "leftamygdala", "agegroup"],
+                    "y": ["righthippocampus"],
+                    "parameters": {
+                        "grouping_var": ["agegroup"],
+                    },
+                },
             },
             "expected_status": 200,
         },
@@ -134,40 +215,30 @@ LMM_CASES = [
     ),
     pytest.param(
         {
-            "name": "composite_dataset_gender_grouping",
-            "request": {
-                "inputdata": {
-                    "y": ["righthippocampus"],
-                    "x": ["lefthippocampus", "dataset", "gender"],
-                    "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2"],
-                    "filters": None,
-                },
-                "parameters": {"grouping_var": ["dataset", "gender"]},
-                "test_case_num": 7,
-            },
-            "expected_status": 200,
-        },
-        id="composite_dataset_gender_grouping",
-    ),
-    pytest.param(
-        {
             "name": "grouping_var_missing_from_x",
             "request": {
                 "inputdata": {
-                    "y": ["righthippocampus"],
-                    "x": ["lefthippocampus", "leftamygdala"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1"],
                     "filters": None,
+                    "variables": [
+                        "lefthippocampus",
+                        "leftamygdala",
+                        "righthippocampus",
+                    ],
                 },
-                "parameters": {"grouping_var": ["dataset"]},
-                "test_case_num": 8,
+                "test_case_num": 7,
+                "algorithm": {
+                    "x": ["lefthippocampus", "leftamygdala"],
+                    "y": ["righthippocampus"],
+                    "parameters": {
+                        "grouping_var": ["dataset"],
+                    },
+                },
             },
             "expected_status": 460,
             "expected_message": (
-                r"Parameter 'grouping_var'.*must match exactly one variable "
-                r"included in 'x'"
+                r"Parameter 'grouping_var'.*must match exactly one variable included in 'x'"
                 r"|Grouping variable.*inputdata \['x'\].*should be one of the following"
                 r"|Parameter 'grouping_var' must match variables included in "
                 r"inputdata 'x'"
@@ -177,25 +248,53 @@ LMM_CASES = [
     ),
     pytest.param(
         {
+            "name": "composite_dataset_gender_grouping",
+            "request": {
+                "inputdata": {
+                    "data_model": "dementia:0.1",
+                    "datasets": ["ppmi0", "ppmi1", "ppmi2"],
+                    "filters": None,
+                    "variables": [
+                        "lefthippocampus",
+                        "dataset",
+                        "gender",
+                        "righthippocampus",
+                    ],
+                },
+                "test_case_num": 8,
+                "algorithm": {
+                    "x": ["lefthippocampus", "dataset", "gender"],
+                    "y": ["righthippocampus"],
+                    "parameters": {
+                        "grouping_var": ["dataset", "gender"],
+                    },
+                },
+            },
+            "expected_status": 200,
+        },
+        id="composite_dataset_gender_grouping",
+    ),
+    pytest.param(
+        {
             "name": "only_grouping_var_no_fixed_left",
             "request": {
                 "inputdata": {
-                    "y": ["righthippocampus"],
-                    "x": ["dataset"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1"],
                     "filters": None,
+                    "variables": ["dataset", "righthippocampus"],
                 },
-                "parameters": {"grouping_var": ["dataset"]},
                 "test_case_num": 9,
+                "algorithm": {
+                    "x": ["dataset"],
+                    "y": ["righthippocampus"],
+                    "parameters": {
+                        "grouping_var": ["dataset"],
+                    },
+                },
             },
             "expected_status": 460,
-            "expected_message": (
-                r"Inputdata 'Covariates and grouping variable' should include "
-                r"at least 2 values."
-                r"|Inputdata 'Covariates and grouping variable' must include at least "
-                r"one fixed-effect covariate."
-            ),
+            "expected_message": r"Inputdata 'Covariates and grouping variable' should include at least 2 values.",
         },
         id="only_grouping_var_no_fixed_left",
     ),
@@ -204,14 +303,19 @@ LMM_CASES = [
             "name": "invalid_categorical_y",
             "request": {
                 "inputdata": {
-                    "y": ["gender"],
-                    "x": ["lefthippocampus", "dataset"],
                     "data_model": "dementia:0.1",
                     "datasets": ["ppmi0", "ppmi1"],
                     "filters": None,
+                    "variables": ["lefthippocampus", "dataset", "gender"],
                 },
-                "parameters": {"grouping_var": ["dataset"]},
                 "test_case_num": 10,
+                "algorithm": {
+                    "x": ["lefthippocampus", "dataset"],
+                    "y": ["gender"],
+                    "parameters": {
+                        "grouping_var": ["dataset"],
+                    },
+                },
             },
             "expected_status": 460,
             "expected_message": (
@@ -232,9 +336,11 @@ def test_lmm_wrapper(case):
     if case["expected_status"] == 200:
         result = parse_response(response)
 
-        assert result["dependent_var"] == case["request"]["inputdata"]["y"][0]
-        grouping_var = case["request"]["parameters"]["grouping_var"]
-        assert result["grouping_var"] == grouping_var
+        assert result["dependent_var"] == case["request"]["algorithm"]["y"][0]
+        assert (
+            result["grouping_var"]
+            == case["request"]["algorithm"]["parameters"]["grouping_var"]
+        )
         assert result["indep_vars"][0] == "Intercept"
 
         assert len(result["coefficients"]) == len(result["indep_vars"])

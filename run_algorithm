@@ -255,15 +255,19 @@ def get_commandline_request_data(cl_args):
         key: guess_type_and_cast(value) for key, value in cl_args.parameters or []
     }
     flags = {key: guess_type_and_cast(value) for key, value in cl_args.flags or []}
+    variables = list(dict.fromkeys((cl_args.x or []) + (cl_args.y or [])))
     return dict(
         inputdata=dict(
             data_model=cl_args.data_model,
             datasets=cl_args.datasets,
             filters=None,
+            variables=variables,
+        ),
+        algorithm=dict(
             y=cl_args.y,
             x=cl_args.x,
+            parameters=parameters,
         ),
-        parameters=parameters,
         flags=flags,
     )
 
@@ -276,7 +280,7 @@ def get_piped_request_data():
         piped_input["inputdata"]["filters"] = None  # fix for empty string in test case
         sys.stdin = open("/dev/tty")  # get back stdin in case we need it for debugger
         return piped_input
-    return {"inputdata": {}, "parameters": {}, "flags": {}}
+    return {"inputdata": {}, "algorithm": {}, "flags": {}}
 
 
 def merge_request_data(data1, data2):
@@ -288,13 +292,20 @@ def merge_request_data(data1, data2):
         for key in keys
     }
 
-    # merge parameters
-    parameters = data1.get("parameters", None) or data2.get("parameters", None)
+    # merge algorithm
+    algorithm_keys = set(data1.get("algorithm", {}).keys()) | set(
+        data2.get("algorithm", {}).keys()
+    )
+    algorithm = {
+        key: data1.get("algorithm", {}).get(key, None)
+        or data2.get("algorithm", {}).get(key, None)
+        for key in algorithm_keys
+    }
 
     # merge flags
     flags = data1.get("flags", None) or data2.get("flags", None)
 
-    merged = {"inputdata": inputdata, "parameters": parameters, "flags": flags}
+    merged = {"inputdata": inputdata, "algorithm": algorithm, "flags": flags}
     return merged
 
 

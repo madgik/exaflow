@@ -1,8 +1,6 @@
 def test_mnist_logistic_regression(get_algorithm_result):
     input = {
         "inputdata": {
-            "y": ["gender"],
-            "x": ["lefthippocampus"],
             "data_model": "dementia:0.1",
             "datasets": [
                 "ppmi0",
@@ -17,9 +15,14 @@ def test_mnist_logistic_regression(get_algorithm_result):
                 "ppmi9",
             ],
             "filters": None,
+            "variables": ["lefthippocampus", "gender"],
         },
-        "parameters": None,
         "test_case_num": 99,
+        "algorithm": {
+            "x": ["lefthippocampus"],
+            "y": ["gender"],
+            "parameters": None,
+        },
     }
     algorithm_result = get_algorithm_result("mnist_logistic_regression", input)
     assert {"accuracy": 0.8486} == algorithm_result

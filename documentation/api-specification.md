@@ -110,7 +110,7 @@ validated.
 | `datasets` | `InputDataSpecificationDTO` | Specification for request field `inputdata.datasets`. | Engine-provided and required. |
 | `filter` | `InputDataSpecificationDTO` | Specification for request field `inputdata.filters`. | The spec field is singular `filter`; the request field is plural `filters`. |
 | `y` | `InputDataSpecificationDTO` | Algorithm-defined primary variable slot. | Usually dependent, outcome, or primary variables. |
-| `x` | `InputDataSpecificationDTO \| null` | Optional algorithm-defined secondary variable slot. | Usually independent, covariate, or input variables. If absent, do not render/send `inputdata.x`. |
+| `x` | `InputDataSpecificationDTO \| null` | Optional algorithm-defined secondary variable slot. | Usually independent, covariate, or input variables. If absent, do not render/send `algorithm.x`. |
 | `validation_datasets` | `InputDataSpecificationDTO \| null` | Validation dataset slot. | If present, request `inputdata.validation_datasets` is required. If absent, that request field is rejected. |
 
 ### `InputDataSpecificationDTO`
@@ -172,7 +172,7 @@ Example:
 | `default` | any | Optional default value. | Use to initialize the UI control. |
 | `enums` | `ParameterEnumSpecificationDTO \| null` | Allowed values for non-dict parameters. | Do not use for dict parameters. |
 | `dict_keys_enums` | `ParameterEnumSpecificationDTO \| null` | Allowed keys for dict parameters. | Valid only when `types` contains `dict`. |
-| `dict_values_type` | `string \| null` | Required type for every dict value. | Valid only when `types` contains `dict`. |
+| `dict_values_type` | `string \| null` | Required type for every dict value. | Valid only when `types` contains `dict`; supported values include `text`, `int`, `real`, `boolean`, and `filter`. |
 | `dict_values_enums` | `ParameterEnumSpecificationDTO \| null` | Allowed values for every dict value. | Valid only when `types` contains `dict`. |
 | `min` | `number \| null` | Numeric lower bound. | Apply to numeric parameter values. |
 | `max` | `number \| null` | Numeric upper bound. | Apply to numeric parameter values. |
@@ -196,7 +196,7 @@ Spec-load validation:
 Enum types:
 
 - `list`: `source` is the literal list of allowed values.
-- `input_var_names`: `source` contains `x`, `y`, or both; allowed values are selected variable names from those request fields.
+- `input_var_names`: `source` contains `x`, `y`, or both; allowed values are selected variable names from `algorithm.x` and `algorithm.y`.
 - `input_var_CDE_enums`: `source` contains one value, `x` or `y`; allowed values come from the CDE enumerations of the single selected variable in that slot.
 - `fixed_var_CDE_enums`: `source` contains one fixed CDE name; allowed values come from that CDE's enumerations.
 
@@ -204,21 +204,30 @@ Enum types:
 
 | Field | Type | Meaning | Validation / UI Notes |
 | --- | --- | --- | --- |
-| `name` | `string` | Stable preprocessing step id. | Use as key under request `preprocessing`. |
+| `name` | `string` | Stable preprocessing step id. | Use as the request preprocessing step `name`. |
 | `desc` | `string` | Short preprocessing description. | Use in compact UI. |
 | `documentation` | `string` | Longer preprocessing explanation. | Use in details/help views. |
 | `label` | `string` | Human-readable preprocessing name. | Use as display label. |
 | `parameters` | `object \| null` | Map of step parameter name to `ParameterSpecificationDTO`. | Validate like algorithm parameters. |
-| `order` | `integer` | Server execution order. | Display steps in this order; JSON insertion order does not control execution. |
+| `output` | `PreprocessingOutputSpecificationDTO \| null` | Description of variables created by the step. | For `new_categorical_column`, the created CDE code is read from the named parameter. |
+
+### `PreprocessingOutputSpecificationDTO`
+
+| Field | Type | Meaning | Validation / UI Notes |
+| --- | --- | --- | --- |
+| `type` | `string` | Output kind. Currently `new_categorical_column`. | Clients can use this to make created variables selectable by later steps or algorithm inputs. |
+| `code_parameter` | `string \| null` | Parameter containing the created variable code. | For `categorical_column_creator`, this is `code`. |
 
 Preprocessing behavior:
 
 - Request step names must exist in the enabled preprocessing specifications.
-- Step names listed in `required_preprocessing` must be present under request
+- Step names listed in `required_preprocessing` must be present in request
   `preprocessing`; the server does not inject required steps automatically.
 - Step parameters are validated with the same rules as algorithm parameters.
 - Each step then runs implementation-specific `validate_params`.
 - Steps may transform selected `x`/`y` variable names and metadata before final algorithm validation.
+- Steps with `output.type = new_categorical_column` expose a derived nominal
+  text CDE for later preprocessing steps and final algorithm input validation.
 
 ______________________________________________________________________
 
@@ -257,15 +266,29 @@ Example:
     "datasets": ["dataset_a"],
     "validation_datasets": ["dataset_validation"],
     "filters": {},
+    "variables": ["age", "sex", "outcome"]
+  },
+  "preprocessing": [
+    {
+      "name": "categorical_column_creator",
+      "parameters": {
+        "code": "risk_group",
+        "strategy": "filter_rules",
+        "rules": {
+          "high": {
+            "condition": "AND",
+            "rules": []
+          }
+        },
+        "default_enumeration": "low"
+      }
+    }
+  ],
+  "algorithm": {
+    "x": ["risk_group", "sex"],
     "y": ["outcome"],
-    "x": ["age", "sex"]
-  },
-  "parameters": {
-    "parameter_name": "value"
-  },
-  "preprocessing": {
-    "missing_values_handler": {
-      "strategy": "drop"
+    "parameters": {
+      "parameter_name": "value"
     }
   }
 }
@@ -276,9 +299,10 @@ Example:
 | Field | Type | Meaning | Validation / UI Notes |
 | --- | --- | --- | --- |
 | `request_id` | `string \| null` | Optional client request id. | If omitted, the server generates one. |
-| `inputdata` | `AlgorithmInputDataDTO` | Data model, dataset, filter, and variable selection. | Required. |
-| `parameters` | `object \| null` | Algorithm parameter values. | Keys must exist in selected algorithm `parameters` spec. |
-| `preprocessing` | `object \| null` | Preprocessing step configuration. | Step names must exist in enabled preprocessing specs, and required preprocessing steps must be included. |
+| `inputdata` | `AlgorithmInputDataDTO` | Data model, datasets, filter, and source variables loaded before preprocessing. | Required. |
+| `preprocessing` | `PreprocessingRequestStepDTO[] \| null` | Ordered preprocessing step configuration. | Step names must exist in enabled preprocessing specs, and required preprocessing steps must be included. |
+| `algorithm` | `AlgorithmExecutionDTO` | Final algorithm `x`, `y`, and parameter values. | Required. |
+| `flags` | `object \| null` | System flags. | Optional. |
 
 ### `AlgorithmInputDataDTO`
 
@@ -288,8 +312,22 @@ Example:
 | `datasets` | `string[]` | Training dataset names. | Required; every value must exist for `data_model`. |
 | `validation_datasets` | `string[] \| null` | Validation dataset names. | Required only when the algorithm spec exposes `inputdata.validation_datasets`; forbidden otherwise. |
 | `filters` | `object \| null` | Query-builder filter JSON. | Optional; must use valid CDE ids, operators, conditions, and value types. |
-| `y` | `string[] \| null` | Primary/dependent variables. | Requiredness, count, types, and stattypes come from `AlgorithmSpecificationDTO.inputdata.y`. |
-| `x` | `string[] \| null` | Secondary/independent variables. | Submit only when `AlgorithmSpecificationDTO.inputdata.x` exists. |
+| `variables` | `string[]` | Source variables available before preprocessing. | Include all raw variables used by filters, preprocessing parameters, and algorithm inputs that are not created by preprocessing. |
+
+### `PreprocessingRequestStepDTO`
+
+| Field | Type | Meaning | Validation / UI Notes |
+| --- | --- | --- | --- |
+| `name` | `string` | Preprocessing step id. | Must exist in enabled preprocessing specs. |
+| `parameters` | `object` | Step parameter values. | Validated against the selected step's parameter specs. |
+
+### `AlgorithmExecutionDTO`
+
+| Field | Type | Meaning | Validation / UI Notes |
+| --- | --- | --- | --- |
+| `x` | `string[] \| null` | Secondary/independent variables. | May include variables created by earlier preprocessing steps. |
+| `y` | `string[] \| null` | Primary/dependent variables. | May include variables created by earlier preprocessing steps. |
+| `parameters` | `object \| null` | Algorithm parameter values. | Keys must exist in selected algorithm `parameters` spec. |
 
 ______________________________________________________________________
 
@@ -300,16 +338,17 @@ Build the request in this order:
 1. Select an algorithm from `GET /algorithms`.
 1. Select `inputdata.data_model` from metadata/data endpoints.
 1. Select `inputdata.datasets` from the `GET /datasets` response at the selected `data_model` key.
-1. Render `x`, `y`, parameters, and preprocessing from the selected algorithm specification.
+1. Render `algorithm.x`, `algorithm.y`, `algorithm.parameters`, and ordered preprocessing from the selected algorithm specification.
 1. Use the `GET /cdes_metadata` response at the selected `data_model` key to validate variable types, stattypes, filters, and enum-derived options.
 1. Submit `POST /algorithms/<algorithm_name>` using `AlgorithmSpecificationDTO.name`.
 
 Inputdata checks:
 
-- Submit `x` and `y` as lists, never scalars.
+- Submit `algorithm.x` and `algorithm.y` as lists, never scalars.
+- Submit raw source columns under `inputdata.variables`.
 - Enforce each slot's `min_count` and `max_count`.
-- Reject duplicates inside `x` or inside `y`.
-- Reject variables that appear in both `x` and `y`.
+- Reject duplicates inside `algorithm.x` or inside `algorithm.y`.
+- Reject variables that appear in both `algorithm.x` and `algorithm.y`.
 - Only allow CDEs present in the `GET /cdes_metadata` response for the selected `data_model`.
 - Check each CDE `sql_type` against the slot `types`.
 - Allow `int` CDEs for slots that allow `real`.
@@ -331,7 +370,8 @@ Preprocessing checks:
 
 - Only allow step names from `AlgorithmSpecificationDTO.preprocessing`.
 - Validate each step's parameters using `ParameterSpecificationDTO`.
-- Display steps in `order`.
+- Submit steps in the order they should run. The server does not reorder
+  preprocessing steps.
 - Expect preprocessing to possibly transform effective `x`, `y`, and metadata before algorithm validation.
 
 ### Filter Contract

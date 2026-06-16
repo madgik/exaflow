@@ -10,18 +10,24 @@ def _with_drop_then_winsorizer(payload, winsorizer_strategies):
     payload = deepcopy(payload)
     variables = list(
         dict.fromkeys(
-            list(payload["inputdata"].get("x") or [])
-            + list(payload["inputdata"].get("y") or [])
+            list(payload["algorithm"].get("x") or [])
+            + list(payload["algorithm"].get("y") or [])
         )
     )
-    payload["preprocessing"] = {
-        "missing_values_handler": {
-            "strategies": {variable: "drop" for variable in variables}
+    payload["preprocessing"] = [
+        {
+            "name": "missing_values_handler",
+            "parameters": {
+                "strategies": {variable: "drop" for variable in variables},
+            },
         },
-        "outlier_winsorizer": {
-            "strategies": winsorizer_strategies,
+        {
+            "name": "outlier_winsorizer",
+            "parameters": {
+                "strategies": winsorizer_strategies,
+            },
         },
-    }
+    ]
     return payload
 
 
@@ -30,13 +36,16 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
         "describe",
         {
             "inputdata": {
-                "y": ["lefthippocampus", "rightpallidum"],
-                "x": [],
                 "data_model": "dementia:0.1",
                 "datasets": ["desd-synthdata8"],
                 "filters": None,
+                "variables": ["lefthippocampus", "rightpallidum"],
             },
-            "parameters": {},
+            "algorithm": {
+                "x": [],
+                "y": ["lefthippocampus", "rightpallidum"],
+                "parameters": {},
+            },
         },
         {"lefthippocampus": "iqr", "rightpallidum": "mad"},
         id="describe",
@@ -45,12 +54,18 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
         "histogram",
         {
             "inputdata": {
-                "y": ["lefthippocampus"],
                 "data_model": "dementia:0.1",
                 "datasets": ["desd-synthdata8"],
                 "filters": None,
+                "variables": ["lefthippocampus"],
             },
-            "parameters": {"bins": 20},
+            "algorithm": {
+                "x": None,
+                "y": ["lefthippocampus"],
+                "parameters": {
+                    "bins": 20,
+                },
+            },
         },
         {"lefthippocampus": "quantile"},
         id="histogram",
@@ -59,13 +74,16 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
         "describe",
         {
             "inputdata": {
-                "y": ["lefthippocampus", "rightpallidum", "subjectageyears"],
-                "x": [],
                 "data_model": "dementia:0.1",
                 "datasets": ["desd-synthdata8"],
                 "filters": None,
+                "variables": ["lefthippocampus", "rightpallidum", "subjectageyears"],
             },
-            "parameters": {},
+            "algorithm": {
+                "x": [],
+                "y": ["lefthippocampus", "rightpallidum", "subjectageyears"],
+                "parameters": {},
+            },
         },
         {"lefthippocampus": "iqr"},
         id="describe_partial_numeric_winsorizer_subset",
@@ -74,12 +92,21 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
         "pca",
         {
             "inputdata": {
-                "y": ["lefthippocampus", "righthippocampus"],
                 "data_model": "dementia:0.1",
-                "datasets": ["edsd0", "edsd1", "edsd2", "edsd3"],
+                "datasets": [
+                    "edsd0",
+                    "edsd1",
+                    "edsd2",
+                    "edsd3",
+                ],
                 "filters": None,
+                "variables": ["lefthippocampus", "righthippocampus"],
             },
-            "parameters": None,
+            "algorithm": {
+                "x": None,
+                "y": ["lefthippocampus", "righthippocampus"],
+                "parameters": None,
+            },
         },
         {"lefthippocampus": "iqr", "righthippocampus": "iqr"},
         id="pca",
@@ -88,8 +115,6 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
         "linear_regression",
         {
             "inputdata": {
-                "x": ["rightgregyrusrectus", "leftthalamusproper"],
-                "y": ["rightocpoccipitalpole"],
                 "data_model": "dementia:0.1",
                 "datasets": [
                     "edsd7",
@@ -102,8 +127,17 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
                     "ppmi3",
                 ],
                 "filters": None,
+                "variables": [
+                    "rightgregyrusrectus",
+                    "leftthalamusproper",
+                    "rightocpoccipitalpole",
+                ],
             },
-            "parameters": {},
+            "algorithm": {
+                "x": ["rightgregyrusrectus", "leftthalamusproper"],
+                "y": ["rightocpoccipitalpole"],
+                "parameters": {},
+            },
         },
         {
             "rightgregyrusrectus": "gaussian",
@@ -116,7 +150,19 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
         "logistic_regression",
         {
             "inputdata": {
-                "y": ["alzheimerbroadcategory"],
+                "data_model": "dementia:0.1",
+                "datasets": ["ppmi0", "desd-synthdata0"],
+                "filters": None,
+                "variables": [
+                    "rightttgtransversetemporalgyrus",
+                    "leftpinsposteriorinsula",
+                    "leftpoparietaloperculum",
+                    "rightptplanumtemporale",
+                    "leftventraldc",
+                    "alzheimerbroadcategory",
+                ],
+            },
+            "algorithm": {
                 "x": [
                     "rightttgtransversetemporalgyrus",
                     "leftpinsposteriorinsula",
@@ -124,11 +170,11 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
                     "rightptplanumtemporale",
                     "leftventraldc",
                 ],
-                "data_model": "dementia:0.1",
-                "datasets": ["ppmi0", "desd-synthdata0"],
-                "filters": None,
+                "y": ["alzheimerbroadcategory"],
+                "parameters": {
+                    "positive_class": "Other",
+                },
             },
-            "parameters": {"positive_class": "Other"},
         },
         {
             "rightttgtransversetemporalgyrus": "iqr",
@@ -143,12 +189,25 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
         "kmeans",
         {
             "inputdata": {
-                "y": ["lefthippocampus", "righthippocampus"],
                 "data_model": "dementia:0.1",
-                "datasets": ["edsd0", "edsd1", "edsd2", "edsd3"],
+                "datasets": [
+                    "edsd0",
+                    "edsd1",
+                    "edsd2",
+                    "edsd3",
+                ],
                 "filters": None,
+                "variables": ["lefthippocampus", "righthippocampus"],
             },
-            "parameters": {"k": 4, "tol": 0.0001, "maxiter": 100},
+            "algorithm": {
+                "x": None,
+                "y": ["lefthippocampus", "righthippocampus"],
+                "parameters": {
+                    "k": 4,
+                    "tol": 0.0001,
+                    "maxiter": 100,
+                },
+            },
         },
         {"lefthippocampus": "iqr", "righthippocampus": "iqr"},
         id="kmeans",
@@ -157,12 +216,6 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
         "pearson_correlation",
         {
             "inputdata": {
-                "y": [
-                    "rightsplsuperiorparietallobule",
-                    "rightttgtransversetemporalgyrus",
-                    "leftcaudate",
-                ],
-                "x": None,
                 "data_model": "dementia:0.1",
                 "datasets": [
                     "desd-synthdata8",
@@ -173,8 +226,23 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
                     "desd-synthdata1",
                 ],
                 "filters": None,
+                "variables": [
+                    "rightsplsuperiorparietallobule",
+                    "rightttgtransversetemporalgyrus",
+                    "leftcaudate",
+                ],
             },
-            "parameters": {"alpha": 0.95},
+            "algorithm": {
+                "x": None,
+                "y": [
+                    "rightsplsuperiorparietallobule",
+                    "rightttgtransversetemporalgyrus",
+                    "leftcaudate",
+                ],
+                "parameters": {
+                    "alpha": 0.95,
+                },
+            },
         },
         {
             "rightsplsuperiorparietallobule": "iqr",
@@ -187,13 +255,16 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
         "anova_oneway",
         {
             "inputdata": {
-                "x": ["ppmicategory"],
-                "y": ["brainstem"],
                 "data_model": "dementia:0.1",
                 "datasets": ["ppmi8"],
                 "filters": None,
+                "variables": ["ppmicategory", "brainstem"],
             },
-            "parameters": {},
+            "algorithm": {
+                "x": ["ppmicategory"],
+                "y": ["brainstem"],
+                "parameters": {},
+            },
         },
         {"brainstem": "iqr"},
         id="anova_oneway",
@@ -202,8 +273,6 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
         "ttest_independent",
         {
             "inputdata": {
-                "y": ["lefttmptemporalpole"],
-                "x": ["gender"],
                 "data_model": "dementia:0.1",
                 "datasets": [
                     "ppmi3",
@@ -225,12 +294,17 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
                     "edsd7",
                 ],
                 "filters": None,
+                "variables": ["gender", "lefttmptemporalpole"],
             },
-            "parameters": {
-                "alt_hypothesis": "two-sided",
-                "alpha": 0.05,
-                "groupA": "M",
-                "groupB": "F",
+            "algorithm": {
+                "x": ["gender"],
+                "y": ["lefttmptemporalpole"],
+                "parameters": {
+                    "alt_hypothesis": "two-sided",
+                    "alpha": 0.05,
+                    "groupA": "M",
+                    "groupB": "F",
+                },
             },
         },
         {"lefttmptemporalpole": "iqr"},
@@ -240,7 +314,6 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
         "ttest_onesample",
         {
             "inputdata": {
-                "y": ["leftmcggmiddlecingulategyrus"],
                 "data_model": "dementia:0.1",
                 "datasets": [
                     "edsd4",
@@ -250,11 +323,16 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
                     "edsd9",
                 ],
                 "filters": None,
+                "variables": ["leftmcggmiddlecingulategyrus"],
             },
-            "parameters": {
-                "alt_hypothesis": "greater",
-                "alpha": 0.05,
-                "mu": -1.7510563394418988,
+            "algorithm": {
+                "x": None,
+                "y": ["leftmcggmiddlecingulategyrus"],
+                "parameters": {
+                    "alt_hypothesis": "greater",
+                    "alpha": 0.05,
+                    "mu": -1.7510563394418988,
+                },
             },
         },
         {"leftmcggmiddlecingulategyrus": "mad"},
@@ -284,13 +362,16 @@ def test_outlier_winsorizer_rejects_categorical_variable_after_drop_na():
     payload = _with_drop_then_winsorizer(
         {
             "inputdata": {
-                "y": ["alzheimerbroadcategory"],
-                "x": [],
                 "data_model": "dementia:0.1",
                 "datasets": ["desd-synthdata8"],
                 "filters": None,
+                "variables": ["alzheimerbroadcategory"],
             },
-            "parameters": {},
+            "algorithm": {
+                "x": [],
+                "y": ["alzheimerbroadcategory"],
+                "parameters": {},
+            },
         },
         {"alzheimerbroadcategory": "iqr"},
     )

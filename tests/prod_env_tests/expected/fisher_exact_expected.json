@@ -2,22 +2,29 @@
     "test_cases": [
         {
             "input": {
+                "test_case_num": 0,
                 "inputdata": {
-                    "y": [
-                        "gender"
-                    ],
-                    "x": [
-                        "alzheimerbroadcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd0",
                         "ppmi0"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "alzheimerbroadcategory",
+                        "gender"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 0
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "y": [
+                        "gender"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "odds_ratio": 1.4857142857142858,
@@ -26,13 +33,8 @@
         },
         {
             "input": {
+                "test_case_num": 1,
                 "inputdata": {
-                    "y": [
-                        "gender"
-                    ],
-                    "x": [
-                        "alzheimerbroadcategory"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd0",
@@ -53,10 +55,22 @@
                                 ]
                             }
                         ]
-                    }
+                    },
+                    "variables": [
+                        "alzheimerbroadcategory",
+                        "gender"
+                    ]
                 },
-                "parameters": {},
-                "test_case_num": 1
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "alzheimerbroadcategory"
+                    ],
+                    "y": [
+                        "gender"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "odds_ratio": 1.4857142857142858,

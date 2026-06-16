@@ -2,17 +2,36 @@
     "test_cases": [
         {
             "input": {
+                "test_case_num": 0,
                 "inputdata": {
-                    "y": ["righthippocampus"],
-                    "x": ["lefthippocampus", "leftamygdala", "dataset"],
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "desd-synthdata0"],
-                    "filters": null
+                    "datasets": [
+                        "ppmi0",
+                        "ppmi1",
+                        "desd-synthdata0"
+                    ],
+                    "filters": null,
+                    "variables": [
+                        "lefthippocampus",
+                        "leftamygdala",
+                        "dataset",
+                        "righthippocampus"
+                    ]
                 },
-                "parameters": {
-                    "grouping_var": "dataset"
-                },
-                "test_case_num": 0
+                "preprocessing": null,
+                "algorithm": {
+                    "x": [
+                        "lefthippocampus",
+                        "leftamygdala",
+                        "dataset"
+                    ],
+                    "y": [
+                        "righthippocampus"
+                    ],
+                    "parameters": {
+                        "grouping_var": "dataset"
+                    }
+                }
             },
             "output": {}
         }

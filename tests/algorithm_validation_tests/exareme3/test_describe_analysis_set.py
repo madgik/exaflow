@@ -26,19 +26,20 @@ def test_describe_analysis_set(test_input, expected):
 
 def _add_dropna_preprocessing(test_input):
     payload = deepcopy(test_input)
-    inputdata = payload.get("inputdata", {})
+    algorithm = payload.get("algorithm", {})
     variables = [
         var
-        for var in (inputdata.get("x", []) + inputdata.get("y", []))
+        for var in (algorithm.get("x", []) + algorithm.get("y", []))
         if var != "dataset"
     ]
     if not variables:
         return payload
-    payload["preprocessing"] = {
-        "missing_values_handler": {
-            "strategies": {var: "drop" for var in variables},
+    payload["preprocessing"] = [
+        {
+            "name": "missing_values_handler",
+            "parameters": {"strategies": {var: "drop" for var in variables}},
         }
-    }
+    ]
     return payload
 
 

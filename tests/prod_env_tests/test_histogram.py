@@ -32,9 +32,9 @@ def _bins_are_numerical(bins):
 @pytest.mark.parametrize("test_input, expected", get_test_params(expected_file))
 def test_histogram(test_input, expected):
     # The expected fixtures were generated with equal-width binning.
-    if "parameters" not in test_input:
-        test_input["parameters"] = {}
-    test_input["parameters"]["histogram_type"] = "simple"
+    if test_input["algorithm"].get("parameters") is None:
+        test_input["algorithm"]["parameters"] = {}
+    test_input["algorithm"]["parameters"]["histogram_type"] = "simple"
 
     response = algorithm_request(algorithm_name, test_input)
     result = parse_response(response)
@@ -64,7 +64,7 @@ def test_histogram_insufficient_data_after_filters_returns_461():
         "inputdata": {
             "data_model": "dementia:0.1",
             "datasets": ["edsd0"],
-            "y": ["lefthippocampus"],
+            "variables": ["lefthippocampus"],
             "filters": {
                 "condition": "AND",
                 "rules": [
@@ -85,11 +85,17 @@ def test_histogram_insufficient_data_after_filters_returns_461():
                 "valid": True,
             },
         },
-        "preprocessing": {
-            "missing_values_handler": {"strategies": {"lefthippocampus": "drop"}}
+        "preprocessing": [
+            {
+                "name": "missing_values_handler",
+                "parameters": {"strategies": {"lefthippocampus": "drop"}},
+            }
+        ],
+        "algorithm": {
+            "x": None,
+            "y": ["lefthippocampus"],
+            "parameters": {"bins": 20},
         },
-        "parameters": {"bins": 20},
-        "type": "exareme3",
     }
     algorithm_url = algorithms_url + "/histogram"
     headers = {"Content-type": "application/json", "Accept": "text/plain"}

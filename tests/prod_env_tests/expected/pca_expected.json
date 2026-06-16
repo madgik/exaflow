@@ -3,28 +3,6 @@
         {
             "input": {
                 "inputdata": {
-                    "y": [
-                        "rightocpoccipitalpole",
-                        "leftitginferiortemporalgyrus",
-                        "leftmogmiddleoccipitalgyrus",
-                        "rightacgganteriorcingulategyrus",
-                        "cerebellarvermallobulesvivii",
-                        "leftcaudate",
-                        "leftprgprecentralgyrus",
-                        "leftofugoccipitalfusiformgyrus",
-                        "leftmfcmedialfrontalcortex",
-                        "rightpcuprecuneus",
-                        "rightmfgmiddlefrontalgyrus",
-                        "leftcerebralwhitematter",
-                        "rightlateralventricle",
-                        "rightcerebralwhitematter",
-                        "lefthippocampus",
-                        "rightcuncuneus",
-                        "rightmtgmiddletemporalgyrus",
-                        "leftttgtransversetemporalgyrus",
-                        "rightputamen",
-                        "rightsfgsuperiorfrontalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "edsd2",
@@ -49,9 +27,57 @@
                         "edsd6",
                         "desd-synthdata8"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "rightocpoccipitalpole",
+                        "leftitginferiortemporalgyrus",
+                        "leftmogmiddleoccipitalgyrus",
+                        "rightacgganteriorcingulategyrus",
+                        "cerebellarvermallobulesvivii",
+                        "leftcaudate",
+                        "leftprgprecentralgyrus",
+                        "leftofugoccipitalfusiformgyrus",
+                        "leftmfcmedialfrontalcortex",
+                        "rightpcuprecuneus",
+                        "rightmfgmiddlefrontalgyrus",
+                        "leftcerebralwhitematter",
+                        "rightlateralventricle",
+                        "rightcerebralwhitematter",
+                        "lefthippocampus",
+                        "rightcuncuneus",
+                        "rightmtgmiddletemporalgyrus",
+                        "leftttgtransversetemporalgyrus",
+                        "rightputamen",
+                        "rightsfgsuperiorfrontalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": null,
+                    "y": [
+                        "rightocpoccipitalpole",
+                        "leftitginferiortemporalgyrus",
+                        "leftmogmiddleoccipitalgyrus",
+                        "rightacgganteriorcingulategyrus",
+                        "cerebellarvermallobulesvivii",
+                        "leftcaudate",
+                        "leftprgprecentralgyrus",
+                        "leftofugoccipitalfusiformgyrus",
+                        "leftmfcmedialfrontalcortex",
+                        "rightpcuprecuneus",
+                        "rightmfgmiddlefrontalgyrus",
+                        "leftcerebralwhitematter",
+                        "rightlateralventricle",
+                        "rightcerebralwhitematter",
+                        "lefthippocampus",
+                        "rightcuncuneus",
+                        "rightmtgmiddletemporalgyrus",
+                        "leftttgtransversetemporalgyrus",
+                        "rightputamen",
+                        "rightsfgsuperiorfrontalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1409,
@@ -525,32 +551,6 @@
         {
             "input": {
                 "inputdata": {
-                    "y": [
-                        "rightcalccalcarinecortex",
-                        "leftptplanumtemporale",
-                        "leftinflatvent",
-                        "leftlorglateralorbitalgyrus",
-                        "csfglobal",
-                        "rightlorglateralorbitalgyrus",
-                        "rightainsanteriorinsula",
-                        "leftfrpfrontalpole",
-                        "rightttgtransversetemporalgyrus",
-                        "leftfofrontaloperculum",
-                        "leftcerebralwhitematter",
-                        "rightmfcmedialfrontalcortex",
-                        "rightcerebralwhitematter",
-                        "leftangangulargyrus",
-                        "leftmpogpostcentralgyrusmedialsegment",
-                        "rightlateralventricle",
-                        "rightcerebellumwhitematter",
-                        "rightfofrontaloperculum",
-                        "cerebellarvermallobulesiv",
-                        "rightaorganteriororbitalgyrus",
-                        "rightofugoccipitalfusiformgyrus",
-                        "subjectage",
-                        "rightsfgsuperiorfrontalgyrus",
-                        "leftioginferioroccipitalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "ppmi0",
@@ -582,9 +582,65 @@
                         "edsd0",
                         "ppmi3"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "rightcalccalcarinecortex",
+                        "leftptplanumtemporale",
+                        "leftinflatvent",
+                        "leftlorglateralorbitalgyrus",
+                        "csfglobal",
+                        "rightlorglateralorbitalgyrus",
+                        "rightainsanteriorinsula",
+                        "leftfrpfrontalpole",
+                        "rightttgtransversetemporalgyrus",
+                        "leftfofrontaloperculum",
+                        "leftcerebralwhitematter",
+                        "rightmfcmedialfrontalcortex",
+                        "rightcerebralwhitematter",
+                        "leftangangulargyrus",
+                        "leftmpogpostcentralgyrusmedialsegment",
+                        "rightlateralventricle",
+                        "rightcerebellumwhitematter",
+                        "rightfofrontaloperculum",
+                        "cerebellarvermallobulesiv",
+                        "rightaorganteriororbitalgyrus",
+                        "rightofugoccipitalfusiformgyrus",
+                        "subjectage",
+                        "rightsfgsuperiorfrontalgyrus",
+                        "leftioginferioroccipitalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": null,
+                    "y": [
+                        "rightcalccalcarinecortex",
+                        "leftptplanumtemporale",
+                        "leftinflatvent",
+                        "leftlorglateralorbitalgyrus",
+                        "csfglobal",
+                        "rightlorglateralorbitalgyrus",
+                        "rightainsanteriorinsula",
+                        "leftfrpfrontalpole",
+                        "rightttgtransversetemporalgyrus",
+                        "leftfofrontaloperculum",
+                        "leftcerebralwhitematter",
+                        "rightmfcmedialfrontalcortex",
+                        "rightcerebralwhitematter",
+                        "leftangangulargyrus",
+                        "leftmpogpostcentralgyrusmedialsegment",
+                        "rightlateralventricle",
+                        "rightcerebellumwhitematter",
+                        "rightfofrontaloperculum",
+                        "cerebellarvermallobulesiv",
+                        "rightaorganteriororbitalgyrus",
+                        "rightofugoccipitalfusiformgyrus",
+                        "subjectage",
+                        "rightsfgsuperiorfrontalgyrus",
+                        "leftioginferioroccipitalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 718,
@@ -1246,18 +1302,6 @@
         {
             "input": {
                 "inputdata": {
-                    "y": [
-                        "rightocpoccipitalpole",
-                        "rightofugoccipitalfusiformgyrus",
-                        "rightsplsuperiorparietallobule",
-                        "rightphgparahippocampalgyrus",
-                        "_4thventricle",
-                        "leftmfcmedialfrontalcortex",
-                        "rightporgposteriororbitalgyrus",
-                        "rightbasalforebrain",
-                        "leftventraldc",
-                        "leftioginferioroccipitalgyrus"
-                    ],
                     "data_model": "dementia:0.1",
                     "datasets": [
                         "desd-synthdata7",
@@ -1287,9 +1331,37 @@
                         "desd-synthdata5",
                         "edsd6"
                     ],
-                    "filters": null
+                    "filters": null,
+                    "variables": [
+                        "rightocpoccipitalpole",
+                        "rightofugoccipitalfusiformgyrus",
+                        "rightsplsuperiorparietallobule",
+                        "rightphgparahippocampalgyrus",
+                        "_4thventricle",
+                        "leftmfcmedialfrontalcortex",
+                        "rightporgposteriororbitalgyrus",
+                        "rightbasalforebrain",
+                        "leftventraldc",
+                        "leftioginferioroccipitalgyrus"
+                    ]
                 },
-                "parameters": {}
+                "preprocessing": null,
+                "algorithm": {
+                    "x": null,
+                    "y": [
+                        "rightocpoccipitalpole",
+                        "rightofugoccipitalfusiformgyrus",
+                        "rightsplsuperiorparietallobule",
+                        "rightphgparahippocampalgyrus",
+                        "_4thventricle",
+                        "leftmfcmedialfrontalcortex",
+                        "rightporgposteriororbitalgyrus",
+                        "rightbasalforebrain",
+                        "leftventraldc",
+                        "leftioginferioroccipitalgyrus"
+                    ],
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 1785,
@@ -1433,6 +1505,42 @@
         {
             "input": {
                 "inputdata": {
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "desd-synthdata2",
+                        "edsd3",
+                        "desd-synthdata6",
+                        "edsd4",
+                        "ppmi0",
+                        "ppmi6",
+                        "desd-synthdata4",
+                        "ppmi8",
+                        "desd-synthdata3"
+                    ],
+                    "filters": null,
+                    "variables": [
+                        "leftstgsuperiortemporalgyrus",
+                        "rightmprgprecentralgyrusmedialsegment",
+                        "leftlorglateralorbitalgyrus",
+                        "rightscasubcallosalarea",
+                        "leftpcuprecuneus",
+                        "leftorifgorbitalpartoftheinferiorfrontalgyrus",
+                        "rightmfgmiddlefrontalgyrus",
+                        "leftsogsuperioroccipitalgyrus",
+                        "rightliglingualgyrus",
+                        "rightporgposteriororbitalgyrus",
+                        "rightfofrontaloperculum",
+                        "leftfugfusiformgyrus",
+                        "rightocpoccipitalpole",
+                        "leftliglingualgyrus",
+                        "leftmfgmiddlefrontalgyrus",
+                        "leftangangulargyrus",
+                        "lefthippocampus"
+                    ]
+                },
+                "preprocessing": null,
+                "algorithm": {
+                    "x": null,
                     "y": [
                         "leftstgsuperiortemporalgyrus",
                         "rightmprgprecentralgyrusmedialsegment",
@@ -1452,21 +1560,8 @@
                         "leftangangulargyrus",
                         "lefthippocampus"
                     ],
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "desd-synthdata2",
-                        "edsd3",
-                        "desd-synthdata6",
-                        "edsd4",
-                        "ppmi0",
-                        "ppmi6",
-                        "desd-synthdata4",
-                        "ppmi8",
-                        "desd-synthdata3"
-                    ],
-                    "filters": null
-                },
-                "parameters": {}
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 682,
@@ -1820,6 +1915,42 @@
         {
             "input": {
                 "inputdata": {
+                    "data_model": "dementia:0.1",
+                    "datasets": [
+                        "ppmi4",
+                        "edsd8",
+                        "desd-synthdata1",
+                        "edsd9",
+                        "edsd4",
+                        "edsd2",
+                        "desd-synthdata5",
+                        "ppmi5",
+                        "edsd7",
+                        "desd-synthdata2"
+                    ],
+                    "filters": null,
+                    "variables": [
+                        "leftpoparietaloperculum",
+                        "rightpallidum",
+                        "leftaccumbensarea",
+                        "rightputamen",
+                        "rightthalamusproper",
+                        "leftlorglateralorbitalgyrus",
+                        "rightententorhinalarea",
+                        "rightlorglateralorbitalgyrus",
+                        "righthippocampus",
+                        "leftppplanumpolare",
+                        "rightmcggmiddlecingulategyrus",
+                        "minimentalstate",
+                        "leftstgsuperiortemporalgyrus",
+                        "rightmprgprecentralgyrusmedialsegment",
+                        "leftmcggmiddlecingulategyrus",
+                        "cerebellarvermallobulesviiix"
+                    ]
+                },
+                "preprocessing": null,
+                "algorithm": {
+                    "x": null,
                     "y": [
                         "leftpoparietaloperculum",
                         "rightpallidum",
@@ -1838,22 +1969,8 @@
                         "leftmcggmiddlecingulategyrus",
                         "cerebellarvermallobulesviiix"
                     ],
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "ppmi4",
-                        "edsd8",
-                        "desd-synthdata1",
-                        "edsd9",
-                        "edsd4",
-                        "edsd2",
-                        "desd-synthdata5",
-                        "ppmi5",
-                        "edsd7",
-                        "desd-synthdata2"
-                    ],
-                    "filters": null
-                },
-                "parameters": {}
+                    "parameters": {}
+                }
             },
             "output": {
                 "n_obs": 461,

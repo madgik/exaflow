@@ -23,8 +23,7 @@ def test_linearregression_algorithm(test_input, expected):
 def test_linearregression_perfect_fit_serializes_infinite_f_stat_as_null():
     test_input = {
         "inputdata": {
-            "x": ["rightocpoccipitalpole"],
-            "y": ["rightocpoccipitalpole"],
+            "variables": ["rightocpoccipitalpole"],
             "data_model": "dementia:0.1",
             "datasets": [
                 "edsd7",
@@ -38,7 +37,11 @@ def test_linearregression_perfect_fit_serializes_infinite_f_stat_as_null():
             ],
             "filters": None,
         },
-        "parameters": {},
+        "algorithm": {
+            "x": ["rightocpoccipitalpole"],
+            "y": ["rightocpoccipitalpole"],
+            "parameters": {},
+        },
     }
 
     response = algorithm_request(algorithm_name, test_input)

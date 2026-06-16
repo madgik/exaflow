@@ -29,19 +29,25 @@ def get_parametrization_list_exception_cases():
         "inputdata": {
             "data_model": "non_existing",
             "datasets": ["test_dataset1", "test_dataset2"],
+            "variables": ["test_cde1", "test_cde2", "test_cde3"],
+        },
+        "preprocessing": [
+            {
+                "name": "missing_values_handler",
+                "parameters": {
+                    "strategies": {
+                        "test_cde1": "drop",
+                        "test_cde2": "drop",
+                        "test_cde3": "drop",
+                    }
+                },
+            }
+        ],
+        "algorithm": {
             "x": ["test_cde1", "test_cde2"],
             "y": ["test_cde3"],
+            "parameters": None,
         },
-        "preprocessing": {
-            "missing_values_handler": {
-                "strategies": {
-                    "test_cde1": "drop",
-                    "test_cde2": "drop",
-                    "test_cde3": "drop",
-                }
-            }
-        },
-        "type": "exareme3",
     }
 
     expected_response = (460, "Data model .* does not exist.*")
@@ -53,8 +59,7 @@ def get_parametrization_list_exception_cases():
         "inputdata": {
             "data_model": "dementia:0.1",
             "datasets": ["edsd0"],
-            "x": ["lefthippocampus"],
-            "y": ["alzheimerbroadcategory"],
+            "variables": ["lefthippocampus", "alzheimerbroadcategory"],
             "filters": {
                 "condition": "AND",
                 "rules": [
@@ -75,16 +80,22 @@ def get_parametrization_list_exception_cases():
                 "valid": True,
             },
         },
-        "preprocessing": {
-            "missing_values_handler": {
-                "strategies": {
-                    "lefthippocampus": "drop",
-                    "alzheimerbroadcategory": "drop",
-                }
+        "preprocessing": [
+            {
+                "name": "missing_values_handler",
+                "parameters": {
+                    "strategies": {
+                        "lefthippocampus": "drop",
+                        "alzheimerbroadcategory": "drop",
+                    }
+                },
             }
+        ],
+        "algorithm": {
+            "x": ["lefthippocampus"],
+            "y": ["alzheimerbroadcategory"],
+            "parameters": {"positive_class": "AD"},
         },
-        "parameters": {"positive_class": "AD"},
-        "type": "exareme3",
     }
 
     expected_response = (
@@ -117,21 +128,25 @@ def test_post_algorithm_with_request_id():
     algorithm_name = "pca"
     request_dict = {
         "inputdata": {
-            "y": [
-                "lefthippocampus",
-            ],
             "data_model": "dementia:0.1",
             "datasets": [
                 "desd-synthdata8",
             ],
             "filters": None,
+            "variables": ["lefthippocampus"],
         },
-        "preprocessing": {
-            "missing_values_handler": {"strategies": {"lefthippocampus": "drop"}}
+        "preprocessing": [
+            {
+                "name": "missing_values_handler",
+                "parameters": {"strategies": {"lefthippocampus": "drop"}},
+            }
+        ],
+        "algorithm": {
+            "x": None,
+            "y": ["lefthippocampus"],
+            "parameters": None,
         },
-        "parameters": None,
         "request_id": "89aace55-60e8-4b29-958b-84cca8785120",
-        "type": "exareme3",
     }
     algorithm_url = algorithms_url + "/" + algorithm_name
     headers = {"Content-type": "application/json", "Accept": "text/plain"}

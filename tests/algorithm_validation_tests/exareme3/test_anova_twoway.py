@@ -96,10 +96,13 @@ def test_anova_two_way__invalid_input__single_depvar():
                 "ppmi9",
             ],
             "filters": None,
-            "y": ["leftmpogpostcentralgyrusmedialsegment"],
-            "x": ["dataset"],
+            "variables": ["dataset", "leftmpogpostcentralgyrusmedialsegment"],
         },
-        "parameters": {"sstype": 2},
+        "algorithm": {
+            "x": ["dataset"],
+            "y": ["leftmpogpostcentralgyrusmedialsegment"],
+            "parameters": {"sstype": 2},
+        },
     }
     response = algorithm_request("anova_twoway", test_input)
     assert response.status_code == 460
