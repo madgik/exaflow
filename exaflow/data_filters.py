@@ -144,9 +144,20 @@ def _check_value_type(column: str, value, cdes):
 def _check_value_column_same_type(column, value, cdes):
     column_sql_type = cdes[column].sql_type
     dtype = DType.from_cde(column_sql_type)
-    try:
-        value = dtype.to_py()(value)
-    except ValueError:
+    if not _is_filter_value_compatible_with_dtype(value, dtype):
         raise FilterError(
             f"{column}'s type: {column_sql_type} was different from the type of the given value:{type(value)}"
         )
+
+
+def _is_filter_value_compatible_with_dtype(value, dtype: DType) -> bool:
+    if dtype == DType.INT:
+        return isinstance(value, int) and not isinstance(value, bool)
+
+    if dtype == DType.FLOAT:
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+    if dtype == DType.STR:
+        return isinstance(value, str)
+
+    return isinstance(value, dtype.to_py())

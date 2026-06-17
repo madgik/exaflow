@@ -365,6 +365,74 @@ def test_validate_filter(test_input, expected, data_models):
     validate_filter(DATA_MODEL, test_input, data_models[DATA_MODEL])
 
 
+@pytest.mark.parametrize(
+    "column,value",
+    [
+        ("test_age_value", 17),
+        ("test_mortality_core", 0.5),
+        ("test_mortality_core", 1),
+    ],
+)
+def test_validate_filter_accepts_numeric_json_values(column, value, data_models):
+    validate_filter(
+        DATA_MODEL,
+        {
+            "id": column,
+            "field": column,
+            "type": "int",
+            "input": "number",
+            "operator": "equal",
+            "value": value,
+        },
+        data_models[DATA_MODEL],
+    )
+
+
+@pytest.mark.parametrize(
+    "column,value",
+    [
+        ("test_age_value", "17"),
+        ("test_mortality_core", "0.5"),
+        ("test_age_value", True),
+        ("test_mortality_core", True),
+    ],
+)
+def test_validate_filter_rejects_non_numeric_json_values_for_numeric_cdes(
+    column, value, data_models
+):
+    with pytest.raises(FilterError):
+        validate_filter(
+            DATA_MODEL,
+            {
+                "id": column,
+                "field": column,
+                "type": "int",
+                "input": "number",
+                "operator": "equal",
+                "value": value,
+            },
+            data_models[DATA_MODEL],
+        )
+
+
+def test_validate_filter_rejects_non_numeric_json_values_in_numeric_lists(
+    data_models,
+):
+    with pytest.raises(FilterError):
+        validate_filter(
+            DATA_MODEL,
+            {
+                "id": "test_age_value",
+                "field": "test_age_value",
+                "type": "int",
+                "input": "number",
+                "operator": "in",
+                "value": [17, "18"],
+            },
+            data_models[DATA_MODEL],
+        )
+
+
 all_build_filter_clause_fail_cases = [
     {
         "condition": "ANDOR",
