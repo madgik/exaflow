@@ -5,7 +5,7 @@ from typing import List
 from typing import Optional
 
 from exaflow.controller import logger as ctrl_logger
-from exaflow.controller.services.api.algorithm_request_dtos import AlgorithmRequestDTO
+from exaflow.controller.services.api.analysis_request_dtos import AnalysisRequestDTO
 from exaflow.controller.services.controller_interface import ControllerI
 from exaflow.controller.services.tasks_handler_interface import TasksHandlerI
 from exaflow.controller.uid_generator import UIDGenerator
@@ -21,7 +21,7 @@ class AlgorithmExecutionStrategyI(ABC):
 
     _controller: ControllerI
     _algorithm_name: str
-    _algorithm_request_dto: AlgorithmRequestDTO
+    _analysis_request_dto: AnalysisRequestDTO
     _request_id: str
     _context_id: str
     _logger: Logger
@@ -31,19 +31,18 @@ class AlgorithmExecutionStrategyI(ABC):
     def __init__(
         self,
         controller: ControllerI,
-        algorithm_name: str,
-        algorithm_request_dto: AlgorithmRequestDTO,
+        analysis_request_dto: AnalysisRequestDTO,
     ):
         self._controller = controller
-        self._algorithm_name = algorithm_name
-        self._algorithm_request_dto = algorithm_request_dto
-        self._request_id = self._algorithm_request_dto.request_id
+        self._analysis_request_dto = analysis_request_dto
+        self._algorithm_name = analysis_request_dto.algorithm.name
+        self._request_id = self._analysis_request_dto.request_id
         self._context_id = UIDGenerator().get_a_uid()
         self._logger = ctrl_logger.get_request_logger(self._request_id)
         self._local_worker_tasks_handlers = (
             self._controller.get_local_worker_tasks_handlers(
-                self._algorithm_request_dto.inputdata.data_model,
-                self._algorithm_request_dto.inputdata.datasets,
+                self._analysis_request_dto.inputdata.data_model,
+                self._analysis_request_dto.inputdata.datasets,
                 self._request_id,
             )
         )

@@ -21,8 +21,7 @@ def _validate(handler):
         inputdata=Inputdata(
             data_model="dm:0.1",
             datasets=["d1"],
-            x=["x1", "x2", "x3", "x_cat"],
-            y=["y1"],
+            variables=["x1", "x2", "x3", "x_cat", "y1"],
         ),
         metadata={
             "x1": {"is_categorical": False},
@@ -80,7 +79,9 @@ def test_validate_params_rejects_unknown_variable_in_strategies():
         params={"strategies": {"unknown_var": MissingValueStrategy.MEAN.value}}
     )
 
-    with pytest.raises(BadUserInput, match="variables not present in x/y"):
+    with pytest.raises(
+        BadUserInput, match="variables not present in inputdata.variables"
+    ):
         _validate(handler)
 
 
@@ -180,8 +181,7 @@ def test_validate_params_rejects_non_string_fill_value_for_categorical_enums():
             inputdata=Inputdata(
                 data_model="dm:0.1",
                 datasets=["d1"],
-                x=["x_cat"],
-                y=[],
+                variables=["x_cat"],
             ),
             metadata={
                 "x_cat": {
@@ -192,18 +192,16 @@ def test_validate_params_rejects_non_string_fill_value_for_categorical_enums():
         )
 
 
-def test_transform_inputdata_variables_returns_identity():
+def test_transform_variables_returns_identity():
     handler = _make_handler(
         params={"strategies": {"x1": MissingValueStrategy.DROP.value}}
     )
 
-    transformed_x, transformed_y = handler.transform_inputdata_variables(
-        x=["x1", "x2"],
-        y=["y1"],
+    transformed_variables = handler.transform_variables(
+        variables=["x1", "x2", "y1"],
     )
 
-    assert transformed_x == ["x1", "x2"]
-    assert transformed_y == ["y1"]
+    assert transformed_variables == ["x1", "x2", "y1"]
 
 
 def test_transform_metadata_returns_copy():

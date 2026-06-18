@@ -43,14 +43,12 @@ class KMeans(Algorithm):
             label="K-means",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Variables",
-                    desc="Numerical variables used for clustering.",
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=True,
-                ),
+            y=specs.InputDataSpecification(
+                label="Variables",
+                desc="Numerical variables used for clustering.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
             ),
             parameters={
                 "k": specs.ParameterSpecification(

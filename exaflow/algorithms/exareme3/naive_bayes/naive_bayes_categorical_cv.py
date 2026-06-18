@@ -54,22 +54,20 @@ class NaiveBayesCategorical(Algorithm):
             label="Categorical Naive Bayes (K-fold CV)",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Outcome",
-                    desc="Nominal outcome variable.",
-                    types=[specs.InputDataType.TEXT],
-                    stattypes=[specs.InputDataStatType.NOMINAL],
-                    required=True,
-                    max_count=1,
-                ),
-                x=specs.InputDataSpecification(
-                    label="Features",
-                    desc="Nominal features used for classification.",
-                    types=[specs.InputDataType.TEXT],
-                    stattypes=[specs.InputDataStatType.NOMINAL],
-                    required=True,
-                ),
+            y=specs.InputDataSpecification(
+                label="Outcome",
+                desc="Nominal outcome variable.",
+                types=[specs.InputDataType.TEXT],
+                stattypes=[specs.InputDataStatType.NOMINAL],
+                required=True,
+                max_count=1,
+            ),
+            x=specs.InputDataSpecification(
+                label="Features",
+                desc="Nominal features used for classification.",
+                types=[specs.InputDataType.TEXT],
+                stattypes=[specs.InputDataStatType.NOMINAL],
+                required=True,
             ),
             parameters={
                 "n_splits": specs.ParameterSpecification(
@@ -88,8 +86,8 @@ class NaiveBayesCategorical(Algorithm):
         )
 
     def run(self):
-        y_var = self.inputdata.y[0]
-        x_vars = list(self.inputdata.x)
+        y_var = self.y[0]
+        x_vars = list(self.x)
         n_splits = self.get_parameter("n_splits")
         categories: Dict[str, List[str]] = {
             var: sorted(get_enum_codes(self.metadata, var)) for var in x_vars + [y_var]

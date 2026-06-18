@@ -14,8 +14,8 @@ No frontend application was detected in this repository.
 
 ```mermaid
 flowchart TD
-  CLI[run_algorithm CLI or HTTP client] --> API[Quart controller API]
-  API --> Validator[Algorithm request validator]
+  CLI[run_analysis CLI or HTTP client] --> API[Quart controller API]
+  API --> Validator[Analysis request validator]
   API --> Strategy[Execution strategy]
   Strategy --> WLA[Worker Landscape Aggregator]
   Strategy --> Engine[Exareme3 flow engine]
@@ -29,12 +29,15 @@ flowchart TD
 
 ## Request and Data Flow
 
-1. Clients discover algorithms through `GET /algorithms` and metadata through
-   routes such as `/datasets`, `/datasets_variables`, and `/cdes_metadata`.
-1. Clients submit `POST /algorithms/<algorithm_name>` with an
-   `AlgorithmRequestDTO` payload.
+1. Clients discover common source inputdata, preprocessing, and algorithm
+   specifications through `GET /specifications/inputdata`,
+   `GET /specifications/preprocessing`, and `GET /specifications/algorithms`.
+   Metadata remains available through routes such as `/datasets`,
+   `/datasets_variables`, and `/cdes_metadata`.
+1. Clients submit `POST /analysis` with an `AnalysisRequestDTO` payload. The
+   selected algorithm name is carried in `algorithm.name`.
 1. `exaflow/controller/quart/endpoints.py` validates request shape and delegates
-   to `validate_algorithm_request`.
+   to `validate_analysis_request`.
 1. `get_algorithm_execution_strategy` selects an Exareme3 or Flower strategy.
 1. Exareme3 strategy gets worker metadata, applies preprocessing metadata
    transforms, constructs `Exareme3AlgorithmFlowEngineInterface`, and runs the
@@ -87,8 +90,10 @@ There is no traditional migration framework detected. Data fixtures live under
 
 The Quart API exposes:
 
-- `GET /algorithms`
-- `POST /algorithms/<algorithm_name>`
+- `GET /specifications/inputdata`
+- `GET /specifications/preprocessing`
+- `GET /specifications/algorithms`
+- `POST /analysis`
 - `GET /datasets`
 - `GET /datasets_locations`
 - `GET /datasets_variables`
@@ -99,7 +104,8 @@ The Quart API exposes:
 - Flower routes: `GET /flower/input`, `POST /flower/result`
 
 `documentation/api-specification.md` is the human-facing API contract. The
-runtime source of truth for algorithm form shape remains `GET /algorithms`.
+runtime source of truth for algorithm form shape remains the specification
+endpoints.
 
 ## Background Jobs and Services
 

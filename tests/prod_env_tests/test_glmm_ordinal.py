@@ -2,7 +2,7 @@ import re
 
 import pytest
 
-from tests.algorithm_validation_tests.exareme3.helpers import algorithm_request
+from tests.algorithm_validation_tests.exareme3.helpers import analysis_request
 from tests.algorithm_validation_tests.exareme3.helpers import parse_response
 
 GLMM_ORDINAL_CASES = [
@@ -357,7 +357,7 @@ GLMM_ORDINAL_CASES = [
 
 @pytest.mark.parametrize("case", GLMM_ORDINAL_CASES)
 def test_glmm_ordinal_wrapper(case):
-    response = algorithm_request("glmm_ordinal", case["request"])
+    response = analysis_request("glmm_ordinal", case["request"])
     assert response.status_code == case["expected_status"], response.text
 
     if case["expected_status"] == 200:

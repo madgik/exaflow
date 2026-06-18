@@ -7,7 +7,6 @@ from typing import Optional
 from exaflow import exareme3_preprocessing_step_classes
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import InputDataSpecification
-from exaflow.algorithms.specifications import InputDataSpecifications
 from exaflow.algorithms.specifications import InputDataStatType
 from exaflow.algorithms.specifications import InputDataType
 from exaflow.algorithms.specifications import ParameterDictValueType
@@ -16,13 +15,13 @@ from exaflow.algorithms.specifications import ParameterSpecification
 from exaflow.algorithms.specifications import PreprocessingOutputType
 from exaflow.algorithms.specifications import PreprocessingStepSpecification
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
-from exaflow.controller.services.api.algorithm_request_dtos import AlgorithmInputDataDTO
-from exaflow.controller.services.api.algorithm_request_dtos import AlgorithmRequestDTO
-from exaflow.controller.services.api.algorithm_request_dtos import (
-    AlgorithmRequestSystemFlags,
-)
 from exaflow.controller.services.api.algorithm_spec_dtos import ParameterEnumType
 from exaflow.controller.services.api.algorithm_spec_dtos import ParameterType
+from exaflow.controller.services.api.analysis_request_dtos import AnalysisInputDataDTO
+from exaflow.controller.services.api.analysis_request_dtos import AnalysisRequestDTO
+from exaflow.controller.services.api.analysis_request_dtos import (
+    AnalysisRequestSystemFlags,
+)
 from exaflow.controller.services.worker_landscape_aggregator.worker_landscape_aggregator import (
     WorkerLandscapeAggregator,
 )
@@ -38,28 +37,28 @@ class BadRequest(Exception):
         self.message = message
 
 
-def validate_algorithm_request(
-    algorithm_name: str,
-    algorithm_request_dto: AlgorithmRequestDTO,
+def validate_analysis_request(
+    analysis_request_dto: AnalysisRequestDTO,
     algorithms_specs: Dict[str, AlgorithmSpecification],
     preprocessing_steps_specs: Dict[str, PreprocessingStepSpecification],
     worker_landscape_aggregator: WorkerLandscapeAggregator,
     smpc_enabled: bool,
     smpc_optional: bool,
 ):
+    algorithm_name = analysis_request_dto.algorithm.name
     algorithm_specs = _get_algorithm_specs(algorithm_name, algorithms_specs)
 
     (
         training_datasets,
         validation_datasets,
     ) = worker_landscape_aggregator.get_training_and_validation_datasets(
-        algorithm_request_dto.inputdata.data_model
+        analysis_request_dto.inputdata.data_model
     )
     data_model_cdes = worker_landscape_aggregator.get_cdes(
-        algorithm_request_dto.inputdata.data_model
+        analysis_request_dto.inputdata.data_model
     )
-    _validate_algorithm_request_body(
-        algorithm_request_dto=algorithm_request_dto,
+    _validate_analysis_request_body(
+        analysis_request_dto=analysis_request_dto,
         algorithm_specs=algorithm_specs,
         preprocessing_steps_specs=preprocessing_steps_specs,
         training_datasets=training_datasets,
@@ -79,8 +78,8 @@ def _get_algorithm_specs(
     return algorithms_specs[algorithm_name]
 
 
-def _validate_algorithm_request_body(
-    algorithm_request_dto: AlgorithmRequestDTO,
+def _validate_analysis_request_body(
+    analysis_request_dto: AnalysisRequestDTO,
     algorithm_specs: AlgorithmSpecification,
     preprocessing_steps_specs: Dict[str, PreprocessingStepSpecification],
     training_datasets: List[str],
@@ -90,39 +89,44 @@ def _validate_algorithm_request_body(
     smpc_optional: bool,
 ):
     _validate_inputdata_base(
-        inputdata=algorithm_request_dto.inputdata,
+        inputdata=analysis_request_dto.inputdata,
         training_datasets=training_datasets,
-        algorithm_specification_validation_flag=algorithm_specs.inputdata.validation,
+        algorithm_specification_requires_validation_datasets=algorithm_specs.requires_validation_datasets,
         validation_datasets=validation_datasets,
         data_model_cdes=data_model_cdes,
     )
 
     _validate_required_preprocessing(
         algorithm_specs=algorithm_specs,
-        preprocessing=algorithm_request_dto.preprocessing,
+        preprocessing=analysis_request_dto.preprocessing,
     )
 
     transformed_inputdata, transformed_data_model_cdes = (
         _validate_and_apply_preprocessing(
-            algorithm_request_dto=algorithm_request_dto,
+            analysis_request_dto=analysis_request_dto,
             preprocessing_steps_specs=preprocessing_steps_specs,
             data_model_cdes=data_model_cdes,
         )
     )
 
     _validate_algorithm_inputdatas(
-        transformed_inputdata, algorithm_specs.inputdata, transformed_data_model_cdes
-    )
-
-    _validate_parameters(
-        algorithm_request_dto.algorithm.parameters,
-        algorithm_specs.parameters,
-        transformed_inputdata,
+        x=analysis_request_dto.algorithm.x,
+        y=analysis_request_dto.algorithm.y,
+        algorithm_specs=algorithm_specs,
         data_model_cdes=transformed_data_model_cdes,
     )
 
+    _validate_parameters(
+        analysis_request_dto.algorithm.parameters,
+        algorithm_specs.parameters,
+        transformed_inputdata,
+        data_model_cdes=transformed_data_model_cdes,
+        algorithm_x=analysis_request_dto.algorithm.x,
+        algorithm_y=analysis_request_dto.algorithm.y,
+    )
+
     _validate_flags(
-        flags=algorithm_request_dto.flags,
+        flags=analysis_request_dto.flags,
         smpc_enabled=smpc_enabled,
         smpc_optional=smpc_optional,
     )
@@ -146,9 +150,9 @@ def _validate_required_preprocessing(
 
 
 def _validate_inputdata_base(
-    inputdata: AlgorithmInputDataDTO,
+    inputdata: AnalysisInputDataDTO,
     training_datasets: List[str],
-    algorithm_specification_validation_flag: Optional[bool],
+    algorithm_specification_requires_validation_datasets: bool,
     validation_datasets: List[str],
     data_model_cdes: Dict[str, CommonDataElement],
 ):
@@ -160,7 +164,7 @@ def _validate_inputdata_base(
     _validate_inputdata_validation_datasets(
         requested_data_model=inputdata.data_model,
         requested_validation_datasets=inputdata.validation_datasets,
-        algorithm_specification_validation_flag=algorithm_specification_validation_flag,
+        algorithm_specification_requires_validation_datasets=algorithm_specification_requires_validation_datasets,
         validation_datasets=validation_datasets,
     )
     _validate_inputdata_filter(inputdata.data_model, inputdata.filters, data_model_cdes)
@@ -168,22 +172,22 @@ def _validate_inputdata_base(
 
 
 def _validate_and_apply_preprocessing(
-    algorithm_request_dto: AlgorithmRequestDTO,
+    analysis_request_dto: AnalysisRequestDTO,
     preprocessing_steps_specs: Dict[str, PreprocessingStepSpecification],
     data_model_cdes: Dict[str, CommonDataElement],
 ):
-    transformed_inputdata = _build_algorithm_inputdata(algorithm_request_dto)
+    transformed_inputdata = _build_source_inputdata(analysis_request_dto)
     transformed_data_model_cdes = _select_available_cdes(
-        algorithm_request_dto.inputdata.variables, data_model_cdes
+        analysis_request_dto.inputdata.variables, data_model_cdes
     )
     transformed_metadata = _convert_data_model_cdes_to_metadata(
         transformed_data_model_cdes
     )
 
-    if not algorithm_request_dto.preprocessing:
+    if not analysis_request_dto.preprocessing:
         return transformed_inputdata, transformed_data_model_cdes
 
-    for step in algorithm_request_dto.preprocessing:
+    for step in analysis_request_dto.preprocessing:
         name = step.name
         params = step.parameters
         if name not in preprocessing_steps_specs.keys():
@@ -231,12 +235,11 @@ def _validate_and_apply_preprocessing(
             inputdata=transformed_inputdata,
             metadata=step_metadata,
         )
-        transformed_x, transformed_y = preprocessing_step.transform_inputdata_variables(
-            x=list(transformed_inputdata.x or []),
-            y=list(transformed_inputdata.y or []),
+        transformed_variables = preprocessing_step.transform_variables(
+            variables=list(transformed_inputdata.variables),
         )
         transformed_inputdata = transformed_inputdata.model_copy(
-            update={"x": transformed_x, "y": transformed_y}
+            update={"variables": transformed_variables}
         )
         transformed_metadata = preprocessing_step.transform_metadata(
             metadata=transformed_metadata,
@@ -253,29 +256,15 @@ def _validate_and_apply_preprocessing(
     return transformed_inputdata, transformed_data_model_cdes
 
 
-def _build_algorithm_inputdata(
-    algorithm_request_dto: AlgorithmRequestDTO,
-) -> Inputdata:
-    return Inputdata(
-        data_model=algorithm_request_dto.inputdata.data_model,
-        datasets=algorithm_request_dto.inputdata.datasets,
-        validation_datasets=algorithm_request_dto.inputdata.validation_datasets,
-        filters=algorithm_request_dto.inputdata.filters,
-        x=algorithm_request_dto.algorithm.x,
-        y=algorithm_request_dto.algorithm.y,
-    )
-
-
 def _build_source_inputdata(
-    algorithm_request_dto: AlgorithmRequestDTO,
+    analysis_request_dto: AnalysisRequestDTO,
 ) -> Inputdata:
     return Inputdata(
-        data_model=algorithm_request_dto.inputdata.data_model,
-        datasets=algorithm_request_dto.inputdata.datasets,
-        validation_datasets=algorithm_request_dto.inputdata.validation_datasets,
-        filters=algorithm_request_dto.inputdata.filters,
-        x=algorithm_request_dto.inputdata.variables,
-        y=[],
+        data_model=analysis_request_dto.inputdata.data_model,
+        datasets=analysis_request_dto.inputdata.datasets,
+        validation_datasets=analysis_request_dto.inputdata.validation_datasets,
+        filters=analysis_request_dto.inputdata.filters,
+        variables=analysis_request_dto.inputdata.variables,
     )
 
 
@@ -406,17 +395,23 @@ def _validate_inputdata_training_datasets(
 def _validate_inputdata_validation_datasets(
     requested_data_model: str,
     requested_validation_datasets: List[str],
-    algorithm_specification_validation_flag,
+    algorithm_specification_requires_validation_datasets: bool,
     validation_datasets: List[str],
 ):
     """
     Validates that the validation dataset values exist.
     """
-    if not algorithm_specification_validation_flag and requested_validation_datasets:
+    if (
+        not algorithm_specification_requires_validation_datasets
+        and requested_validation_datasets
+    ):
         raise BadUserInput(
             "The algorithm does not have a validation flow, but 'validation_datasets' were provided in the 'inputdata'."
         )
-    elif algorithm_specification_validation_flag and not requested_validation_datasets:
+    elif (
+        algorithm_specification_requires_validation_datasets
+        and not requested_validation_datasets
+    ):
         raise BadUserInput(
             "The algorithm requires 'validation_datasets', in the 'inputdata', but none were provided."
         )
@@ -444,32 +439,36 @@ def _validate_inputdata_filter(data_model, filter, data_model_cdes):
 
 
 def _validate_algorithm_inputdatas(
-    inputdata: AlgorithmInputDataDTO,
-    inputdata_specs: InputDataSpecifications,
+    x: Optional[List[str]],
+    y: Optional[List[str]],
+    algorithm_specs: AlgorithmSpecification,
     data_model_cdes: Dict[str, CommonDataElement],
 ):
-    _validate_inputdata_variable_uniqueness(inputdata)
+    _validate_algorithm_variable_uniqueness(x=x, y=y)
 
-    if inputdata_specs.x:
-        _validate_algorithm_inputdata(inputdata.x, inputdata_specs.x, data_model_cdes)
-    if inputdata_specs.y:
-        _validate_algorithm_inputdata(inputdata.y, inputdata_specs.y, data_model_cdes)
+    if algorithm_specs.x:
+        _validate_algorithm_inputdata(x, algorithm_specs.x, data_model_cdes)
+    if algorithm_specs.y:
+        _validate_algorithm_inputdata(y, algorithm_specs.y, data_model_cdes)
 
 
-def _validate_inputdata_variable_uniqueness(inputdata: AlgorithmInputDataDTO):
-    x_values = inputdata.x or []
-    y_values = inputdata.y or []
+def _validate_algorithm_variable_uniqueness(
+    x: Optional[List[str]],
+    y: Optional[List[str]],
+):
+    x_values = x or []
+    y_values = y or []
 
     if len(x_values) != len(set(x_values)):
-        raise BadUserInput("Inputdata 'x' should not contain duplicate variables.")
+        raise BadUserInput("Algorithm 'x' should not contain duplicate variables.")
 
     if len(y_values) != len(set(y_values)):
-        raise BadUserInput("Inputdata 'y' should not contain duplicate variables.")
+        raise BadUserInput("Algorithm 'y' should not contain duplicate variables.")
 
     overlap = set(x_values).intersection(y_values)
     if overlap:
         raise BadUserInput(
-            "Inputdata 'x' and 'y' should not contain the same variables."
+            "Algorithm 'x' and 'y' should not contain the same variables."
         )
 
 
@@ -489,7 +488,7 @@ def _validate_algorithm_inputdata(
         )
         if effective_min > 0:
             raise BadUserInput(
-                f"Inputdata '{inputdata_spec.label}' should be provided."
+                f"Algorithm input '{inputdata_spec.label}' should be provided."
             )
         else:
             return
@@ -504,7 +503,7 @@ def _validate_inputdata_values_quantity(
     inputdata_value: Any, inputdata_spec: InputDataSpecification
 ):
     if not isinstance(inputdata_value, list):
-        raise BadRequest(f"Inputdata '{inputdata_spec.label}' should be a list.")
+        raise BadRequest(f"Algorithm input '{inputdata_spec.label}' should be a list.")
 
     size = len(inputdata_value)
     effective_min = (
@@ -514,12 +513,12 @@ def _validate_inputdata_values_quantity(
     )
     if size < effective_min:
         raise BadUserInput(
-            f"Inputdata '{inputdata_spec.label}' should include at least {effective_min} values."
+            f"Algorithm input '{inputdata_spec.label}' should include at least {effective_min} values."
         )
 
     if inputdata_spec.max_count is not None and size > inputdata_spec.max_count:
         raise BadUserInput(
-            f"Inputdata '{inputdata_spec.label}' should include at most {inputdata_spec.max_count} values."
+            f"Algorithm input '{inputdata_spec.label}' should include at most {inputdata_spec.max_count} values."
         )
 
 
@@ -560,7 +559,7 @@ def _validate_inputdata_types(
     ):
         return
     raise BadUserInput(
-        f"The CDE '{inputdata_value}', of inputdata '{inputdata_specs.label}', "
+        f"The CDE '{inputdata_value}', of algorithm input '{inputdata_specs.label}', "
         f"doesn't have one of the allowed types "
         f"'{inputdata_specs.types}'."
     )
@@ -575,12 +574,12 @@ def _validate_inputdata_stattypes(
     can_be_nominal = InputDataStatType.NOMINAL in inputdata_specs.stattypes
     if not inputdata_value_metadata.is_categorical and not can_be_numerical:
         raise BadUserInput(
-            f"The CDE '{inputdata_value}', of inputdata '{inputdata_specs.label}', "
+            f"The CDE '{inputdata_value}', of algorithm input '{inputdata_specs.label}', "
             f"should be categorical."
         )
     if inputdata_value_metadata.is_categorical and not can_be_nominal:
         raise BadUserInput(
-            f"The CDE '{inputdata_value}', of inputdata '{inputdata_specs.label}', "
+            f"The CDE '{inputdata_value}', of algorithm input '{inputdata_specs.label}', "
             f"should NOT be categorical."
         )
 
@@ -588,8 +587,10 @@ def _validate_inputdata_stattypes(
 def _validate_parameters(
     parameters: Optional[Dict[str, Any]],
     parameters_specs: Optional[Dict[str, ParameterSpecification]],
-    inputdata: AlgorithmInputDataDTO,
+    inputdata: Inputdata,
     data_model_cdes: Dict[str, CommonDataElement],
+    algorithm_x: Optional[List[str]] = None,
+    algorithm_y: Optional[List[str]] = None,
 ):
     """
     If the algorithm has parameters,
@@ -631,6 +632,8 @@ def _validate_parameters(
                 parameter_spec=parameter_spec,
                 inputdata=inputdata,
                 data_model_cdes=data_model_cdes,
+                algorithm_x=algorithm_x,
+                algorithm_y=algorithm_y,
             )
             continue
 
@@ -640,6 +643,8 @@ def _validate_parameters(
                 parameter_spec=parameter_spec,
                 inputdata=inputdata,
                 data_model_cdes=data_model_cdes,
+                algorithm_x=algorithm_x,
+                algorithm_y=algorithm_y,
             )
 
 
@@ -658,8 +663,10 @@ def _validate_parameters_are_in_the_specs(
 def _validate_parameter_values(
     parameter_values: Any,
     parameter_spec: ParameterSpecification,
-    inputdata: AlgorithmInputDataDTO,
+    inputdata: Inputdata,
     data_model_cdes: Dict[str, CommonDataElement],
+    algorithm_x: Optional[List[str]] = None,
+    algorithm_y: Optional[List[str]] = None,
 ):
     if parameter_spec.multiple and not isinstance(parameter_values, list):
         raise BadUserInput(f"Parameter '{parameter_spec.label}' should be a list.")
@@ -675,10 +682,17 @@ def _validate_parameter_values(
             parameter_spec.label,
             inputdata,
             data_model_cdes,
+            algorithm_x,
+            algorithm_y,
         )
 
         _validate_param_dict_enums(
-            parameter_value, parameter_spec, inputdata, data_model_cdes
+            parameter_value,
+            parameter_spec,
+            inputdata,
+            data_model_cdes,
+            algorithm_x,
+            algorithm_y,
         )
 
         _validate_parameter_inside_min_max(parameter_value, parameter_spec)
@@ -734,17 +748,21 @@ def _validate_param_enums_of_type_input_var_names(
     parameter_value: Any,
     parameter_spec_enums: ParameterEnumSpecification,
     parameter_spec_label: str,
-    inputdata: AlgorithmInputDataDTO,
+    inputdata: Inputdata,
+    algorithm_x: Optional[List[str]],
+    algorithm_y: Optional[List[str]],
 ):
     input_var_names_enums = []
     for source in parameter_spec_enums.source:
-        if source == "x":
-            input_var_names_enums.extend(inputdata.x) if inputdata.x else None
+        if source == "variables":
+            input_var_names_enums.extend(inputdata.variables)
+        elif source == "x":
+            input_var_names_enums.extend(algorithm_x) if algorithm_x else None
         elif source == "y":
-            input_var_names_enums.extend(inputdata.y) if inputdata.y else None
+            input_var_names_enums.extend(algorithm_y) if algorithm_y else None
         else:
             raise NotImplementedError(
-                "Input var names enums source should be either 'x' or 'y'."
+                "Input var names enums source should be 'variables', 'x', or 'y'."
             )
 
     if parameter_value not in input_var_names_enums:
@@ -782,18 +800,23 @@ def _validate_param_enums_of_type_input_var_CDE_enums(
     parameter_value: Any,
     parameter_spec_enums: ParameterEnumSpecification,
     parameter_spec_label: str,
-    inputdata: AlgorithmInputDataDTO,
     data_model_cdes: Dict[str, CommonDataElement],
+    algorithm_x: Optional[List[str]],
+    algorithm_y: Optional[List[str]],
 ):
     param_spec_enums_source = parameter_spec_enums.source[
         0
     ]  # Input var CDE enums allows only one source value
     if param_spec_enums_source == "x":
-        input_vars = inputdata.x
+        input_vars = algorithm_x
     elif param_spec_enums_source == "y":
-        input_vars = inputdata.y
+        input_vars = algorithm_y
     else:
         raise NotImplementedError(f"Source should be either 'x' or 'y'.")
+    if not input_vars:
+        raise BadUserInput(
+            f"Parameter's '{parameter_spec_label}' enums source '{param_spec_enums_source}' was not provided."
+        )
     input_var = input_vars[0]  # multiple=true is not allowed
     input_var_CDE_enums = data_model_cdes[input_var].enumerations.keys()
     if parameter_value not in input_var_CDE_enums:
@@ -820,8 +843,10 @@ def _validate_param_enums(
     parameter_value: Any,
     parameter_spec_enums: ParameterEnumSpecification,
     parameter_spec_label: str,
-    inputdata: AlgorithmInputDataDTO,
+    inputdata: Inputdata,
     data_model_cdes: Dict[str, CommonDataElement],
+    algorithm_x: Optional[List[str]] = None,
+    algorithm_y: Optional[List[str]] = None,
 ):
     if parameter_spec_enums is None:
         return
@@ -835,8 +860,9 @@ def _validate_param_enums(
             parameter_value,
             parameter_spec_enums,
             parameter_spec_label,
-            inputdata,
             data_model_cdes,
+            algorithm_x,
+            algorithm_y,
         )
     elif parameter_spec_enums.type == ParameterEnumType.FIXED_VAR_CDE_ENUMS:
         _validate_param_enums_of_type_fixed_var_CDE_enums(
@@ -844,7 +870,12 @@ def _validate_param_enums(
         )
     elif parameter_spec_enums.type == ParameterEnumType.INPUT_VAR_NAMES:
         _validate_param_enums_of_type_input_var_names(
-            parameter_value, parameter_spec_enums, parameter_spec_label, inputdata
+            parameter_value,
+            parameter_spec_enums,
+            parameter_spec_label,
+            inputdata,
+            algorithm_x,
+            algorithm_y,
         )
     else:
         raise NotImplementedError(
@@ -855,8 +886,10 @@ def _validate_param_enums(
 def _validate_param_dict_enums(
     parameter_value: Any,
     parameter_spec: ParameterSpecification,
-    inputdata: AlgorithmInputDataDTO,
+    inputdata: Inputdata,
     data_model_cdes: Dict[str, CommonDataElement],
+    algorithm_x: Optional[List[str]] = None,
+    algorithm_y: Optional[List[str]] = None,
 ):
     if ParameterType.DICT in parameter_spec.types:
         for key in parameter_value.keys():
@@ -866,6 +899,8 @@ def _validate_param_dict_enums(
                 parameter_spec.label,
                 inputdata,
                 data_model_cdes,
+                algorithm_x,
+                algorithm_y,
             )
 
         for value in parameter_value.values():
@@ -885,6 +920,8 @@ def _validate_param_dict_enums(
                 parameter_spec.label,
                 inputdata,
                 data_model_cdes,
+                algorithm_x,
+                algorithm_y,
             )
 
 
@@ -916,12 +953,12 @@ def _validate_flags(flags: Dict[str, Any], smpc_enabled: bool, smpc_optional: bo
         if not isinstance(value, bool):
             raise BadUserInput(f"Flag '{flag}' should have a boolean value.")
 
-    available_flags = [f.value for f in AlgorithmRequestSystemFlags]
+    available_flags = [f.value for f in AnalysisRequestSystemFlags]
     for flag in flags:
         if flag not in available_flags:
             raise BadUserInput(f"Flag '{flag}' does not exist in the specifications.")
 
-    if AlgorithmRequestSystemFlags.SMPC in flags.keys():
+    if AnalysisRequestSystemFlags.SMPC in flags.keys():
         validate_smpc_usage(
-            flags[AlgorithmRequestSystemFlags.SMPC], smpc_enabled, smpc_optional
+            flags[AnalysisRequestSystemFlags.SMPC], smpc_enabled, smpc_optional
         )

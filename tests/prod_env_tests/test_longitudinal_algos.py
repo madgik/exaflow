@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from tests.algorithm_validation_tests.exareme3.conftest import algorithm_request
+from tests.algorithm_validation_tests.exareme3.conftest import analysis_request
 
 base_input = {
     "inputdata": {
@@ -51,7 +51,7 @@ def test_longitudinal_anova_oneway():
             "lefthippocampus": "diff",
         },
     )
-    response = algorithm_request("anova_oneway", input)
+    response = analysis_request("anova_oneway", input)
     assert response.status_code == 200, f"{response.status_code}: {response.content}"
 
 
@@ -67,7 +67,7 @@ def test_longitudinal_anova_twoway():
             "agegroup": "first",
         },
     )
-    response = algorithm_request("anova_twoway", input)
+    response = analysis_request("anova_twoway", input)
     assert response.status_code == 200, f"{response.status_code}: {response.content}"
 
 
@@ -81,7 +81,7 @@ def test_longitudinal_linear_regression():
             "lefthippocampus": "diff",
         },
     )
-    response = algorithm_request("linear_regression", input)
+    response = analysis_request("linear_regression", input)
     assert response.status_code == 200, f"{response.status_code}: {response.content}"
 
 
@@ -96,7 +96,7 @@ def test_longitudinal_linear_regression_cv():
             "lefthippocampus": "diff",
         },
     )
-    response = algorithm_request("linear_regression_cv", input)
+    response = analysis_request("linear_regression_cv", input)
     assert response.status_code == 200, f"{response.status_code}: {response.content}"
 
 
@@ -112,7 +112,7 @@ def test_longitudinal_logistic_regression():
             "lefthippocampus": "diff",
         },
     )
-    response = algorithm_request("logistic_regression", input)
+    response = analysis_request("logistic_regression", input)
     assert response.status_code == 200, f"{response.status_code}: {response.content}"
 
 
@@ -137,7 +137,7 @@ def test_longitudinal_logistic_regression_error_less_strategies():
         },
     )
 
-    response = algorithm_request("logistic_regression", input)
+    response = analysis_request("logistic_regression", input)
     assert response.status_code == 460, f"{response.status_code}: {response.content}"
 
 
@@ -153,7 +153,7 @@ def test_longitudinal_logistic_regression_cv():
             "lefthippocampus": "diff",
         },
     )
-    response = algorithm_request("logistic_regression_cv", input)
+    response = analysis_request("logistic_regression_cv", input)
     assert response.status_code == 200, f"{response.status_code}: {response.content}"
 
 
@@ -169,7 +169,7 @@ def test_longitudinal_naive_bayes_gaussian_cv():
             "lefthippocampus": "diff",
         },
     )
-    response = algorithm_request("naive_bayes_gaussian_cv", input)
+    response = analysis_request("naive_bayes_gaussian_cv", input)
     assert response.status_code == 200, f"{response.status_code}: {response.content}"
 
 
@@ -184,5 +184,5 @@ def test_longitudinal_naive_bayes_categorical_cv():
             "agegroup": "first",
         },
     )
-    response = algorithm_request("naive_bayes_categorical_cv", input)
+    response = analysis_request("naive_bayes_categorical_cv", input)
     assert response.status_code == 200, f"{response.status_code}: {response.content}"

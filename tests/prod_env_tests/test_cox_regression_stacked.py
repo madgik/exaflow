@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.algorithm_validation_tests.exareme3.conftest import algorithm_request
+from tests.algorithm_validation_tests.exareme3.conftest import analysis_request
 from tests.algorithm_validation_tests.exareme3.conftest import parse_response
 from tests.algorithm_validation_tests.exareme3.helpers import get_test_params
 
@@ -27,7 +27,7 @@ def _longitudinal_transformer_parameters(request: dict) -> dict:
 
 @pytest.mark.parametrize("test_input, _expected", get_test_params(expected_file))
 def test_cox_regression_stacked_algorithm(test_input, _expected):
-    response = algorithm_request(algorithm_name, test_input)
+    response = analysis_request(algorithm_name, test_input)
     result = parse_response(response)
     summary = result.get("summary", {})
     print(
@@ -61,7 +61,7 @@ def test_cox_regression_stacked_invalid_positive_class():
     request = json.loads(json.dumps(request))
     request["algorithm"]["parameters"]["positive_class"] = "NOT_A_REAL_EVENT_LEVEL"
 
-    response = algorithm_request(algorithm_name, request)
+    response = analysis_request(algorithm_name, request)
     assert response.status_code == 460, response.text
     assert re.search(
         r"positive_class.*observed event variable levels",
@@ -77,6 +77,6 @@ def test_cox_regression_stacked_rejects_multiple_time_variables():
     transformer = _longitudinal_transformer_parameters(request)
     transformer["strategies"]["righthippocampus"] = "first"
 
-    response = algorithm_request(algorithm_name, request)
+    response = analysis_request(algorithm_name, request)
     assert response.status_code == 460, response.text
     assert re.search(r"Follow-up time.*at most 1 values", response.text), response.text

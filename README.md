@@ -83,14 +83,14 @@ commands, testing matrix, risk register, and review checklists).
    inv start-worker --localworker1
    ```
 
-#### Execute an algorithm
+#### Execute an analysis
 
 - Examples
   ```
-  ./run_algorithm -a pca -y leftamygdala lefthippocampus -d ppmi0 -m dementia:0.1
+  ./run_analysis -a pca -y leftamygdala lefthippocampus -d ppmi0 -m dementia:0.1
   ```
   ```
-  ./run_algorithm -a pearson_correlation -y leftamygdala lefthippocampus -d ppmi0 -m dementia:0.1 -p alpha 0.95
+  ./run_analysis -a pearson_correlation -y leftamygdala lefthippocampus -d ppmi0 -m dementia:0.1 -p alpha 0.95
   ```
 
 ## Algorithm Development

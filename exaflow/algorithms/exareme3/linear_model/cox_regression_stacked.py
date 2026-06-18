@@ -99,30 +99,28 @@ class StackedCoxRegression(Algorithm):
             label="Stacked Cox Regression",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Follow-up time",
-                    desc="Positive numerical duration until event or censoring.",
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=True,
-                    max_count=1,
-                ),
-                x=specs.InputDataSpecification(
-                    label="Event variable and covariates",
-                    desc=("Select the event variable and one or more covariates."),
-                    types=[
-                        specs.InputDataType.REAL,
-                        specs.InputDataType.INT,
-                        specs.InputDataType.TEXT,
-                    ],
-                    stattypes=[
-                        specs.InputDataStatType.NUMERICAL,
-                        specs.InputDataStatType.NOMINAL,
-                    ],
-                    required=True,
-                    min_count=2,
-                ),
+            y=specs.InputDataSpecification(
+                label="Follow-up time",
+                desc="Positive numerical duration until event or censoring.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
+                max_count=1,
+            ),
+            x=specs.InputDataSpecification(
+                label="Event variable and covariates",
+                desc=("Select the event variable and one or more covariates."),
+                types=[
+                    specs.InputDataType.REAL,
+                    specs.InputDataType.INT,
+                    specs.InputDataType.TEXT,
+                ],
+                stattypes=[
+                    specs.InputDataStatType.NUMERICAL,
+                    specs.InputDataStatType.NOMINAL,
+                ],
+                required=True,
+                min_count=2,
             ),
             parameters={
                 "event_var": specs.ParameterSpecification(
@@ -173,7 +171,7 @@ class StackedCoxRegression(Algorithm):
         )
 
     def run(self):
-        time_var = self.inputdata.y[0]
+        time_var = self.y[0]
         event_var = self.get_parameter("event_var")
         positive_class = self.get_parameter("positive_class")
         time_grid_strategy = self.get_parameter(
@@ -181,12 +179,12 @@ class StackedCoxRegression(Algorithm):
         )
         n_time_bins = int(self.get_parameter("n_time_bins", 10))
 
-        if event_var not in self.inputdata.x:
+        if event_var not in self.x:
             raise BadInputError(
                 "event_var must refer to one of the selected x variables."
             )
 
-        covariate_vars = [var for var in self.inputdata.x if var != event_var]
+        covariate_vars = [var for var in self.x if var != event_var]
         if not covariate_vars:
             raise BadInputError(
                 "cox_regression_stacked requires at least one covariate besides event_var."

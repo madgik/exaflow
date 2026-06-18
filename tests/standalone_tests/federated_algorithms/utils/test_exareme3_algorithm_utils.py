@@ -31,9 +31,10 @@ def _make_algorithm(results):
         inputdata=Inputdata(
             data_model="dummy:0.1",
             datasets=["d1"],
-            x=["x1"],
-            y=["y1"],
+            variables=["x1", "y1"],
         ),
+        x=["x1"],
+        y=["y1"],
         parameters={},
     )
 

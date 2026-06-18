@@ -1,8 +1,8 @@
 # Exaflow API Specification
 
 This document describes the Exaflow API contract used by clients that discover
-available algorithms, render request forms, validate user input, and execute an
-algorithm.
+available analyses, render request forms, validate user input, and execute an
+analysis.
 
 ## Table of Contents
 
@@ -10,8 +10,8 @@ algorithm.
 - [2) Endpoints](#2-endpoints)
 - [3) Algorithm Specification DTOs](#3-algorithm-specification-dtos)
 - [4) Metadata Endpoints Used By The UI](#4-metadata-endpoints-used-by-the-ui)
-- [5) Algorithm Request DTOs](#5-algorithm-request-dtos)
-- [6) Building A Valid Algorithm Request](#6-building-a-valid-algorithm-request)
+- [5) Analysis Request DTOs](#5-analysis-request-dtos)
+- [6) Building A Valid Analysis Request](#6-building-a-valid-analysis-request)
 - [7) Error And Status Mapping](#7-error-and-status-mapping)
 - [8) Source Of Truth](#8-source-of-truth)
 
@@ -21,16 +21,19 @@ ______________________________________________________________________
 
 The intended client flow is:
 
-1. Call `GET /algorithms` to discover available algorithms and their DTO specifications.
+1. Call `GET /specifications/inputdata`, `GET /specifications/preprocessing`,
+   and `GET /specifications/algorithms` to discover the DTO specifications used
+   to build an analysis request.
 1. Call metadata endpoints to populate data model, dataset, variable, CDE, and filter controls.
-1. Build an `AlgorithmRequestDTO` from the selected `AlgorithmSpecificationDTO`.
+1. Build an `AnalysisRequestDTO` from the selected `AlgorithmSpecificationDTO`.
 1. Run client-side checks that mirror the server validator.
-1. Submit `POST /algorithms/<algorithm_name>`.
-1. Display either the algorithm result or the server validation/error message.
+1. Submit `POST /analysis`.
+1. Display either the analysis result or the server validation/error message.
 
-The most important rule: `GET /algorithms` is the runtime source of truth for
-algorithm availability and per-algorithm form shape. Do not hardcode request
-requirements that are already expressed by the specification DTO.
+The most important rule: the `/specifications/*` endpoints are the runtime
+source of truth for common inputdata fields, preprocessing steps, algorithm
+availability, and per-algorithm form shape. Do not hardcode request
+requirements that are already expressed by the specification DTOs.
 
 ______________________________________________________________________
 
@@ -38,8 +41,10 @@ ______________________________________________________________________
 
 | Endpoint | Purpose | Main UI Use |
 | --- | --- | --- |
-| `GET /algorithms` | Returns enabled algorithm specifications. | Build algorithm catalog and dynamic algorithm forms. |
-| `POST /algorithms/<algorithm_name>` | Executes an algorithm request. | Submit the validated request payload. |
+| `GET /specifications/inputdata` | Returns common source inputdata specifications. | Build the shared data model, dataset, filter, and source variable controls. |
+| `GET /specifications/preprocessing` | Returns enabled preprocessing step specifications. | Build ordered preprocessing forms. |
+| `GET /specifications/algorithms` | Returns enabled algorithm specifications. | Build algorithm catalog and dynamic algorithm forms. |
+| `POST /analysis` | Executes an analysis request. | Submit the validated request payload. |
 | `GET /datasets` | Returns available datasets grouped by data model. | Populate data model and dataset selectors. |
 | `GET /datasets_locations` | Returns dataset-to-worker mapping per data model. | Optional diagnostics or data location display. |
 | `GET /datasets_variables` | Returns available variables per dataset and data model. | Inform variable availability in the UI. |
@@ -50,8 +55,8 @@ ______________________________________________________________________
 
 ## 3) Algorithm Specification DTOs
 
-`GET /algorithms` returns `AlgorithmSpecificationsDTO`, a root JSON array of
-enabled `AlgorithmSpecificationDTO` objects.
+`GET /specifications/algorithms` returns `AlgorithmSpecificationsDTO`, a root
+JSON array of enabled `AlgorithmSpecificationDTO` objects.
 
 Example:
 
@@ -62,16 +67,11 @@ Example:
     "desc": "Short description.",
     "documentation": "Longer explanation.",
     "label": "Linear Regression",
-    "inputdata": {
-      "data_model": {},
-      "datasets": {},
-      "filter": {},
-      "y": {},
-      "x": {},
-      "validation_datasets": {}
-    },
+    "y": {},
+    "x": {},
+    "requires_validation_datasets": false,
     "parameters": {},
-    "preprocessing": [],
+    "required_preprocessing": [],
     "type": "exareme3"
   }
 ]
@@ -87,31 +87,32 @@ Example:
 
 | Field | Type | Meaning | Validation / UI Notes |
 | --- | --- | --- | --- |
-| `name` | `string` | Stable algorithm id. | Use this exact value in `POST /algorithms/<algorithm_name>`. |
+| `name` | `string` | Stable algorithm id. | Send this exact value in `AnalysisRequestDTO.algorithm.name`. |
 | `desc` | `string` | Short algorithm description. | Use in compact UI surfaces such as algorithm lists. |
 | `documentation` | `string` | Longer algorithm documentation. | Use in details/help views. |
 | `label` | `string` | Human-readable algorithm name. | Use as display label. |
-| `inputdata` | `InputDataSpecificationsDTO` | Describes required data model, datasets, filter, variable slots, and validation datasets. | Drives the `inputdata` part of the request form. |
+| `y` | `InputDataSpecificationDTO` | Algorithm-defined primary variable slot. | Usually dependent, outcome, or primary variables. |
+| `x` | `InputDataSpecificationDTO \| null` | Optional algorithm-defined secondary variable slot. | Usually independent, covariate, or input variables. If absent, do not render/send `algorithm.x`. |
+| `requires_validation_datasets` | `boolean` | Whether `inputdata.validation_datasets` is required. | If false, validation datasets are rejected. |
 | `parameters` | `object \| null` | Map of parameter name to `ParameterSpecificationDTO`. | Request parameter keys outside this map are rejected. |
-| `preprocessing` | `PreprocessingStepSpecificationDTO[] \| null` | Enabled preprocessing steps exposed with this algorithm. | Required steps are listed separately in `required_preprocessing`. |
 | `required_preprocessing` | `string[]` | Preprocessing step ids that must be included in execution requests. | The server rejects requests that omit any listed step. |
-| `type` | `string` | Algorithm backend type, for example `exareme3`. | Informational for clients; execution still uses `POST /algorithms/<name>`. |
+| `type` | `string` | Algorithm backend type, for example `exareme3`. | Informational for clients; execution still uses `POST /analysis`. |
 
 During request validation, the server uses this DTO to decide which variables
 are required, which CDEs are valid for each variable slot, which parameters are
 accepted, which preprocessing steps are accepted, and how parameter values are
-validated.
+validated. Preprocessing specifications are exposed separately by
+`GET /specifications/preprocessing`.
 
-### `InputDataSpecificationsDTO`
+### `AnalysisInputDataSpecificationDTO`
 
 | Field | Type | Meaning | Validation / UI Notes |
 | --- | --- | --- | --- |
 | `data_model` | `InputDataSpecificationDTO` | Specification for request field `inputdata.data_model`. | Engine-provided and required. |
 | `datasets` | `InputDataSpecificationDTO` | Specification for request field `inputdata.datasets`. | Engine-provided and required. |
-| `filter` | `InputDataSpecificationDTO` | Specification for request field `inputdata.filters`. | The spec field is singular `filter`; the request field is plural `filters`. |
-| `y` | `InputDataSpecificationDTO` | Algorithm-defined primary variable slot. | Usually dependent, outcome, or primary variables. |
-| `x` | `InputDataSpecificationDTO \| null` | Optional algorithm-defined secondary variable slot. | Usually independent, covariate, or input variables. If absent, do not render/send `algorithm.x`. |
-| `validation_datasets` | `InputDataSpecificationDTO \| null` | Validation dataset slot. | If present, request `inputdata.validation_datasets` is required. If absent, that request field is rejected. |
+| `filters` | `InputDataSpecificationDTO` | Specification for request field `inputdata.filters`. | Optional query-builder filter JSON. |
+| `variables` | `InputDataSpecificationDTO` | Specification for request field `inputdata.variables`. | Source columns available to preprocessing and algorithms. |
+| `validation_datasets` | `InputDataSpecificationDTO \| null` | Validation dataset slot. | Required only when the selected algorithm has `requires_validation_datasets=true`. |
 
 ### `InputDataSpecificationDTO`
 
@@ -252,9 +253,9 @@ parameter values against metadata.
 
 ______________________________________________________________________
 
-## 5) Algorithm Request DTOs
+## 5) Analysis Request DTOs
 
-`POST /algorithms/<algorithm_name>` accepts an `AlgorithmRequestDTO`.
+`POST /analysis` accepts an `AnalysisRequestDTO`.
 
 Example:
 
@@ -285,6 +286,7 @@ Example:
     }
   ],
   "algorithm": {
+    "name": "linear_regression",
     "x": ["risk_group", "sex"],
     "y": ["outcome"],
     "parameters": {
@@ -294,53 +296,55 @@ Example:
 }
 ```
 
-### `AlgorithmRequestDTO`
+### `AnalysisRequestDTO`
 
 | Field | Type | Meaning | Validation / UI Notes |
 | --- | --- | --- | --- |
 | `request_id` | `string \| null` | Optional client request id. | If omitted, the server generates one. |
-| `inputdata` | `AlgorithmInputDataDTO` | Data model, datasets, filter, and source variables loaded before preprocessing. | Required. |
-| `preprocessing` | `PreprocessingRequestStepDTO[] \| null` | Ordered preprocessing step configuration. | Step names must exist in enabled preprocessing specs, and required preprocessing steps must be included. |
-| `algorithm` | `AlgorithmExecutionDTO` | Final algorithm `x`, `y`, and parameter values. | Required. |
+| `inputdata` | `AnalysisInputDataDTO` | Data model, datasets, filter, and source variables loaded before preprocessing. | Required. |
+| `preprocessing` | `AnalysisPreprocessingStepDTO[] \| null` | Ordered preprocessing step configuration. | Step names must exist in enabled preprocessing specs, and required preprocessing steps must be included. |
+| `algorithm` | `AnalysisAlgorithmDTO` | Selected algorithm name, final algorithm `x`, `y`, and parameter values. | Required. |
 | `flags` | `object \| null` | System flags. | Optional. |
 
-### `AlgorithmInputDataDTO`
+### `AnalysisInputDataDTO`
 
 | Field | Type | Meaning | Validation / UI Notes |
 | --- | --- | --- | --- |
 | `data_model` | `string` | Data model code. | Required; must exist in worker landscape metadata. |
 | `datasets` | `string[]` | Training dataset names. | Required; every value must exist for `data_model`. |
-| `validation_datasets` | `string[] \| null` | Validation dataset names. | Required only when the algorithm spec exposes `inputdata.validation_datasets`; forbidden otherwise. |
+| `validation_datasets` | `string[] \| null` | Validation dataset names. | Required only when the algorithm spec has `requires_validation_datasets=true`; forbidden otherwise. |
 | `filters` | `object \| null` | Query-builder filter JSON. | Optional; must use valid CDE ids, operators, conditions, and value types. |
 | `variables` | `string[]` | Source variables available before preprocessing. | Include all raw variables used by filters, preprocessing parameters, and algorithm inputs that are not created by preprocessing. |
 
-### `PreprocessingRequestStepDTO`
+### `AnalysisPreprocessingStepDTO`
 
 | Field | Type | Meaning | Validation / UI Notes |
 | --- | --- | --- | --- |
 | `name` | `string` | Preprocessing step id. | Must exist in enabled preprocessing specs. |
 | `parameters` | `object` | Step parameter values. | Validated against the selected step's parameter specs. |
 
-### `AlgorithmExecutionDTO`
+### `AnalysisAlgorithmDTO`
 
 | Field | Type | Meaning | Validation / UI Notes |
 | --- | --- | --- | --- |
+| `name` | `string` | Selected algorithm id. | Must match an enabled algorithm specification. |
 | `x` | `string[] \| null` | Secondary/independent variables. | May include variables created by earlier preprocessing steps. |
 | `y` | `string[] \| null` | Primary/dependent variables. | May include variables created by earlier preprocessing steps. |
 | `parameters` | `object \| null` | Algorithm parameter values. | Keys must exist in selected algorithm `parameters` spec. |
 
 ______________________________________________________________________
 
-## 6) Building A Valid Algorithm Request
+## 6) Building A Valid Analysis Request
 
 Build the request in this order:
 
-1. Select an algorithm from `GET /algorithms`.
+1. Select an algorithm from `GET /specifications/algorithms`.
 1. Select `inputdata.data_model` from metadata/data endpoints.
 1. Select `inputdata.datasets` from the `GET /datasets` response at the selected `data_model` key.
-1. Render `algorithm.x`, `algorithm.y`, `algorithm.parameters`, and ordered preprocessing from the selected algorithm specification.
+1. Render `algorithm.x`, `algorithm.y`, and `algorithm.parameters` from the selected algorithm specification.
+1. Render ordered preprocessing from `GET /specifications/preprocessing`.
 1. Use the `GET /cdes_metadata` response at the selected `data_model` key to validate variable types, stattypes, filters, and enum-derived options.
-1. Submit `POST /algorithms/<algorithm_name>` using `AlgorithmSpecificationDTO.name`.
+1. Submit `POST /analysis` with `algorithm.name` set to `AlgorithmSpecificationDTO.name`.
 
 Inputdata checks:
 
@@ -353,8 +357,8 @@ Inputdata checks:
 - Check each CDE `sql_type` against the slot `types`.
 - Allow `int` CDEs for slots that allow `real`.
 - Check categorical status against `stattypes`.
-- Include `validation_datasets` only when the spec includes it.
-- Require `validation_datasets` when the spec includes it.
+- Include `validation_datasets` only when the selected algorithm has `requires_validation_datasets=true`.
+- Require `validation_datasets` when the selected algorithm has `requires_validation_datasets=true`.
 
 Parameter checks:
 
@@ -436,9 +440,9 @@ ______________________________________________________________________
 ## 8) Source Of Truth
 
 - DTOs:
-  - `exaflow/controller/services/api/algorithm_request_dtos.py`
+  - `exaflow/controller/services/api/analysis_request_dtos.py`
 - Semantic validation:
-  - `exaflow/controller/services/api/algorithm_request_validator.py`
+  - `exaflow/controller/services/api/analysis_request_validator.py`
 - Algorithm spec DTO shape:
   - `exaflow/controller/services/api/algorithm_spec_dtos.py`
 - Route surface:

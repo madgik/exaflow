@@ -23,8 +23,7 @@ def _validate(winsorizer):
         inputdata=Inputdata(
             data_model="dm:0.1",
             datasets=["d1"],
-            x=["x1", "x2", "x_cat"],
-            y=["y1"],
+            variables=["x1", "x2", "x_cat", "y1"],
         ),
         metadata={
             "x1": {"is_categorical": False, "min": -100.0, "max": 100.0},
@@ -95,16 +94,14 @@ def test_validate_params_rejects_invalid_configuration(params, message):
         _validate(winsorizer)
 
 
-def test_transform_inputdata_variables_returns_identity():
+def test_transform_variables_returns_identity():
     winsorizer = _make_winsorizer({"strategies": {"x1": "iqr"}})
 
-    transformed_x, transformed_y = winsorizer.transform_inputdata_variables(
-        x=["x1", "x2"],
-        y=["y1"],
+    transformed_variables = winsorizer.transform_variables(
+        variables=["x1", "x2", "y1"],
     )
 
-    assert transformed_x == ["x1", "x2"]
-    assert transformed_y == ["y1"]
+    assert transformed_variables == ["x1", "x2", "y1"]
 
 
 def test_transform_metadata_returns_copy():

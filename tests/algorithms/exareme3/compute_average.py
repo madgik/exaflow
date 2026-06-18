@@ -17,17 +17,14 @@ class ComputeAverage(Algorithm):
             documentation="Compute the average value of a column",
             label="Compute Average",
             enabled=True,
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="column",
-                    desc="Column",
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=True,
-                ),
-                x=None,
-                validation=False,
+            y=specs.InputDataSpecification(
+                label="column",
+                desc="Column",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
             ),
+            x=None,
             parameters={},
             type=specs.AlgorithmType.EXAREME3,
             components=[],
@@ -40,7 +37,7 @@ class ComputeAverage(Algorithm):
         )
 
         results = {}
-        for column in self.inputdata.y:
+        for column in self.y:
             global_sum = sum(res[column]["sum"] for res in local_results)
             global_count = sum(res[column]["count"] for res in local_results)
             average = global_sum / global_count if global_count else float("nan")

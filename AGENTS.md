@@ -45,7 +45,7 @@ separate config, markers, and review requirements — see
 | `.agents/skills` | Canonical Exaflow algorithm scaffold and validation skills. |
 | `.github/workflows` | CI for lint, standalone tests, algorithm validation, prod tests, image publishing, and validator packaging. |
 | `tasks.py` | Invoke tasks for config generation, local deployment, service lifecycle, data loading, and cleanup. |
-| `run_algorithm` | CLI helper that builds and posts algorithm execution requests. |
+| `run_analysis` | CLI helper that builds and posts analysis execution requests. |
 
 ## Stack
 
@@ -83,10 +83,10 @@ poetry run pytest -q tests/standalone_tests
 poetry run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py
 ```
 
-Run an algorithm through the helper CLI:
+Run an analysis through the helper CLI:
 
 ```bash
-./run_algorithm -a pca -y leftamygdala lefthippocampus -d ppmi0 -m dementia:0.1
+./run_analysis -a pca -y leftamygdala lefthippocampus -d ppmi0 -m dementia:0.1
 ```
 
 Full install, build, test, deployment, and Kubernetes command lists live in
@@ -306,9 +306,9 @@ The pipeline below is what you usually need to reference or debug.
 
 1. **HTTP Request Intake**
 
-   - `run_algorithm` posts to `POST /algorithms/<algorithm_name>`.
+   - `run_analysis` posts to `POST /analysis`.
    - Quart wiring lives in `exaflow/controller/quart/endpoints.py`. It parses
-     JSON into `AlgorithmRequestDTO`, validates it against enabled specs, and
+     JSON into `AnalysisRequestDTO`, validates it against enabled specs, and
      instantiates a strategy via `get_algorithm_execution_strategy`.
 
 1. **Strategy Selection and Metadata Prep**

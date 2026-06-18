@@ -287,7 +287,7 @@ In our example the specs are
 
 Once all building blocks are in place, and our system is deployed, we can run
 the algorithm either by performing a POST request to Exaflow, or by using
-[`run_algorithm`](https://github.com/madgik/exaflow/tree/main/run_algorithm) from the
+[`run_analysis`](https://github.com/madgik/exaflow/tree/main/run_analysis) from the
 command line.
 
 # Advanced topics

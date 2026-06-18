@@ -2,7 +2,7 @@
 
 | Area | Risk | Evidence | Agent guidance | Human review required? |
 | --- | --- | --- | --- | --- |
-| Algorithm request/spec API | Client form shape and validation depend on runtime specifications. | `GET /algorithms`, `AlgorithmRequestDTO`, `documentation/api-specification.md`. | Treat spec changes as public API changes; update docs and tests. | Yes for breaking changes. |
+| Analysis request/spec API | Client form shape and validation depend on runtime specifications. | `GET /specifications/*`, `POST /analysis`, `AnalysisRequestDTO`, `documentation/api-specification.md`. | Treat spec changes as public API changes; update docs and tests. | Yes for breaking changes. |
 | Dynamic algorithm discovery | Import path changes can remove algorithms or double-register UDFs. | `exaflow/__init__.py` imports from `EXAREME3_ALGORITHM_FOLDERS`. | Preserve idempotent import behavior; run discovery/validator tests. | Yes for discovery refactors. |
 | UDF registry | Missing or duplicate UDF registrations break worker execution. | `@exareme3_udf` registry use in algorithm wrappers and worker UDF service. | Add focused tests and run algorithm validation. | Yes for registry changes. |
 | Worker privacy checks | Minimum row count protects local data. | `worker_config.privacy.minimum_row_count` used in UDF service. | Do not lower or bypass checks without explicit review. | Yes. |

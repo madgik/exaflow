@@ -67,29 +67,27 @@ class LogisticRegression(Algorithm):
             label="Logistic Regression",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Outcome",
-                    desc="Nominal outcome converted using the positive class.",
-                    types=[specs.InputDataType.TEXT],
-                    stattypes=[specs.InputDataStatType.NOMINAL],
-                    required=True,
-                    max_count=1,
-                ),
-                x=specs.InputDataSpecification(
-                    label="Covariates",
-                    desc="Numerical or categorical covariates.",
-                    types=[
-                        specs.InputDataType.INT,
-                        specs.InputDataType.REAL,
-                        specs.InputDataType.TEXT,
-                    ],
-                    stattypes=[
-                        specs.InputDataStatType.NUMERICAL,
-                        specs.InputDataStatType.NOMINAL,
-                    ],
-                    required=True,
-                ),
+            y=specs.InputDataSpecification(
+                label="Outcome",
+                desc="Nominal outcome converted using the positive class.",
+                types=[specs.InputDataType.TEXT],
+                stattypes=[specs.InputDataStatType.NOMINAL],
+                required=True,
+                max_count=1,
+            ),
+            x=specs.InputDataSpecification(
+                label="Covariates",
+                desc="Numerical or categorical covariates.",
+                types=[
+                    specs.InputDataType.INT,
+                    specs.InputDataType.REAL,
+                    specs.InputDataType.TEXT,
+                ],
+                stattypes=[
+                    specs.InputDataStatType.NUMERICAL,
+                    specs.InputDataStatType.NOMINAL,
+                ],
+                required=True,
             ),
             parameters={
                 "positive_class": specs.ParameterSpecification(
@@ -110,8 +108,8 @@ class LogisticRegression(Algorithm):
 
     def run(self):
         positive_class = self.get_parameter("positive_class")
-        y_var = self.inputdata.y[0]
-        x_vars = list(self.inputdata.x)
+        y_var = self.y[0]
+        x_vars = list(self.x)
         categorical_vars = [
             var for var in x_vars if self.metadata[var]["is_categorical"]
         ]

@@ -81,7 +81,7 @@ class MissingValuesHandler(PreprocessingStep):
                     multiple=False,
                     dict_keys_enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_NAMES,
-                        source=["x", "y"],
+                        source=["variables"],
                     ),
                     dict_values_enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.LIST,
@@ -96,7 +96,7 @@ class MissingValuesHandler(PreprocessingStep):
                     multiple=False,
                     dict_keys_enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_NAMES,
-                        source=["x", "y"],
+                        source=["variables"],
                     ),
                 ),
             },
@@ -122,11 +122,11 @@ class MissingValuesHandler(PreprocessingStep):
                 f"{invalid_values}. Allowed values are: {sorted(allowed_values)}."
             )
 
-        requested_vars = set((inputdata.x or []) + (inputdata.y or []))
+        requested_vars = set(inputdata.variables)
         unknown_vars = sorted(set(self._strategies) - requested_vars)
         if unknown_vars:
             raise BadUserInput(
-                "Per-variable strategies include variables not present in x/y: "
+                "Per-variable strategies include variables not present in inputdata.variables: "
                 f"{unknown_vars}."
             )
 
@@ -163,13 +163,12 @@ class MissingValuesHandler(PreprocessingStep):
 
         self._validate_categorical_constant_fill_values(metadata=metadata)
 
-    def transform_inputdata_variables(
+    def transform_variables(
         self,
         *,
-        x: List[str],
-        y: List[str],
-    ) -> tuple[List[str], List[str]]:
-        return list(x), list(y)
+        variables: List[str],
+    ) -> List[str]:
+        return list(variables)
 
     def transform_metadata(
         self,

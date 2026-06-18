@@ -9,10 +9,11 @@ MISSING_VALUES_STEP_NAME = "missing_values_handler"
 MISSING_VALUE_DROP_STRATEGY = "drop"
 
 
-def algorithm_request(algorithm: str, input: dict, drop_na: bool = True):
+def analysis_request(algorithm: str, input: dict, drop_na: bool = True):
     request_payload = dict(input)
     request_payload.pop("test_case_num", None)
     request_payload.pop("type", None)
+    _with_algorithm_name(request_payload, algorithm)
     if drop_na:
         preprocessing = list(request_payload.get("preprocessing") or [])
         if not any(step["name"] == MISSING_VALUES_STEP_NAME for step in preprocessing):
@@ -27,10 +28,16 @@ def algorithm_request(algorithm: str, input: dict, drop_na: bool = True):
                 )
         request_payload["preprocessing"] = preprocessing
 
-    url = "http://127.0.0.1:5100/algorithms" + f"/{algorithm}"
+    url = "http://127.0.0.1:5100/analysis"
     headers = {"Content-type": "application/json", "Accept": "text/plain"}
     response = requests.post(url, data=json.dumps(request_payload), headers=headers)
     return response
+
+
+def _with_algorithm_name(request_payload: dict, algorithm: str) -> None:
+    algorithm_payload = dict(request_payload.get("algorithm") or {})
+    algorithm_payload["name"] = algorithm
+    request_payload["algorithm"] = algorithm_payload
 
 
 def _build_default_drop_strategies(request_payload: dict) -> dict:

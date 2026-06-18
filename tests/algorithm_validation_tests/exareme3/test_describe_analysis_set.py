@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.algorithm_validation_tests.exareme3.helpers import algorithm_request
+from tests.algorithm_validation_tests.exareme3.helpers import analysis_request
 from tests.algorithm_validation_tests.exareme3.helpers import assert_allclose
 from tests.algorithm_validation_tests.exareme3.helpers import get_test_params
 from tests.algorithm_validation_tests.exareme3.helpers import parse_response
@@ -18,7 +18,7 @@ expected_file = (
 @pytest.mark.parametrize("test_input, expected", get_test_params(expected_file))
 def test_describe_analysis_set(test_input, expected):
     payload = _add_dropna_preprocessing(test_input)
-    response = algorithm_request(algorithm_name, payload, drop_na=False)
+    response = analysis_request(algorithm_name, payload, drop_na=False)
     result = parse_response(response)
 
     compare_results(result["featurewise"], expected["analysis_set"])

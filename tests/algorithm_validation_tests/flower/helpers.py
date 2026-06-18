@@ -6,12 +6,15 @@ import pytest
 import requests
 
 
-def algorithm_request(algorithm: str, input: dict):
+def analysis_request(algorithm: str, input: dict):
     request_payload = dict(input)
     request_payload.pop("test_case_num", None)
     request_payload.pop("type", None)
+    algorithm_payload = dict(request_payload.get("algorithm") or {})
+    algorithm_payload["name"] = algorithm
+    request_payload["algorithm"] = algorithm_payload
 
-    url = "http://127.0.0.1:5100/algorithms" + f"/{algorithm}"
+    url = "http://127.0.0.1:5100/analysis"
     headers = {"Content-type": "application/json", "Accept": "text/plain"}
     response = requests.post(
         url,

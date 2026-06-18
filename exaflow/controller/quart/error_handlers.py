@@ -3,7 +3,7 @@ import enum
 from quart import Blueprint
 
 from exaflow.controller.logger import get_background_service_logger
-from exaflow.controller.services.api.algorithm_request_validator import BadRequest
+from exaflow.controller.services.api.analysis_request_validator import BadRequest
 from exaflow.controller.services.errors import WorkerTaskTimeoutError
 from exaflow.controller.services.errors import WorkerUnresponsiveError
 from exaflow.data_filters import FilterError

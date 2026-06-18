@@ -8,33 +8,32 @@
     "components": [
         "FLOWER"
     ],
-    "inputdata": {
-        "y": {
-            "label": "Variable (dependent)",
-            "desc": "A unique nominal variable. The variable is converted to binary by assigning 1 to the positive class and 0 to all other classes. ",
-            "types": [
-                "text"
-            ],
-            "stattypes": [
-                "nominal"
-            ],
-            "required": true,
-            "multiple": false
-        },
-        "x": {
-            "label": "Covariates (independent)",
-            "desc": "One or more variables. Can be numerical or nominal. For nominal variables dummy encoding is used.",
-            "types": [
-                "real",
-                "int",
-                "text"
-            ],
-            "stattypes": [
-                "numerical",
-                "nominal"
-            ],
-            "required": true,
-            "multiple": true
-        }
+    "y": {
+        "label": "Variable (dependent)",
+        "desc": "A unique nominal variable. The variable is converted to binary by assigning 1 to the positive class and 0 to all other classes. ",
+        "types": [
+            "text"
+        ],
+        "stattypes": [
+            "nominal"
+        ],
+        "required": true,
+        "min_count": 1,
+        "max_count": 1
+    },
+    "x": {
+        "label": "Covariates (independent)",
+        "desc": "One or more variables. Can be numerical or nominal. For nominal variables dummy encoding is used.",
+        "types": [
+            "real",
+            "int",
+            "text"
+        ],
+        "stattypes": [
+            "numerical",
+            "nominal"
+        ],
+        "required": true,
+        "min_count": 1
     }
 }

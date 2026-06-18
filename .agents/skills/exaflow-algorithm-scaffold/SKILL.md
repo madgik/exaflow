@@ -57,7 +57,7 @@ Definition of Done:
   `dict_values_type`) instead of duplicating shape/type checks in algorithm
   runtime code.
 - Omit explicit optional `None` specification arguments such as
-  `parameters=None`, `validation=None`, `enumslen=None`, `default=None`,
+  `parameters=None`, `enumslen=None`, `default=None`,
   `enums=None`, `dict_values_enums=None`, `min=None`, and `max=None`.
 - Standalone parity test exists and passes.
 - Prod validation test and non-empty expected fixture exist.

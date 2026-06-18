@@ -2,7 +2,6 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Dict
 from typing import List
-from typing import Tuple
 
 import pandas as pd
 
@@ -40,13 +39,12 @@ class PreprocessingStep(ABC):
         """Parse and validate configured preprocessing state."""
 
     @abstractmethod
-    def transform_inputdata_variables(
+    def transform_variables(
         self,
         *,
-        x: List[str],
-        y: List[str],
-    ) -> Tuple[List[str], List[str]]:
-        """Transform only input variable names (x/y naming/order)."""
+        variables: List[str],
+    ) -> List[str]:
+        """Transform source variable names."""
 
     @abstractmethod
     def transform_metadata(
@@ -69,7 +67,7 @@ class PreprocessingStep(ABC):
         *,
         data: pd.DataFrame,
         metadata: Dict[str, dict],
-    ) -> Tuple[pd.DataFrame, Dict[str, dict]]:
+    ) -> tuple[pd.DataFrame, Dict[str, dict]]:
         """Convenience wrapper for transform_data + transform_metadata."""
         return self.transform_data(data=data), self.transform_metadata(
             metadata=metadata

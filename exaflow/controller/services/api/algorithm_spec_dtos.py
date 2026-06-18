@@ -13,7 +13,6 @@ from pydantic import RootModel
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import AlgorithmType
 from exaflow.algorithms.specifications import InputDataSpecification
-from exaflow.algorithms.specifications import InputDataSpecifications
 from exaflow.algorithms.specifications import InputDataStatType
 from exaflow.algorithms.specifications import InputDataType
 from exaflow.algorithms.specifications import ParameterDictValueType
@@ -24,8 +23,8 @@ from exaflow.algorithms.specifications import ParameterType
 from exaflow.algorithms.specifications import PreprocessingOutputSpecification
 from exaflow.algorithms.specifications import PreprocessingOutputType
 from exaflow.algorithms.specifications import PreprocessingStepSpecification
-from exaflow.controller.services.api.algorithm_request_dtos import (
-    AlgorithmRequestSystemFlags,
+from exaflow.controller.services.api.analysis_request_dtos import (
+    AnalysisRequestSystemFlags,
 )
 from exaflow.controller.services.specifications import specifications
 
@@ -44,12 +43,11 @@ class InputDataSpecificationDTO(ImmutableBaseModel):
     max_count: Optional[int] = None
 
 
-class InputDataSpecificationsDTO(ImmutableBaseModel):
+class AnalysisInputDataSpecificationDTO(ImmutableBaseModel):
     data_model: InputDataSpecificationDTO
     datasets: InputDataSpecificationDTO
-    filter: InputDataSpecificationDTO
-    y: InputDataSpecificationDTO
-    x: Optional[InputDataSpecificationDTO] = None
+    filters: InputDataSpecificationDTO
+    variables: InputDataSpecificationDTO
     validation_datasets: Optional[InputDataSpecificationDTO] = None
 
 
@@ -97,9 +95,10 @@ class AlgorithmSpecificationDTO(ImmutableBaseModel):
     desc: str
     documentation: str
     label: str
-    inputdata: InputDataSpecificationsDTO
+    y: InputDataSpecificationDTO
+    x: Optional[InputDataSpecificationDTO] = None
+    requires_validation_datasets: bool = False
     parameters: Optional[Dict[str, ParameterSpecificationDTO]] = None
-    preprocessing: Optional[List[PreprocessingStepSpecificationDTO]] = None
     required_preprocessing: List[str]
     flags: Optional[List[str]] = None
     type: AlgorithmType
@@ -112,6 +111,10 @@ class AlgorithmSpecificationsDTO(RootModel[List[AlgorithmSpecificationDTO]]):
 class PreprocessingStepSpecificationsDTO(
     RootModel[List[PreprocessingStepSpecificationDTO]]
 ):
+    pass
+
+
+class AnalysisInputDataSpecificationsDTO(RootModel[AnalysisInputDataSpecificationDTO]):
     pass
 
 
@@ -141,12 +144,12 @@ def _get_data_model_input_data_specification_dto():
     )
 
 
-def _get_validation_datasets_input_data_specification_dto():
+def _get_validation_datasets_input_data_specification_dto(required: bool = False):
     return InputDataSpecificationDTO(
         label="Set of data to validate.",
         desc="The set of data to validate the algorithm model on.",
         types=[InputDataType.TEXT],
-        required=True,
+        required=required,
         stattypes=None,
         min_count=None,
         max_count=None,
@@ -167,8 +170,8 @@ def _get_datasets_input_data_specification_dto():
 
 def _get_filters_input_data_specification_dto():
     return InputDataSpecificationDTO(
-        label="filter on the data.",
-        desc="Features used in my algorithm.",
+        label="Filters on the data.",
+        desc="Filter rules applied before preprocessing and analysis execution.",
         types=[InputDataType.JSONOBJECT],
         required=False,
         stattypes=None,
@@ -177,23 +180,27 @@ def _get_filters_input_data_specification_dto():
     )
 
 
-def _convert_inputdata_specifications_to_dto(spec: InputDataSpecifications):
-    # In the DTO the datasets, data_model and filter parameters are added from the engine.
-    # These parameters are not added by the algorithm developer.
-    y = _convert_inputdata_specification_to_dto(spec.y)
-    x = _convert_inputdata_specification_to_dto(spec.x) if spec.x else None
-    validation_datasets_dto = (
-        _get_validation_datasets_input_data_specification_dto()
-        if spec.validation
-        else None
+def _get_variables_input_data_specification_dto():
+    return InputDataSpecificationDTO(
+        label="Variables.",
+        desc="Source variables available to preprocessing and analysis execution.",
+        types=[InputDataType.TEXT],
+        required=True,
+        stattypes=None,
+        min_count=1,
+        max_count=None,
     )
-    return InputDataSpecificationsDTO(
-        y=y,
-        x=x,
-        validation_datasets=validation_datasets_dto,
-        data_model=_get_data_model_input_data_specification_dto(),
-        datasets=_get_datasets_input_data_specification_dto(),
-        filter=_get_filters_input_data_specification_dto(),
+
+
+def _get_analysis_inputdata_specification_dto():
+    return AnalysisInputDataSpecificationsDTO(
+        root=AnalysisInputDataSpecificationDTO(
+            validation_datasets=_get_validation_datasets_input_data_specification_dto(),
+            data_model=_get_data_model_input_data_specification_dto(),
+            datasets=_get_datasets_input_data_specification_dto(),
+            filters=_get_filters_input_data_specification_dto(),
+            variables=_get_variables_input_data_specification_dto(),
+        )
     )
 
 
@@ -266,19 +273,15 @@ def _convert_transformer_specification_to_dto(spec: PreprocessingStepSpecificati
 
 def _convert_algorithm_specification_to_dto(
     spec: AlgorithmSpecification,
-    preprocessing_steps: List[PreprocessingStepSpecification],
 ):
-    """
-    Converting to a DTO has the following additions:
-    1) The preprocessing specifications are added from all enabled preprocessing steps.
-    2) The system specific flags are added.
-    """
     return AlgorithmSpecificationDTO(
         name=spec.name,
         desc=spec.desc,
         documentation=spec.documentation,
         label=spec.label,
-        inputdata=_convert_inputdata_specifications_to_dto(spec.inputdata),
+        y=_convert_inputdata_specification_to_dto(spec.y),
+        x=_convert_inputdata_specification_to_dto(spec.x) if spec.x else None,
+        requires_validation_datasets=spec.requires_validation_datasets,
         parameters=(
             {
                 name: _convert_parameter_specification_to_dto(value)
@@ -287,29 +290,41 @@ def _convert_algorithm_specification_to_dto(
             if spec.parameters
             else None
         ),
-        preprocessing=[
-            _convert_transformer_specification_to_dto(spec)
-            for spec in preprocessing_steps
-        ],
         required_preprocessing=spec.required_preprocessing,
-        flags=[AlgorithmRequestSystemFlags.SMPC],
+        flags=[AnalysisRequestSystemFlags.SMPC],
         type=spec.type,
     )
 
 
 def _get_algorithm_specifications_dtos(
     algorithms_specs: List[AlgorithmSpecification],
-    preprocessing_steps_specs: List[PreprocessingStepSpecification],
 ) -> AlgorithmSpecificationsDTO:
     return AlgorithmSpecificationsDTO(
         root=[
-            _convert_algorithm_specification_to_dto(spec, preprocessing_steps_specs)
-            for spec in algorithms_specs
+            _convert_algorithm_specification_to_dto(spec) for spec in algorithms_specs
         ]
     )
 
 
+def _get_preprocessing_step_specifications_dtos(
+    preprocessing_steps_specs: List[PreprocessingStepSpecification],
+) -> PreprocessingStepSpecificationsDTO:
+    return PreprocessingStepSpecificationsDTO(
+        root=[
+            _convert_transformer_specification_to_dto(spec)
+            for spec in preprocessing_steps_specs
+        ]
+    )
+
+
+inputdata_specification_dto = _get_analysis_inputdata_specification_dto()
+
+
+preprocessing_step_specifications_dtos = _get_preprocessing_step_specifications_dtos(
+    list(specifications.enabled_preprocessing_steps.values()),
+)
+
+
 algorithm_specifications_dtos = _get_algorithm_specifications_dtos(
     list(specifications.enabled_algorithms.values()),
-    list(specifications.enabled_preprocessing_steps.values()),
 )

@@ -3,7 +3,6 @@ from pydantic import ValidationError
 
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import InputDataSpecification
-from exaflow.algorithms.specifications import InputDataSpecifications
 from exaflow.algorithms.specifications import InputDataStatType
 from exaflow.algorithms.specifications import InputDataType
 from exaflow.algorithms.specifications import ParameterDictValueType
@@ -20,7 +19,25 @@ from exaflow.controller.services.api.algorithm_spec_dtos import (
 from exaflow.controller.services.api.algorithm_spec_dtos import (
     _convert_algorithm_specification_to_dto,
 )
+from exaflow.controller.services.api.algorithm_spec_dtos import (
+    _convert_transformer_specification_to_dto,
+)
+from exaflow.controller.services.api.algorithm_spec_dtos import (
+    inputdata_specification_dto,
+)
 from exaflow.controller.services.specifications import Specifications
+
+
+def _input_spec(label="Outcome"):
+    return InputDataSpecification(
+        label=label,
+        desc=label,
+        types=[InputDataType.TEXT],
+        stattypes=[InputDataStatType.NOMINAL],
+        required=True,
+        min_count=1,
+        max_count=1,
+    )
 
 
 def _sample_algorithm_spec(**updates):
@@ -30,29 +47,23 @@ def _sample_algorithm_spec(**updates):
         "documentation": "sample",
         "label": "sample_algo",
         "enabled": True,
-        "inputdata": InputDataSpecifications(
-            y=InputDataSpecification(
-                label="y",
-                desc="y",
-                types=[InputDataType.TEXT],
-                stattypes=[InputDataStatType.NOMINAL],
-                required=True,
-                max_count=1,
-            )
-        ),
+        "y": _input_spec("Outcome"),
+        "x": _input_spec("Features"),
     }
     values.update(updates)
     return AlgorithmSpecification(**values)
 
 
-def _sample_preprocessing_spec(name="sample_preprocessing", *, enabled=True):
-    return PreprocessingStepSpecification(
-        name=name,
-        desc=name,
-        documentation=name,
-        label=name,
-        enabled=enabled,
-    )
+def _sample_preprocessing_spec(name="sample_preprocessing", *, enabled=True, **updates):
+    values = {
+        "name": name,
+        "desc": name,
+        "documentation": name,
+        "label": name,
+        "enabled": enabled,
+    }
+    values.update(updates)
+    return PreprocessingStepSpecification(**values)
 
 
 def test_algorithm_spec_required_preprocessing_defaults_to_empty_list():
@@ -61,34 +72,43 @@ def test_algorithm_spec_required_preprocessing_defaults_to_empty_list():
     assert spec.required_preprocessing == []
 
 
-def test_algorithm_spec_dto_exposes_required_preprocessing():
-    spec = _sample_algorithm_spec(required_preprocessing=["sample_preprocessing"])
-    preprocessing_spec = _sample_preprocessing_spec()
+def test_algorithm_spec_dto_exposes_flat_xy_without_inputdata_or_preprocessing():
+    spec = _sample_algorithm_spec(
+        required_preprocessing=["sample_preprocessing"],
+        requires_validation_datasets=True,
+    )
 
-    dto = _convert_algorithm_specification_to_dto(spec, [preprocessing_spec])
+    dto = _convert_algorithm_specification_to_dto(spec)
 
+    assert dto.y.label == "Outcome"
+    assert dto.x.label == "Features"
+    assert dto.requires_validation_datasets is True
     assert dto.required_preprocessing == ["sample_preprocessing"]
+    assert not hasattr(dto, "inputdata")
+    assert not hasattr(dto, "preprocessing")
 
 
-def test_algorithm_spec_dto_exposes_preprocessing_output():
-    spec = _sample_algorithm_spec()
-    preprocessing_spec = _sample_preprocessing_spec()
-    preprocessing_spec = preprocessing_spec.model_copy(
-        update={
-            "output": PreprocessingOutputSpecification(
-                type=PreprocessingOutputType.NEW_CATEGORICAL_COLUMN,
-                code_parameter="code",
-            )
-        }
+def test_inputdata_specification_dto_exposes_source_variables_and_filters():
+    spec = inputdata_specification_dto.root
+
+    assert spec.variables.required is True
+    assert spec.filters.required is False
+    assert hasattr(spec, "filters")
+    assert not hasattr(spec, "filter")
+
+
+def test_preprocessing_spec_dto_exposes_enum_output_type():
+    preprocessing_spec = _sample_preprocessing_spec(
+        output=PreprocessingOutputSpecification(
+            type=PreprocessingOutputType.NEW_CATEGORICAL_COLUMN,
+            code_parameter="code",
+        )
     )
 
-    dto = _convert_algorithm_specification_to_dto(spec, [preprocessing_spec])
+    dto = _convert_transformer_specification_to_dto(preprocessing_spec)
 
-    assert (
-        dto.preprocessing[0].output.type
-        == PreprocessingOutputTypeDTO.NEW_CATEGORICAL_COLUMN
-    )
-    assert dto.preprocessing[0].output.code_parameter == "code"
+    assert dto.output.type == PreprocessingOutputTypeDTO.NEW_CATEGORICAL_COLUMN
+    assert dto.output.code_parameter == "code"
 
 
 def test_parameter_dict_value_type_supports_filter():
@@ -102,6 +122,45 @@ def test_parameter_dict_value_type_supports_filter():
     )
 
     assert parameter.dict_values_type == ParameterDictValueType.FILTER
+
+
+def test_preprocessing_input_var_names_source_must_be_variables():
+    with pytest.raises(ValidationError, match="Allowed sources are .*variables"):
+        _sample_preprocessing_spec(
+            parameters={
+                "strategies": ParameterSpecification(
+                    label="Strategies",
+                    desc="Strategies.",
+                    types=[ParameterType.DICT],
+                    required=True,
+                    multiple=False,
+                    dict_keys_enums=ParameterEnumSpecification(
+                        type=ParameterEnumType.INPUT_VAR_NAMES,
+                        source=["x"],
+                    ),
+                )
+            }
+        )
+
+
+def test_preprocessing_input_var_names_source_accepts_variables():
+    spec = _sample_preprocessing_spec(
+        parameters={
+            "strategies": ParameterSpecification(
+                label="Strategies",
+                desc="Strategies.",
+                types=[ParameterType.DICT],
+                required=True,
+                multiple=False,
+                dict_keys_enums=ParameterEnumSpecification(
+                    type=ParameterEnumType.INPUT_VAR_NAMES,
+                    source=["variables"],
+                ),
+            )
+        }
+    )
+
+    assert spec.parameters["strategies"].dict_keys_enums.source == ["variables"]
 
 
 def test_specifications_raise_when_required_preprocessing_is_missing_or_disabled():
@@ -123,459 +182,20 @@ def test_specifications_raise_when_required_preprocessing_is_missing_or_disabled
         specifications._validate_required_preprocessing()
 
 
-def test_validate_parameter_spec_input_var_CDE_enums_source_is_x_or_y():
-    exception_type = ValidationError
-    exception_message = (
-        ".*In algorithm 'sample_algo', parameter 'sample_label' has enums type 'input_var_CDE_enums' "
-        "that supports only 'x' or 'y' as source. Value given: 'not_x_or_y'.*"
-    )
-    with pytest.raises(exception_type, match=exception_message):
-        AlgorithmSpecification(
-            name="sample_algo",
-            desc="sample",
-            documentation="sample",
-            label="sample_algo",
-            enabled=True,
-            inputdata=InputDataSpecifications(
-                y=InputDataSpecification(
-                    label="y",
-                    desc="y",
-                    types=[InputDataType.TEXT],
-                    stattypes=[InputDataStatType.NOMINAL],
-                    required=True,
-                    max_count=1,
-                )
-            ),
+def test_algorithm_parameter_input_var_cde_enums_source_must_be_x_or_y():
+    with pytest.raises(ValidationError, match="supports only 'x' or 'y' as source"):
+        _sample_algorithm_spec(
             parameters={
-                "inputdata_cde_enum_param": ParameterSpecification(
+                "sample_param": ParameterSpecification(
                     label="sample_label",
                     desc="sample",
                     types=[ParameterType.TEXT],
-                    required=False,
+                    required=True,
                     multiple=False,
                     enums=ParameterEnumSpecification(
                         type=ParameterEnumType.INPUT_VAR_CDE_ENUMS,
-                        source=["not_x_or_y"],
+                        source=["variables"],
                     ),
-                ),
-            },
-        )
-
-
-def test_validate_parameter_spec_input_var_CDE_enums_multiple_false():
-    exception_type = ValidationError
-    exception_message = (
-        ".*In algorithm 'sample_algo', parameter 'sample_label' has enums type 'input_var_CDE_enums' "
-        "that doesn't support 'multiple=True', in the parameter.*"
-    )
-    with pytest.raises(exception_type, match=exception_message):
-        AlgorithmSpecification(
-            name="sample_algo",
-            desc="sample",
-            documentation="sample",
-            label="sample_algo",
-            enabled=True,
-            inputdata=InputDataSpecifications(
-                y=InputDataSpecification(
-                    label="y",
-                    desc="y",
-                    types=[InputDataType.TEXT],
-                    stattypes=[InputDataStatType.NOMINAL],
-                    required=True,
-                    max_count=1,
                 )
-            ),
-            parameters={
-                "inputdata_cde_enum_param": ParameterSpecification(
-                    label="sample_label",
-                    desc="sample",
-                    types=[ParameterType.TEXT],
-                    required=False,
-                    multiple=True,
-                    enums=ParameterEnumSpecification(
-                        type=ParameterEnumType.INPUT_VAR_CDE_ENUMS, source=["y"]
-                    ),
-                ),
-            },
-        )
-
-
-def test_validate_parameter_spec_input_var_CDE_enums_inputdata_has_multiple_false():
-    exception_type = ValidationError
-    exception_message = (
-        ".* In algorithm 'sample_algo', parameter 'sample_label' has enums type 'input_var_CDE_enums' "
-        "that requires max_count=1 in its linked inputdata var 'y'.*"
-    )
-    with pytest.raises(exception_type, match=exception_message):
-        AlgorithmSpecification(
-            name="sample_algo",
-            desc="sample",
-            documentation="sample",
-            label="sample_algo",
-            enabled=True,
-            inputdata=InputDataSpecifications(
-                y=InputDataSpecification(
-                    label="y",
-                    desc="y",
-                    types=[InputDataType.TEXT],
-                    stattypes=[InputDataStatType.NOMINAL],
-                    required=True,
-                )
-            ),
-            parameters={
-                "inputdata_cde_enum_param": ParameterSpecification(
-                    label="sample_label",
-                    desc="sample",
-                    types=[ParameterType.TEXT],
-                    required=False,
-                    multiple=False,
-                    enums=ParameterEnumSpecification(
-                        type=ParameterEnumType.INPUT_VAR_CDE_ENUMS, source=["y"]
-                    ),
-                ),
-            },
-        )
-
-
-def test_validate_parameter_spec_input_var_names_type_must_be_text():
-    exception_type = ValidationError
-    exception_message = (
-        """.* In algorithm 'sample_algo', parameter 'sample_label' has enums type 'input_var_names' """
-        """that supports ONLY '.*' but the 'types' provided were .*"""
-    )
-    with pytest.raises(exception_type, match=exception_message):
-        AlgorithmSpecification(
-            name="sample_algo",
-            desc="sample",
-            documentation="sample",
-            label="sample_algo",
-            enabled=True,
-            inputdata=InputDataSpecifications(
-                y=InputDataSpecification(
-                    label="y",
-                    desc="y",
-                    types=[InputDataType.TEXT],
-                    stattypes=[InputDataStatType.NOMINAL],
-                    required=True,
-                )
-            ),
-            parameters={
-                "input_var_names_enum_param": ParameterSpecification(
-                    label="sample_label",
-                    desc="sample",
-                    types=[ParameterType.INT],
-                    required=False,
-                    multiple=False,
-                    enums=ParameterEnumSpecification(
-                        type=ParameterEnumType.INPUT_VAR_NAMES, source=["y"]
-                    ),
-                ),
-            },
-        )
-
-
-def test_validate_parameter_spec_input_var_CDE_enums_only_one_value():
-    exception_type = ValidationError
-    exception_message = (
-        ".*In algorithm 'sample_algo', parameter 'sample_label' has enums type 'input_var_CDE_enums' "
-        "that supports only one value."
-    )
-    with pytest.raises(exception_type, match=exception_message):
-        AlgorithmSpecification(
-            name="sample_algo",
-            desc="sample",
-            documentation="sample",
-            label="sample_algo",
-            enabled=True,
-            inputdata=InputDataSpecifications(
-                y=InputDataSpecification(
-                    label="y",
-                    desc="y",
-                    types=[InputDataType.TEXT],
-                    stattypes=[InputDataStatType.NOMINAL],
-                    required=True,
-                    max=1,
-                )
-            ),
-            parameters={
-                "inputdata_cde_enum_param": ParameterSpecification(
-                    label="sample_label",
-                    desc="sample",
-                    types=[ParameterType.TEXT],
-                    required=False,
-                    multiple=False,
-                    enums=ParameterEnumSpecification(
-                        type=ParameterEnumType.INPUT_VAR_CDE_ENUMS,
-                        source=["y", "second_value"],
-                    ),
-                ),
-            },
-        )
-
-
-def test_validate_parameter_spec_fixed_var_CDE_enums_only_one_value():
-    exception_type = ValidationError
-    exception_message = (
-        ".*In algorithm 'sample_algo', parameter 'sample_label' has enums type 'fixed_var_CDE_enums' "
-        "that supports only one value."
-    )
-    with pytest.raises(exception_type, match=exception_message):
-        AlgorithmSpecification(
-            name="sample_algo",
-            desc="sample",
-            documentation="sample",
-            label="sample_algo",
-            enabled=True,
-            inputdata=InputDataSpecifications(
-                y=InputDataSpecification(
-                    label="y",
-                    desc="y",
-                    types=[InputDataType.TEXT],
-                    stattypes=[InputDataStatType.NOMINAL],
-                    required=True,
-                    max=1,
-                )
-            ),
-            parameters={
-                "inputdata_cde_enum_param": ParameterSpecification(
-                    label="sample_label",
-                    desc="sample",
-                    types=[ParameterType.TEXT],
-                    required=False,
-                    multiple=False,
-                    enums=ParameterEnumSpecification(
-                        type=ParameterEnumType.FIXED_VAR_CDE_ENUMS,
-                        source=["y", "second_value"],
-                    ),
-                ),
-            },
-        )
-
-
-def test_validate_parameter_dict_type_given_with_other_type():
-    exception_type = ValidationError
-    exception_message = (
-        ".*In algorithm 'sample_algo', parameter 'sample_label' cannot use 'dict' type combined"
-        " with other types. Types provided: .* "
-    )
-    with pytest.raises(exception_type, match=exception_message):
-        AlgorithmSpecification(
-            name="sample_algo",
-            desc="sample",
-            documentation="sample",
-            label="sample_algo",
-            enabled=True,
-            inputdata=InputDataSpecifications(
-                y=InputDataSpecification(
-                    label="y",
-                    desc="y",
-                    types=[InputDataType.TEXT],
-                    stattypes=[InputDataStatType.NOMINAL],
-                    required=True,
-                    max=1,
-                )
-            ),
-            parameters={
-                "dict_and_text_types_param": ParameterSpecification(
-                    label="sample_label",
-                    desc="sample",
-                    types=[ParameterType.DICT, ParameterType.TEXT],
-                    required=False,
-                    multiple=False,
-                    max=1,
-                ),
-            },
-        )
-
-
-def test_validate_parameter_property_dict_keys_enums_can_only_be_given_with_type_dict():
-    exception_type = ValidationError
-    exception_message = (
-        ".*In algorithm 'sample_algo', parameter 'sample_label' has the property 'dict_keys_enums' "
-        "but the allowed 'types' is not 'dict'."
-    )
-    with pytest.raises(exception_type, match=exception_message):
-        AlgorithmSpecification(
-            name="sample_algo",
-            desc="sample",
-            documentation="sample",
-            label="sample_algo",
-            enabled=True,
-            inputdata=InputDataSpecifications(
-                y=InputDataSpecification(
-                    label="y",
-                    desc="y",
-                    types=[InputDataType.TEXT],
-                    stattypes=[InputDataStatType.NOMINAL],
-                    required=True,
-                    max=1,
-                )
-            ),
-            parameters={
-                "dict_keys_enums_param": ParameterSpecification(
-                    label="sample_label",
-                    desc="sample",
-                    types=[ParameterType.TEXT],
-                    required=False,
-                    multiple=False,
-                    dict_keys_enums=ParameterEnumSpecification(
-                        type=ParameterEnumType.LIST, source=["sample_enum"]
-                    ),
-                ),
-            },
-        )
-
-
-def test_validate_parameter_property_dict_values_enums_can_only_be_given_with_type_dict():
-    exception_type = ValidationError
-    exception_message = (
-        ".*In algorithm 'sample_algo', parameter 'sample_label' has the property 'dict_values_enums' "
-        "but the allowed 'types' is not 'dict'."
-    )
-    with pytest.raises(exception_type, match=exception_message):
-        AlgorithmSpecification(
-            name="sample_algo",
-            desc="sample",
-            documentation="sample",
-            label="sample_algo",
-            enabled=True,
-            inputdata=InputDataSpecifications(
-                y=InputDataSpecification(
-                    label="y",
-                    desc="y",
-                    types=[InputDataType.TEXT],
-                    stattypes=[InputDataStatType.NOMINAL],
-                    required=True,
-                    max=1,
-                )
-            ),
-            parameters={
-                "dict_values_enums_param": ParameterSpecification(
-                    label="sample_label",
-                    desc="sample",
-                    types=[ParameterType.TEXT],
-                    required=False,
-                    multiple=False,
-                    dict_values_enums=ParameterEnumSpecification(
-                        type=ParameterEnumType.LIST, source=["sample_enum"]
-                    ),
-                ),
-            },
-        )
-
-
-def test_validate_parameter_property_dict_values_type_can_only_be_given_with_type_dict():
-    exception_type = ValidationError
-    exception_message = (
-        ".*In algorithm 'sample_algo', parameter 'sample_label' has the property 'dict_values_type' "
-        "but the allowed 'types' is not 'dict'."
-    )
-    with pytest.raises(exception_type, match=exception_message):
-        AlgorithmSpecification(
-            name="sample_algo",
-            desc="sample",
-            documentation="sample",
-            label="sample_algo",
-            enabled=True,
-            inputdata=InputDataSpecifications(
-                y=InputDataSpecification(
-                    label="y",
-                    desc="y",
-                    types=[InputDataType.TEXT],
-                    stattypes=[InputDataStatType.NOMINAL],
-                    required=True,
-                    max=1,
-                )
-            ),
-            parameters={
-                "dict_values_type_param": ParameterSpecification(
-                    label="sample_label",
-                    desc="sample",
-                    types=[ParameterType.TEXT],
-                    required=False,
-                    multiple=False,
-                    dict_values_type=ParameterDictValueType.REAL,
-                ),
-            },
-        )
-
-
-def test_validate_parameter_property_enums_given_with_type_dict():
-    exception_type = ValidationError
-    exception_message = (
-        ".*In algorithm 'sample_algo', parameter 'sample_label' has the property 'enums' "
-        "but since the 'types' is 'dict', you should use 'dict_keys_enums' and 'dict_values_enums'."
-    )
-    with pytest.raises(exception_type, match=exception_message):
-        AlgorithmSpecification(
-            name="sample_algo",
-            desc="sample",
-            documentation="sample",
-            label="sample_algo",
-            enabled=True,
-            inputdata=InputDataSpecifications(
-                y=InputDataSpecification(
-                    label="y",
-                    desc="y",
-                    types=[InputDataType.TEXT],
-                    stattypes=[InputDataStatType.NOMINAL],
-                    required=True,
-                    max=1,
-                )
-            ),
-            parameters={
-                "dict_type_param": ParameterSpecification(
-                    label="sample_label",
-                    desc="sample",
-                    types=[ParameterType.DICT],
-                    required=False,
-                    multiple=False,
-                    enums=ParameterEnumSpecification(
-                        type=ParameterEnumType.LIST, source=["sample_enum"]
-                    ),
-                ),
-            },
-        )
-
-
-def test_validate_inputdata_min_cannot_be_negative():
-    exception_type = ValidationError
-    exception_message = ".*'min_count' should be greater than or equal to 0.*"
-    with pytest.raises(exception_type, match=exception_message):
-        InputDataSpecification(
-            label="x",
-            desc="x",
-            types=[InputDataType.REAL],
-            stattypes=[InputDataStatType.NUMERICAL],
-            required=True,
-            min_count=-1,
-        )
-
-
-def test_validate_inputdata_max_cannot_be_negative():
-    exception_type = ValidationError
-    exception_message = ".*'max_count' should be greater than or equal to 0.*"
-    with pytest.raises(exception_type, match=exception_message):
-        InputDataSpecification(
-            label="x",
-            desc="x",
-            types=[InputDataType.REAL],
-            stattypes=[InputDataStatType.NUMERICAL],
-            required=True,
-            max_count=-1,
-        )
-
-
-def test_validate_inputdata_min_cannot_exceed_max():
-    exception_type = ValidationError
-    exception_message = ".*'min_count' cannot be greater than 'max_count'.*"
-    with pytest.raises(exception_type, match=exception_message):
-        InputDataSpecification(
-            label="x",
-            desc="x",
-            types=[InputDataType.REAL],
-            stattypes=[InputDataStatType.NUMERICAL],
-            required=True,
-            min_count=3,
-            max_count=2,
+            }
         )

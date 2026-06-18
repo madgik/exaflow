@@ -48,15 +48,13 @@ class TTestOneSample(Algorithm):
             label="One-sample t-test",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Variable",
-                    desc="Numerical variable to test.",
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=True,
-                    max_count=1,
-                ),
+            y=specs.InputDataSpecification(
+                label="Variable",
+                desc="Numerical variable to test.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
+                max_count=1,
             ),
             parameters={
                 "alt_hypothesis": specs.ParameterSpecification(
@@ -104,7 +102,7 @@ class TTestOneSample(Algorithm):
         result = self.run_local_udf(
             func=local_step,
             kw_args={
-                "y_var": self.inputdata.y[0],
+                "y_var": self.y[0],
                 "alpha": alpha,
                 "alternative": alternative,
                 "mu": mu,

@@ -42,8 +42,7 @@ def _make_inputdata(x=None, y=None):
     return Inputdata(
         data_model="dm:0.1",
         datasets=["d1"],
-        x=x,
-        y=y,
+        variables=list(x or []) + list(y or []),
     )
 
 
@@ -174,35 +173,31 @@ def test_required_input_variables_returns_fixed_required_columns():
 
 
 @pytest.mark.parametrize(
-    "strategies,x,y,expected_x,expected_y",
+    "strategies,variables,expected_variables",
     [
-        ({"age": STRATEGY_FIRST}, ["age"], [], ["age"], []),
-        ({"age": STRATEGY_SECOND}, ["age"], [], ["age"], []),
-        ({"age": STRATEGY_DIFF}, ["age"], [], ["age"], []),
-        ({"score": STRATEGY_DIFF}, [], ["score"], [], ["score"]),
+        ({"age": STRATEGY_FIRST}, ["age"], ["age"]),
+        ({"age": STRATEGY_SECOND}, ["age"], ["age"]),
+        ({"age": STRATEGY_DIFF}, ["age"], ["age"]),
+        ({"score": STRATEGY_DIFF}, ["score"], ["score"]),
         (
             {"age": STRATEGY_DIFF, "weight": STRATEGY_FIRST, "sex": STRATEGY_SECOND},
-            ["age", "weight"],
-            ["sex"],
-            ["age", "weight"],
-            ["sex"],
+            ["age", "weight", "sex"],
+            ["age", "weight", "sex"],
         ),
-        ({"age": STRATEGY_DIFF}, ["unknown"], [], ["unknown"], []),
-        ({"age": STRATEGY_DIFF}, ["age", "age"], [], ["age", "age"], []),
-        ({"score": STRATEGY_DIFF}, [], ["score", "age"], [], ["score", "age"]),
-        ({"age": STRATEGY_FIRST}, ["age", "score"], [], ["age", "score"], []),
-        ({"age": STRATEGY_DIFF}, ["age"], ["age"], ["age"], ["age"]),
+        ({"age": STRATEGY_DIFF}, ["unknown"], ["unknown"]),
+        ({"age": STRATEGY_DIFF}, ["age", "age"], ["age", "age"]),
+        ({"score": STRATEGY_DIFF}, ["score", "age"], ["score", "age"]),
+        ({"age": STRATEGY_FIRST}, ["age", "score"], ["age", "score"]),
     ],
 )
-def test_transform_inputdata_variables_10_cases(
-    strategies, x, y, expected_x, expected_y
+def test_transform_variables_keeps_original_column_names(
+    strategies, variables, expected_variables
 ):
     transformer = _make_transformer(strategies=strategies)
 
-    actual_x, actual_y = transformer.transform_inputdata_variables(x=x, y=y)
+    actual_variables = transformer.transform_variables(variables=variables)
 
-    assert actual_x == expected_x
-    assert actual_y == expected_y
+    assert actual_variables == expected_variables
 
 
 @pytest.mark.parametrize(

@@ -51,24 +51,22 @@ class AnovaTwoWay(Algorithm):
             label="Two-way ANOVA",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Outcome",
-                    desc="Numerical outcome variable.",
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=True,
-                    max_count=1,
-                ),
-                x=specs.InputDataSpecification(
-                    label="Factors",
-                    desc="Two categorical factors.",
-                    types=[specs.InputDataType.TEXT],
-                    stattypes=[specs.InputDataStatType.NOMINAL],
-                    required=True,
-                    min_count=2,
-                    max_count=2,
-                ),
+            y=specs.InputDataSpecification(
+                label="Outcome",
+                desc="Numerical outcome variable.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
+                max_count=1,
+            ),
+            x=specs.InputDataSpecification(
+                label="Factors",
+                desc="Two categorical factors.",
+                types=[specs.InputDataType.TEXT],
+                stattypes=[specs.InputDataStatType.NOMINAL],
+                required=True,
+                min_count=2,
+                max_count=2,
             ),
             parameters={
                 "sstype": specs.ParameterSpecification(
@@ -87,8 +85,8 @@ class AnovaTwoWay(Algorithm):
         )
 
     def run(self):
-        y = self.inputdata.y[0]
-        xs = self.inputdata.x
+        y = self.y[0]
+        xs = self.x
         if len(xs) != 2:
             raise BadUserInput("ANOVA two-way requires exactly two covariates (x).")
         x1, x2 = xs

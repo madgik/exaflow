@@ -44,21 +44,19 @@ class LinearSVM(Algorithm):
             label="Linear SVM",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Target",
-                    desc="Nominal target variable defining the classes.",
-                    types=[specs.InputDataType.TEXT],
-                    stattypes=[specs.InputDataStatType.NOMINAL],
-                    required=True,
-                ),
-                x=specs.InputDataSpecification(
-                    label="Features",
-                    desc="Numerical covariates used to train the linear SVM.",
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=True,
-                ),
+            y=specs.InputDataSpecification(
+                label="Target",
+                desc="Nominal target variable defining the classes.",
+                types=[specs.InputDataType.TEXT],
+                stattypes=[specs.InputDataStatType.NOMINAL],
+                required=True,
+            ),
+            x=specs.InputDataSpecification(
+                label="Features",
+                desc="Numerical covariates used to train the linear SVM.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
             ),
             parameters={
                 "gamma": specs.ParameterSpecification(
@@ -87,8 +85,8 @@ class LinearSVM(Algorithm):
         )
 
     def run(self):
-        y_var = self.inputdata.y[0]
-        x_vars = self.inputdata.x
+        y_var = self.y[0]
+        x_vars = self.x
 
         gamma = self.get_parameter("gamma")
         C = self.get_parameter("C")

@@ -41,31 +41,29 @@ class FisherExact(Algorithm):
             label="Fisher's Exact Test",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Outcome",
-                    desc="Categorical outcome variable.",
-                    types=[specs.InputDataType.TEXT],
-                    stattypes=[specs.InputDataStatType.NOMINAL],
-                    required=True,
-                    max_count=1,
-                ),
-                x=specs.InputDataSpecification(
-                    label="Factor",
-                    desc="Categorical factor variable.",
-                    types=[specs.InputDataType.TEXT],
-                    stattypes=[specs.InputDataStatType.NOMINAL],
-                    required=True,
-                    max_count=1,
-                ),
+            y=specs.InputDataSpecification(
+                label="Outcome",
+                desc="Categorical outcome variable.",
+                types=[specs.InputDataType.TEXT],
+                stattypes=[specs.InputDataStatType.NOMINAL],
+                required=True,
+                max_count=1,
+            ),
+            x=specs.InputDataSpecification(
+                label="Factor",
+                desc="Categorical factor variable.",
+                types=[specs.InputDataType.TEXT],
+                stattypes=[specs.InputDataStatType.NOMINAL],
+                required=True,
+                max_count=1,
             ),
             type=specs.AlgorithmType.EXAREME3,
             components=[specs.ComponentType.AGGREGATION_SERVER],
         )
 
     def run(self):
-        y_var = self.inputdata.y[0]
-        x_var = self.inputdata.x[0]
+        y_var = self.y[0]
+        x_var = self.x[0]
 
         results = self.run_local_udf(
             func=fisher_exact_local_step,

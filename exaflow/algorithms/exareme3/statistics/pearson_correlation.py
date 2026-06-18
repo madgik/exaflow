@@ -42,21 +42,19 @@ class PearsonCorrelation(Algorithm):
             label="Pearson Correlation",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Variables",
-                    desc="Numerical variables for the primary correlation axis.",
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=True,
-                ),
-                x=specs.InputDataSpecification(
-                    label="Additional variables",
-                    desc="Optional numerical variables for the secondary axis.",
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=False,
-                ),
+            y=specs.InputDataSpecification(
+                label="Variables",
+                desc="Numerical variables for the primary correlation axis.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
+            ),
+            x=specs.InputDataSpecification(
+                label="Additional variables",
+                desc="Optional numerical variables for the secondary axis.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=False,
             ),
             parameters={
                 "alpha": specs.ParameterSpecification(
@@ -76,22 +74,22 @@ class PearsonCorrelation(Algorithm):
 
     def run(self):
         alpha = self.get_parameter("alpha")
-        if self.inputdata.x:
-            x_vars = self.inputdata.x
+        if self.x:
+            x_vars = self.x
         else:
-            x_vars = self.inputdata.y
+            x_vars = self.y
         result = self.run_local_udf(
             func=local_step,
             kw_args={
-                "y_vars": self.inputdata.y,
+                "y_vars": self.y,
                 "x_vars": x_vars,
                 "alpha": alpha,
             },
             identical_results=True,
         )
 
-        x_vars = self.inputdata.x or self.inputdata.y
-        y_vars = self.inputdata.y
+        x_vars = self.x or self.y
+        y_vars = self.y
 
         corr_dict, p_dict, ci_hi_dict, ci_lo_dict = _format_result_matrices(
             result,

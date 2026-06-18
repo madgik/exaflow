@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy
 import pytest
 
-from tests.algorithm_validation_tests.exareme3.helpers import algorithm_request
+from tests.algorithm_validation_tests.exareme3.helpers import analysis_request
 from tests.algorithm_validation_tests.exareme3.helpers import assert_allclose
 from tests.algorithm_validation_tests.exareme3.helpers import get_test_params
 from tests.algorithm_validation_tests.exareme3.helpers import parse_response
@@ -15,7 +15,7 @@ expected_file = Path(__file__).parent / "expected" / f"{algorithm_name}_expected
 
 @pytest.mark.parametrize("test_input, expected", get_test_params(expected_file))
 def test_one_sample_ttest(test_input, expected):
-    response = algorithm_request(algorithm_name, test_input)
+    response = analysis_request(algorithm_name, test_input)
     result = parse_response(response)
 
     assert_allclose(result["n_obs"], expected["n_obs"], rtol=1e-8, atol=1e-10)

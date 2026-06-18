@@ -1,7 +1,7 @@
 from copy import deepcopy
 from pathlib import Path
 
-from tests.algorithm_validation_tests.exareme3.conftest import algorithm_request
+from tests.algorithm_validation_tests.exareme3.conftest import analysis_request
 from tests.algorithm_validation_tests.exareme3.conftest import parse_response
 from tests.algorithm_validation_tests.exareme3.helpers import get_test_params
 
@@ -32,7 +32,7 @@ def _assert_describe_runs(expected_filename, add_dropna_preprocessing):
             if add_dropna_preprocessing
             else test_input
         )
-        response = algorithm_request("describe", payload, drop_na=False)
+        response = analysis_request("describe", payload, drop_na=False)
         result = parse_response(response)
 
         assert "featurewise" in result

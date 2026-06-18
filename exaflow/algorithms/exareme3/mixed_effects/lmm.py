@@ -75,37 +75,34 @@ class LMM(Algorithm):
             label="Linear Mixed Model",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Outcome",
-                    desc=(
-                        "Single numerical dependent variable. Continuous or "
-                        "integer-valued outcomes are supported when a linear "
-                        "mixed-model assumption is appropriate."
-                    ),
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=True,
-                    max_count=1,
+            y=specs.InputDataSpecification(
+                label="Outcome",
+                desc=(
+                    "Single numerical dependent variable. Continuous or "
+                    "integer-valued outcomes are supported when a linear "
+                    "mixed-model assumption is appropriate."
                 ),
-                x=specs.InputDataSpecification(
-                    label="Covariates and grouping variable",
-                    desc=(
-                        "Covariates plus one or two random-intercept grouping "
-                        "variables."
-                    ),
-                    types=[
-                        specs.InputDataType.REAL,
-                        specs.InputDataType.INT,
-                        specs.InputDataType.TEXT,
-                    ],
-                    stattypes=[
-                        specs.InputDataStatType.NUMERICAL,
-                        specs.InputDataStatType.NOMINAL,
-                    ],
-                    required=True,
-                    min_count=2,
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
+                max_count=1,
+            ),
+            x=specs.InputDataSpecification(
+                label="Covariates and grouping variable",
+                desc=(
+                    "Covariates plus one or two random-intercept grouping variables."
                 ),
+                types=[
+                    specs.InputDataType.REAL,
+                    specs.InputDataType.INT,
+                    specs.InputDataType.TEXT,
+                ],
+                stattypes=[
+                    specs.InputDataStatType.NUMERICAL,
+                    specs.InputDataStatType.NOMINAL,
+                ],
+                required=True,
+                min_count=2,
             ),
             parameters={
                 "grouping_var": specs.ParameterSpecification(
@@ -128,10 +125,10 @@ class LMM(Algorithm):
         )
 
     def run(self):
-        y_var = self.inputdata.y[0]
+        y_var = self.y[0]
         grouping_var = self.get_parameter("grouping_var")
         categorical_vars, numerical_vars = split_grouping_var(
-            self.inputdata.x, grouping_var, self.metadata
+            self.x, grouping_var, self.metadata
         )
 
         udf_results = self.run_local_udf(

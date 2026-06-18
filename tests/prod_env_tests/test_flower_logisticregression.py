@@ -1,4 +1,4 @@
-from tests.algorithm_validation_tests.exareme3.conftest import algorithm_request
+from tests.algorithm_validation_tests.exareme3.conftest import analysis_request
 from tests.algorithm_validation_tests.exareme3.conftest import parse_response
 
 algorithm_name = "logistic_regression_fedaverage_flower"
@@ -33,7 +33,7 @@ def test_logisticregression_algorithm():
             "parameters": {},
         },
     }
-    response = algorithm_request(algorithm_name, test_input)
+    response = analysis_request(algorithm_name, test_input)
     result = parse_response(response)
 
     # this test only ensures that the algorithm runs smoothly without errors

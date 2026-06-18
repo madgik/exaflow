@@ -42,23 +42,21 @@ class TTestPaired(Algorithm):
             label="Paired t-test",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Measurement 1",
-                    desc="First numerical measurement in each pair.",
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=True,
-                    max_count=1,
-                ),
-                x=specs.InputDataSpecification(
-                    label="Measurement 2",
-                    desc="Second numerical measurement in each pair.",
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=True,
-                    max_count=1,
-                ),
+            y=specs.InputDataSpecification(
+                label="Measurement 1",
+                desc="First numerical measurement in each pair.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
+                max_count=1,
+            ),
+            x=specs.InputDataSpecification(
+                label="Measurement 2",
+                desc="Second numerical measurement in each pair.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
+                max_count=1,
             ),
             parameters={
                 "alt_hypothesis": specs.ParameterSpecification(
@@ -95,8 +93,8 @@ class TTestPaired(Algorithm):
         result = self.run_local_udf(
             func=local_step,
             kw_args={
-                "x_var": self.inputdata.x[0],
-                "y_var": self.inputdata.y[0],
+                "x_var": self.x[0],
+                "y_var": self.y[0],
                 "alpha": alpha,
                 "alternative": alternative,
             },

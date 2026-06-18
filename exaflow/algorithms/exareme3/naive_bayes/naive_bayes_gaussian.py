@@ -39,30 +39,28 @@ class NaiveBayesGaussian(Algorithm):
             label="Gaussian Naive Bayes",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Outcome",
-                    desc="Nominal outcome variable.",
-                    types=[specs.InputDataType.TEXT],
-                    stattypes=[specs.InputDataStatType.NOMINAL],
-                    required=True,
-                    max_count=1,
-                ),
-                x=specs.InputDataSpecification(
-                    label="Features",
-                    desc="Numerical features used for classification.",
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=True,
-                ),
+            y=specs.InputDataSpecification(
+                label="Outcome",
+                desc="Nominal outcome variable.",
+                types=[specs.InputDataType.TEXT],
+                stattypes=[specs.InputDataStatType.NOMINAL],
+                required=True,
+                max_count=1,
+            ),
+            x=specs.InputDataSpecification(
+                label="Features",
+                desc="Numerical features used for classification.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
             ),
             type=specs.AlgorithmType.EXAREME3,
             components=[specs.ComponentType.AGGREGATION_SERVER],
         )
 
     def run(self) -> NaiveBayesGaussianResult:
-        y_var = self.inputdata.y[0]
-        x_vars = list(self.inputdata.x)
+        y_var = self.y[0]
+        x_vars = list(self.x)
         labels = sorted(get_enum_codes(self.metadata, y_var))
 
         params = self.run_local_udf(

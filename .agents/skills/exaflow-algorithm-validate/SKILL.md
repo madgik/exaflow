@@ -115,7 +115,7 @@ Manual specification review:
   schema shape, options, defaults, min/max bounds, requiredness, or dictionary
   structure. Do not add parameter-level `documentation`.
 - Omit explicit optional `None` specification arguments such as
-  `parameters=None`, `validation=None`, `enumslen=None`, `default=None`,
+  `parameters=None`, `enumslen=None`, `default=None`,
   `enums=None`, `dict_values_enums=None`, `min=None`, and `max=None`.
 - Human-facing algorithm Markdown under `documentation/algorithms/` should have
   a technical structure: overview, inputs, method/model, computation without
