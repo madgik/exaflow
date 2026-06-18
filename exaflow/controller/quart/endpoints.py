@@ -11,15 +11,21 @@ from exaflow.controller.services import get_worker_landscape_aggregator
 from exaflow.controller.services.algorithm_execution_strategy_factory import (
     get_algorithm_execution_strategy,
 )
-from exaflow.controller.services.api.algorithm_request_dtos import AlgorithmRequestDTO
-from exaflow.controller.services.api.algorithm_request_validator import BadRequest
-from exaflow.controller.services.api.algorithm_request_validator import (
-    validate_algorithm_request,
-)
 from exaflow.controller.services.api.algorithm_spec_dtos import (
     algorithm_specifications_dtos,
 )
+from exaflow.controller.services.api.algorithm_spec_dtos import (
+    inputdata_specification_dto,
+)
+from exaflow.controller.services.api.algorithm_spec_dtos import (
+    preprocessing_step_specifications_dtos,
+)
 from exaflow.controller.services.api.algorithm_spec_dtos import specifications
+from exaflow.controller.services.api.analysis_request_dtos import AnalysisRequestDTO
+from exaflow.controller.services.api.analysis_request_validator import BadRequest
+from exaflow.controller.services.api.analysis_request_validator import (
+    validate_analysis_request,
+)
 from exaflow.controller.services.flower import get_flower_controller
 from exaflow.controller.services.startup import start_background_services
 
@@ -81,8 +87,18 @@ async def get_data_models_attributes() -> dict:
     }
 
 
-@algorithms.route("/algorithms", methods=["GET"])
-async def get_algorithms() -> str:
+@algorithms.route("/specifications/inputdata", methods=["GET"])
+async def get_inputdata_specification() -> str:
+    return inputdata_specification_dto.model_dump_json()
+
+
+@algorithms.route("/specifications/preprocessing", methods=["GET"])
+async def get_preprocessing_specifications() -> str:
+    return preprocessing_step_specifications_dtos.model_dump_json()
+
+
+@algorithms.route("/specifications/algorithms", methods=["GET"])
+async def get_algorithm_specifications() -> str:
     return algorithm_specifications_dtos.model_dump_json()
 
 
@@ -98,22 +114,21 @@ async def healthcheck() -> str:
     return ""
 
 
-@algorithms.route("/algorithms/<algorithm_name>", methods=["POST"])
-async def run_algorithm(algorithm_name: str) -> str:
+@algorithms.route("/analysis", methods=["POST"])
+async def run_analysis() -> str:
     request_body = await request.json
     try:
-        algorithm_request_dto = AlgorithmRequestDTO.model_validate(request_body)
+        analysis_request_dto = AnalysisRequestDTO.model_validate(request_body)
     except pydantic.ValidationError as pydantic_error:
         error_msg = (
-            f"Algorithm execution request malformed:"
+            f"Analysis execution request malformed:"
             f"\nrequest received:{request_body}"
             f"\nerror:{pydantic_error}"
         )
         raise BadRequest(error_msg)
 
-    validate_algorithm_request(
-        algorithm_name=algorithm_name,
-        algorithm_request_dto=algorithm_request_dto,
+    validate_analysis_request(
+        analysis_request_dto=analysis_request_dto,
         algorithms_specs=specifications.enabled_algorithms,
         preprocessing_steps_specs=specifications.enabled_preprocessing_steps,
         worker_landscape_aggregator=get_worker_landscape_aggregator(),
@@ -121,7 +136,7 @@ async def run_algorithm(algorithm_name: str) -> str:
         smpc_optional=ctrl_config.smpc.optional,
     )
 
-    strategy = get_algorithm_execution_strategy(algorithm_name, algorithm_request_dto)
+    strategy = get_algorithm_execution_strategy(analysis_request_dto)
     return await strategy.execute()
 
 

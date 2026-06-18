@@ -31,8 +31,8 @@
 
 - Quart endpoint handlers live in `exaflow/controller/quart/endpoints.py`.
 - Request DTOs and validators live under `exaflow/controller/services/api`.
-- Public algorithm form shape is defined by runtime algorithm specifications and
-  exposed by `GET /algorithms`.
+- Public analysis form shape is defined by common inputdata, preprocessing, and
+  algorithm specifications exposed under `GET /specifications/*`.
 - `documentation/api-specification.md` documents the API contract for clients.
 
 ### Algorithms

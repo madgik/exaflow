@@ -31,7 +31,7 @@ class LongitudinalTransformer(PreprocessingStep):
     """Federated preprocessing step that aligns and transforms two visits per subject.
 
     This step expects two visit identifiers (`visit1`, `visit2`) and a per-variable
-    strategy map (`strategies`) for all requested `x` and `y` variables.
+    strategy map (`strategies`) for all requested inputdata variables.
 
     Per worker, it:
     1. Filters rows to the selected visits.
@@ -48,7 +48,7 @@ class LongitudinalTransformer(PreprocessingStep):
 
     Validation enforces:
     - `visit1` and `visit2` are both provided and distinct.
-    - `strategies` contains exactly the variables requested in `x` and `y`.
+    - `strategies` contains exactly the inputdata variables.
     - strategy values are in `{first, second, diff}`.
     - `diff` is not used for categorical variables.
     """
@@ -118,7 +118,7 @@ class LongitudinalTransformer(PreprocessingStep):
                     multiple=False,
                     dict_keys_enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_NAMES,
-                        source=["x", "y"],
+                        source=["variables"],
                     ),
                     dict_values_enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.LIST,
@@ -151,9 +151,7 @@ class LongitudinalTransformer(PreprocessingStep):
         if not isinstance(self._params.get("strategies", {}), dict):
             raise BadUserInput("'strategies' must be a dictionary.")
 
-        raw_x = list(inputdata.x or [])
-        raw_y = list(inputdata.y or [])
-        requested_vars = set(raw_x + raw_y)
+        requested_vars = set(inputdata.variables)
         provided_vars = set(self._strategies.keys())
 
         missing = sorted(requested_vars - provided_vars)
@@ -165,7 +163,7 @@ class LongitudinalTransformer(PreprocessingStep):
             if extra:
                 details.append(f"extra: {extra}")
             raise BadUserInput(
-                "A strategy must be provided exactly for the variables in x and y "
+                "A strategy must be provided exactly for the inputdata variables "
                 f"({' ; '.join(details)})."
             )
 
@@ -186,15 +184,12 @@ class LongitudinalTransformer(PreprocessingStep):
             metadata=metadata,
         )
 
-    def transform_inputdata_variables(
+    def transform_variables(
         self,
         *,
-        x: List[str],
-        y: List[str],
-    ) -> tuple[List[str], List[str]]:
-        transformed_x = self._build_transformed_variable_names(x)
-        transformed_y = self._build_transformed_variable_names(y)
-        return transformed_x, transformed_y
+        variables: List[str],
+    ) -> List[str]:
+        return self._build_transformed_variable_names(variables)
 
     def transform_metadata(
         self,
@@ -243,9 +238,7 @@ class LongitudinalTransformer(PreprocessingStep):
         for varname, strategy in self._strategies.items():
             value_visit1 = merged[f"{varname}{VISIT1_VALUE_SUFFIX}"]
             value_visit2 = merged[f"{varname}{VISIT2_VALUE_SUFFIX}"]
-            result[_output_name(varname, strategy)] = strategy_dispatch[strategy](
-                value_visit1, value_visit2
-            )
+            result[varname] = strategy_dispatch[strategy](value_visit1, value_visit2)
 
         desired_columns = _deduplicate_preserve_order(key_cols + transformed_variables)
         return result[[col for col in desired_columns if col in result.columns]]
@@ -265,16 +258,7 @@ class LongitudinalTransformer(PreprocessingStep):
                 )
 
     def _build_transformed_variable_names(self, variables: List[str]) -> List[str]:
-        return [
-            _output_name(
-                name, self._strategies.get(name, LongitudinalStrategy.FIRST.value)
-            )
-            for name in variables
-        ]
-
-
-def _output_name(varname: str, strategy: str) -> str:
-    return varname
+        return list(variables)
 
 
 def _deduplicate_preserve_order(values: Iterable[str]) -> List[str]:

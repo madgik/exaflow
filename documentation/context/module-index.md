@@ -8,7 +8,7 @@ controller-side task orchestration.
 Key files: `quart/endpoints.py`, `services/api/*`,
 `services/exareme3/strategies.py`, `services/exareme3/algorithm_flow_engine_interface.py`.
 
-Used by: `run_algorithm`, prod tests, algorithm validation tests, workers, and
+Used by: `run_analysis`, prod tests, algorithm validation tests, workers, and
 deployment manifests.
 
 Rules: Keep route parsing in Quart, validation in API service modules, and
@@ -201,9 +201,9 @@ Tests: Covered indirectly by deployment-backed tests.
 Notes: Some tasks write under `configs/`, `tests/test_data/.data_paths`, and
 `/tmp`.
 
-## `run_algorithm`
+## `run_analysis`
 
-Purpose: CLI helper for building algorithm request payloads and posting to the
+Purpose: CLI helper for building analysis request payloads and posting to the
 controller.
 
 Key files: This script.

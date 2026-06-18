@@ -4,7 +4,7 @@ import re
 import pytest
 import requests
 
-from tests.prod_env_tests import algorithms_url
+from tests.prod_env_tests import analysis_url
 
 
 def get_parametrization_list_exception_cases():
@@ -20,7 +20,7 @@ def get_parametrization_list_exception_cases():
             "y": ["test_cde3"],
         }
     }
-    expected_response = (400, ".*Algorithm execution request malformed")
+    expected_response = (400, ".*Analysis execution request malformed")
     parametrization_list.append((algorithm_name, request_dict, expected_response))
 
     # ~~~~~~~~~~exception case 2~~~~~~~~~~
@@ -44,6 +44,7 @@ def get_parametrization_list_exception_cases():
             }
         ],
         "algorithm": {
+            "name": algorithm_name,
             "x": ["test_cde1", "test_cde2"],
             "y": ["test_cde3"],
             "parameters": None,
@@ -92,6 +93,7 @@ def get_parametrization_list_exception_cases():
             }
         ],
         "algorithm": {
+            "name": algorithm_name,
             "x": ["lefthippocampus"],
             "y": ["alzheimerbroadcategory"],
             "parameters": {"positive_class": "AD"},
@@ -112,10 +114,14 @@ def get_parametrization_list_exception_cases():
     get_parametrization_list_exception_cases(),
 )
 def test_post_algorithm_error(algorithm_name, request_dict, expected_response):
-    algorithm_url = algorithms_url + "/" + algorithm_name
+    if "algorithm" in request_dict:
+        request_dict["algorithm"] = {
+            **request_dict["algorithm"],
+            "name": algorithm_name,
+        }
     headers = {"Content-type": "application/json", "Accept": "text/plain"}
     request_json = json.dumps(request_dict)
-    response = requests.post(algorithm_url, data=request_json, headers=headers)
+    response = requests.post(analysis_url, data=request_json, headers=headers)
     exp_response_status, exp_response_message = expected_response
     print(response.text)
     assert response.status_code == exp_response_status, (
@@ -142,16 +148,16 @@ def test_post_algorithm_with_request_id():
             }
         ],
         "algorithm": {
+            "name": algorithm_name,
             "x": None,
             "y": ["lefthippocampus"],
             "parameters": None,
         },
         "request_id": "89aace55-60e8-4b29-958b-84cca8785120",
     }
-    algorithm_url = algorithms_url + "/" + algorithm_name
     headers = {"Content-type": "application/json", "Accept": "text/plain"}
     request_json = json.dumps(request_dict)
-    response = requests.post(algorithm_url, data=request_json, headers=headers)
+    response = requests.post(analysis_url, data=request_json, headers=headers)
     assert response.status_code == 200, pytest.fail(
         f"Algorithm did not succeed with {response.status_code=} and {response.text=}"
     )

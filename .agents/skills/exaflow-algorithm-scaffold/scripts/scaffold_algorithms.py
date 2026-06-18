@@ -75,6 +75,14 @@ class InputSpec:
     required: bool
     multiple: bool
 
+    @property
+    def min_count(self) -> int:
+        return 1 if self.required else 0
+
+    @property
+    def max_count(self) -> int | None:
+        return None if self.multiple else 1
+
 
 @dataclass(frozen=True)
 class FamilyProfile:
@@ -434,17 +442,19 @@ def _input_spec_literal(spec: InputSpec, *, key: str) -> str:
     stattypes_literal = ", ".join(
         f"specs.InputDataStatType.{value}" for value in spec.stattypes
     )
-    return (
-        f"                {key}=specs.InputDataSpecification(\n"
-        f"                    label={json.dumps(spec.label)},\n"
-        f"                    desc={json.dumps(spec.desc)},\n"
-        f"                    types=[{types_literal}],\n"
-        f"                    stattypes=[{stattypes_literal}],\n"
-        f"                    required={spec.required},\n"
-        f"                    multiple={spec.multiple},\n"
-        "                    enumslen=None,\n"
-        "                ),"
-    )
+    lines = [
+        f"            {key}=specs.InputDataSpecification(",
+        f"                label={json.dumps(spec.label)},",
+        f"                desc={json.dumps(spec.desc)},",
+        f"                types=[{types_literal}],",
+        f"                stattypes=[{stattypes_literal}],",
+        f"                required={spec.required},",
+        f"                min_count={spec.min_count},",
+    ]
+    if spec.max_count is not None:
+        lines.append(f"                max_count={spec.max_count},")
+    lines.append("            ),")
+    return "\n".join(lines)
 
 
 def _components_literal(profile: FamilyProfile) -> str:
@@ -482,7 +492,7 @@ def algorithm_template(
     x_literal = (
         _input_spec_literal(profile.x, key="x")
         if profile.x is not None
-        else "                x=None,"
+        else "            x=None,"
     )
 
     local_step_logic = (
@@ -516,13 +526,15 @@ class {class_name}(Algorithm):
         return specs.AlgorithmSpecification(
             name="{algorithm}",
             desc={json.dumps(profile.desc)},
+            documentation=(
+                "TODO: document what this analysis computes, the expected inputs, "
+                "the federated quantities exchanged, parameters, outputs, and "
+                "validation reference."
+            ),
             label={json.dumps(profile.label if family else snake_to_title(algorithm))},
             enabled=True,
-            inputdata=specs.InputDataSpecifications(
 {y_literal}
 {x_literal}
-                validation=None,
-            ),
             parameters={profile.parameters_literal},
             type=specs.AlgorithmType.EXAREME3,
             components={_components_literal(profile)},
@@ -532,8 +544,8 @@ class {class_name}(Algorithm):
         result = self.run_local_udf(
             func=local_step,
             kw_args={{
-                "target_var": self.inputdata.y[0],
-                "feature_vars": list(self.inputdata.x) if self.inputdata.x else [],
+                "target_var": self.y[0],
+                "feature_vars": list(self.x),
             }},
             identical_results=True,
         )
@@ -578,8 +590,8 @@ def prod_validation_test_template(algorithm: str) -> str:
 
 import pytest
 
-from tests.algorithm_validation_tests.exareme3.conftest import algorithm_request
-from tests.algorithm_validation_tests.exareme3.conftest import parse_response
+from tests.algorithm_validation_tests.exareme3.helpers import analysis_request
+from tests.algorithm_validation_tests.exareme3.helpers import parse_response
 from tests.algorithm_validation_tests.exareme3.helpers import get_test_params
 
 algorithm_name = "{algorithm}"
@@ -588,13 +600,13 @@ expected_file = Path(__file__).parent / "expected" / f"{{algorithm_name}}_expect
 
 @pytest.mark.parametrize("test_input, expected", get_test_params(expected_file))
 def test_{algorithm}_validation(test_input, expected):
-    response = algorithm_request(algorithm_name, test_input)
+    response = analysis_request(algorithm_name, test_input)
     result = parse_response(response)
     assert result
 '''
 
 
-def prod_expected_template(*, include_sample_fixture: bool) -> str:
+def prod_expected_template(*, algorithm: str, include_sample_fixture: bool) -> str:
     if not include_sample_fixture:
         payload = {"test_cases": []}
         return json.dumps(payload, indent=2) + "\n"
@@ -604,13 +616,17 @@ def prod_expected_template(*, include_sample_fixture: bool) -> str:
             {
                 "input": {
                     "inputdata": {
-                        "y": ["__REPLACE_ME_Y__"],
-                        "x": ["__REPLACE_ME_X__"],
                         "data_model": "__REPLACE_ME_DATA_MODEL__",
                         "datasets": ["__REPLACE_ME_DATASET__"],
                         "filters": None,
+                        "variables": ["__REPLACE_ME_X__", "__REPLACE_ME_Y__"],
                     },
-                    "parameters": {},
+                    "algorithm": {
+                        "name": algorithm,
+                        "x": ["__REPLACE_ME_X__"],
+                        "y": ["__REPLACE_ME_Y__"],
+                        "parameters": {},
+                    },
                 },
                 "output": {},
             }
@@ -1049,7 +1065,10 @@ def run_for_algorithm(
         algorithm=algorithm,
         check="prod_env_expected",
         path=prod_expected,
-        content=prod_expected_template(include_sample_fixture=with_sample_fixture),
+        content=prod_expected_template(
+            algorithm=algorithm,
+            include_sample_fixture=with_sample_fixture,
+        ),
         dry_run=dry_run,
         repo_root=repo_root,
     )

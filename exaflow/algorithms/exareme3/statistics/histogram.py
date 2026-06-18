@@ -52,29 +52,27 @@ class Histogram(Algorithm):
             label="Histogram",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Variable",
-                    desc="Numerical or categorical variable to bin into a histogram.",
-                    types=[
-                        specs.InputDataType.REAL,
-                        specs.InputDataType.INT,
-                        specs.InputDataType.TEXT,
-                    ],
-                    stattypes=[
-                        specs.InputDataStatType.NUMERICAL,
-                        specs.InputDataStatType.NOMINAL,
-                    ],
-                    required=True,
-                    max_count=1,
-                ),
-                x=specs.InputDataSpecification(
-                    label="Grouping variables",
-                    desc="Optional categorical variables for grouped histograms.",
-                    types=[specs.InputDataType.TEXT],
-                    stattypes=[specs.InputDataStatType.NOMINAL],
-                    required=False,
-                ),
+            y=specs.InputDataSpecification(
+                label="Variable",
+                desc="Numerical or categorical variable to bin into a histogram.",
+                types=[
+                    specs.InputDataType.REAL,
+                    specs.InputDataType.INT,
+                    specs.InputDataType.TEXT,
+                ],
+                stattypes=[
+                    specs.InputDataStatType.NUMERICAL,
+                    specs.InputDataStatType.NOMINAL,
+                ],
+                required=True,
+                max_count=1,
+            ),
+            x=specs.InputDataSpecification(
+                label="Grouping variables",
+                desc="Optional categorical variables for grouped histograms.",
+                types=[specs.InputDataType.TEXT],
+                stattypes=[specs.InputDataStatType.NOMINAL],
+                required=False,
             ),
             parameters={
                 "bins": specs.ParameterSpecification(
@@ -109,8 +107,8 @@ class Histogram(Algorithm):
         )
 
     def run(self):
-        y_var = self.inputdata.y[0]
-        x_vars = self.inputdata.x or []
+        y_var = self.y[0]
+        x_vars = self.x or []
 
         default_bins = 20
         bins = self.get_parameter("bins", default_bins)

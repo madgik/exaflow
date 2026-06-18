@@ -89,21 +89,19 @@ class OutlierReport(Algorithm):
             label="Outlier Report",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Variables",
-                    desc="One or more numerical variables to inspect for outliers.",
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=True,
-                ),
-                x=specs.InputDataSpecification(
-                    label="Additional variables",
-                    desc="Optional numerical variables to inspect for outliers.",
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=False,
-                ),
+            y=specs.InputDataSpecification(
+                label="Variables",
+                desc="One or more numerical variables to inspect for outliers.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
+            ),
+            x=specs.InputDataSpecification(
+                label="Additional variables",
+                desc="Optional numerical variables to inspect for outliers.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=False,
             ),
             parameters={
                 "strategies": specs.ParameterSpecification(

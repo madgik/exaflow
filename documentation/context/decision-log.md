@@ -48,11 +48,12 @@ Date: 2026-05-22
 
 Status: Inferred / verify
 
-Context: `documentation/api-specification.md` states that `GET /algorithms` is
-the runtime source of truth for algorithm availability and form shape.
+Context: `documentation/api-specification.md` states that the
+`/specifications/*` endpoints are the runtime source of truth for inputdata,
+preprocessing, algorithm availability, and form shape.
 
-Decision: Clients and agents should not hardcode algorithm request fields that
-are already represented by algorithm specifications.
+Decision: Clients and agents should not hardcode analysis request fields that
+are already represented by runtime specifications.
 
 Consequences: Specification changes must be tested and documented as public
 contract changes.

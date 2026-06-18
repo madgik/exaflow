@@ -17,18 +17,15 @@ class StandardDeviationAlgorithm(Algorithm):
             documentation="Standard Deviation of a column",
             label="Standard Deviation",
             enabled=True,
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="column",
-                    desc="Column",
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=True,
-                    max_count=1,
-                ),
-                x=None,
-                validation=None,
+            y=specs.InputDataSpecification(
+                label="column",
+                desc="Column",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
+                max_count=1,
             ),
+            x=None,
             parameters=None,
             type=specs.AlgorithmType.EXAREME3,
             components=[specs.ComponentType.AGGREGATION_SERVER],
@@ -49,7 +46,7 @@ class StandardDeviationAlgorithm(Algorithm):
         result = TabularDataResult(
             title="Standard Deviation",
             columns=[
-                ColumnDataStr(name="variable", data=self.inputdata.y),
+                ColumnDataStr(name="variable", data=self.y),
                 ColumnDataFloat(name="std_deviation", data=[std_deviation]),
             ],
         )

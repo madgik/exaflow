@@ -2,7 +2,7 @@ from copy import deepcopy
 
 import pytest
 
-from tests.algorithm_validation_tests.exareme3.conftest import algorithm_request
+from tests.algorithm_validation_tests.exareme3.conftest import analysis_request
 from tests.algorithm_validation_tests.exareme3.conftest import parse_response
 
 
@@ -352,7 +352,7 @@ def test_outlier_winsorizer_runs_after_drop_na_for_many_algorithms(
 ):
     payload = _with_drop_then_winsorizer(payload, winsorizer_strategies)
 
-    response = algorithm_request(algorithm_name, payload, drop_na=True)
+    response = analysis_request(algorithm_name, payload, drop_na=True)
 
     assert response.status_code == 200, f"{response.status_code}: {response.content}"
     assert parse_response(response)
@@ -376,7 +376,7 @@ def test_outlier_winsorizer_rejects_categorical_variable_after_drop_na():
         {"alzheimerbroadcategory": "iqr"},
     )
 
-    response = algorithm_request("describe", payload, drop_na=True)
+    response = analysis_request("describe", payload, drop_na=True)
 
     assert response.status_code == 460, f"{response.status_code}: {response.content}"
     assert b"can only be used for numerical variables" in response.content

@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from tests.algorithm_validation_tests.exareme3.helpers import algorithm_request
+from tests.algorithm_validation_tests.exareme3.helpers import analysis_request
 from tests.algorithm_validation_tests.exareme3.helpers import get_test_params
 from tests.algorithm_validation_tests.exareme3.helpers import parse_response
 
@@ -17,7 +17,7 @@ expected_file = Path(__file__).parent / "expected" / f"{algorithm_name}_expected
     get_test_params(expected_file),
 )
 def test_anova_algorithm(test_input, expected):
-    response = algorithm_request(algorithm_name, test_input)
+    response = analysis_request(algorithm_name, test_input)
     result = parse_response(response)
 
     aov = result["anova_table"]
@@ -51,7 +51,7 @@ def test_anova_algorithm_not_enough_categories():
         },
     }
 
-    response = algorithm_request(algorithm_name, test_input)
+    response = analysis_request(algorithm_name, test_input)
 
     if (
         response.status_code != 460

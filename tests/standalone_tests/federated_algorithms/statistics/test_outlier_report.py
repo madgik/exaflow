@@ -21,9 +21,10 @@ def _make_algorithm(params):
         inputdata=Inputdata(
             data_model="dm:0.1",
             datasets=["d1"],
-            x=["x1", "x_cat"],
-            y=["y1"],
+            variables=["x1", "x_cat", "y1"],
         ),
+        x=["x1", "x_cat"],
+        y=["y1"],
         metadata={
             "x1": {"is_categorical": False},
             "x_cat": {"is_categorical": True},
@@ -111,16 +112,16 @@ def test_validate_params_rejects_invalid_configuration(params, message):
 def test_get_specification_accepts_only_numerical_variables():
     spec = OutlierReport.get_specification()
 
-    assert spec.inputdata.y.types == [
+    assert spec.y.types == [
         specs.InputDataType.REAL,
         specs.InputDataType.INT,
     ]
-    assert spec.inputdata.x.types == [
+    assert spec.x.types == [
         specs.InputDataType.REAL,
         specs.InputDataType.INT,
     ]
-    assert spec.inputdata.y.stattypes == [specs.InputDataStatType.NUMERICAL]
-    assert spec.inputdata.x.stattypes == [specs.InputDataStatType.NUMERICAL]
+    assert spec.y.stattypes == [specs.InputDataStatType.NUMERICAL]
+    assert spec.x.stattypes == [specs.InputDataStatType.NUMERICAL]
 
 
 @pytest.mark.parametrize(

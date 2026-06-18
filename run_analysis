@@ -4,13 +4,13 @@ r"""Run Exaflow algorithms from the command line
 
 USAGE
 
-    ./run_algorithm [-h] -a ALGORITHM -y Y [Y ...] [-x X [X ...]]
+    ./run_analysis [-h] -a ALGORITHM -y Y [Y ...] [-x X [X ...]]
         -d DATASETS [DATASETS ...] -m DATA_MODEL [-p PARAMETER PARAMETER] [-n]
 
-    echo <json> | ./run_algorithm [-h] -a ALGORITHM [-y Y [Y ...]] [-x X [X ...]]
+    echo <json> | ./run_analysis [-h] -a ALGORITHM [-y Y [Y ...]] [-x X [X ...]]
         [-d DATASETS [DATASETS ...]] [-m DATA_MODEL] [-p PARAMETER PARAMETER] [-n]
 
-    ./run_algorithm --doc
+    ./run_analysis --doc
 
 
 DESCRIPTION
@@ -50,6 +50,12 @@ ARGUMENTS
         parameters by repeating the '-p <key> <value>' sequences. Parameter
         values can be of types bool, int, float and str.
 
+    --preprocessing-json
+        A preprocessing step as a JSON object. Can be repeated; order is
+        preserved. Example:
+
+        --preprocessing-json '{"name":"missing_values_handler","parameters":{"strategies":{"lefthippocampus":"drop"}}}'
+
     -n, --dry-run
         Print request object without making actual request.
 
@@ -66,7 +72,7 @@ USING PIPED DATA
     object, not only echo. For example you can keep the appropriate object in a
     file and use
 
-        cat file.json | ./run_algorithm ...
+        cat file.json | ./run_analysis ...
 
     The json format has to be identical to the one defined in the algorithm
     specs file.
@@ -78,22 +84,22 @@ USING PIPED DATA
 
     For example, you can run test case number 3 found in expected.json like this
 
-        jq '.test_cases[3].input' expected.json | ./run_algorithm ...
+        jq '.test_cases[3].input' expected.json | ./run_analysis ...
 
     Since the algorithms always return their results in json format you can
     also filter the output for a particular field. For example, running the
     first test case of the PCA algorithm, you want to see only the resulting
     eigenvalues
 
-        jq '.test_cases[0].input' expected.json | ./run_algorithm -a pca \
+        jq '.test_cases[0].input' expected.json | ./run_analysis -a pca \
             | jq '.eigenvalues'
 
     When running a particular test case, if you want to change the value of
-    some argument you can supply it after ./run_algorithm. The supplied value
+    some argument you can supply it after ./run_analysis. The supplied value
     will override the value found in the json data structure. For example, if
     you want the same variables and parameters, but a different dataset
 
-        jq '.test_cases[0].input' expected.json | ./run_algorithm -a pca -d ppmi0
+        jq '.test_cases[0].input' expected.json | ./run_analysis -a pca -d ppmi0
 
 
 ALGORITHM EXAMPLES
@@ -102,51 +108,51 @@ ALGORITHM EXAMPLES
 
     PEARSON CORRELATION
 
-        ./run_algorithma -a pearson_correlation -y leftamygdala lefthippocampus \
+        ./run_analysis -a pearson_correlation -y leftamygdala lefthippocampus \
             -d ppmi0 -m dementia:0.1 -p alpha 0.95
 
     PCA
 
-        ./run_algorithm -a pca -y leftamygdala lefthippocampus -d ppmi0 \
+        ./run_analysis -a pca -y leftamygdala lefthippocampus -d ppmi0 \
             -m dementia:0.1
 
     ONE WAY ANOVA
 
-        ./run_algorithm -a anova_oneway -x ppmicategory -y lefthippocampus \
+        ./run_analysis -a anova_oneway -x ppmicategory -y lefthippocampus \
             -d ppmi1 -m dementia:0.1
 
     TWO WAY ANOVA
-        ./run_algorithm -a anova -x ppmicategory gender -y lefthippocampus \
+        ./run_analysis -a anova -x ppmicategory gender -y lefthippocampus \
             -d ppmi1 -m dementia:0.1 -p sstype 2
 
     LINEAR REGRESSION
 
-        ./run_algorithm -a linear_regression -y righthippocampus \
+        ./run_analysis -a linear_regression -y righthippocampus \
             -x lefthippocampus leftamygdala -d ppmi0 -m dementia:0.1
 
     LINEAR REGRESSION CROSS-VALIDATION
 
-        ./run_algorithm -a linear_regression_cv -y righthippocampus \
+        ./run_analysis -a linear_regression_cv -y righthippocampus \
             -x lefthippocampus leftamygdala -d ppmi0 -m dementia:0.1 -p n_splits 4
 
     LOGISTIC REGRESSION
 
-        ./run_algorithm -a logistic_regression -y ppmicategory \
+        ./run_analysis -a logistic_regression -y ppmicategory \
             -x lefthippocampus leftamygdala -d ppmi0 ppmi1 -m dementia:0.1 \
             -p positive_class PD
 
     LOGISTIC REGRESSION CROSS-VALIDATION
 
-        ./run_algorithm -a logistic_regression_cv -y gender \
+        ./run_analysis -a logistic_regression_cv -y gender \
             -x lefthippocampus righthippocampus -d ppmi0 ppmi1 -m dementia:0.1 \
             -p n_splits 4 -p positive_class F
 
     T-TEST ONE-SAMPLE
-        ./run_algorithm -a ttest_onesample -y lefthippocampus -d ppmi0 -m dementia:0.1 \
+        ./run_analysis -a ttest_onesample -y lefthippocampus -d ppmi0 -m dementia:0.1 \
             -p alt_hypothesis two-sided -p alpha 0.95 -p mu 0
 
     T-TEST PAIRED
-        ./run_algorithm -a ttest_paired -y lefthippocampus -x righthippocampus \
+        ./run_analysis -a ttest_paired -y lefthippocampus -x righthippocampus \
            -d ppmi0 -m dementia:0.1 -p alt_hypothesis two-sided -p alpha 0.95
 """
 
@@ -154,10 +160,11 @@ import json
 import pydoc
 import sys
 from argparse import ArgumentParser
+from argparse import ArgumentTypeError
 
 import requests
 
-ALGORITHMS_URL = "http://127.0.0.1:5100/algorithms/"
+ANALYSIS_URL = "http://127.0.0.1:5100/analysis"
 
 
 def parse_argv(argv):
@@ -207,6 +214,17 @@ def parse_argv(argv):
         help="Parameter as key value pair. Can repeat '-p key value' multiple times.",
     )
     parser.add_argument(
+        "--preprocessing-json",
+        required=False,
+        action="append",
+        dest="preprocessing",
+        type=parse_preprocessing_step_json,
+        help=(
+            "Preprocessing step JSON object. Can repeat this option multiple "
+            "times; request order is preserved."
+        ),
+    )
+    parser.add_argument(
         "-n",
         "--dry-run",
         required=False,
@@ -223,6 +241,29 @@ def parse_argv(argv):
         help="Flags as key value pair. Can repeat '-f key value' multiple times.",
     )
     return parser.parse_args(argv)
+
+
+def parse_preprocessing_step_json(value: str) -> dict:
+    try:
+        step = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise ArgumentTypeError(f"Invalid preprocessing JSON: {exc}") from exc
+
+    if not isinstance(step, dict):
+        raise ArgumentTypeError("Preprocessing JSON should be an object.")
+
+    if not isinstance(step.get("name"), str) or not step["name"].strip():
+        raise ArgumentTypeError("Preprocessing JSON should include a non-empty 'name'.")
+
+    parameters = step.get("parameters")
+    if parameters is None:
+        step["parameters"] = {}
+    elif not isinstance(parameters, dict):
+        raise ArgumentTypeError(
+            "Preprocessing JSON field 'parameters' should be an object."
+        )
+
+    return step
 
 
 def guess_type_and_cast(value: str):
@@ -250,12 +291,22 @@ def guess_type_and_cast(value: str):
 
 
 def get_commandline_request_data(cl_args):
-    """Formats an algorithm request data object from command line args."""
-    parameters = {
-        key: guess_type_and_cast(value) for key, value in cl_args.parameters or []
-    }
-    flags = {key: guess_type_and_cast(value) for key, value in cl_args.flags or []}
-    variables = list(dict.fromkeys((cl_args.x or []) + (cl_args.y or [])))
+    """Formats an analysis request data object from command line args."""
+    parameters = (
+        {key: guess_type_and_cast(value) for key, value in cl_args.parameters}
+        if cl_args.parameters
+        else None
+    )
+    flags = (
+        {key: guess_type_and_cast(value) for key, value in cl_args.flags}
+        if cl_args.flags
+        else None
+    )
+    variables = (
+        _algorithm_variables({"x": cl_args.x, "y": cl_args.y})
+        if cl_args.x or cl_args.y
+        else None
+    )
     return dict(
         inputdata=dict(
             data_model=cl_args.data_model,
@@ -264,31 +315,57 @@ def get_commandline_request_data(cl_args):
             variables=variables,
         ),
         algorithm=dict(
+            name=cl_args.algorithm,
             y=cl_args.y,
             x=cl_args.x,
             parameters=parameters,
         ),
+        preprocessing=cl_args.preprocessing,
         flags=flags,
     )
 
 
 def get_piped_request_data():
-    """Gets an algorithm request data object from the stdin. If nothing is piped,
+    """Gets an analysis request data object from the stdin. If nothing is piped,
     return empty object."""
     if not sys.stdin.isatty():
-        piped_input = json.loads(sys.stdin.read())
+        raw_input = sys.stdin.read()
+        if not raw_input.strip():
+            return {
+                "inputdata": {},
+                "preprocessing": None,
+                "algorithm": {},
+                "flags": {},
+            }
+        piped_input = json.loads(raw_input)
         piped_input["inputdata"]["filters"] = None  # fix for empty string in test case
-        sys.stdin = open("/dev/tty")  # get back stdin in case we need it for debugger
+        try:
+            sys.stdin = open(
+                "/dev/tty"
+            )  # get back stdin in case we need it for debugger
+        except OSError:
+            pass
         return piped_input
-    return {"inputdata": {}, "algorithm": {}, "flags": {}}
+    return {"inputdata": {}, "preprocessing": None, "algorithm": {}, "flags": {}}
+
+
+def _override_if_provided(base_value, override_value):
+    return override_value if override_value not in (None, []) else base_value
+
+
+def _algorithm_variables(algorithm: dict) -> list:
+    return list(dict.fromkeys((algorithm.get("x") or []) + (algorithm.get("y") or [])))
 
 
 def merge_request_data(data1, data2):
-    """Merge request data1 and request data2 prioritizing data1."""
+    """Merge request data1 and request data2 prioritizing data2."""
     # merge inpudata
     keys = set(data1["inputdata"].keys()) | set(data2["inputdata"].keys())
     inputdata = {
-        key: data1["inputdata"].get(key, None) or data2["inputdata"].get(key, None)
+        key: _override_if_provided(
+            data1["inputdata"].get(key, None),
+            data2["inputdata"].get(key, None),
+        )
         for key in keys
     }
 
@@ -297,20 +374,38 @@ def merge_request_data(data1, data2):
         data2.get("algorithm", {}).keys()
     )
     algorithm = {
-        key: data1.get("algorithm", {}).get(key, None)
-        or data2.get("algorithm", {}).get(key, None)
+        key: _override_if_provided(
+            data1.get("algorithm", {}).get(key, None),
+            data2.get("algorithm", {}).get(key, None),
+        )
         for key in algorithm_keys
     }
 
-    # merge flags
-    flags = data1.get("flags", None) or data2.get("flags", None)
+    cli_algorithm = data2.get("algorithm", {})
+    if cli_algorithm.get("x") or cli_algorithm.get("y"):
+        inputdata["variables"] = _algorithm_variables(algorithm)
 
-    merged = {"inputdata": inputdata, "algorithm": algorithm, "flags": flags}
+    # merge preprocessing
+    preprocessing = _override_if_provided(
+        data1.get("preprocessing", None),
+        data2.get("preprocessing", None),
+    )
+
+    # merge flags
+    flags = _override_if_provided(data1.get("flags", None), data2.get("flags", None))
+
+    merged = {
+        "inputdata": inputdata,
+        "preprocessing": preprocessing,
+        "algorithm": algorithm,
+        "flags": flags,
+    }
     return merged
 
 
 def do_post_request(algorithm, request_data):
-    url = ALGORITHMS_URL + algorithm
+    request_data["algorithm"]["name"] = algorithm
+    url = ANALYSIS_URL
     headers = {"Content-type": "application/json", "Accept": "text/plain"}
     response = requests.post(url, data=json.dumps(request_data), headers=headers)
     return response

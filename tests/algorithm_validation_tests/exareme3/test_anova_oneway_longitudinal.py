@@ -1,6 +1,6 @@
 import numpy as np
 
-from tests.algorithm_validation_tests.exareme3.helpers import algorithm_request
+from tests.algorithm_validation_tests.exareme3.helpers import analysis_request
 from tests.algorithm_validation_tests.exareme3.helpers import parse_response
 
 algorithm_name = "anova_oneway"
@@ -62,7 +62,7 @@ def assert_valid_anova_response(result: dict):
 
 def test_anova_oneway_longitudinal_bl_fl4():
     test_input = make_test_input(visit1="BL", visit2="FL4")
-    response = algorithm_request(algorithm_name, test_input)
+    response = analysis_request(algorithm_name, test_input)
     result = parse_response(response)
 
     assert_valid_anova_response(result)
@@ -70,7 +70,7 @@ def test_anova_oneway_longitudinal_bl_fl4():
 
 def test_anova_oneway_longitudinal_bl_fl1():
     test_input = make_test_input(visit1="BL", visit2="FL1")
-    response = algorithm_request(algorithm_name, test_input)
+    response = analysis_request(algorithm_name, test_input)
     result = parse_response(response)
 
     assert_valid_anova_response(result)

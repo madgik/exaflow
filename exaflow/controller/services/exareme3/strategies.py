@@ -1,6 +1,5 @@
 from typing import Any
 from typing import List
-from typing import Tuple
 
 from exaflow import exareme3_algorithm_classes
 from exaflow import exareme3_preprocessing_step_classes
@@ -29,7 +28,7 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
         inputdata: Inputdata,
         metadata: dict,
         preprocessing: Any,
-    ) -> Tuple[Inputdata, dict]:
+    ) -> tuple[Inputdata, dict]:
         transformed_inputdata = inputdata
         transformed_metadata = metadata
         for step in preprocessing or []:
@@ -47,14 +46,11 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
                 inputdata=step_inputdata,
                 metadata=step_metadata,
             )
-            transformed_x, transformed_y = (
-                preprocessing_step.transform_inputdata_variables(
-                    x=list(step_inputdata.x or []),
-                    y=list(step_inputdata.y or []),
-                )
+            transformed_variables = preprocessing_step.transform_variables(
+                variables=list(step_inputdata.variables),
             )
             transformed_inputdata = step_inputdata.model_copy(
-                update={"x": transformed_x, "y": transformed_y}
+                update={"variables": transformed_variables}
             )
             transformed_metadata = preprocessing_step.transform_metadata(
                 metadata=step_metadata,
@@ -63,30 +59,21 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
 
     async def execute(self) -> str:
         source_inputdata = Inputdata(
-            data_model=self._algorithm_request_dto.inputdata.data_model,
-            datasets=self._algorithm_request_dto.inputdata.datasets,
-            validation_datasets=self._algorithm_request_dto.inputdata.validation_datasets,
-            filters=self._algorithm_request_dto.inputdata.filters,
-            x=self._algorithm_request_dto.inputdata.variables,
-            y=[],
+            data_model=self._analysis_request_dto.inputdata.data_model,
+            datasets=self._analysis_request_dto.inputdata.datasets,
+            validation_datasets=self._analysis_request_dto.inputdata.validation_datasets,
+            filters=self._analysis_request_dto.inputdata.filters,
+            variables=self._analysis_request_dto.inputdata.variables,
         )
-        algorithm_inputdata = Inputdata(
-            data_model=self._algorithm_request_dto.inputdata.data_model,
-            datasets=self._algorithm_request_dto.inputdata.datasets,
-            validation_datasets=self._algorithm_request_dto.inputdata.validation_datasets,
-            filters=self._algorithm_request_dto.inputdata.filters,
-            x=self._algorithm_request_dto.algorithm.x,
-            y=self._algorithm_request_dto.algorithm.y,
-        )
-        variable_names = self._algorithm_request_dto.inputdata.variables
+        variable_names = self._analysis_request_dto.inputdata.variables
         metadata = self._controller.worker_landscape_aggregator.get_metadata(
             data_model=source_inputdata.data_model,
             variable_names=variable_names,
         )
 
-        preprocessing_steps = self._algorithm_request_dto.preprocessing or []
+        preprocessing_steps = self._analysis_request_dto.preprocessing or []
         transformed_inputdata, transformed_metadata = self._run_preprocessing_steps(
-            inputdata=algorithm_inputdata,
+            inputdata=source_inputdata,
             metadata=metadata,
             preprocessing=preprocessing_steps,
         )
@@ -104,8 +91,10 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
         algorithm = algorithm_cls(
             engine=engine,
             inputdata=transformed_inputdata,
+            x=self._analysis_request_dto.algorithm.x,
+            y=self._analysis_request_dto.algorithm.y,
             metadata=transformed_metadata,
-            parameters=self._algorithm_request_dto.algorithm.parameters,
+            parameters=self._analysis_request_dto.algorithm.parameters,
         )
         log_experiment_execution(
             self._logger,
@@ -113,7 +102,7 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
             self._context_id,
             self._algorithm_name,
             transformed_inputdata.datasets,
-            self._algorithm_request_dto.algorithm.parameters,
+            self._analysis_request_dto.algorithm.parameters,
             [h.worker_id for h in self._local_worker_tasks_handlers],
         )
         result = algorithm.run()

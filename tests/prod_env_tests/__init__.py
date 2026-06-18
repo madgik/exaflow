@@ -1,4 +1,6 @@
-algorithms_url = "http://127.0.0.1:5100/algorithms"
+algorithm_specifications_url = "http://127.0.0.1:5100/specifications/algorithms"
+preprocessing_specifications_url = "http://127.0.0.1:5100/specifications/preprocessing"
+analysis_url = "http://127.0.0.1:5100/analysis"
 datasets_url = "http://127.0.0.1:5100/datasets"
 datasets_locations_url = "http://127.0.0.1:5100/datasets_locations"
 cdes_metadata_url = "http://127.0.0.1:5100/cdes_metadata"

@@ -11,7 +11,7 @@ from pydantic import ConfigDict
 
 
 @unique
-class AlgorithmRequestSystemFlags(str, Enum):
+class AnalysisRequestSystemFlags(str, Enum):
     SMPC = "smpc"
 
 
@@ -19,7 +19,7 @@ class ImmutableBaseModel(BaseModel, ABC):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
 
-class AlgorithmInputDataDTO(ImmutableBaseModel):
+class AnalysisInputDataDTO(ImmutableBaseModel):
     data_model: str
     datasets: List[str]
     validation_datasets: Optional[List[str]] = None
@@ -30,22 +30,23 @@ class AlgorithmInputDataDTO(ImmutableBaseModel):
 PARAMETERS_TYPE = Dict[str, Any]
 
 
-class PreprocessingRequestStepDTO(ImmutableBaseModel):
+class AnalysisPreprocessingStepDTO(ImmutableBaseModel):
     name: str
     parameters: PARAMETERS_TYPE
 
 
-class AlgorithmExecutionDTO(ImmutableBaseModel):
+class AnalysisAlgorithmDTO(ImmutableBaseModel):
+    name: str
     x: Optional[List[str]] = None
     y: Optional[List[str]] = None
     parameters: Optional[PARAMETERS_TYPE] = None
 
 
-class AlgorithmRequestDTO(BaseModel):
+class AnalysisRequestDTO(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     request_id: Optional[str] = None
-    inputdata: AlgorithmInputDataDTO
-    preprocessing: Optional[List[PreprocessingRequestStepDTO]] = None
-    algorithm: AlgorithmExecutionDTO
+    inputdata: AnalysisInputDataDTO
+    preprocessing: Optional[List[AnalysisPreprocessingStepDTO]] = None
+    algorithm: AnalysisAlgorithmDTO
     flags: Optional[Dict[str, Any]] = None

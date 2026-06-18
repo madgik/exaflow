@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.algorithm_validation_tests.exareme3.conftest import algorithm_request
+from tests.algorithm_validation_tests.exareme3.conftest import analysis_request
 from tests.algorithm_validation_tests.exareme3.helpers import get_test_params
 
 expected_file = Path(__file__).parent / "expected" / "kmeans_expected.json"
@@ -11,7 +11,7 @@ expected_file = Path(__file__).parent / "expected" / "kmeans_expected.json"
 
 @pytest.mark.parametrize("test_input, expected", get_test_params(expected_file))
 def test_kmeans(test_input, expected):
-    response = algorithm_request("kmeans", test_input)
+    response = analysis_request("kmeans", test_input)
     try:
         result = json.loads(response.text)
     except json.decoder.JSONDecodeError:

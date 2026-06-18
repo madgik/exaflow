@@ -15,7 +15,6 @@ from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import AlgorithmType
 from exaflow.algorithms.specifications import ComponentType
 from exaflow.algorithms.specifications import InputDataSpecification
-from exaflow.algorithms.specifications import InputDataSpecifications
 from exaflow.algorithms.specifications import InputDataStatType
 from exaflow.algorithms.specifications import InputDataType
 from exaflow.worker_communication import BadUserInput
@@ -51,23 +50,21 @@ class AnovaOneWay(Algorithm):
             label="One-way ANOVA",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=InputDataSpecifications(
-                y=InputDataSpecification(
-                    label="Outcome",
-                    desc="Numerical outcome variable.",
-                    types=[InputDataType.REAL, InputDataType.INT],
-                    stattypes=[InputDataStatType.NUMERICAL],
-                    required=True,
-                    max_count=1,
-                ),
-                x=InputDataSpecification(
-                    label="Grouping variable",
-                    desc="Categorical variable defining the groups.",
-                    types=[InputDataType.TEXT],
-                    stattypes=[InputDataStatType.NOMINAL],
-                    required=True,
-                    max_count=1,
-                ),
+            y=InputDataSpecification(
+                label="Outcome",
+                desc="Numerical outcome variable.",
+                types=[InputDataType.REAL, InputDataType.INT],
+                stattypes=[InputDataStatType.NUMERICAL],
+                required=True,
+                max_count=1,
+            ),
+            x=InputDataSpecification(
+                label="Grouping variable",
+                desc="Categorical variable defining the groups.",
+                types=[InputDataType.TEXT],
+                stattypes=[InputDataStatType.NOMINAL],
+                required=True,
+                max_count=1,
             ),
             type=AlgorithmType.EXAREME3,
             components=[ComponentType.AGGREGATION_SERVER],
@@ -78,8 +75,8 @@ class AnovaOneWay(Algorithm):
         Exaflow implementation of one-way ANOVA with Tukey HSD, matching the
         behavior of the original exaflow ANOVA_ONEWAY algorithm.
         """
-        y_var_name = self.inputdata.y[0]
-        x_var_name = self.inputdata.x[0]
+        y_var_name = self.y[0]
+        x_var_name = self.x[0]
 
         # Run a single distributed ANOVA UDF
         result = self.run_local_udf(

@@ -36,14 +36,12 @@ class PCA(Algorithm):
             label="Principal Component Analysis",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Variables",
-                    desc="Numerical variables used to compute principal components.",
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=True,
-                ),
+            y=specs.InputDataSpecification(
+                label="Variables",
+                desc="Numerical variables used to compute principal components.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
             ),
             type=specs.AlgorithmType.EXAREME3,
             components=[specs.ComponentType.AGGREGATION_SERVER],
@@ -53,7 +51,7 @@ class PCA(Algorithm):
         result = self.run_local_udf(
             func=local_step,
             kw_args={
-                "y_vars": self.inputdata.y,
+                "y_vars": self.y,
             },
             identical_results=True,
         )

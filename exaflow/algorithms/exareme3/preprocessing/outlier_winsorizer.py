@@ -85,7 +85,7 @@ class OutlierWinsorizer(PreprocessingStep):
                     multiple=False,
                     dict_keys_enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_NAMES,
-                        source=["x", "y"],
+                        source=["variables"],
                     ),
                     dict_values_enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.LIST,
@@ -100,7 +100,7 @@ class OutlierWinsorizer(PreprocessingStep):
                     multiple=False,
                     dict_keys_enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_NAMES,
-                        source=["x", "y"],
+                        source=["variables"],
                     ),
                     dict_values_enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.LIST,
@@ -115,7 +115,7 @@ class OutlierWinsorizer(PreprocessingStep):
                     multiple=False,
                     dict_keys_enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_NAMES,
-                        source=["x", "y"],
+                        source=["variables"],
                     ),
                     dict_values_type=specs.ParameterDictValueType.REAL,
                 ),
@@ -165,13 +165,12 @@ class OutlierWinsorizer(PreprocessingStep):
                     f"with strategy '{strategy}'. Default is {default}."
                 ) from exc
 
-    def transform_inputdata_variables(
+    def transform_variables(
         self,
         *,
-        x: List[str],
-        y: List[str],
-    ) -> tuple[List[str], List[str]]:
-        return list(x), list(y)
+        variables: List[str],
+    ) -> List[str]:
+        return list(variables)
 
     def transform_metadata(
         self,

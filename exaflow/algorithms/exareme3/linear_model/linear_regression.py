@@ -105,37 +105,35 @@ class LinearRegression(Algorithm):
             label="Linear Regression",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Outcome",
-                    desc="Single numerical outcome variable.",
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=True,
-                    max_count=1,
-                ),
-                x=specs.InputDataSpecification(
-                    label="Covariates",
-                    desc="Numerical or categorical covariates.",
-                    types=[
-                        specs.InputDataType.REAL,
-                        specs.InputDataType.INT,
-                        specs.InputDataType.TEXT,
-                    ],
-                    stattypes=[
-                        specs.InputDataStatType.NUMERICAL,
-                        specs.InputDataStatType.NOMINAL,
-                    ],
-                    required=True,
-                ),
+            y=specs.InputDataSpecification(
+                label="Outcome",
+                desc="Single numerical outcome variable.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
+                max_count=1,
+            ),
+            x=specs.InputDataSpecification(
+                label="Covariates",
+                desc="Numerical or categorical covariates.",
+                types=[
+                    specs.InputDataType.REAL,
+                    specs.InputDataType.INT,
+                    specs.InputDataType.TEXT,
+                ],
+                stattypes=[
+                    specs.InputDataStatType.NUMERICAL,
+                    specs.InputDataStatType.NOMINAL,
+                ],
+                required=True,
             ),
             type=specs.AlgorithmType.EXAREME3,
             components=[specs.ComponentType.AGGREGATION_SERVER],
         )
 
     def run(self):
-        y_var = self.inputdata.y[0]
-        x_vars = list(self.inputdata.x)
+        y_var = self.y[0]
+        x_vars = list(self.x)
         categorical_vars = [
             var for var in x_vars if self.metadata[var]["is_categorical"]
         ]

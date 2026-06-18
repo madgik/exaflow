@@ -16,8 +16,7 @@ class Inputdata(BaseModel):
     datasets: List[str]
     validation_datasets: Optional[List[str]] = None
     filters: Optional[dict] = None
-    y: Optional[List[str]] = None
-    x: Optional[List[str]] = None
+    variables: List[str]
 
 
 def _apply_filter(df: pd.DataFrame, filter_rule: Dict[str, Any]) -> pd.DataFrame:
@@ -105,14 +104,12 @@ def _apply_inputdata(
     )
     df = df[df[DATASET_COL].isin(all_datasets)]
 
-    x_columns = inputdata.x if inputdata.x is not None else []
-    y_columns = inputdata.y if inputdata.y is not None else []
     # Remove duplicates while preserving order to mirror the behaviour of the
     # SQL views used in the original algorithms.
-    columns = list(dict.fromkeys(x_columns + y_columns))
+    columns = list(dict.fromkeys(inputdata.variables))
 
     if not columns:
-        raise ValueError("Both 'x' and 'y' columns are missing or empty in inputdata.")
+        raise ValueError("'variables' are missing or empty in inputdata.")
 
     dataset_column = DATASET_COL
     select_columns = columns + (
@@ -157,10 +154,8 @@ def fetch_data(
     Returns:
         A concatenated DataFrame after filtering.
     """
-    x_columns = inputdata.x or []
-    y_columns = inputdata.y or []
     # Include "dataset" column for filtering
-    needed_columns = set(x_columns + y_columns + ["dataset"])
+    needed_columns = set(inputdata.variables + ["dataset"])
 
     # Gather filtered chunks from all CSV files
     chunks = []

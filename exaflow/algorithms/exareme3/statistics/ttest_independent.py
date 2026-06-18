@@ -48,23 +48,21 @@ class TTestIndependent(Algorithm):
             label="Independent t-test",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Outcome",
-                    desc="Numerical variable compared between groups.",
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=True,
-                    max_count=1,
-                ),
-                x=specs.InputDataSpecification(
-                    label="Grouping variable",
-                    desc="Categorical variable containing the two groups.",
-                    types=[specs.InputDataType.TEXT],
-                    stattypes=[specs.InputDataStatType.NOMINAL],
-                    required=True,
-                    max_count=1,
-                ),
+            y=specs.InputDataSpecification(
+                label="Outcome",
+                desc="Numerical variable compared between groups.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
+                max_count=1,
+            ),
+            x=specs.InputDataSpecification(
+                label="Grouping variable",
+                desc="Categorical variable containing the two groups.",
+                types=[specs.InputDataType.TEXT],
+                stattypes=[specs.InputDataStatType.NOMINAL],
+                required=True,
+                max_count=1,
             ),
             parameters={
                 "alt_hypothesis": specs.ParameterSpecification(
@@ -125,8 +123,8 @@ class TTestIndependent(Algorithm):
         result = self.run_local_udf(
             func=local_step,
             kw_args={
-                "group_var": self.inputdata.x[0],
-                "value_var": self.inputdata.y[0],
+                "group_var": self.x[0],
+                "value_var": self.y[0],
                 "alpha": alpha,
                 "alternative": alternative,
                 "group_a": group_a,

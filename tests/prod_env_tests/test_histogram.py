@@ -5,11 +5,11 @@ from pathlib import Path
 import pytest
 import requests
 
-from tests.algorithm_validation_tests.exareme3.conftest import algorithm_request
+from tests.algorithm_validation_tests.exareme3.conftest import analysis_request
 from tests.algorithm_validation_tests.exareme3.conftest import parse_response
 from tests.algorithm_validation_tests.exareme3.helpers import assert_allclose
 from tests.algorithm_validation_tests.exareme3.helpers import get_test_params
-from tests.prod_env_tests import algorithms_url
+from tests.prod_env_tests import analysis_url
 
 algorithm_name = "histogram"
 
@@ -36,7 +36,7 @@ def test_histogram(test_input, expected):
         test_input["algorithm"]["parameters"] = {}
     test_input["algorithm"]["parameters"]["histogram_type"] = "simple"
 
-    response = algorithm_request(algorithm_name, test_input)
+    response = analysis_request(algorithm_name, test_input)
     result = parse_response(response)
 
     expected_histograms = expected["histogram"]
@@ -92,15 +92,15 @@ def test_histogram_insufficient_data_after_filters_returns_461():
             }
         ],
         "algorithm": {
+            "name": "histogram",
             "x": None,
             "y": ["lefthippocampus"],
             "parameters": {"bins": 20},
         },
     }
-    algorithm_url = algorithms_url + "/histogram"
     headers = {"Content-type": "application/json", "Accept": "text/plain"}
     response = requests.post(
-        algorithm_url, data=json.dumps(request_dict), headers=headers
+        analysis_url, data=json.dumps(request_dict), headers=headers
     )
 
     assert response.status_code == 461, f"Response message: {response.text}"

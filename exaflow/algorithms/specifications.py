@@ -151,12 +151,6 @@ class InputDataSpecification(ImmutableBaseModel):
         return self
 
 
-class InputDataSpecifications(ImmutableBaseModel):
-    y: InputDataSpecification
-    x: Optional[InputDataSpecification] = None
-    validation: Optional[bool] = None
-
-
 class ParameterEnumSpecification(ImmutableBaseModel):
     type: ParameterEnumType
     source: List[str]
@@ -180,6 +174,45 @@ class ParameterSpecification(ImmutableBaseModel):
 class PreprocessingOutputSpecification(ImmutableBaseModel):
     type: PreprocessingOutputType
     code_parameter: Optional[str] = None
+
+
+class WorkflowStepSpecification(ImmutableBaseModel):
+    name: str
+    desc: str
+    documentation: str
+    label: str
+    enabled: bool
+    parameters: Optional[Dict[str, ParameterSpecification]] = None
+    components: List[ComponentType] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_parameters(self):
+        if not self.parameters:
+            return self
+
+        cls_values = {
+            "label": self.label,
+            "x": getattr(self, "x", None),
+            "y": getattr(self, "y", None),
+        }
+        for param_value in self.parameters.values():
+            _validate_parameter_enums(param_value, cls_values)
+            _validate_parameter_type_dict(param_value, cls_values)
+            _validate_parameter_type_dict_enums(param_value, cls_values)
+        return self
+
+
+class AlgorithmSpecification(WorkflowStepSpecification):
+    y: InputDataSpecification
+    x: Optional[InputDataSpecification] = None
+    requires_validation_datasets: bool = False
+    type: AlgorithmType = AlgorithmType.EXAREME3
+    required_preprocessing: List[str] = Field(default_factory=list)
+
+
+class PreprocessingStepSpecification(WorkflowStepSpecification):
+    output: Optional[PreprocessingOutputSpecification] = None
+    type: PreprocessingStepType = PreprocessingStepType.EXAREME3_PREPROCESSING_STEP
 
 
 def _validate_parameter_with_enums_type_fixed_var_CDE_enums(param_value, cls_values):
@@ -208,14 +241,18 @@ def _validate_parameter_with_enums_type_input_var_CDE_enums(param_value, cls_val
             f"In algorithm '{cls_values['label']}', parameter '{param_value.label}' has enums type 'input_var_CDE_enums' "
             f"that doesn't support 'multiple=True', in the parameter."
         )
-    inputdata_var = (
-        cls_values["inputdata"].x if value == "x" else cls_values["inputdata"].y
-    )
-    if inputdata_var.max_count is None or inputdata_var.max_count > 1:
+    variable_spec = cls_values["x"] if value == "x" else cls_values["y"]
+    if variable_spec is None:
+        raise ValueError(
+            f"In algorithm '{cls_values['label']}', parameter '{param_value.label}' has enums type "
+            f"'{ParameterEnumType.INPUT_VAR_CDE_ENUMS.value}' with source '{value}', but the algorithm "
+            f"does not define that variable specification."
+        )
+    if variable_spec.max_count is None or variable_spec.max_count > 1:
         raise ValueError(
             f"In algorithm '{cls_values['label']}', parameter '{param_value.label}' has enums type "
             f"'{ParameterEnumType.INPUT_VAR_CDE_ENUMS.value}' "
-            f"that requires max_count=1 in its linked inputdata var '{inputdata_var.label}'."
+            f"that requires max_count=1 in its linked variable specification '{variable_spec.label}'."
         )
 
 
@@ -225,6 +262,32 @@ def _validate_parameter_with_enums_type_input_var_names(param_value, cls_values)
             f"In algorithm '{cls_values['label']}', parameter '{param_value.label}' has enums type "
             f"'{ParameterEnumType.INPUT_VAR_NAMES.value}' that supports ONLY 'types=[\"text\"]' but the 'types' "
             f"provided were {[t.value for t in param_value.types]}."
+        )
+    _validate_input_var_names_enum_sources(
+        parameter_label=param_value.label,
+        enum_spec=param_value.enums,
+        cls_values=cls_values,
+    )
+
+
+def _validate_input_var_names_enum_sources(
+    *,
+    parameter_label: str,
+    enum_spec: ParameterEnumSpecification,
+    cls_values,
+):
+    has_algorithm_input_specs = (
+        cls_values.get("x") is not None or cls_values.get("y") is not None
+    )
+    allowed_sources = {"x", "y"} if has_algorithm_input_specs else {"variables"}
+    invalid_sources = [
+        source for source in enum_spec.source if source not in allowed_sources
+    ]
+    if invalid_sources:
+        raise ValueError(
+            f"In algorithm '{cls_values['label']}', parameter '{parameter_label}' has enums type "
+            f"'{ParameterEnumType.INPUT_VAR_NAMES.value}' with unsupported sources {invalid_sources}. "
+            f"Allowed sources are {sorted(allowed_sources)}."
         )
 
 
@@ -256,6 +319,12 @@ def _validate_parameter_type_dict_keys_enums(param_value, cls_values):
         raise ValueError(
             f"In algorithm '{cls_values['label']}', parameter '{param_value.label}' has the property 'dict_keys_enums' "
             f"but the allowed 'types' is not '{ParameterType.DICT}'."
+        )
+    if param_value.dict_keys_enums.type == ParameterEnumType.INPUT_VAR_NAMES:
+        _validate_input_var_names_enum_sources(
+            parameter_label=param_value.label,
+            enum_spec=param_value.dict_keys_enums,
+            cls_values=cls_values,
         )
 
 
@@ -297,45 +366,3 @@ def _validate_parameter_type_dict_enums(param_value, cls_values):
     _validate_parameter_type_dict_values_type(param_value, cls_values)
     _validate_parameter_type_dict_values_enums(param_value, cls_values)
     _validate_parameter_type_dict_enums_not_allowed(param_value, cls_values)
-
-
-class WorkflowStepSpecification(ImmutableBaseModel):
-    @model_validator(mode="after")
-    def validate_parameters(self):
-        if not self.parameters:
-            return self
-
-        cls_values = {
-            "label": self.label,
-            "inputdata": getattr(self, "inputdata", None),
-        }
-        for param_value in self.parameters.values():
-            _validate_parameter_enums(param_value, cls_values)
-            _validate_parameter_type_dict(param_value, cls_values)
-            _validate_parameter_type_dict_enums(param_value, cls_values)
-        return self
-
-
-class AlgorithmSpecification(WorkflowStepSpecification):
-    name: str
-    desc: str
-    documentation: str
-    label: str
-    enabled: bool
-    inputdata: InputDataSpecifications
-    parameters: Optional[Dict[str, ParameterSpecification]] = None
-    type: AlgorithmType = AlgorithmType.EXAREME3
-    components: List[ComponentType] = Field(default_factory=list)
-    required_preprocessing: List[str] = Field(default_factory=list)
-
-
-class PreprocessingStepSpecification(WorkflowStepSpecification):
-    name: str
-    desc: str
-    documentation: str
-    label: str
-    enabled: bool
-    parameters: Optional[Dict[str, ParameterSpecification]] = None
-    output: Optional[PreprocessingOutputSpecification] = None
-    type: PreprocessingStepType = PreprocessingStepType.EXAREME3_PREPROCESSING_STEP
-    components: List[ComponentType] = Field(default_factory=list)

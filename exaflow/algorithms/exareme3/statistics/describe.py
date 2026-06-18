@@ -87,35 +87,33 @@ class Describe(Algorithm):
             ),
             label="Descriptive Statistics",
             enabled=True,
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Variables",
-                    desc="Variables to summarize.",
-                    types=[
-                        specs.InputDataType.INT,
-                        specs.InputDataType.REAL,
-                        specs.InputDataType.TEXT,
-                    ],
-                    stattypes=[
-                        specs.InputDataStatType.NUMERICAL,
-                        specs.InputDataStatType.NOMINAL,
-                    ],
-                    required=True,
-                ),
-                x=specs.InputDataSpecification(
-                    label="Additional variables",
-                    desc="Optional additional variables to summarize.",
-                    types=[
-                        specs.InputDataType.INT,
-                        specs.InputDataType.REAL,
-                        specs.InputDataType.TEXT,
-                    ],
-                    stattypes=[
-                        specs.InputDataStatType.NUMERICAL,
-                        specs.InputDataStatType.NOMINAL,
-                    ],
-                    required=False,
-                ),
+            y=specs.InputDataSpecification(
+                label="Variables",
+                desc="Variables to summarize.",
+                types=[
+                    specs.InputDataType.INT,
+                    specs.InputDataType.REAL,
+                    specs.InputDataType.TEXT,
+                ],
+                stattypes=[
+                    specs.InputDataStatType.NUMERICAL,
+                    specs.InputDataStatType.NOMINAL,
+                ],
+                required=True,
+            ),
+            x=specs.InputDataSpecification(
+                label="Additional variables",
+                desc="Optional additional variables to summarize.",
+                types=[
+                    specs.InputDataType.INT,
+                    specs.InputDataType.REAL,
+                    specs.InputDataType.TEXT,
+                ],
+                stattypes=[
+                    specs.InputDataStatType.NUMERICAL,
+                    specs.InputDataStatType.NOMINAL,
+                ],
+                required=False,
             ),
             type=specs.AlgorithmType.EXAREME3,
             components=[specs.ComponentType.AGGREGATION_SERVER],
@@ -130,8 +128,8 @@ class Describe(Algorithm):
         return True
 
     def run(self):
-        x_vars = self.inputdata.x or []
-        y_vars = self.inputdata.y or []
+        x_vars = self.x or []
+        y_vars = self.y or []
         variable_names = [v for v in (x_vars + y_vars) if v != DATASET_VAR_NAME]
         numerical_vars = [
             var for var in variable_names if not self.metadata[var]["is_categorical"]

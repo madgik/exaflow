@@ -36,7 +36,7 @@ def load_algorithm_arrow_table(
     """
     Shared data loader for exaflow algorithms, returning an Arrow Table.
     """
-    required_columns: Set[str] = set(inputdata.x or []) | set(inputdata.y or [])
+    required_columns: Set[str] = set(inputdata.variables)
     if include_dataset:
         required_columns.add(DATASET_COL)
     if extra_columns:

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.algorithm_validation_tests.exareme3.conftest import algorithm_request
+from tests.algorithm_validation_tests.exareme3.conftest import analysis_request
 from tests.algorithm_validation_tests.exareme3.conftest import parse_response
 from tests.algorithm_validation_tests.exareme3.helpers import get_test_params
 
@@ -38,7 +38,7 @@ DESCRIBE_DATA_KEYS = {
 
 @pytest.mark.parametrize("test_input, expected", get_test_params(expected_file))
 def test_outlier_report_validation(test_input, expected):
-    response = algorithm_request(
+    response = analysis_request(
         algorithm_name,
         test_input,
         drop_na=expected.get("drop_na", True),

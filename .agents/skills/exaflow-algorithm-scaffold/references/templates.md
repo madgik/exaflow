@@ -17,7 +17,7 @@ Priority order:
 - Contains:
   - `Algorithm` subclass
   - `get_specification()` with matching `name`
-  - family-aware inputdata defaults
+  - family-aware flat `x`/`y` input specifications
   - local UDF placeholder (or federated-core call when scaffolded)
 - Specification metadata:
   - Treat `label` as compact, standard UI menu copy. Avoid implementation
@@ -91,8 +91,12 @@ Priority order:
     folds.
 
   - Omit explicit optional `None` specification arguments; do not write
-    `parameters=None`, `validation=None`, `enumslen=None`, `default=None`,
+    `parameters=None`, `enumslen=None`, `default=None`,
     `enums=None`, `dict_values_enums=None`, `min=None`, or `max=None`.
+
+  - Runtime wrappers should use `self.x` and `self.y` for algorithm inputs.
+    `self.inputdata.variables` is the source variable set loaded before
+    preprocessing.
 
 ### Federated core module (enabled by default)
 
@@ -122,13 +126,20 @@ Priority order:
     {
       "input": {
         "inputdata": {
-          "y": ["__REPLACE_ME_Y__"],
-          "x": ["__REPLACE_ME_X__"],
           "data_model": "__REPLACE_ME_DATA_MODEL__",
           "datasets": ["__REPLACE_ME_DATASET__"],
-          "filters": null
+          "filters": null,
+          "variables": [
+            "__REPLACE_ME_X__",
+            "__REPLACE_ME_Y__"
+          ]
         },
-        "parameters": {}
+        "algorithm": {
+          "name": "<algorithm>",
+          "x": ["__REPLACE_ME_X__"],
+          "y": ["__REPLACE_ME_Y__"],
+          "parameters": {}
+        }
       },
       "output": {}
     }

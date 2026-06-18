@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.algorithm_validation_tests.exareme3.helpers import algorithm_request
+from tests.algorithm_validation_tests.exareme3.helpers import analysis_request
 from tests.algorithm_validation_tests.exareme3.helpers import assert_allclose
 from tests.algorithm_validation_tests.exareme3.helpers import get_test_params
 from tests.algorithm_validation_tests.exareme3.helpers import parse_response
@@ -13,7 +13,7 @@ expected_file = Path(__file__).parent / "expected" / f"{alrorithm_name}_expected
 
 @pytest.mark.parametrize("test_input, expected", get_test_params(expected_file))
 def test_anova_two_way(test_input, expected, subtests):
-    response = algorithm_request(alrorithm_name, test_input)
+    response = analysis_request(alrorithm_name, test_input)
     result = parse_response(response)
 
     validate_results(result, expected, subtests)
@@ -104,5 +104,5 @@ def test_anova_two_way__invalid_input__single_depvar():
             "parameters": {"sstype": 2},
         },
     }
-    response = algorithm_request("anova_twoway", test_input)
+    response = analysis_request("anova_twoway", test_input)
     assert response.status_code == 460

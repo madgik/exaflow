@@ -29,23 +29,20 @@ class CategoricalNBTestingPredict(Algorithm):
             documentation="Uses Bayes' theorem to calculate the probability of each class given a set of nominal features assuming independence between features. It then classifies data points based on the class with the highest probability.",
             label="Categorical Naive Bayes classifier with cross-validation",
             enabled=True,
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Variable (dependent)",
-                    desc="A unique nominal variable.",
-                    types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NOMINAL],
-                    required=True,
-                    max_count=1,
-                ),
-                x=specs.InputDataSpecification(
-                    label="Covariates (independent)",
-                    desc="One or more nominal variables.",
-                    types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NOMINAL],
-                    required=True,
-                ),
-                validation=None,
+            y=specs.InputDataSpecification(
+                label="Variable (dependent)",
+                desc="A unique nominal variable.",
+                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NOMINAL],
+                required=True,
+                max_count=1,
+            ),
+            x=specs.InputDataSpecification(
+                label="Covariates (independent)",
+                desc="One or more nominal variables.",
+                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NOMINAL],
+                required=True,
             ),
             parameters={},
             type=specs.AlgorithmType.EXAREME3,
@@ -53,11 +50,11 @@ class CategoricalNBTestingPredict(Algorithm):
         )
 
     def run(self):
-        if not self.inputdata.y or not self.inputdata.x:
+        if not self.y or not self.x:
             raise BadUserInput("Naive Bayes categorical predict requires X and y.")
 
-        y_var = self.inputdata.y[0]
-        x_vars = list(self.inputdata.x)
+        y_var = self.y[0]
+        x_vars = list(self.x)
         categories = {
             var: sorted(get_enum_codes(self.metadata, var)) for var in x_vars + [y_var]
         }

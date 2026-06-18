@@ -116,13 +116,12 @@ class CategoricalColumnCreator(PreprocessingStep):
                 f"Rule enumeration values should be non-empty strings: {invalid_enumerations}."
             )
 
-    def transform_inputdata_variables(
+    def transform_variables(
         self,
         *,
-        x: List[str],
-        y: List[str],
-    ) -> tuple[List[str], List[str]]:
-        return x, y
+        variables: List[str],
+    ) -> List[str]:
+        return list(variables) + [self._code]
 
     def transform_metadata(
         self,

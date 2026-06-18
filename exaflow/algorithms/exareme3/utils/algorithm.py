@@ -19,17 +19,29 @@ class Algorithm(ABC):
         *,
         engine,
         inputdata: Inputdata,
+        x: Optional[List[str]] = None,
+        y: Optional[List[str]] = None,
         metadata: Optional[Dict[str, Any]] = None,
         parameters: Optional[Dict[str, Any]] = None,
     ):
         self._engine = engine
         self._inputdata: Inputdata = inputdata
+        self._x: List[str] = list(x or [])
+        self._y: List[str] = list(y or [])
         self._metadata: Dict[str, Any] = metadata if metadata is not None else {}
         self._parameters: dict = parameters if parameters is not None else {}
 
     @property
     def inputdata(self) -> Inputdata:
         return self._inputdata
+
+    @property
+    def x(self) -> List[str]:
+        return self._x
+
+    @property
+    def y(self) -> List[str]:
+        return self._y
 
     @property
     def metadata(self) -> Dict[str, Any]:

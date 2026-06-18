@@ -77,16 +77,16 @@ poetry run inv attach --controller
 poetry run inv attach --worker localworker1
 ```
 
-Run an algorithm request:
+Run an analysis request:
 
 ```bash
-./run_algorithm -a pca -y leftamygdala lefthippocampus -d ppmi0 -m dementia:0.1
+./run_analysis -a pca -y leftamygdala lefthippocampus -d ppmi0 -m dementia:0.1
 ```
 
-Dry-run an algorithm request:
+Dry-run an analysis request:
 
 ```bash
-./run_algorithm -a pca -y leftamygdala lefthippocampus -d ppmi0 -m dementia:0.1 -n
+./run_analysis -a pca -y leftamygdala lefthippocampus -d ppmi0 -m dementia:0.1 -n
 ```
 
 ## Build

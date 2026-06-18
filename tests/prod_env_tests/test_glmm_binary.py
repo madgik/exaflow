@@ -2,7 +2,7 @@ import re
 
 import pytest
 
-from tests.algorithm_validation_tests.exareme3.helpers import algorithm_request
+from tests.algorithm_validation_tests.exareme3.helpers import analysis_request
 from tests.algorithm_validation_tests.exareme3.helpers import parse_response
 
 GLMM_BINARY_CASES = [
@@ -289,7 +289,7 @@ GLMM_BINARY_CASES = [
                 },
             },
             "expected_status": 460,
-            "expected_message": r"Inputdata 'Covariates and grouping variable' should include at least 2 values.",
+            "expected_message": r"Algorithm input 'Covariates and grouping variable' should include at least 2 values.",
         },
         id="only_grouping_var_no_fixed_left",
     ),
@@ -298,7 +298,7 @@ GLMM_BINARY_CASES = [
 
 @pytest.mark.parametrize("case", GLMM_BINARY_CASES)
 def test_glmm_binary_wrapper(case):
-    response = algorithm_request("glmm_binary", case["request"])
+    response = analysis_request("glmm_binary", case["request"])
     assert response.status_code == case["expected_status"], response.text
 
     if case["expected_status"] == 200:

@@ -51,22 +51,20 @@ class NaiveBayesGaussianCV(Algorithm):
             label="Gaussian Naive Bayes (K-fold CV)",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Outcome",
-                    desc="Nominal outcome variable.",
-                    types=[specs.InputDataType.TEXT],
-                    stattypes=[specs.InputDataStatType.NOMINAL],
-                    required=True,
-                    max_count=1,
-                ),
-                x=specs.InputDataSpecification(
-                    label="Features",
-                    desc="Numerical features used for classification.",
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=True,
-                ),
+            y=specs.InputDataSpecification(
+                label="Outcome",
+                desc="Nominal outcome variable.",
+                types=[specs.InputDataType.TEXT],
+                stattypes=[specs.InputDataStatType.NOMINAL],
+                required=True,
+                max_count=1,
+            ),
+            x=specs.InputDataSpecification(
+                label="Features",
+                desc="Numerical features used for classification.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
             ),
             parameters={
                 "n_splits": specs.ParameterSpecification(
@@ -85,8 +83,8 @@ class NaiveBayesGaussianCV(Algorithm):
         )
 
     def run(self) -> NBResult:
-        y_var = self.inputdata.y[0]
-        x_vars = list(self.inputdata.x)
+        y_var = self.y[0]
+        x_vars = list(self.x)
         n_splits = self.get_parameter("n_splits")
         labels = sorted(get_enum_codes(self.metadata, y_var))
 

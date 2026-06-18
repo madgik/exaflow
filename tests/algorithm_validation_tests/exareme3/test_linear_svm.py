@@ -1,4 +1,4 @@
-from tests.algorithm_validation_tests.exareme3.helpers import algorithm_request
+from tests.algorithm_validation_tests.exareme3.helpers import analysis_request
 from tests.algorithm_validation_tests.exareme3.helpers import parse_response
 
 algorithm_name = "linear_svm"
@@ -39,7 +39,7 @@ def test_linear_svm_properties():
         },
         "test_case_num": 0,
     }
-    response = algorithm_request(algorithm_name, test_input)
+    response = analysis_request(algorithm_name, test_input)
     result = parse_response(response)
 
     assert isinstance(result, dict)

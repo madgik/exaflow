@@ -19,10 +19,10 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
 
     async def execute(self) -> str:
         async with self._controller.algorithm_execution_lock:
-            data_model = self._algorithm_request_dto.inputdata.data_model
-            datasets = self._algorithm_request_dto.inputdata.datasets + (
-                self._algorithm_request_dto.inputdata.validation_datasets
-                if self._algorithm_request_dto.inputdata.validation_datasets
+            data_model = self._analysis_request_dto.inputdata.data_model
+            datasets = self._analysis_request_dto.inputdata.datasets + (
+                self._analysis_request_dto.inputdata.validation_datasets
+                if self._analysis_request_dto.inputdata.validation_datasets
                 else []
             )
 
@@ -38,9 +38,9 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
 
             self._controller.flower_execution_info.set_inputdata(
                 inputdata={
-                    **self._algorithm_request_dto.inputdata.model_dump(),
-                    "x": self._algorithm_request_dto.algorithm.x,
-                    "y": self._algorithm_request_dto.algorithm.y,
+                    **self._analysis_request_dto.inputdata.model_dump(),
+                    "x": self._analysis_request_dto.algorithm.x,
+                    "y": self._analysis_request_dto.algorithm.y,
                 }
             )
             server_pid = None
@@ -71,8 +71,8 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
                     self._request_id,
                     self._context_id,
                     self._algorithm_name,
-                    self._algorithm_request_dto.inputdata.datasets,
-                    self._algorithm_request_dto.algorithm.parameters,
+                    self._analysis_request_dto.inputdata.datasets,
+                    self._analysis_request_dto.algorithm.parameters,
                     [h.worker_id for h in self._local_worker_tasks_handlers],
                 )
                 result = await self._controller.flower_execution_info.get_result_with_timeout()

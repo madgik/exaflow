@@ -66,29 +66,27 @@ class LinearRegressionCV(Algorithm):
             label="Linear Regression Cross-validation",
             enabled=True,
             required_preprocessing=["missing_values_handler"],
-            inputdata=specs.InputDataSpecifications(
-                y=specs.InputDataSpecification(
-                    label="Outcome",
-                    desc="Numerical outcome variable.",
-                    types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                    stattypes=[specs.InputDataStatType.NUMERICAL],
-                    required=True,
-                    max_count=1,
-                ),
-                x=specs.InputDataSpecification(
-                    label="Covariates",
-                    desc="Numerical or categorical covariates.",
-                    types=[
-                        specs.InputDataType.REAL,
-                        specs.InputDataType.INT,
-                        specs.InputDataType.TEXT,
-                    ],
-                    stattypes=[
-                        specs.InputDataStatType.NUMERICAL,
-                        specs.InputDataStatType.NOMINAL,
-                    ],
-                    required=True,
-                ),
+            y=specs.InputDataSpecification(
+                label="Outcome",
+                desc="Numerical outcome variable.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
+                max_count=1,
+            ),
+            x=specs.InputDataSpecification(
+                label="Covariates",
+                desc="Numerical or categorical covariates.",
+                types=[
+                    specs.InputDataType.REAL,
+                    specs.InputDataType.INT,
+                    specs.InputDataType.TEXT,
+                ],
+                stattypes=[
+                    specs.InputDataStatType.NUMERICAL,
+                    specs.InputDataStatType.NOMINAL,
+                ],
+                required=True,
             ),
             parameters={
                 "n_splits": specs.ParameterSpecification(
@@ -107,9 +105,9 @@ class LinearRegressionCV(Algorithm):
         )
 
     def run(self):
-        y_var = self.inputdata.y[0]
+        y_var = self.y[0]
         n_splits = int(self.get_parameter("n_splits"))
-        x_vars = list(self.inputdata.x)
+        x_vars = list(self.x)
         categorical_vars = [
             var for var in x_vars if self.metadata[var]["is_categorical"]
         ]

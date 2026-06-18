@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from tests.algorithm_validation_tests.exareme3.conftest import algorithm_request
+from tests.algorithm_validation_tests.exareme3.conftest import analysis_request
 
 base_logistic_input = {
     "inputdata": {
@@ -94,7 +94,7 @@ def test_missing_values_handler_single_variable_median_strategy():
         }
     ]
 
-    response = algorithm_request("pca", payload, drop_na=False)
+    response = analysis_request("pca", payload, drop_na=False)
     assert response.status_code == 200, f"{response.status_code}: {response.content}"
 
 
@@ -113,7 +113,7 @@ def test_missing_values_handler_per_variable_partial_strategies():
         }
     ]
 
-    response = algorithm_request("describe", payload, drop_na=False)
+    response = analysis_request("describe", payload, drop_na=False)
     assert response.status_code == 200, f"{response.status_code}: {response.content}"
 
 
@@ -130,7 +130,7 @@ def test_missing_values_handler_rejects_fill_values_outside_categorical_enums():
         }
     ]
 
-    response = algorithm_request("describe", payload, drop_na=False)
+    response = analysis_request("describe", payload, drop_na=False)
     assert response.status_code == 460, f"{response.status_code}: {response.content}"
     assert b"categorical enum codes" in response.content
 
@@ -147,7 +147,7 @@ def test_missing_values_handler_rejects_non_string_fill_value_for_categorical():
         }
     ]
 
-    response = algorithm_request("describe", payload, drop_na=False)
+    response = analysis_request("describe", payload, drop_na=False)
     assert response.status_code == 460, f"{response.status_code}: {response.content}"
     assert b"text categorical enum code" in response.content
 
@@ -163,7 +163,7 @@ def test_missing_values_handler_rejects_mean_for_categorical_variable():
         }
     ]
 
-    response = algorithm_request("logistic_regression", payload, drop_na=False)
+    response = analysis_request("logistic_regression", payload, drop_na=False)
     assert response.status_code == 460, f"{response.status_code}: {response.content}"
     assert b"can only be used for numerical variables" in response.content
 
@@ -179,7 +179,7 @@ def test_missing_values_handler_rejects_constant_categorical_without_fill_values
         }
     ]
 
-    response = algorithm_request("logistic_regression", payload, drop_na=False)
+    response = analysis_request("logistic_regression", payload, drop_na=False)
     assert response.status_code == 460, f"{response.status_code}: {response.content}"
     assert b"requires 'fill_values[alzheimerbroadcategory]'" in response.content
 
@@ -196,6 +196,6 @@ def test_missing_values_handler_rejects_fill_values_for_non_constant_strategy():
         }
     ]
 
-    response = algorithm_request("logistic_regression", payload, drop_na=False)
+    response = analysis_request("logistic_regression", payload, drop_na=False)
     assert response.status_code == 460, f"{response.status_code}: {response.content}"
     assert b"can only be provided when strategy is 'constant'" in response.content
