@@ -834,19 +834,6 @@ def get_parametrization_list_success_cases():
                 inputdata=AlgorithmInputDataDTO(
                     data_model="data_model_with_all_cde_types:0.1",
                     datasets=["sample_dataset1"],
-                    x=["real_cde"],
-                    y=["text_cde_categ"],
-                ),
-                parameters={"grouping_var": "real_cde"},
-            ),
-            id="scalar grouping_var accepted for compatibility",
-        ),
-        pytest.param(
-            "algorithm_with_many_params",
-            AlgorithmRequestDTO(
-                inputdata=AlgorithmInputDataDTO(
-                    data_model="data_model_with_all_cde_types:0.1",
-                    datasets=["sample_dataset1"],
                     y=["text_cde_categ"],
                 ),
                 parameters={"param_with_enum_type_input_var_CDE_enums": "male"},

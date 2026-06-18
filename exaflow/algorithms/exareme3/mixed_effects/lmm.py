@@ -3,9 +3,6 @@ from typing import List
 from pydantic import BaseModel
 
 from exaflow.algorithms import specifications as specs
-from exaflow.algorithms.exareme3.mixed_effects.mixed_effects_common import (
-    display_grouping_var,
-)
 from exaflow.algorithms.exareme3.mixed_effects.mixed_effects_common import get_group_ids
 from exaflow.algorithms.exareme3.mixed_effects.mixed_effects_common import (
     split_grouping_var,
@@ -21,7 +18,7 @@ from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
 
 class LMMResult(BaseModel):
     dependent_var: str
-    grouping_var: str | List[str]
+    grouping_var: List[str]
     indep_vars: List[str]
     n_obs: int
     n_groups: int
@@ -150,7 +147,7 @@ class LMM(Algorithm):
         pvalues = model_stats["pvalues"]
         return LMMResult(
             dependent_var=y_var,
-            grouping_var=display_grouping_var(grouping_var),
+            grouping_var=grouping_var,
             indep_vars=model_stats["feature_names"],
             n_obs=model_stats["n_obs"],
             n_groups=model_stats["n_groups"],

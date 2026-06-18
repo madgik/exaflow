@@ -1,9 +1,6 @@
 import pandas as pd
 import pytest
 
-from exaflow.algorithms.exareme3.mixed_effects.mixed_effects_common import (
-    display_grouping_var,
-)
 from exaflow.algorithms.exareme3.mixed_effects.mixed_effects_common import get_group_ids
 from exaflow.algorithms.exareme3.mixed_effects.mixed_effects_common import (
     split_grouping_var,
@@ -14,9 +11,16 @@ from exaflow.worker_communication import BadUserInput
 def test_get_group_ids_preserves_single_grouping_var():
     data = pd.DataFrame({"dataset": ["ppmi0", "ppmi1"]})
 
-    group_ids = get_group_ids(data, "dataset")
+    group_ids = get_group_ids(data, ["dataset"])
 
     assert group_ids.tolist() == ["ppmi0", "ppmi1"]
+
+
+def test_get_group_ids_rejects_scalar_grouping_var():
+    data = pd.DataFrame({"dataset": ["ppmi0", "ppmi1"]})
+
+    with pytest.raises(BadUserInput, match="must be a list"):
+        get_group_ids(data, "dataset")
 
 
 def test_get_group_ids_builds_composite_grouping_key():
@@ -30,10 +34,23 @@ def test_get_group_ids_builds_composite_grouping_key():
     group_ids = get_group_ids(data, ["dataset", "gender"])
 
     assert group_ids.tolist() == [
-        "dataset=ppmi0|gender=F",
-        "dataset=ppmi0|gender=M",
-        "dataset=ppmi1|gender=F",
+        "7:dataset5:ppmi06:gender1:F",
+        "7:dataset5:ppmi06:gender1:M",
+        "7:dataset5:ppmi16:gender1:F",
     ]
+
+
+def test_get_group_ids_composite_key_does_not_merge_delimiter_values():
+    data = pd.DataFrame(
+        {
+            "dataset": ["a", "a|gender=b"],
+            "gender": ["b|gender=c", "c"],
+        }
+    )
+
+    group_ids = get_group_ids(data, ["dataset", "gender"])
+
+    assert group_ids[0] != group_ids[1]
 
 
 def test_split_grouping_var_removes_all_grouping_vars_from_fixed_effects():
@@ -52,11 +69,6 @@ def test_split_grouping_var_removes_all_grouping_vars_from_fixed_effects():
 
     assert categorical_vars == ["agegroup"]
     assert numerical_vars == ["lefthippocampus"]
-
-
-def test_display_grouping_var_keeps_single_value_backward_compatible():
-    assert display_grouping_var(["dataset"]) == "dataset"
-    assert display_grouping_var(["dataset", "gender"]) == ["dataset", "gender"]
 
 
 def test_split_grouping_var_rejects_no_fixed_effects():

@@ -21,7 +21,7 @@ from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
 
 class GLMMBinaryResult(BaseModel):
     dependent_var: str
-    grouping_var: str
+    grouping_var: List[str]
     indep_vars: List[str]
     n_obs: int
     n_groups: int
@@ -57,14 +57,16 @@ class GLMMBinary(Algorithm):
             desc="Binary generalized linear mixed model with a random intercept.",
             documentation=(
                 "Fits a binary generalized linear mixed model with fixed "
-                "covariate effects and a single random-intercept grouping "
-                "variable. The dependent variable is converted to binary by "
-                "assigning 1 to the selected positive class and 0 to all other "
-                "classes.\n\n"
+                "covariate effects and a random-intercept grouping factor. "
+                "The dependent variable is converted to binary by assigning 1 "
+                "to the selected positive class and 0 to all other classes.\n\n"
                 "The 'positive_class' setting selects the y category treated as "
                 "the positive outcome.\n\n"
-                "The 'grouping_var' setting selects the variable from x used as "
-                "the random-intercept grouping factor.\n\n"
+                "The 'grouping_var' setting selects one variable from x used as "
+                "the random-intercept grouping factor, or two variables used to "
+                "build one composite nested-like grouping factor. Composite "
+                "grouping still estimates a single random-intercept variance "
+                "component.\n\n"
                 "The result includes fixed-effect coefficients, standard errors, "
                 "z-scores, p-values, confidence intervals, random-effect "
                 "variance, log-likelihood, AIC, BIC, convergence status, and "
@@ -88,7 +90,10 @@ class GLMMBinary(Algorithm):
                 ),
                 x=specs.InputDataSpecification(
                     label="Covariates and grouping variable",
-                    desc="Covariates plus the random-intercept grouping variable.",
+                    desc=(
+                        "Covariates plus one or two random-intercept grouping "
+                        "variables."
+                    ),
                     types=[
                         specs.InputDataType.REAL,
                         specs.InputDataType.INT,
@@ -116,10 +121,13 @@ class GLMMBinary(Algorithm):
                 ),
                 "grouping_var": specs.ParameterSpecification(
                     label="Grouping variable",
-                    desc="Random-intercept grouping factor.",
+                    desc=(
+                        "One grouping factor, or two variables combined into one "
+                        "composite nested-like grouping factor."
+                    ),
                     types=[specs.ParameterType.TEXT],
                     required=True,
-                    multiple=False,
+                    multiple=True,
                     enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_NAMES,
                         source=["x"],

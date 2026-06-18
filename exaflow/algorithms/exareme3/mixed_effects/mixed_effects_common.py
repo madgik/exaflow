@@ -7,13 +7,10 @@ import numpy as np
 from exaflow.worker_communication import BadUserInput
 
 
-def normalize_grouping_vars(grouping_var: str | list[str]) -> list[str]:
-    if isinstance(grouping_var, str):
-        grouping_vars = [grouping_var]
-    elif isinstance(grouping_var, list):
-        grouping_vars = grouping_var
-    else:
-        raise BadUserInput("Parameter 'grouping_var' must be a string or a list.")
+def normalize_grouping_vars(grouping_var: list[str]) -> list[str]:
+    if not isinstance(grouping_var, list):
+        raise BadUserInput("Parameter 'grouping_var' must be a list.")
+    grouping_vars = grouping_var
 
     if not 1 <= len(grouping_vars) <= 2:
         raise BadUserInput(
@@ -26,16 +23,9 @@ def normalize_grouping_vars(grouping_var: str | list[str]) -> list[str]:
     return grouping_vars
 
 
-def display_grouping_var(grouping_var: str | list[str]) -> str | list[str]:
-    grouping_vars = normalize_grouping_vars(grouping_var)
-    if len(grouping_vars) == 1:
-        return grouping_vars[0]
-    return grouping_vars
-
-
 def split_grouping_var(
     x_vars: Iterable[str],
-    grouping_var: str | list[str],
+    grouping_var: list[str],
     metadata: dict,
 ) -> tuple[list[str], list[str]]:
     x_vars = list(x_vars)
@@ -56,14 +46,16 @@ def split_grouping_var(
     return categorical_vars, numerical_vars
 
 
-def get_group_ids(data, grouping_var: str | list[str]) -> np.ndarray:
+def get_group_ids(data, grouping_var: list[str]) -> np.ndarray:
     grouping_vars = normalize_grouping_vars(grouping_var)
     if len(grouping_vars) == 1:
         return data[grouping_vars[0]].astype(str).to_numpy(copy=False)
 
     group_frame = data[grouping_vars].astype(str)
     labels = group_frame.apply(
-        lambda row: "|".join(f"{var}={row[var]}" for var in grouping_vars),
+        lambda row: "".join(
+            f"{len(var)}:{var}{len(row[var])}:{row[var]}" for var in grouping_vars
+        ),
         axis=1,
     )
     return labels.to_numpy(copy=False)

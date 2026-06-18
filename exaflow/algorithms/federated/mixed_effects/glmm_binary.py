@@ -16,6 +16,7 @@ from exaflow.algorithms.federated.mixed_effects.common import (
 from exaflow.algorithms.federated.mixed_effects.common import logistic_sigmoid
 from exaflow.algorithms.federated.mixed_effects.common import pack_upper_triangle
 from exaflow.algorithms.federated.mixed_effects.common import unpack_upper_triangle
+from exaflow.algorithms.federated.mixed_effects.common import validate_inputs
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
@@ -427,8 +428,6 @@ class FederatedGLMMBinary(FederatedEstimator):
         if self.fit_intercept:
             X = self._add_intercept(X)
 
-        from exaflow.algorithms.federated.mixed_effects.common import validate_inputs
-
         validate_inputs(X, y, center_ids, w)
         if not np.all(np.isin(y, [0.0, 1.0])):
             raise BadInputError("GLMM binary expects y in {0,1}.")
@@ -439,10 +438,7 @@ class FederatedGLMMBinary(FederatedEstimator):
                 dtype=float,
             ).reshape(-1)[0]
         )
-        try:
-            n_groups = len(agg_client.union(center_ids.tolist()))
-        except Exception:
-            n_groups = len(np.unique(center_ids))
+        n_groups = len(agg_client.union(center_ids.tolist()))
 
         clusters = _prepare_binary_clusters(X, y, center_ids, w)
         p = X.shape[1]

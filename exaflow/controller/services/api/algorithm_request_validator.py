@@ -488,7 +488,6 @@ def _validate_parameters(
 
         if isinstance(parameter_values, bool):
             _validate_parameter_values(
-                parameter_name=parameter_name,
                 parameter_values=parameter_values,
                 parameter_spec=parameter_spec,
                 inputdata=inputdata,
@@ -498,7 +497,6 @@ def _validate_parameters(
 
         if parameter_values:
             _validate_parameter_values(
-                parameter_name=parameter_name,
                 parameter_values=parameter_values,
                 parameter_spec=parameter_spec,
                 inputdata=inputdata,
@@ -519,16 +517,13 @@ def _validate_parameters_are_in_the_specs(
 
 
 def _validate_parameter_values(
-    parameter_name: str,
     parameter_values: Any,
     parameter_spec: ParameterSpecification,
     inputdata: AlgorithmInputDataDTO,
     data_model_cdes: Dict[str, CommonDataElement],
 ):
     if parameter_spec.multiple and not isinstance(parameter_values, list):
-        if parameter_name != "grouping_var":
-            raise BadUserInput(f"Parameter '{parameter_spec.label}' should be a list.")
-        parameter_values = [parameter_values]
+        raise BadUserInput(f"Parameter '{parameter_spec.label}' should be a list.")
 
     if not parameter_spec.multiple:
         parameter_values = [parameter_values]

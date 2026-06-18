@@ -751,10 +751,7 @@ class FederatedGLMMOrdinal(FederatedEstimator):
                 agg_client.sum(np.array([float(X.shape[0])], dtype=float))
             ).reshape(-1)[0]
         )
-        try:
-            n_groups = len(agg_client.union(center_ids.tolist()))
-        except Exception:
-            n_groups = len(np.unique(center_ids))
+        n_groups = len(agg_client.union(center_ids.tolist()))
 
         p = X.shape[1]
         ordinal_dim = _ordinal_param_dim(self.K, self.fit_intercept)
