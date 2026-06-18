@@ -17,7 +17,7 @@ LMM_CASES = [
                     "datasets": ["ppmi0", "ppmi1", "desd-synthdata0"],
                     "filters": None,
                 },
-                "parameters": {"grouping_var": "dataset"},
+                "parameters": {"grouping_var": ["dataset"]},
                 "test_case_num": 0,
             },
             "expected_status": 200,
@@ -35,7 +35,7 @@ LMM_CASES = [
                     "datasets": ["ppmi0", "ppmi1", "ppmi2"],
                     "filters": None,
                 },
-                "parameters": {"grouping_var": "dataset"},
+                "parameters": {"grouping_var": ["dataset"]},
                 "test_case_num": 1,
             },
             "expected_status": 200,
@@ -53,7 +53,7 @@ LMM_CASES = [
                     "datasets": ["ppmi0", "ppmi1", "ppmi2"],
                     "filters": None,
                 },
-                "parameters": {"grouping_var": "dataset"},
+                "parameters": {"grouping_var": ["dataset"]},
                 "test_case_num": 2,
             },
             "expected_status": 200,
@@ -71,7 +71,7 @@ LMM_CASES = [
                     "datasets": ["ppmi0", "ppmi1", "ppmi2", "desd-synthdata1"],
                     "filters": None,
                 },
-                "parameters": {"grouping_var": "dataset"},
+                "parameters": {"grouping_var": ["dataset"]},
                 "test_case_num": 3,
             },
             "expected_status": 200,
@@ -89,7 +89,7 @@ LMM_CASES = [
                     "datasets": ["ppmi0", "ppmi1", "desd-synthdata1"],
                     "filters": None,
                 },
-                "parameters": {"grouping_var": "dataset"},
+                "parameters": {"grouping_var": ["dataset"]},
                 "test_case_num": 4,
             },
             "expected_status": 200,
@@ -107,7 +107,7 @@ LMM_CASES = [
                     "datasets": ["ppmi0", "ppmi1", "ppmi2"],
                     "filters": None,
                 },
-                "parameters": {"grouping_var": "gender"},
+                "parameters": {"grouping_var": ["gender"]},
                 "test_case_num": 5,
             },
             "expected_status": 200,
@@ -125,7 +125,7 @@ LMM_CASES = [
                     "datasets": ["ppmi0", "ppmi1", "ppmi2", "desd-synthdata1"],
                     "filters": None,
                 },
-                "parameters": {"grouping_var": "agegroup"},
+                "parameters": {"grouping_var": ["agegroup"]},
                 "test_case_num": 6,
             },
             "expected_status": 200,
@@ -161,7 +161,7 @@ LMM_CASES = [
                     "datasets": ["ppmi0", "ppmi1"],
                     "filters": None,
                 },
-                "parameters": {"grouping_var": "dataset"},
+                "parameters": {"grouping_var": ["dataset"]},
                 "test_case_num": 8,
             },
             "expected_status": 460,
@@ -186,7 +186,7 @@ LMM_CASES = [
                     "datasets": ["ppmi0", "ppmi1"],
                     "filters": None,
                 },
-                "parameters": {"grouping_var": "dataset"},
+                "parameters": {"grouping_var": ["dataset"]},
                 "test_case_num": 9,
             },
             "expected_status": 460,
@@ -210,7 +210,7 @@ LMM_CASES = [
                     "datasets": ["ppmi0", "ppmi1"],
                     "filters": None,
                 },
-                "parameters": {"grouping_var": "dataset"},
+                "parameters": {"grouping_var": ["dataset"]},
                 "test_case_num": 10,
             },
             "expected_status": 460,
@@ -234,10 +234,7 @@ def test_lmm_wrapper(case):
 
         assert result["dependent_var"] == case["request"]["inputdata"]["y"][0]
         grouping_var = case["request"]["parameters"]["grouping_var"]
-        expected_grouping_var = (
-            grouping_var[0] if len(grouping_var) == 1 else grouping_var
-        )
-        assert result["grouping_var"] == expected_grouping_var
+        assert result["grouping_var"] == grouping_var
         assert result["indep_vars"][0] == "Intercept"
 
         assert len(result["coefficients"]) == len(result["indep_vars"])
@@ -270,7 +267,7 @@ def test_lmm_wrapper(case):
             "non_dataset_grouping_gender",
             "non_dataset_grouping_agegroup",
         }:
-            assert result["grouping_var"] != "dataset"
+            assert result["grouping_var"] != ["dataset"]
         if case["name"] == "composite_dataset_gender_grouping":
             assert "gender" not in result["indep_vars"]
             assert result["grouping_var"] == ["dataset", "gender"]

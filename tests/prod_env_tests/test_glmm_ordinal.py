@@ -18,7 +18,7 @@ GLMM_ORDINAL_CASES = [
                     "filters": None,
                 },
                 "parameters": {
-                    "grouping_var": "dataset",
+                    "grouping_var": ["dataset"],
                     "category_order": ["-50y", "50-59y", "60-69y", "70-79y", "+80y"],
                 },
                 "test_case_num": 0,
@@ -39,7 +39,7 @@ GLMM_ORDINAL_CASES = [
                     "filters": None,
                 },
                 "parameters": {
-                    "grouping_var": "dataset",
+                    "grouping_var": ["dataset"],
                     "category_order": ["-50y", "50-59y", "60-69y", "70-79y", "+80y"],
                 },
                 "test_case_num": 1,
@@ -60,7 +60,7 @@ GLMM_ORDINAL_CASES = [
                     "filters": None,
                 },
                 "parameters": {
-                    "grouping_var": "dataset",
+                    "grouping_var": ["dataset"],
                     "category_order": ["-50y", "50-59y", "60-69y", "70-79y", "+80y"],
                 },
                 "test_case_num": 2,
@@ -86,7 +86,7 @@ GLMM_ORDINAL_CASES = [
                     "filters": None,
                 },
                 "parameters": {
-                    "grouping_var": "dataset",
+                    "grouping_var": ["dataset"],
                     "category_order": ["-50y", "50-59y", "60-69y", "70-79y", "+80y"],
                 },
                 "test_case_num": 3,
@@ -107,7 +107,7 @@ GLMM_ORDINAL_CASES = [
                     "filters": None,
                 },
                 "parameters": {
-                    "grouping_var": "dataset",
+                    "grouping_var": ["dataset"],
                     "category_order": ["-50y", "50-59y", "60-69y", "70-79y", "+80y"],
                 },
                 "test_case_num": 4,
@@ -128,7 +128,7 @@ GLMM_ORDINAL_CASES = [
                     "filters": None,
                 },
                 "parameters": {
-                    "grouping_var": "gender",
+                    "grouping_var": ["gender"],
                     "category_order": ["-50y", "50-59y", "60-69y", "70-79y", "+80y"],
                 },
                 "test_case_num": 5,
@@ -149,7 +149,7 @@ GLMM_ORDINAL_CASES = [
                     "filters": None,
                 },
                 "parameters": {
-                    "grouping_var": "alzheimerbroadcategory",
+                    "grouping_var": ["alzheimerbroadcategory"],
                     "category_order": ["-50y", "50-59y", "60-69y", "70-79y", "+80y"],
                 },
                 "test_case_num": 6,
@@ -170,7 +170,7 @@ GLMM_ORDINAL_CASES = [
                     "filters": None,
                 },
                 "parameters": {
-                    "grouping_var": "dataset",
+                    "grouping_var": ["dataset"],
                     "category_order": ["50-59y", "60-69y", "70-79y", "+80y"],
                 },
                 "test_case_num": 7,
@@ -192,7 +192,7 @@ GLMM_ORDINAL_CASES = [
                     "filters": None,
                 },
                 "parameters": {
-                    "grouping_var": "dataset",
+                    "grouping_var": ["dataset"],
                     "category_order": ["-50y", "50-59y", "60-69y", "60-69y", "+80y"],
                 },
                 "test_case_num": 8,
@@ -214,7 +214,7 @@ GLMM_ORDINAL_CASES = [
                     "filters": None,
                 },
                 "parameters": {
-                    "grouping_var": "dataset",
+                    "grouping_var": ["dataset"],
                     "category_order": ["-50y", "50-59y", "60-69y", "70-79y", "+80y"],
                 },
                 "test_case_num": 9,
