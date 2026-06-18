@@ -29,6 +29,10 @@ Definition of Done:
 - All generated placeholder text is replaced (`TODO`, `NotImplementedError`,
   `__REPLACE_ME_*__`).
 - Exareme3 wrapper and federated core import successfully.
+- New algorithm code should not be backwards compatible by default. Do not add
+  legacy request shapes, aliases, fallback paths, deprecated output fields,
+  compatibility shims, or silent normalization for old callers unless the user
+  explicitly asks for backwards compatibility.
 - `get_specification()` uses UI-ready metadata: compact standard `label`, one
   concise method-level `desc`, and detailed parent algorithm/preprocessing step
   `documentation` for formulas/defaults/ranges, option lists, assumptions,
@@ -122,6 +126,8 @@ poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_alg
 
 1. Run scaffold with `--algorithms <name>` and `--family <family>`.
 1. Implement Exareme3 wrapper logic in `exaflow/algorithms/exareme3/<name>.py`.
+1. Prefer one clear current request/response contract; do not add backwards
+   compatibility behavior unless explicitly requested.
 1. Write `get_specification()` text for the UI: use compact standard labels,
    one concise method-level `desc`, and parent `documentation` for formulas,
    defaults, ranges, strategy options, assumptions, outputs, result

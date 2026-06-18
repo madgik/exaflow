@@ -152,6 +152,10 @@ ownership. Non-negotiable boundaries:
   and single-line imports. Do not run Ruff manually to enforce this.
 - Prefer Pydantic models for API and algorithm request/response data already
   modeled by the repo.
+- New code should not be backwards compatible by default. Do not add legacy
+  request shapes, aliases, fallback paths, deprecated output fields, compatibility
+  shims, or silent normalization for old callers unless the user explicitly asks
+  for backwards compatibility.
 - Keep algorithm ids lower snake_case and use the same id for module names,
   request names, spec names, tests, fixtures, and docs unless existing display
   docs intentionally differ.
@@ -215,7 +219,9 @@ Every agent change should report:
 - Files changed.
 - Tests and validation commands run.
 - Risk assessment, including whether deployment, privacy, API, or data contracts
-  are affected.
+  are affected. Backwards-incompatible API, request, response, or algorithm
+  contract changes are acceptable by default when they keep the new behavior
+  simpler and correct; document the break instead of adding compatibility paths.
 - Rollback notes when the change affects runtime behavior, deployment, data, or
   public interfaces.
 
@@ -228,7 +234,8 @@ change.
 - The diff is minimal and directly tied to the request.
 - Relevant source, tests, configs, and docs were read before editing.
 - Public API, algorithm, proto, config, and deployment compatibility impacts are
-  documented when touched.
+  documented when touched; do not preserve backwards compatibility unless the
+  user explicitly requests it.
 - Focused tests passed, or unrun checks are named with the reason and residual
   risk.
 - No unrelated user changes were overwritten.

@@ -27,6 +27,10 @@ Definition of Done:
 - `validate_algorithms.py --new-algorithm <name>` exits successfully.
 - Validator JSON contains no `failed` entries.
 - Validator JSON contains no `warnings` entries.
+- New or changed algorithm contracts should not be backwards compatible by
+  default. Treat legacy request shapes, aliases, fallback paths, deprecated
+  output fields, compatibility shims, and silent normalization for old callers
+  as invalid unless the user explicitly asks for backwards compatibility.
 - Focused standalone tests pass.
 - Ignore import-order and formatting-only lint findings. Automated tools handle
   those mechanical edits.
@@ -93,6 +97,9 @@ Manual specification review:
 
 - `label` values should be compact, standard, user-facing, and not
   implementation-specific.
+- Specs should describe the current contract only. Do not preserve or advertise
+  old request/response shapes unless backwards compatibility was explicitly
+  requested.
 - Algorithm/preprocessing `desc` values should be compact UI copy: one concise
   method-level sentence suitable for cards/tooltips.
 - Detailed formulas/defaults/ranges, parameter option lists, and output
