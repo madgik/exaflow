@@ -1,20 +1,17 @@
 FROM python:3.10.18-slim-bullseye AS builder
 
-ENV PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=on \
-    PIP_DEFAULT_TIMEOUT=100 \
-    POETRY_VERSION=2.3.2 \
-    POETRY_HOME="/opt/poetry" \
-    POETRY_VIRTUALENVS_CREATE=false \
-    POETRY_NO_INTERACTION=1 \
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never \
     CODE_PATH="/opt/code"
+
+COPY --from=ghcr.io/astral-sh/uv:0.11.0 /uv /uvx /bin/
 
 WORKDIR $CODE_PATH
 
-COPY pyproject.toml poetry.lock ./
-RUN pip install --no-cache-dir --prefix "$POETRY_HOME" poetry==$POETRY_VERSION \
-    && PYTHONPATH="/opt/poetry/lib/python3.10/site-packages" python -m poetry install --only main --only controller --no-root \
-    && rm -rf /root/.cache/pip /root/.cache/pypoetry "$POETRY_HOME"
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-install-project --no-default-groups --group controller
 
 FROM python:3.10.18-slim-bullseye
 LABEL maintainer="Thanasis Karampatsis <tkarabatsis@athenarc.gr>"
@@ -29,10 +26,11 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 # Env & workdir
 #######################################################
 ENV PYTHONUNBUFFERED=1 \
-    CODE_PATH="/opt/code"
+    CODE_PATH="/opt/code" \
+    PATH="/opt/code/.venv/bin:$PATH"
 WORKDIR $CODE_PATH
 
-COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+COPY --from=builder $CODE_PATH/.venv $CODE_PATH/.venv
 
 #######################################################
 # Copying the codebase

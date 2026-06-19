@@ -1,6 +1,6 @@
 # Agent Instructions: exadata-validator
 
-This directory is a separate Poetry package for validating data-model folders
+This directory is a separate uv-managed package for validating data-model folders
 using DuckDB. Follow the root `AGENTS.md` first, then these package-specific
 rules.
 
@@ -16,19 +16,19 @@ Run commands from `exadata-validator/`.
 Install:
 
 ```bash
-poetry install
+uv sync --all-groups
 ```
 
 Test:
 
 ```bash
-poetry run pytest -q
+uv run pytest -q
 ```
 
 Build:
 
 ```bash
-poetry build
+uv build
 ```
 
 Smoke test an installed package as CI does:

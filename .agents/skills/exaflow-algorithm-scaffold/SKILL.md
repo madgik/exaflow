@@ -77,31 +77,31 @@ If a delegated agent has no meaningful file diff or command result after 5-8 min
 Mechanical integration gate runner:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm my_new_algorithm --family statistics
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm my_new_algorithm --family statistics
 ```
 
 After implementation edits are already present:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm my_new_algorithm --family statistics --skip-scaffold
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm my_new_algorithm --family statistics --skip-scaffold
 ```
 
 Scaffold one new algorithm with family-aware integration patches:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms my_new_algorithm --family statistics
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms my_new_algorithm --family statistics
 ```
 
 Plan-only / impact preview:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms my_new_algorithm --family statistics --dry-run
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms my_new_algorithm --family statistics --dry-run
 ```
 
 Scaffold explicit standalone subfolder (overrides family inference):
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms my_new_algorithm --subfolder linear_model
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms my_new_algorithm --subfolder linear_model
 ```
 
 ## CLI Contract
@@ -150,25 +150,25 @@ poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_alg
 - `statistics`:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms my_stat_algo --family statistics
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms my_stat_algo --family statistics
 ```
 
 - `linear_model`:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms my_linear_algo --family linear_model
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms my_linear_algo --family linear_model
 ```
 
 - `decomposition`:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms my_decomp_algo --family decomposition
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms my_decomp_algo --family decomposition
 ```
 
 - `naive_bayes`:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms my_nb_algo --family naive_bayes
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms my_nb_algo --family naive_bayes
 ```
 
 ## Troubleshooting

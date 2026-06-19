@@ -366,7 +366,7 @@ def load_runtime_catalog(repo_root: Path) -> list[str]:
     except Exception:  # pylint: disable=broad-except
         probe = subprocess.run(
             [
-                "poetry",
+                "uv",
                 "run",
                 "python",
                 "-c",
@@ -384,11 +384,11 @@ def load_runtime_catalog(repo_root: Path) -> list[str]:
         )
         if probe.returncode != 0:
             message = probe.stderr.strip() or probe.stdout.strip() or "Unknown error"
-            raise RuntimeError(f"Failed to load runtime catalog via poetry: {message}")
+            raise RuntimeError(f"Failed to load runtime catalog via uv: {message}")
 
         output = probe.stdout.strip()
         if not output:
-            raise RuntimeError("Poetry probe returned empty runtime catalog output.")
+            raise RuntimeError("uv probe returned empty runtime catalog output.")
         return json.loads(output)
 
 
@@ -1301,7 +1301,7 @@ def main() -> int:
                                     "message": runtime_catalog_error,
                                     "next_action": (
                                         "Run from the repository root and ensure "
-                                        "poetry dependencies are available."
+                                        "uv dependencies are available."
                                     ),
                                     "path": None,
                                 }

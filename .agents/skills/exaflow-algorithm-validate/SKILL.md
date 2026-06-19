@@ -47,25 +47,25 @@ When supervising a delegated validation run, request a status snapshot after 5-8
 Validate changed algorithms (default selection):
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root .
+uv run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root .
 ```
 
 Validate explicit targets:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --algorithms my_algorithm
+uv run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --algorithms my_algorithm
 ```
 
 Validate all runtime-catalog algorithms:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --all
+uv run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --all
 ```
 
 New-algorithm strict checklist:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm my_new_algorithm --strict
+uv run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm my_new_algorithm --strict
 ```
 
 ## Validation Contract
@@ -144,13 +144,13 @@ Path policy:
 - Statistics-family new algorithm:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm my_stat_algo
+uv run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm my_stat_algo
 ```
 
 - Linear-model family new algorithm:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm my_linear_algo
+uv run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm my_linear_algo
 ```
 
 ## Troubleshooting

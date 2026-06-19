@@ -5,27 +5,27 @@ with `AGENTS.md` at the repository root.
 
 ## Package Manager
 
-Detected: Poetry for the root package and the nested `exadata-validator`
+Detected: uv for the root package and the nested `exadata-validator`
 package.
 
 Evidence:
 
-- Root `pyproject.toml` and `poetry.lock`.
-- `exadata-validator/pyproject.toml` and `exadata-validator/poetry.lock`.
-- CI uses `snok/install-poetry` and `poetry install`.
+- Root `pyproject.toml` and `uv.lock`.
+- `exadata-validator/pyproject.toml` and `exadata-validator/uv.lock`.
+- CI uses `astral-sh/setup-uv` and `uv sync --all-groups`.
 
 ## Install
 
 Root package:
 
 ```bash
-poetry install
+uv sync --all-groups
 ```
 
 Optional shell:
 
 ```bash
-poetry shell
+source .venv/bin/activate
 ```
 
 Optional hooks:
@@ -38,7 +38,7 @@ Nested validator package:
 
 ```bash
 cd exadata-validator
-poetry install
+uv sync --all-groups
 ```
 
 ## Run Locally
@@ -47,34 +47,34 @@ Create local deployment config:
 
 ```bash
 cp .deployment.sample.toml .deployment.toml
-poetry run inv create-configs
+uv run inv create-configs
 ```
 
 Deploy all local services:
 
 ```bash
-poetry run inv deploy
+uv run inv deploy
 ```
 
 Deploy without installing dependencies:
 
 ```bash
-poetry run inv deploy --no-install-dep
+uv run inv deploy --no-install-dep
 ```
 
 Start services individually:
 
 ```bash
-poetry run inv start-controller
-poetry run inv start-worker --worker localworker1
-poetry run inv start-aggregation-server
+uv run inv start-controller
+uv run inv start-worker --worker localworker1
+uv run inv start-aggregation-server
 ```
 
 Attach to service output:
 
 ```bash
-poetry run inv attach --controller
-poetry run inv attach --worker localworker1
+uv run inv attach --controller
+uv run inv attach --worker localworker1
 ```
 
 Run an analysis request:
@@ -113,7 +113,7 @@ Nested validator package:
 
 ```bash
 cd exadata-validator
-poetry build
+uv build
 ```
 
 ## Test
@@ -121,40 +121,40 @@ poetry build
 Fast standalone suite:
 
 ```bash
-poetry run pytest -q tests/standalone_tests
+uv run pytest -q tests/standalone_tests
 ```
 
 CI standalone suite:
 
 ```bash
-poetry run pytest -s -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests --verbosity=4
+uv run pytest -s -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests --verbosity=4
 ```
 
 Focused federated algorithm test:
 
 ```bash
-poetry run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py
+uv run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py
 ```
 
 Algorithm validation suite:
 
 ```bash
-poetry run inv create-configs
-poetry run inv deploy --no-install-dep
-poetry run pytest tests/algorithm_validation_tests/exareme3 --verbosity=4
+uv run inv create-configs
+uv run inv deploy --no-install-dep
+uv run pytest tests/algorithm_validation_tests/exareme3 --verbosity=4
 ```
 
 Prod environment suite:
 
 ```bash
-poetry run pytest tests/prod_env_tests --verbosity=4
+uv run pytest tests/prod_env_tests --verbosity=4
 ```
 
 Nested validator tests:
 
 ```bash
 cd exadata-validator
-poetry run pytest -q
+uv run pytest -q
 ```
 
 ## Lint / Format
@@ -196,13 +196,13 @@ No schema migration command was detected. Workers load CSV data into DuckDB.
 Create DuckDB data for workers through Invoke:
 
 ```bash
-poetry run inv create-duckdb --worker localworker1
+uv run inv create-duckdb --worker localworker1
 ```
 
 Structure test data paths:
 
 ```bash
-poetry run inv structure-data
+uv run inv structure-data
 ```
 
 ## Docker
@@ -210,13 +210,13 @@ poetry run inv structure-data
 Remove local containers through Invoke:
 
 ```bash
-poetry run inv rm-containers
+uv run inv rm-containers
 ```
 
 Start optional SMPC deployment:
 
 ```bash
-poetry run inv deploy-smpc
+uv run inv deploy-smpc
 ```
 
 Treat cleanup/removal commands as potentially destructive.
@@ -242,25 +242,25 @@ Development kind setup is documented in `kubernetes/DevDeployment.md`.
 Scaffold/integrate a new algorithm:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family>
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family>
 ```
 
 Re-run after implementation:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold
 ```
 
 Validate algorithm artifacts:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm <algorithm_id>
+uv run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm <algorithm_id>
 ```
 
 ## CI
 
 - `.github/workflows/lint.yml` runs import-order lint and format checks.
-- `.github/workflows/standalone_tests.yml` installs Python 3.10 and Poetry,
+- `.github/workflows/standalone_tests.yml` installs Python 3.10 and uv,
   then runs standalone tests excluding SMPC.
 - `.github/workflows/algorithm_validation_tests.yml` deploys local services and
   runs Exareme3 algorithm validation tests.

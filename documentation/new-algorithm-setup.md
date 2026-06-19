@@ -6,7 +6,7 @@ working from the repository root.
 
 ## What You Need First
 
-- Python dependencies installed with `poetry install`.
+- Python dependencies installed with `uv sync --all-groups`.
 - A lower snake_case algorithm id, for example `ttest_welch`.
 - A federated family, for example `statistics`, `linear_model`,
   `decomposition`, or `naive_bayes`.
@@ -30,10 +30,10 @@ registrations, standalone parity tests, prod validation fixture/test, and
 algorithm docs.
 
 Start with:
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family>
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family>
 
 After implementation edits, keep rerunning:
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold
 
 Keep fixing until the integration driver reports "done": true. Use --strict
 only when the prod environment is available. Return the changed files, commands
@@ -43,7 +43,7 @@ run, elapsed time, and any blocker.
 Example for a statistics algorithm:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm ttest_welch --family statistics
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm ttest_welch --family statistics
 ```
 
 Concrete prompt example:
@@ -58,10 +58,10 @@ registrations, standalone parity tests, prod validation fixture/test, and
 algorithm docs.
 
 Start with:
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm ttest_welch --family statistics
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm ttest_welch --family statistics
 
 After implementation edits, keep rerunning:
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm ttest_welch --family statistics --skip-scaffold
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm ttest_welch --family statistics --skip-scaffold
 
 Keep fixing until the integration driver reports "done": true. Use --strict
 only when the prod environment is available. Return the changed files, commands
@@ -73,13 +73,13 @@ run, elapsed time, and any blocker.
 1. Preview the files and integration patches:
 
    ```bash
-   poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms <algorithm_id> --family <family> --dry-run
+   uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms <algorithm_id> --family <family> --dry-run
    ```
 
 1. Scaffold the algorithm:
 
    ```bash
-   poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms <algorithm_id> --family <family>
+   uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms <algorithm_id> --family <family>
    ```
 
 1. Replace the generated placeholders with real implementation and tests.
@@ -87,13 +87,13 @@ run, elapsed time, and any blocker.
 1. Run the mechanical integration gate:
 
    ```bash
-   poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold
+   uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold
    ```
 
 1. If the prod environment is available, run the strict gate:
 
    ```bash
-   poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold --strict
+   uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold --strict
    ```
 
 The gate fails on warnings for new algorithms. Treat every `failed` and `warn`
@@ -138,26 +138,26 @@ If the standalone test path should not match the family name, pass
 Direct new-algorithm validation:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm <algorithm_id>
+uv run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm <algorithm_id>
 ```
 
 Strict validation with prod tests:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm <algorithm_id> --strict
+uv run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm <algorithm_id> --strict
 ```
 
 Focused standalone test:
 
 ```bash
-poetry run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py
+uv run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py
 ```
 
 Focused formatting gates:
 
 ```bash
-poetry run ruff check --select I exaflow/algorithms/exareme3/<algorithm_id>.py exaflow/algorithms/federated/<family>/<algorithm_id>.py tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py tests/prod_env_tests/test_<algorithm_id>.py
-poetry run ruff format --check exaflow/algorithms/exareme3/<algorithm_id>.py exaflow/algorithms/federated/<family>/<algorithm_id>.py tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py tests/prod_env_tests/test_<algorithm_id>.py
+uv run ruff check --select I exaflow/algorithms/exareme3/<algorithm_id>.py exaflow/algorithms/federated/<family>/<algorithm_id>.py tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py tests/prod_env_tests/test_<algorithm_id>.py
+uv run ruff format --check exaflow/algorithms/exareme3/<algorithm_id>.py exaflow/algorithms/federated/<family>/<algorithm_id>.py tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py tests/prod_env_tests/test_<algorithm_id>.py
 ```
 
 ## Definition Of Done
@@ -182,5 +182,5 @@ poetry run ruff format --check exaflow/algorithms/exareme3/<algorithm_id>.py exa
 | Runtime catalog membership failure | Check `get_specification().name`, `AlgorithmName`, and module discovery under `exaflow/algorithms/exareme3`. |
 | Registration symbol missing | Patch the reported `__init__.py` or rerun scaffold with `--with-registration`. |
 | Placeholder check failed | Replace generated `TODO`, `NotImplementedError`, and `__REPLACE_ME_*__` values. |
-| Ruff import or format failure | Run `poetry run ruff check --select I --fix <files>` and `poetry run ruff format <files>`. |
+| Ruff import or format failure | Run `uv run ruff check --select I --fix <files>` and `uv run ruff format <files>`. |
 | Strict prod test failure | Confirm the prod environment is running and expected fixture values match available datasets. |
