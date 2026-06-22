@@ -1,7 +1,6 @@
 FROM python:3.10.18-slim-bullseye AS builder
 
-ENV UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy \
+ENV UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never \
     CODE_PATH="/opt/code"
 
@@ -27,32 +26,32 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 # Setting up env variables and workdir
 #######################################################
 ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
     DATA_PATH="/opt/data" \
     CODE_PATH="/opt/code" \
     PATH="/opt/code/.venv/bin:$PATH"
 WORKDIR $CODE_PATH
 
 ENV PYTHONPATH=$CODE_PATH
-RUN mkdir $DATA_PATH
+
+RUN groupadd -g 10001 appuser \
+    && useradd -m -u 10001 -g appuser -s /bin/bash appuser
+
+RUN mkdir -p $DATA_PATH && chown 10001:10001 $DATA_PATH
 VOLUME $DATA_PATH
 
-COPY --from=builder $CODE_PATH/.venv $CODE_PATH/.venv
+COPY --chown=10001:10001 --from=builder $CODE_PATH/.venv $CODE_PATH/.venv
 
 #######################################################
 # Copying the codebase
 #######################################################
-COPY exaflow/ ./exaflow/
+COPY --chown=10001:10001 exaflow/ ./exaflow/
 RUN rm -rf exaflow/controller
-
-RUN groupadd -g 10001 appuser \
-    && useradd -m -u 10001 -g appuser -s /bin/bash appuser \
-    && chown -R appuser:appuser /opt/code /opt/data /home/appuser
 
 #######################################################
 # Setup bootstrap file
 #######################################################
-COPY exaflow/worker/bootstrap.sh /home/bootstrap.sh
-RUN chmod 775 /home/bootstrap.sh
+COPY --chown=10001:10001 --chmod=755 exaflow/worker/bootstrap.sh /home/bootstrap.sh
 
 USER appuser
 CMD ["sh", "-c", "/home/bootstrap.sh"]

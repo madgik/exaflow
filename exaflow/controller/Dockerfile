@@ -1,7 +1,6 @@
 FROM python:3.10.18-slim-bullseye AS builder
 
-ENV UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy \
+ENV UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never \
     CODE_PATH="/opt/code"
 
@@ -26,21 +25,21 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 # Env & workdir
 #######################################################
 ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
     CODE_PATH="/opt/code" \
     PATH="/opt/code/.venv/bin:$PATH"
 WORKDIR $CODE_PATH
 
-COPY --from=builder $CODE_PATH/.venv $CODE_PATH/.venv
+RUN groupadd -g 10001 appuser \
+    && useradd -m -u 10001 -g appuser -s /bin/bash appuser
+
+COPY --chown=10001:10001 --from=builder $CODE_PATH/.venv $CODE_PATH/.venv
 
 #######################################################
 # Copying the codebase
 #######################################################
-COPY exaflow/ ./exaflow/
+COPY --chown=10001:10001 exaflow/ ./exaflow/
 RUN rm -rf exaflow/worker
-
-RUN groupadd -g 10001 appuser \
-    && useradd -m -u 10001 -g appuser -s /bin/bash appuser \
-    && chown -R appuser:appuser /opt/code
 
 #######################################################
 # Define Hypercorn needed env variables and start hypercorn

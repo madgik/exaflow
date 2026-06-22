@@ -1,7 +1,6 @@
 FROM python:3.10.18-slim-bullseye AS builder
 
-ENV UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy \
+ENV UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.0 /uv /uvx /bin/
@@ -17,7 +16,8 @@ LABEL maintainer="Konstantinos Filippopolitis <kfilippopolitis@athenarc.gr>"
 
 WORKDIR /app
 
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/app/.venv/bin:$PATH"
 COPY --from=builder /app/.venv /app/.venv
 
 COPY exaflow/aggregation_server ./exaflow/aggregation_server
