@@ -18,27 +18,18 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
         with:
-          version: 2.3.2
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Load cached venv
-        id: cached-poetry-dependencies
-        uses: actions/cache@v5
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
+          version: "0.11.0"
+          enable-cache: true
 
       - name: Install dependencies
-        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction --no-root
+        run: uv sync --locked --all-groups --no-install-project
 
       - name: Run all standalone tests except the SMPC
         id: non_smpc_tests
-        run: poetry run pytest -s -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests --verbosity=4
+        run: uv run --no-sync pytest -s -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests --verbosity=4
         env:
           PYTHONPATH: ${{ github.workspace }}/exaflow:${{ github.workspace }}
           PULL_DOCKER_IMAGES: false
@@ -47,8 +38,8 @@ jobs:
 #      - name: Run SMPC specific standalone tests after releasing previous test resources
 #        if: success() || ( failure() && steps.non_smpc_tests.outcome == 'failure' )
 #        run:  |
-#          poetry run inv cleanup
-#          poetry run pytest -s -m "smpc" --cov=exaflow --cov-report=xml:smpc_cov.xml tests/standalone_tests --verbosity=4 --reruns 3 --reruns-delay 5
+#          uv run --no-sync inv cleanup
+#          uv run --no-sync pytest -s -m "smpc" --cov=exaflow --cov-report=xml:smpc_cov.xml tests/standalone_tests --verbosity=4 --reruns 3 --reruns-delay 5
 #        env:
 #          PULL_DOCKER_IMAGES: false
 

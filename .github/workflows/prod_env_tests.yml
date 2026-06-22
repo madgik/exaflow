@@ -10,7 +10,7 @@ jobs:
   run_tests:
     runs-on: ubuntu-latest
     env:
-      CI_FREE_UP_SPACE: "false"
+      CI_FREE_UP_SPACE: "true"
 
     steps:
       - name: Check out repository
@@ -21,23 +21,14 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
         with:
-          version: 2.3.2
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Load cached venv
-        id: cached-poetry-dependencies
-        uses: actions/cache@v5
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
+          version: "0.11.0"
+          enable-cache: true
 
       - name: Install dependencies
-        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction --no-root
+        run: uv sync --locked --all-groups --no-install-project
 
       - name: Build data paths for workers
         run: |
@@ -121,10 +112,7 @@ jobs:
 
       - name: Free up space, by removing dotnet, android and haskell unused libs.
         if: env.CI_FREE_UP_SPACE == 'true'
-        run: |
-          rm -rf /usr/share/dotnet
-          rm -rf /opt/ghc
-          sudo rm -rf /usr/local/lib/android
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android
 
       - name: Get container disk space
         if: env.CI_FREE_UP_SPACE == 'true'
@@ -147,7 +135,8 @@ jobs:
 
       - name: Wait for pods to get healthy
         run: |
-          if ! timeout 300 bash -c '
+          set +e
+          timeout 300 bash -c '
           set -euo pipefail
 
           while true; do
@@ -184,8 +173,10 @@ jobs:
               sleep 5
             fi
           done
-          '; then
-            exit_code=$?
+          '
+          exit_code=$?
+          set -e
+          if [ "$exit_code" -ne 0 ]; then
             if [ "$exit_code" -eq 124 ]; then
               echo "Timeout exceeded while waiting for pods. Describing unready pods..."
               unready_pods=$(kubectl get pods --no-headers \
@@ -247,4 +238,4 @@ jobs:
         run: curl "http://172.17.0.1:5100/healthcheck"
 
       - name: Run production env tests
-        run: poetry run pytest tests/prod_env_tests --verbosity=4
+        run: uv run --no-sync pytest tests/prod_env_tests --verbosity=4

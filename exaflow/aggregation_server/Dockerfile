@@ -1,27 +1,24 @@
 FROM python:3.10.18-slim-bullseye AS builder
 
-ENV PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=on \
-    PIP_DEFAULT_TIMEOUT=100 \
-    POETRY_VERSION=2.3.2 \
-    POETRY_NO_INTERACTION=1 \
-    POETRY_HOME="/opt/poetry"
+ENV UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never
+
+COPY --from=ghcr.io/astral-sh/uv:0.11.0 /uv /uvx /bin/
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir --prefix "$POETRY_HOME" poetry==$POETRY_VERSION \
-    && PYTHONPATH="/opt/poetry/lib/python3.10/site-packages" python -m poetry config virtualenvs.create false
-
-COPY pyproject.toml poetry.lock ./
-RUN PYTHONPATH="/opt/poetry/lib/python3.10/site-packages" python -m poetry install --only aggregation-server --no-root --no-ansi \
-    && rm -rf /root/.cache/pip /root/.cache/pypoetry "$POETRY_HOME"
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-install-project --only-group aggregation-server
 
 FROM python:3.10.18-slim-bullseye
 LABEL maintainer="Konstantinos Filippopolitis <kfilippopolitis@athenarc.gr>"
 
 WORKDIR /app
 
-COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/app/.venv/bin:$PATH"
+COPY --from=builder /app/.venv /app/.venv
 
 COPY exaflow/aggregation_server ./exaflow/aggregation_server
 COPY exaflow/aggregation_serialization.py ./exaflow/aggregation_serialization.py

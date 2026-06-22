@@ -86,5 +86,5 @@ helm install exaflow kubernetes/ --set exaflow_images.version=<TAG>
 6. (Validation) You can then run the prod_env_tests to see if the deployment is working (it might take about a minute for services to sync):
 
 ```
-poetry run pytest tests/prod_env_tests/
+uv run pytest tests/prod_env_tests/
 ```

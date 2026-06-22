@@ -12,9 +12,9 @@
 
 ### Package Management
 
-- Root Exaflow package uses Poetry.
-- `exadata-validator` is a separate Poetry package with its own lockfile.
-- CI installs dependencies with Poetry and often uses `--no-root` for root
+- Root Exaflow package uses uv.
+- `exadata-validator` is a separate uv-managed package with its own lockfile.
+- CI installs dependencies with uv and often uses `--no-install-project` for root
   Exaflow tests.
 
 ### Configuration

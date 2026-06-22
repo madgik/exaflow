@@ -103,6 +103,7 @@ EXAFLOW_AGG_SERVER_CONFIG_FILE = "EXAFLOW_AGG_SERVER_CONFIG_FILE"
 DATA_PATH = "DATA_PATH"
 WORKER_STARTUP_SUCCESS_LOG = "Data folder loaded successfully on startup."
 WORKER_STARTUP_TIMEOUT_SECONDS = 120
+UV_RUN_NO_SYNC = "uv run --no-sync"
 
 
 def _expand_path(path_value) -> Path:
@@ -334,9 +335,9 @@ def create_configs(c):
 
 @task
 def install_dependencies(c):
-    """Install project dependencies using poetry."""
+    """Install project dependencies using uv."""
     message("Installing dependencies...", Level.HEADER)
-    cmd = "poetry install"
+    cmd = "uv sync --all-groups"
     run(c, cmd)
 
 
@@ -604,7 +605,7 @@ def start_worker(
 
         with env_prefixes(c, env_vars):
             cmd = (
-                f"PYTHONPATH={PROJECT_ROOT} poetry run python -m "
+                f"PYTHONPATH={PROJECT_ROOT} {UV_RUN_NO_SYNC} python -m "
                 f"exaflow.worker.grpc_server --worker-id {worker_id}"
             )
             run(c, cmd, attach_=True)
@@ -629,7 +630,7 @@ def start_worker(
         with env_prefixes(c, env_vars):
             outpath = OUTDIR / f"{worker_id}.out"
             cmd = (
-                f"PYTHONPATH={PROJECT_ROOT}: poetry run python -m "
+                f"PYTHONPATH={PROJECT_ROOT}: {UV_RUN_NO_SYNC} python -m "
                 f"exaflow.worker.grpc_server --worker-id {worker_id} "
                 f"> {outpath} 2>&1"
             )
@@ -685,7 +686,8 @@ def start_aggregation_server(c, detached: bool = False):
 
     # run the script directly instead of -m exaflow.aggregation_server.server
     run_cmd = (
-        f"cd {PROJECT_ROOT!s} && poetry run python -m exaflow.aggregation_server.server"
+        f"cd {PROJECT_ROOT!s} && {UV_RUN_NO_SYNC} python -m "
+        "exaflow.aggregation_server.server"
     )
 
     if detached:
@@ -796,14 +798,19 @@ def start_controller(
         outpath = OUTDIR / "controller.out"
         if detached:
             cmd = (
-                f"PYTHONPATH={PROJECT_ROOT} poetry run hypercorn --config python:exaflow.controller.quart.hypercorn_config "
-                f"-b 0.0.0.0:{controller_port} exaflow.controller.quart.app:app >> {outpath} 2>&1"
+                f"PYTHONPATH={PROJECT_ROOT} {UV_RUN_NO_SYNC} hypercorn "
+                "--config python:exaflow.controller.quart.hypercorn_config "
+                f"-b 0.0.0.0:{controller_port} "
+                "exaflow.controller.quart.app:app "
+                f">> {outpath} 2>&1"
             )
             run(c, cmd, wait=False)
         else:
             cmd = (
-                f"PYTHONPATH={PROJECT_ROOT} poetry run hypercorn --config python:exaflow.controller.quart.hypercorn_config "
-                f"-b 0.0.0.0:{controller_port} exaflow.controller.quart.app:app"
+                f"PYTHONPATH={PROJECT_ROOT} {UV_RUN_NO_SYNC} hypercorn "
+                "--config python:exaflow.controller.quart.hypercorn_config "
+                f"-b 0.0.0.0:{controller_port} "
+                "exaflow.controller.quart.app:app"
             )
             run(c, cmd, attach_=True)
 

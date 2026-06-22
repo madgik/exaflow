@@ -168,7 +168,7 @@ def build_gate_plan(
             GatePlan(
                 name="scaffold",
                 command=[
-                    "poetry",
+                    "uv",
                     "run",
                     "python",
                     ".agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py",
@@ -186,7 +186,7 @@ def build_gate_plan(
         )
 
     validate_command = [
-        "poetry",
+        "uv",
         "run",
         "python",
         ".agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py",
@@ -210,7 +210,7 @@ def build_gate_plan(
             GatePlan(
                 name="ruff_import_order",
                 command=[
-                    "poetry",
+                    "uv",
                     "run",
                     "ruff",
                     "check",
@@ -224,8 +224,8 @@ def build_gate_plan(
         gates.append(
             GatePlan(
                 name="ruff_format",
-                command=["poetry", "run", "ruff", "format", "--check", *lint_files],
-                next_action="Run poetry run ruff format on the listed files.",
+                command=["uv", "run", "ruff", "format", "--check", *lint_files],
+                next_action="Run uv run ruff format on the listed files.",
             )
         )
     else:
@@ -240,7 +240,7 @@ def build_gate_plan(
     gates.append(
         GatePlan(
             name="standalone_pytest",
-            command=["poetry", "run", "pytest", "-q", standalone_rel]
+            command=["uv", "run", "pytest", "-q", standalone_rel]
             if paths["standalone_test"].exists()
             else None,
             next_action=f"Create and implement {standalone_rel}.",

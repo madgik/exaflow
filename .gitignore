@@ -149,8 +149,8 @@ pyrightconfig.json
 .stored_data/
 *.db
 /tests/test_data/.data_paths/
+/tests/test_data/localworker*/
 /logs/
-poetry.toml
 
 # LLMs
 .codex

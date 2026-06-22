@@ -151,7 +151,7 @@ Notes: kind is used for CI-like prod environment validation.
 
 ## `exadata-validator`
 
-Purpose: Separate Poetry package that validates data-model folders using
+Purpose: Separate Python package that validates data-model folders using
 DuckDB.
 
 Key files: `pyproject.toml`, `validator/commands.py`,
@@ -162,7 +162,7 @@ Used by: CLI users and package publishing workflow.
 Rules: Run commands from `exadata-validator/`; keep package metadata separate
 from the root package.
 
-Tests: `cd exadata-validator && poetry run pytest -q`.
+Tests: `cd exadata-validator && uv run pytest -q`.
 
 Notes: Package exposes `exadata-validator` and `python -m validator`.
 

@@ -187,7 +187,7 @@ def load_runtime_catalog(repo_root: Path) -> list[str]:
     except Exception:  # pylint: disable=broad-except
         probe = subprocess.run(
             [
-                "poetry",
+                "uv",
                 "run",
                 "python",
                 "-c",
@@ -205,11 +205,11 @@ def load_runtime_catalog(repo_root: Path) -> list[str]:
         )
         if probe.returncode != 0:
             message = probe.stderr.strip() or probe.stdout.strip() or "Unknown error"
-            raise RuntimeError(f"Failed to load runtime catalog via poetry: {message}")
+            raise RuntimeError(f"Failed to load runtime catalog via uv: {message}")
 
         output = probe.stdout.strip()
         if not output:
-            raise RuntimeError("Poetry probe returned empty runtime catalog output.")
+            raise RuntimeError("uv probe returned empty runtime catalog output.")
         return json.loads(output)
 
 
@@ -372,7 +372,7 @@ def check_import_and_spec(
             repo_root=repo_root,
             next_action=(
                 "Create the module or run scaffold: "
-                "poetry run python "
+                "uv run python "
                 ".agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py "
                 f"--repo-root . --algorithms {algorithm}"
             ),
@@ -393,7 +393,7 @@ def check_import_and_spec(
 
     probe = subprocess.run(
         [
-            "poetry",
+            "uv",
             "run",
             "python",
             "-c",
@@ -1067,7 +1067,7 @@ def run_fast_tier(
 
     if lint_files:
         rc, _, stderr = run_command(
-            ["poetry", "run", "ruff", "check", "--select", "I", *lint_files],
+            ["uv", "run", "ruff", "check", "--select", "I", *lint_files],
             cwd=repo_root,
         )
         register(
@@ -1083,14 +1083,14 @@ def run_fast_tier(
             path=None,
             repo_root=repo_root,
             next_action=(
-                "Run: poetry run ruff check --select I <files> and fix import-order issues."
+                "Run: uv run ruff check --select I <files> and fix import-order issues."
             )
             if rc != 0
             else None,
         )
 
         rc, _, stderr = run_command(
-            ["poetry", "run", "ruff", "format", "--check", *lint_files],
+            ["uv", "run", "ruff", "format", "--check", *lint_files],
             cwd=repo_root,
         )
         register(
@@ -1105,7 +1105,7 @@ def run_fast_tier(
             else (stderr or "ruff format check failed."),
             path=None,
             repo_root=repo_root,
-            next_action="Run: poetry run ruff format <files>" if rc != 0 else None,
+            next_action="Run: uv run ruff format <files>" if rc != 0 else None,
         )
     else:
         register(
@@ -1128,7 +1128,7 @@ def run_fast_tier(
 
     if standalone_files:
         rc, _, stderr = run_command(
-            ["poetry", "run", "pytest", "--verbosity=2", *standalone_files],
+            ["uv", "run", "pytest", "--verbosity=2", *standalone_files],
             cwd=repo_root,
         )
         register(
@@ -1189,7 +1189,7 @@ def run_strict_tier(
 
     if prod_files:
         rc, _, stderr = run_command(
-            ["poetry", "run", "pytest", "--verbosity=2", *prod_files],
+            ["uv", "run", "pytest", "--verbosity=2", *prod_files],
             cwd=repo_root,
         )
         register(
@@ -1368,7 +1368,7 @@ def _print_load_runtime_catalog_error(message: str) -> int:
                         "severity": "failed",
                         "message": message,
                         "next_action": (
-                            "Run from repository root and ensure poetry dependencies are "
+                            "Run from repository root and ensure uv dependencies are "
                             "installed."
                         ),
                         "path": None,

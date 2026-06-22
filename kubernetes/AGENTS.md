@@ -16,7 +16,7 @@ Development kind deployment is documented in `DevDeployment.md`.
 Prod-like validation uses:
 
 ```bash
-poetry run pytest tests/prod_env_tests --verbosity=4
+uv run pytest tests/prod_env_tests --verbosity=4
 ```
 
 Only run prod environment tests when Docker, kind, Helm, and required local

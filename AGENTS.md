@@ -41,7 +41,7 @@ separate config, markers, and review requirements — see
 | `documentation` | Human-facing API, algorithm, user-story, setup, and context docs. |
 | `documentation/context` | Durable repository context for future agents and reviewers. |
 | `kubernetes` | Helm chart, values, templates, and deployment docs. |
-| `exadata-validator` | Separate Poetry package for validating data-model folders using DuckDB. |
+| `exadata-validator` | Separate Python package that validates data-model folders using DuckDB. |
 | `.agents/skills` | Canonical Exaflow algorithm scaffold and validation skills. |
 | `.github/workflows` | CI for lint, standalone tests, algorithm validation, prod tests, image publishing, and validator packaging. |
 | `tasks.py` | Invoke tasks for config generation, local deployment, service lifecycle, data loading, and cleanup. |
@@ -50,7 +50,7 @@ separate config, markers, and review requirements — see
 ## Stack
 
 - Language/runtime: Python `>=3.10,<3.11`.
-- Package manager: Poetry; root lockfile is `poetry.lock`.
+- Package manager: uv; root lockfile is `uv.lock`.
 - Controller: Quart and Hypercorn.
 - Worker/API transport: gRPC, protobuf, grpcio health checks.
 - Local persistence: DuckDB loaded from CSV datasets.
@@ -63,24 +63,24 @@ separate config, markers, and review requirements — see
 - Lint/format: CI and pre-commit include Ruff, whitespace, JSON,
   debug-statement, and mdformat hooks. Agents must not run Ruff manually.
 - Nested package: `exadata-validator` has its own `pyproject.toml`,
-  `poetry.lock`, tests, and package build workflow.
+  `uv.lock`, tests, and package build workflow.
 
 ## Essential Commands
 
 Root package setup and local deployment:
 
 ```bash
-poetry install
+uv sync --all-groups
 cp .deployment.sample.toml .deployment.toml   # first time only
-poetry run inv create-configs
-poetry run inv deploy
+uv run inv create-configs
+uv run inv deploy
 ```
 
 Focused tests while developing (preferred for agents):
 
 ```bash
-poetry run pytest -q tests/standalone_tests
-poetry run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py
+uv run pytest -q tests/standalone_tests
+uv run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py
 ```
 
 Run an analysis through the helper CLI:
@@ -97,7 +97,7 @@ CI runs the full standalone suite with coverage (reference only — agents shoul
 use the focused `-q` commands above unless explicitly asked to reproduce CI):
 
 ```bash
-poetry run pytest -s -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests --verbosity=4
+uv run pytest -s -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests --verbosity=4
 ```
 
 ## Lint / Format / Typecheck
@@ -259,7 +259,7 @@ work, the canonical path is:
    gates:
 
    ```bash
-   poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family>
+   uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family>
    ```
 
 1. Implement the generated files:
@@ -276,7 +276,7 @@ work, the canonical path is:
    `"done": true`:
 
    ```bash
-   poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold
+   uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold
    ```
 
 1. Use `--strict` only when the prod environment is available and prod
@@ -371,7 +371,7 @@ The pipeline below is what you usually need to reference or debug.
      `ControllerAggregationClient`; workers use UDF aggregation clients to push
      partial vectors and retrieve combined results.
    - Service config sits at `exaflow/aggregation_server/config.toml`; start with
-     `poetry run inv start-aggregation-server`.
+     `uv run inv start-aggregation-server`.
    - The strategy must cleanup aggregation context after execution.
 
 1. **Response**
@@ -463,13 +463,13 @@ ______________________________________________________________________
 See `documentation/context/testing.md` for the full validation matrix. Common
 entrypoints:
 
-- `poetry run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py`
-- `poetry run pytest -q tests/prod_env_tests/test_<algorithm_id>_validation.py`
+- `uv run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py`
+- `uv run pytest -q tests/prod_env_tests/test_<algorithm_id>_validation.py`
 
 Algorithm integration gates:
 
-- `poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold`
-- `poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm <algorithm_id>`
+- `uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold`
+- `uv run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm <algorithm_id>`
 - Add `--strict` only when prod-env runtime checks should run.
 
 Pytest markers include `slow`, `very_slow`, `smpc`, and `smpc_cluster`. Focus
@@ -484,23 +484,23 @@ Use repo-path invocation for shared algorithm skills.
 Scaffold and integration gate:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family>
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family>
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold
 ```
 
 Scaffold only:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --dry-run
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms <algorithm_id> --family <family>
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --dry-run
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms <algorithm_id> --family <family>
 ```
 
 Validate required steps:
 
 ```bash
-poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root .
-poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm <algorithm_id>
-poetry run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm <algorithm_id> --strict
+uv run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root .
+uv run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm <algorithm_id>
+uv run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm <algorithm_id> --strict
 ```
 
 These skills are versioned in-repo under `.agents/skills/` and are the canonical

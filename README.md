@@ -11,11 +11,7 @@ commands, testing matrix, risk register, and review checklists).
 
 1. Install [python3.10](https://www.python.org/downloads/ "python3.10")
 
-1. Install [poetry](https://python-poetry.org/ "poetry")
-   It is important to install `poetry` in isolation, so follow the
-   recommended installation method.
-
-1. Install [poetry-shell-plugin](https://github.com/python-poetry/poetry-plugin-shell/ "poetry-shell-plugin")
+1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/ "uv")
 
 ## Setup
 
@@ -24,19 +20,19 @@ commands, testing matrix, risk register, and review checklists).
 1. Install dependencies
 
    ```
-   poetry install
+   uv sync --all-groups
    ```
 
 1. Activate virtual environment
 
    ```
-   poetry shell
+   source .venv/bin/activate
    ```
 
 1. *Optional* To install tab completion for `invoke` run (replacing `bash` with your shell)
 
    ```
-   source <(poetry run inv --print-completion-script bash)
+   source <(uv run inv --print-completion-script bash)
    ```
 
 1. _Optional_ `pre-commit` is included in development dependencies. To install hooks
@@ -103,13 +99,13 @@ you can give Codex for end-to-end integration.
 Fast path from the repository root:
 
 ```
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family>
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family>
 ```
 
 After implementation edits:
 
 ```
-poetry run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/integrate_new_algorithm.py --repo-root . --algorithm <algorithm_id> --family <family> --skip-scaffold
 ```
 
 # Acknowledgement

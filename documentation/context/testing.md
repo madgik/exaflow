@@ -31,13 +31,13 @@ test commands, start with `AGENTS.md` at the repository root.
 Use focused standalone tests while developing:
 
 ```bash
-poetry run pytest -q tests/standalone_tests
+uv run pytest -q tests/standalone_tests
 ```
 
 For algorithm core changes:
 
 ```bash
-poetry run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py
+uv run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py
 ```
 
 ## Full Local Standalone Tests
@@ -45,7 +45,7 @@ poetry run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<
 CI runs:
 
 ```bash
-poetry run pytest -s -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests --verbosity=4
+uv run pytest -s -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests --verbosity=4
 ```
 
 SMPC standalone tests are present but skipped in CI comments because they are
@@ -57,16 +57,16 @@ them.
 Algorithm validation tests require local service deployment:
 
 ```bash
-poetry run inv create-configs
-poetry run inv deploy --no-install-dep
-poetry run pytest tests/algorithm_validation_tests/exareme3 --verbosity=4
+uv run inv create-configs
+uv run inv deploy --no-install-dep
+uv run pytest tests/algorithm_validation_tests/exareme3 --verbosity=4
 ```
 
 Prod environment tests require Docker, kind, Helm, Kubernetes resources, built
 images, and generated worker data paths:
 
 ```bash
-poetry run pytest tests/prod_env_tests --verbosity=4
+uv run pytest tests/prod_env_tests --verbosity=4
 ```
 
 Do not claim these suites passed unless the environment was actually running and
@@ -78,7 +78,7 @@ Run from the nested package:
 
 ```bash
 cd exadata-validator
-poetry run pytest -q
+uv run pytest -q
 ```
 
 CI also builds the package and smoke-tests the wheel.
@@ -120,4 +120,4 @@ CI also builds the package and smoke-tests the wheel.
 | Privacy/SMPC/DP change | Focused tests plus human review; run environment-backed tests if behavior changes. |
 | Dependency update | Lockfile update, focused tests, lint/format, and CI-equivalent suite where feasible. |
 | Refactor without behavior change | Focused tests for touched modules and broader standalone tests if shared code moved. |
-| `exadata-validator` change | `cd exadata-validator && poetry run pytest -q`; build/smoke test if packaging or CLI changes. |
+| `exadata-validator` change | `cd exadata-validator && uv run pytest -q`; build/smoke test if packaging or CLI changes. |
