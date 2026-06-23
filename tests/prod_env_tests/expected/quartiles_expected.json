@@ -1,0 +1,53 @@
+{
+  "test_cases": [
+    {
+      "input": {
+        "test_case_num": 0,
+        "inputdata": {
+          "data_model": "dementia:0.1",
+          "datasets": [
+            "edsd0",
+            "edsd2",
+            "edsd3",
+            "ppmi3",
+            "desd-synthdata1"
+          ],
+          "filters": null,
+          "variables": [
+            "lefthippocampus"
+          ]
+        },
+        "algorithm": {
+          "x": [],
+          "y": [
+            "lefthippocampus"
+          ],
+          "parameters": {
+            "num_bins": 20,
+            "max_iterations": 5,
+            "threshold": 0.001
+          }
+        }
+      },
+      "output": {
+        "quantiles": [
+          {
+            "q": 0.25,
+            "value": 2.8124,
+            "actual_q": 0.2535211267605634
+          },
+          {
+            "q": 0.5,
+            "value": 3.0529,
+            "actual_q": 0.5014084507042254
+          },
+          {
+            "q": 0.75,
+            "value": 3.3067,
+            "actual_q": 0.7549295774647887
+          }
+        ]
+      }
+    }
+  ]
+}
