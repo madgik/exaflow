@@ -28,6 +28,7 @@ Implemented preprocessing steps include:
 | Missing Values Handler | Drop or impute missing values per variable. |
 | Outlier Winsorizer | Clip numerical outliers using configured bounds. |
 | Longitudinal Transformer | Convert two-visit longitudinal records into first, second, or difference variables. |
+| KMeans Cluster Creator | Create a categorical cluster covariate from numerical baseline variables. |
 
 ## Inputs
 
@@ -48,6 +49,13 @@ visit identifiers so records can be matched across visits.
 | Outlier Winsorizer | `folds` | Per-variable clipping threshold. |
 | Longitudinal Transformer | `visit1`, `visit2` | Visit identifiers to align. |
 | Longitudinal Transformer | `strategies` | Per-variable strategy: `first`, `second`, or `diff`. |
+| KMeans Cluster Creator | `cluster_variables` | Numerical variables used to fit K-means. |
+| KMeans Cluster Creator | `k_selection` | `manual` or `elbow`. |
+| KMeans Cluster Creator | `k`, `k_min`, `k_max` | Cluster-count settings. |
+| KMeans Cluster Creator | `init_method`, `n_init` | Random-range initialization strategy and restart count. |
+| KMeans Cluster Creator | `output_mode` | `full`, `binary`, or `subset`. |
+| KMeans Cluster Creator | `binary_cluster` | Cluster used for binary `yes` / `no` output. |
+| KMeans Cluster Creator | `selected_clusters` | Clusters kept explicitly in subset mode. |
 
 ## Preprocessing method
 
@@ -75,6 +83,30 @@ diff = value_at_visit2 - value_at_visit1
 
 For the `diff` strategy, variable values are transformed to `visit2 - visit1`,
 but the original variable code is preserved.
+
+### KMeans cluster creation
+
+KMeans cluster creation fits federated K-means on selected numerical variables
+and creates a new categorical column. It is intended for downstream algorithms
+that accept categorical covariates, such as linear regression, logistic
+regression, and Cox regression.
+
+The initialization method can be `random_range` or
+`multi_start_random_range`. Multi-start fits several random-range
+initializations and keeps the one with the lowest global inertia before creating
+the derived categorical column.
+
+Output modes:
+
+| Mode | Categories | Meaning |
+|---|---|---|
+| `full` | `cluster_0`, `cluster_1`, ..., `cluster_k-1` | Every fitted cluster is exposed as a category. |
+| `binary` | `yes`, `no` | `yes` means the row belongs to the selected cluster; `no` means any other cluster. |
+| `subset` | selected clusters plus `other` | Selected clusters are kept explicit; all other clusters are combined. |
+
+When `subset` has exactly one selected cluster, the output is automatically
+binary. This is useful when the analysis question is membership in one
+clinically reviewed cluster.
 
 ## Federated computation
 
@@ -120,6 +152,12 @@ Step 4:
         update variable names and metadata
 
 Step 5:
+    Apply KMeans cluster creation when configured:
+        fit federated K-means on selected numerical variables
+        create a categorical cluster column
+        validate privacy for exposed categories
+
+Step 6:
     Pass transformed data and metadata to the downstream algorithm.
 
 Output:
@@ -135,6 +173,11 @@ Output:
 - Longitudinal `diff` is restricted to numerical variables.
 - Longitudinal transformation requires exactly one strategy for every selected
   `x` and `y` variable.
+- KMeans cluster creation requires an aggregation server because cluster centers
+  and labels depend on global federated fitting.
+- KMeans cluster outputs are categorical covariates, not clinical diagnoses.
+- KMeans cluster creation rejects outputs where any exposed category is below
+  the privacy minimum-row threshold.
 - Preprocessing order is defined by the request list. The server validates and
   executes steps in the submitted order.
 

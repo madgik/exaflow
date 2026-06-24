@@ -29,11 +29,24 @@ def get_algorithm_execution_strategy(
 
     algorithm_name = analysis_request_dto.algorithm.name
     algo_type = specifications.get_algorithm_type(algorithm_name)
-    components = specifications.get_component_types(algorithm_name)
+    components = list(specifications.get_component_types(algorithm_name))
+    components.extend(_get_preprocessing_component_types(analysis_request_dto))
+    components = list(dict.fromkeys(components))
     controller = _get_algorithm_controller(algo_type)
     strategy_type = _get_algorithm_strategy_type(algo_type, components)
 
     return strategy_type(controller, analysis_request_dto)
+
+
+def _get_preprocessing_component_types(
+    analysis_request_dto: AnalysisRequestDTO,
+) -> List[ComponentType]:
+    components: List[ComponentType] = []
+    for step in analysis_request_dto.preprocessing or []:
+        preprocessing_spec = specifications.enabled_preprocessing_steps.get(step.name)
+        if preprocessing_spec:
+            components.extend(preprocessing_spec.components)
+    return components
 
 
 def _get_algorithm_controller(algo_type: AlgorithmType) -> ControllerI:
