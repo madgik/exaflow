@@ -29,8 +29,9 @@ class FederatedDescriptiveStatistics:
 
     Notes
     -----
-    - Quantiles stay local per dataset (global summaries remove quantiles once
-      multiple datasets participate).
+    - Per-dataset quantiles (q1/q2/q3) are exact (pandas). The global summary
+      carries federated ``q1``/``q2``/``q3`` and ``median`` (= ``q2``) estimated
+      across all datasets via a histogram-based percentile.
     - Means and variances come from aggregated sufficient statistics (sx, sxx).
     - Nominal counts flow through the aggregation client and zero-count levels are
       dropped in the global result per our contract.
@@ -53,6 +54,7 @@ class FederatedDescriptiveStatistics:
         min_row_count: int,
         nominal_levels: Dict[str, List],
         dataset_col: str = DATASET_COL,
+        integer_vars: List[str] | None = None,
     ) -> DescribeResult:
         return self._describe.describe(
             data=data,
@@ -61,6 +63,7 @@ class FederatedDescriptiveStatistics:
             min_row_count=min_row_count,
             nominal_levels=nominal_levels,
             dataset_col=dataset_col,
+            integer_vars=integer_vars,
         )
 
     def hist(

@@ -81,13 +81,9 @@ def compare_numerical_data(data1, data2):
         assert_allclose(data1["std"], data2["std"])
     assert_allclose(data1["min"], data2["min"])
     assert_allclose(data1["max"], data2["max"])
-    assert (data1["q1"] and data2["q1"]) or (not data1["q1"] and not data2["q1"])
-    assert (data1["q2"] and data2["q2"]) or (not data1["q2"] and not data2["q2"])
-    assert (data1["q3"] and data2["q3"]) or (not data1["q3"] and not data2["q3"])
-    if data1["q1"]:
-        assert_allclose(data1["q1"], data2["q1"])
-        assert_allclose(data1["q2"], data2["q2"])
-        assert_allclose(data1["q3"], data2["q3"])
+    for qk in ("q1", "q2", "q3"):
+        if data1.get(qk) is not None and data2.get(qk) is not None:
+            assert_allclose(data1[qk], data2[qk])
 
 
 def compare_nominal_data(data1, data2):

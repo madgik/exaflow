@@ -408,6 +408,45 @@ class TestFederatedDescriptiveStatistics(FederatedAlgorithmTest):
             else:
                 _nominal_close(global_map[key], expected)
 
+        # Federated global quartiles q1/q2/q3 (+ median == q2): histogram
+        # estimates across all datasets (per-dataset quartiles are exact).
+        centralized_global = {
+            (rec["variable"], rec["dataset"]): rec["data"]
+            for rec in centralized_output.global_recs
+        }
+        describe_data = df if mode == "featurewise" else df.dropna()
+        # Datasets that survived min_row_count for each var (the population the
+        # global quartiles are computed over), per the centralized records.
+        survived = {}
+        for rec in centralized_output.recs:
+            if rec["data"] is not None:
+                survived.setdefault(rec["variable"], set()).add(str(rec["dataset"]))
+        for var in case["numerical_vars"]:
+            fed = global_map.get((var, ALL_DATASET_LABEL))
+            if fed is None:
+                continue
+            allowed = survived.get(var, set())
+            col = describe_data.loc[
+                describe_data["dataset"].astype(str).isin(allowed), var
+            ].to_numpy(dtype=float)
+            col = col[~np.isnan(col)]
+            cen = centralized_global[(var, ALL_DATASET_LABEL)]
+            for qk in ("q1", "q2", "q3"):
+                if len(col) == 0:
+                    assert fed[qk] is None
+                    continue
+                assert fed[qk] is not None
+                # Split-invariant: federated value matches the single-node one.
+                assert np.isclose(fed[qk], cen[qk])
+            # median is an alias for q2.
+            assert fed["median"] == fed["q2"]
+            # Accuracy vs the true quantile: checked on the median (the tail
+            # quartiles need a larger sample than these synthetic cases provide
+            # for the histogram estimate to land within a tenth of the range).
+            if len(col) > 0:
+                data_range = float(np.max(col) - np.min(col)) or 1.0
+                assert abs(fed["q2"] - float(np.percentile(col, 50))) <= data_range / 10
+
     @pytest.mark.parametrize("mode", ["featurewise", "analysis_set"])
     @pytest.mark.parametrize("case", TEST_CASES, ids=[c["name"] for c in TEST_CASES])
     def test_federated_algorithm_with_one_worker(self, case, mode):

@@ -23,9 +23,7 @@
             "lefthippocampus"
           ],
           "parameters": {
-            "num_bins": 20,
-            "max_iterations": 5,
-            "threshold": 0.001
+            "num_bins": 20
           }
         }
       },
