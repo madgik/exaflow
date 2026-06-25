@@ -59,6 +59,7 @@ category counts.
 | Total row counts | Report denominator per variable and dataset. |
 | Numerical sums and sums of squares | Compute combined means and sample standard deviations. |
 | Numerical minima and maxima | Compute combined ranges. |
+| Numerical federated histogram | Estimate the combined median across all datasets. |
 | Nominal category counts | Compute combined category frequencies. |
 
 ### Federated flow
@@ -86,6 +87,8 @@ Step 3:
 
 Step 4:
     Aggregate sufficient statistics and category counts for the combined summary.
+    Estimate the combined median per numerical variable from a federated
+    histogram across all datasets.
 
 Step 5:
     Append placeholder records for selected dataset/variable combinations that
@@ -99,8 +102,9 @@ Output:
 
 - Dataset-level records below the minimum row-count threshold return `null`
   summary data.
-- Numerical quartiles are reported for dataset-level summaries; combined
-  summaries do not aggregate quantiles.
+- Per-dataset numerical quartiles (`q1`/`q2`/`q3`) are exact (pandas). The
+  combined summary carries federated `q1`/`q2`/`q3` and `median` (= `q2`)
+  estimated across all datasets from a histogram-based percentile.
 - Combined numerical standard deviations use aggregated sums and sums of
   squares with sample-variance denominator `n - 1`.
 - Nominal combined summaries use metadata-defined category levels and omit
@@ -118,7 +122,8 @@ Output:
 | `data.num_na` | Number of missing values. |
 | `data.num_total` | Total number of rows considered. |
 | `data.mean`, `data.std`, `data.min`, `data.max` | Numerical summaries. |
-| `data.q1`, `data.q2`, `data.q3` | Dataset-level quartiles for numerical variables. |
+| `data.q1`, `data.q2`, `data.q3` | Quartiles for numerical variables. Per-dataset: exact (pandas). Combined: federated histogram-based estimate. |
+| `data.median` | Alias for `q2` on the combined record; not set on per-dataset records. |
 | `data.counts` | Category counts for nominal variables. |
 
 ## Validation against state-of-the-art implementation
@@ -133,6 +138,7 @@ with combined summaries computed from aggregated sufficient statistics.
 ## Limitations and assumptions
 
 - This is descriptive only; no hypothesis tests are performed.
-- Combined quantiles are not computed from all row-level values.
+- Combined `q1`/`q2`/`q3`/`median` are histogram-based estimates (not exact
+  quantiles); per-dataset quartiles are exact.
 - Suppressed dataset-level summaries are represented with `null` data.
 - Category counts depend on available metadata levels for the combined summary.

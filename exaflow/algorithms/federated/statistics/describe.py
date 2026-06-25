@@ -8,6 +8,10 @@ from typing import List
 import numpy as np
 import pandas as pd
 
+from exaflow.algorithms.federated.statistics.percentile import Percentile
+from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
+    NumpyAggregator,
+)
 from exaflow.column_names import DATASET_COL
 
 
@@ -30,8 +34,9 @@ class FederatedDescribe:
 
     Notes
     -----
-    - Quantiles stay local per dataset (global summaries remove quantiles once
-      multiple datasets participate).
+    - Per-dataset quantiles (q1/q2/q3) are exact (pandas). The global summary
+      carries federated ``q1``/``q2``/``q3`` and ``median`` (= ``q2``) estimated
+      across all datasets via a histogram-based percentile.
     - Means and variances come from aggregated sufficient statistics (sx, sxx).
     - Nominal counts flow through the aggregation client and zero-count levels are
       dropped in the global result per our contract.
@@ -51,6 +56,7 @@ class FederatedDescribe:
         min_row_count: int,
         nominal_levels: Dict[str, List],
         dataset_col: str = DATASET_COL,
+        integer_vars: List[str] | None = None,
     ) -> DescribeResult:
         datasets: Iterable[str]
         if dataset_col in data.columns:
@@ -80,10 +86,77 @@ class FederatedDescribe:
             nominal_levels=nominal_levels,
         )
 
+        self._add_global_quartiles(
+            global_recs=global_recs,
+            recs=recs,
+            data=data,
+            numerical_vars=numerical_vars,
+            dataset_col=dataset_col,
+            integer_vars=integer_vars or [],
+        )
+
         return DescribeResult(
             recs=recs,
             global_recs=global_recs,
         )
+
+    def _add_global_quartiles(
+        self,
+        *,
+        global_recs: List[Dict],
+        recs: List[Dict],
+        data: pd.DataFrame,
+        numerical_vars: List[str],
+        dataset_col: str,
+        integer_vars: List[str],
+    ) -> None:
+        """Estimate federated q1/q2/q3 and median per numerical variable across
+        all datasets and attach them to the global summary record.
+
+        Unlike the per-dataset ``q1``/``q2``/``q3`` (exact, computed locally with
+        pandas), these are histogram-based estimates aggregated across every
+        worker — true global quartiles rather than local ones. ``median`` is set
+        to the same value as ``q2`` for readability.
+
+        The estimate is restricted to rows from ``(variable, dataset)`` groups
+        that cleared the ``min_row_count`` threshold (those with a non-null
+        per-dataset record), matching the population used for the other global
+        statistics. Otherwise rows withheld at the dataset level for privacy
+        would still influence the published quartiles.
+
+        Every worker iterates ``numerical_vars`` in the same order and the
+        estimator's federated calls are identical across workers, so the
+        aggregation stays in lock-step even when a worker holds no rows for a
+        variable.
+        """
+        if not numerical_vars:
+            return
+        estimator = Percentile(NumpyAggregator(self.agg_client))
+        recs_by_var = {rec["variable"]: rec for rec in global_recs}
+        integer_var_set = set(integer_vars)
+        has_dataset_col = dataset_col in data.columns
+        for var in numerical_vars:
+            is_integer = var in integer_var_set
+            allowed = {
+                rec["dataset"]
+                for rec in recs
+                if rec["variable"] == var and rec["data"] is not None
+            }
+            if has_dataset_col:
+                col = data.loc[data[dataset_col].astype(str).isin(allowed), var]
+            else:
+                col = data[var] if allowed else data[var].iloc[0:0]
+            values = {}
+            for key, q in [("q1", 0.25), ("q2", 0.5), ("q3", 0.75)]:
+                result = estimator.compute(col, q, is_integer=is_integer)
+                values[key] = None if result is None else float(result[0])
+            rec = recs_by_var.get(var)
+            if rec is None or rec["data"] is None:
+                continue
+            rec["data"]["q1"] = values["q1"]
+            rec["data"]["q2"] = values["q2"]
+            rec["data"]["q3"] = values["q3"]
+            rec["data"]["median"] = values["q2"]
 
     def _compute_stats_records(
         self,

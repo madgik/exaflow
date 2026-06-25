@@ -28,6 +28,9 @@ class NumericalDescriptiveStats(BaseModel):
     q2: Optional[float] = None
     q3: Optional[float] = None
     max: Optional[float] = None
+    # Federated median across all datasets, set only on the global summary.
+    # Per-dataset medians live in ``q2`` (exact, computed locally).
+    median: Optional[float] = None
 
 
 class NominalDescriptiveStats(BaseModel):
@@ -73,8 +76,9 @@ class Describe(Algorithm):
                 "number of rows, mean, standard deviation, minimum, first "
                 "quartile, median, third quartile, and maximum. Global "
                 "numerical summaries include non-missing values, missing "
-                "values, total rows, mean, standard deviation, minimum, and "
-                "maximum.\n\n"
+                "values, total rows, mean, standard deviation, minimum, "
+                "maximum, and federated quartiles (q1, q2/median, q3) "
+                "estimated across all datasets.\n\n"
                 "For nominal variables, summaries include non-missing values, "
                 "missing values, total rows, and counts per category. Category "
                 "counts are aggregated across datasets for the global summary.\n\n"
@@ -142,6 +146,13 @@ class Describe(Algorithm):
             enums = self.metadata[var].get("enumerations") or {}
             nominal_levels[var] = [code for code in enums.keys()]
 
+        integer_vars = [
+            var
+            for var in numerical_vars
+            if self.metadata.get(var, {}).get("sql_type")
+            == specs.InputDataType.INT.value
+        ]
+
         local_results = self.run_local_udf(
             func=local_step,
             kw_args={
@@ -149,6 +160,7 @@ class Describe(Algorithm):
                 "numerical_vars": numerical_vars,
                 "nominal_vars": nominal_vars,
                 "nominal_levels": nominal_levels,
+                "integer_vars": integer_vars,
             },
         )
 
@@ -172,6 +184,7 @@ def local_step(
     numerical_vars,
     nominal_vars,
     nominal_levels,
+    integer_vars,
 ):
     from exaflow.worker import config as worker_config
 
@@ -189,6 +202,7 @@ def local_step(
         min_row_count=min_row_count,
         nominal_levels=nominal_levels,
         dataset_col=DATASET_VAR_NAME,
+        integer_vars=integer_vars,
     )
     return {
         "recs": result.recs,

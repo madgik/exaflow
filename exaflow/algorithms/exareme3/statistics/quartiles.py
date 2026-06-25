@@ -65,26 +65,6 @@ class QuartilesAlgorithm(Algorithm):
                     min=2,
                     max=100,
                 ),
-                "max_iterations": specs.ParameterSpecification(
-                    label="Maximum iterations",
-                    desc="Number of times the histogram is rebuilt and zoomed into the target bin.",
-                    types=[specs.ParameterType.INT],
-                    required=False,
-                    multiple=False,
-                    default=5,
-                    min=1,
-                    max=20,
-                ),
-                "threshold": specs.ParameterSpecification(
-                    label="Threshold",
-                    desc="Early-stop threshold: stop if cumulative fraction is within this value of the target quartile.",
-                    types=[specs.ParameterType.REAL],
-                    required=False,
-                    multiple=False,
-                    default=0.001,
-                    min=0.0,
-                    max=0.1,
-                ),
             },
             type=specs.AlgorithmType.EXAREME3,
             components=[specs.ComponentType.AGGREGATION_SERVER],
@@ -92,11 +72,6 @@ class QuartilesAlgorithm(Algorithm):
 
     def run(self):
         num_bins = int(self.get_parameter("num_bins", 20) or 20)
-        max_iterations = int(self.get_parameter("max_iterations", 5) or 5)
-        # Preserve an explicit threshold of 0.0 (a valid value that disables
-        # early stopping); only fall back to the default when it is unset.
-        threshold = self.get_parameter("threshold", 0.001)
-        threshold = 0.001 if threshold is None else float(threshold)
         y_var = self.y[0]
         is_integer = (
             self.metadata.get(y_var, {}).get("sql_type")
@@ -109,8 +84,6 @@ class QuartilesAlgorithm(Algorithm):
                 "y_var": y_var,
                 "q_values": _QUARTILE_VALUES,
                 "num_bins": num_bins,
-                "max_iterations": max_iterations,
-                "threshold": threshold,
                 "is_integer": is_integer,
             },
             identical_results=True,
@@ -121,9 +94,7 @@ class QuartilesAlgorithm(Algorithm):
 
 
 @exareme3_udf(with_aggregation_server=True)
-def local_step(
-    agg_client, data, y_var, q_values, num_bins, max_iterations, threshold, is_integer
-):
+def local_step(agg_client, data, y_var, q_values, num_bins, is_integer):
     aggregator = NumpyAggregator(agg_client)
     estimator = Percentile(aggregator)
     quantiles = []
@@ -132,8 +103,6 @@ def local_step(
             data[y_var],
             float(q),
             num_bins=int(num_bins),
-            max_iterations=int(max_iterations),
-            threshold=float(threshold),
             is_integer=bool(is_integer),
         )
         if result is None:

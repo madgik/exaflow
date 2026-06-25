@@ -172,7 +172,6 @@ class TestPercentile(FederatedAlgorithmTest):
         return algo.compute(
             pd.Series(X),
             kwargs["q"],
-            max_iterations=10,
             is_integer=kwargs.get("is_integer", False),
         )
 

@@ -18,20 +18,20 @@ class Percentile:
         self.simple_hist = SimpleHistogram(aggregator)
         self.wilkinson_hist = WilkinsonHistogram(aggregator)
 
+    _MAX_ITERATIONS = 5
+
     def compute(
         self,
         x: Series,
         q: float,
         *,
         num_bins: int = 20,
-        max_iterations: int = 5,
-        threshold: float = 0.001,
         is_integer: bool = False,
     ) -> Optional[Tuple[float, Optional[float]]]:
         if is_integer:
-            result = self._compute_integer(x, q, num_bins, max_iterations)
+            result = self._compute_integer(x, q, num_bins)
         else:
-            result = self._compute(x, q, num_bins, max_iterations, threshold)
+            result = self._compute(x, q, num_bins)
         if result is None:
             return None
         value, actual_q = result
@@ -57,8 +57,7 @@ class Percentile:
         x: Series,
         q: float,
         num_bins: int,
-        max_iterations: int,
-        threshold: float,
+        _remaining: int = _MAX_ITERATIONS,
     ) -> Optional[Tuple[float, float]]:
         # Constant (zero-range) data: the histogram would widen [v, v] to
         # [v, v+1] and the recursion would interpolate slightly above v, so
@@ -85,12 +84,12 @@ class Percentile:
         total_counter = 0
         for i, count in enumerate(bin_count):
             total_counter += count
-            if abs(total_counter / n - q) < threshold:
+            if total_counter / n == q:
                 return bin_edges[i + 1], total_counter / n
             if total_counter / n > q:
                 total_counter -= count
                 new_q = (q * n - total_counter) / count
-                if max_iterations > 0:
+                if _remaining > 0:
                     # Push only the selected bin's data into the next round so it
                     # is re-binned over its own extent (no zoom_bounds needed).
                     # Mirror np.histogram membership: half-open [lo, hi) for every
@@ -100,9 +99,7 @@ class Percentile:
                         sub = x[(x >= lo) & (x <= hi)]
                     else:
                         sub = x[(x >= lo) & (x < hi)]
-                    result = self._compute(
-                        sub, new_q, num_bins, max_iterations - 1, threshold
-                    )
+                    result = self._compute(sub, new_q, num_bins, _remaining - 1)
                     if result is None:
                         return None
                     value, sub_q = result
@@ -124,15 +121,14 @@ class Percentile:
         x: Series,
         q: float,
         num_bins: int,
-        max_iterations: int,
     ) -> Optional[Tuple[float, float]]:
         """Locate an integer-valued percentile via whole-number Wilkinson bins.
 
         The bucket holding the target rank is re-binned at finer resolution until
         it spans a single integer -- the discrete q-quantile, i.e. the smallest
         value with ``CDF(value) >= q``. A very wide range may not narrow to a
-        single integer within ``max_iterations``, in which case the result is an
-        estimate.
+        single integer within the iteration budget, in which case the result is
+        an estimate.
 
         ``actual_q`` is always the value's true empirical CDF -- the global
         fraction of points at or below it. The public ``compute`` then reports
@@ -153,7 +149,7 @@ class Percentile:
         global_lower = float(bin_edges[0])
         value: Optional[float] = None
         passed = 0.0  # global count strictly below the current sub-range
-        for _ in range(max_iterations + 1):
+        for _ in range(self._MAX_ITERATIONS + 1):
             cum = passed
             for i, count in enumerate(bin_count):
                 cum += count
