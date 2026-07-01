@@ -304,6 +304,8 @@ def map_changed_files_to_algorithms(changed_files: Iterable[str]) -> set[str]:
     ]
 
     for changed in changed_files:
+        if changed.endswith("_system_feature_request.md"):
+            continue
         if changed in reverse_docs:
             algorithms.add(reverse_docs[changed])
             continue

@@ -259,3 +259,11 @@ def test_validator_reports_algorithm_profile_boundary_failure(tmp_path):
     assert len(failed) == 1
     assert failed[0]["check"] == "algorithm_profile_boundary"
     assert "System Feature Request" in failed[0]["next_action"]
+
+
+def test_validator_ignores_system_feature_request_docs_as_algorithm_targets():
+    algorithms = VALIDATOR.map_changed_files_to_algorithms(
+        ["documentation/algorithms/kmeans_cluster_creator_system_feature_request.md"]
+    )
+
+    assert algorithms == set()
