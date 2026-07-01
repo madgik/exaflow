@@ -52,6 +52,39 @@ PREFERRED_DOC_PATHS = {
     "ttest_paired": "documentation/algorithms/TtestPaired.md",
 }
 
+ALGORITHM_PROFILE_SYSTEM_PREFIXES = (
+    "configs/",
+    "exadata-validator/",
+    "exaflow/aggregation_server/",
+    "exaflow/controller/",
+    "exaflow/protos/",
+    "exaflow/worker/",
+    "kubernetes/",
+)
+ALGORITHM_PROFILE_SYSTEM_FILES = {
+    ".deployment.sample.toml",
+    "pyproject.toml",
+    "run_analysis",
+    "tasks.py",
+    "uv.lock",
+}
+ALGORITHM_PROFILE_SHARED_FILES = {
+    "exaflow/algorithms/federated/README.md",
+    "exaflow/algorithms/federated/__init__.py",
+    "exaflow/algorithms/specifications.py",
+}
+ALGORITHM_PROFILE_SHARED_PATTERNS = (
+    re.compile(r"^exaflow/algorithms/federated/[a-z0-9_]+/__init__\.py$"),
+)
+ALGORITHM_PROFILE_ALLOWED_PATTERNS = (
+    re.compile(r"^documentation/algorithms/.+\.md$"),
+    re.compile(r"^exaflow/algorithms/exareme3/[a-z][a-z0-9_]*\.py$"),
+    re.compile(r"^exaflow/algorithms/federated/.+"),
+    re.compile(r"^tests/prod_env_tests/test_[a-z0-9_]+\.py$"),
+    re.compile(r"^tests/prod_env_tests/expected/[a-z0-9_]+_expected\.json$"),
+    re.compile(r"^tests/standalone_tests/federated_algorithms/.+"),
+)
+
 
 @dataclass
 class ReportEntry:
@@ -283,6 +316,81 @@ def map_changed_files_to_algorithms(changed_files: Iterable[str]) -> set[str]:
             break
 
     return algorithms
+
+
+def is_algorithm_profile_shared_path(changed_file: str) -> bool:
+    if changed_file in ALGORITHM_PROFILE_SHARED_FILES:
+        return True
+    return any(
+        pattern.match(changed_file)
+        for pattern in ALGORITHM_PROFILE_SHARED_PATTERNS
+    )
+
+
+def is_algorithm_profile_allowed_path(changed_file: str) -> bool:
+    if changed_file in ALGORITHM_PROFILE_SYSTEM_FILES:
+        return False
+    if changed_file.startswith(ALGORITHM_PROFILE_SYSTEM_PREFIXES):
+        return False
+    if changed_file.startswith("exaflow/algorithms/federated/docs/"):
+        return True
+    if is_algorithm_profile_shared_path(changed_file):
+        return True
+    return any(
+        pattern.match(changed_file)
+        for pattern in ALGORITHM_PROFILE_ALLOWED_PATTERNS
+    )
+
+
+def algorithm_profile_boundary_violations(changed_files: Iterable[str]) -> list[str]:
+    return sorted(
+        changed_file
+        for changed_file in changed_files
+        if not is_algorithm_profile_allowed_path(changed_file)
+    )
+
+
+def check_algorithm_profile_boundary(
+    report: list[ReportEntry],
+    *,
+    repo_root: Path,
+    changed_files: list[str],
+) -> None:
+    violations = algorithm_profile_boundary_violations(changed_files)
+
+    if not violations:
+        register(
+            report,
+            algorithm="*",
+            phase="static",
+            check="algorithm_profile_boundary",
+            status="pass",
+            severity="pass",
+            message="Changed files stay inside the algorithm developer profile.",
+            path=None,
+            repo_root=repo_root,
+        )
+        return
+
+    for rel in violations:
+        register(
+            report,
+            algorithm="*",
+            phase="static",
+            check="algorithm_profile_boundary",
+            status="failed",
+            severity="failed",
+            message=(
+                "Algorithm profile cannot change system-owned files: " f"{rel}"
+            ),
+            path=repo_root / rel,
+            repo_root=repo_root,
+            next_action=(
+                "Stop algorithm implementation and write a System Feature Request "
+                "covering the needed capability, current limitation, minimal "
+                "system interface, algorithm impact, and evidence."
+            ),
+        )
 
 
 def select_target_algorithms(
@@ -1547,6 +1655,12 @@ def main() -> int:
     check_touched_registration_files(
         report,
         algorithms=target_algorithms,
+        repo_root=repo_root,
+        changed_files=changed_files,
+    )
+
+    check_algorithm_profile_boundary(
+        report,
         repo_root=repo_root,
         changed_files=changed_files,
     )
