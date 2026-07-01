@@ -55,3 +55,4 @@
 - [ANOVA_TWO_WAY](docs/anova_two_way.md)
 - [HISTOGRAM](docs/histogram.md)
 - [OUTLIER_REPORT](docs/outlier_report.md)
+- [BINNED_MANN_WHITNEY_U_TEST](docs/binned_mann_whitney_u_test.md)
