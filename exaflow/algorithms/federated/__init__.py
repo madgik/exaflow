@@ -18,6 +18,7 @@ from exaflow.algorithms.federated.preprocessing import FederatedOrdinalEncoder
 from exaflow.algorithms.federated.preprocessing import FederatedPassthrough
 from exaflow.algorithms.federated.statistics import FederatedAnovaOneWay
 from exaflow.algorithms.federated.statistics import FederatedAnovaTwoWay
+from exaflow.algorithms.federated.statistics import FederatedBinnedMannWhitneyUTest
 from exaflow.algorithms.federated.statistics import FederatedDescriptiveStatistics
 from exaflow.algorithms.federated.statistics import FederatedOutlierReport
 from exaflow.algorithms.federated.statistics import FederatedTTestIndependent
@@ -50,4 +51,5 @@ __all__ = [
     "FederatedRegressionScorer",
     "FederatedClassificationScorer",
     "FederatedOutlierReport",
+    "FederatedBinnedMannWhitneyUTest",
 ]

@@ -1,0 +1,86 @@
+{
+  "test_cases": [
+    {
+      "input": {
+        "inputdata": {
+          "data_model": "dementia:0.1",
+          "datasets": [
+            "edsd0",
+            "edsd2",
+            "edsd3",
+            "ppmi3",
+            "desd-synthdata1"
+          ],
+          "filters": null,
+          "variables": [
+            "lefthippocampus",
+            "dataset"
+          ]
+        },
+        "algorithm": {
+          "y": [
+            "lefthippocampus"
+          ],
+          "x": [
+            "dataset"
+          ],
+          "parameters": {
+            "alt_hypothesis": "two-sided",
+            "groupA": "edsd0",
+            "groupB": "ppmi3",
+            "num_bins": 40
+          }
+        },
+        "test_case_num": 0
+      },
+      "output": {
+        "u_stat": 163.5,
+        "p_value": 8.436804884099734e-06,
+        "z_score": 4.4537889144455,
+        "n1": 15,
+        "n2": 80
+      }
+    },
+    {
+      "input": {
+        "inputdata": {
+          "data_model": "dementia:0.1",
+          "datasets": [
+            "edsd0",
+            "edsd2",
+            "edsd3",
+            "ppmi3",
+            "desd-synthdata1"
+          ],
+          "filters": null,
+          "variables": [
+            "lefthippocampus",
+            "dataset"
+          ]
+        },
+        "algorithm": {
+          "y": [
+            "lefthippocampus"
+          ],
+          "x": [
+            "dataset"
+          ],
+          "parameters": {
+            "alt_hypothesis": "greater",
+            "groupA": "edsd2",
+            "groupB": "desd-synthdata1",
+            "num_bins": 40
+          }
+        },
+        "test_case_num": 1
+      },
+      "output": {
+        "u_stat": 3354.5,
+        "p_value": 0.9733951228597999,
+        "z_score": -1.9332147027539905,
+        "n1": 53,
+        "n2": 154
+      }
+    }
+  ]
+}

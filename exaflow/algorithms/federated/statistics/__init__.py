@@ -1,5 +1,6 @@
 from .anova_oneway import FederatedAnovaOneWay
 from .anova_twoway import FederatedAnovaTwoWay
+from .binned_mann_whitney_u_test import FederatedBinnedMannWhitneyUTest
 from .describe import FederatedDescribe
 from .descriptive_stats import FederatedDescriptiveStatistics
 from .histogram import FederatedGroupedHistogram
@@ -22,4 +23,5 @@ __all__ = [
     "FederatedTTestOneSample",
     "FederatedTTestPaired",
     "FederatedOutlierReport",
+    "FederatedBinnedMannWhitneyUTest",
 ]

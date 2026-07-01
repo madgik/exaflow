@@ -82,6 +82,7 @@ class PreprocessingStepName(str, Enum):
 class AlgorithmName(str, Enum):
     ANOVA_ONEWAY = "anova_oneway"
     ANOVA_TWOWAY = "anova_twoway"
+    BINNED_MANN_WHITNEY_U_TEST = "binned_mann_whitney_u_test"
     COX_REGRESSION_CLASSICAL = "cox_regression_classical"
     DESCRIBE = "describe"
     KMEANS = "kmeans"
