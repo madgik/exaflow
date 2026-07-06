@@ -8,6 +8,8 @@ from typing import Dict
 
 from exaflow.utils import Singleton
 
+AGGREGATION_CLIENT_PARAMETER_NAME = "agg_client"
+
 """
 Lightweight registry for exareme3 UDFs.
 
@@ -33,7 +35,6 @@ class UDFInfo:
     func: "Callable"
     with_aggregation_server: "bool"
     enable_lazy_aggregation: "bool"
-    agg_client_name: "str"
 
 
 class Exareme3Registry(metaclass=Singleton):
@@ -46,7 +47,6 @@ class Exareme3Registry(metaclass=Singleton):
         *,
         with_aggregation_server: bool = False,
         enable_lazy_aggregation: bool = False,
-        agg_client_name: str = "agg_client",
     ) -> str:
         """
         Register a UDF and return its registry key. Raises if the same key is
@@ -59,7 +59,6 @@ class Exareme3Registry(metaclass=Singleton):
             func,
             with_aggregation_server,
             enable_lazy_aggregation,
-            agg_client_name,
         )
         return key
 
@@ -70,10 +69,6 @@ class Exareme3Registry(metaclass=Singleton):
     def lazy_aggregation_enabled(self, key: str) -> bool:
         info = self._registry.get(key)
         return bool(info and info.enable_lazy_aggregation)
-
-    def agg_client_name(self, key: str) -> str:
-        info = self._registry.get(key)
-        return info.agg_client_name if info else "agg_client"
 
     def get_func(self, key: str) -> Callable:
         info = self._registry.get(key)
@@ -91,7 +86,6 @@ def exareme3_udf(
     *,
     with_aggregation_server: bool = False,
     enable_lazy_aggregation: bool | None = None,
-    agg_client_name: str = "agg_client",
 ):
     """
     Decorator to register a UDF and (optionally) enable lazy aggregation.
@@ -99,7 +93,6 @@ def exareme3_udf(
     - with_aggregation_server: whether the UDF expects an agg_client.
     - enable_lazy_aggregation: override to force on/off lazy batching. Defaults to
       matching with_aggregation_server.
-    - agg_client_name: name of the aggregation client parameter used inside the UDF.
     """
 
     def decorator(func: Callable) -> Callable:
@@ -112,7 +105,6 @@ def exareme3_udf(
             func,
             with_aggregation_server=with_aggregation_server,
             enable_lazy_aggregation=lazy_on,
-            agg_client_name=agg_client_name,
         )
         return func
 

@@ -85,7 +85,6 @@
   - `exareme3_udf(with_aggregation_server=True)` enables lazy aggregation.
     The worker applies `lazy_agg` from `exaflow/worker/exareme3/lazy_aggregation`.
   - Disable batching with `enable_lazy_aggregation=False`.
-  - Use `agg_client_name="client"` if your UDF uses a custom argument name.
 
 ## Preprocessing and metadata helpers
 

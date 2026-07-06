@@ -196,6 +196,7 @@ class MissingValuesHandler(PreprocessingStep):
         *,
         data: pd.DataFrame,
         metadata: Dict[str, dict],
+        agg_client=None,
     ) -> tuple[pd.DataFrame, Dict[str, dict]]:
         # Enforce categorical constant-fill constraints at runtime too.
         self._validate_categorical_constant_fill_values(metadata=metadata)
