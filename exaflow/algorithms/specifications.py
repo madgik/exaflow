@@ -70,6 +70,7 @@ class ParameterEnumType(str, Enum):
 @unique
 class PreprocessingStepName(str, Enum):
     CATEGORICAL_COLUMN_CREATOR = "categorical_column_creator"
+    KMEANS_CLUSTER_CREATOR = "kmeans_cluster_creator"
     LONGITUDINAL_TRANSFORMER = "longitudinal_transformer"
     MISSING_VALUES_HANDLER = "missing_values_handler"
     OUTLIER_WINSORIZER = "outlier_winsorizer"

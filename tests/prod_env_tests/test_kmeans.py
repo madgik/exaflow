@@ -4,13 +4,17 @@ from pathlib import Path
 import pytest
 
 from tests.algorithm_validation_tests.exareme3.conftest import analysis_request
-from tests.algorithm_validation_tests.exareme3.helpers import get_test_params
 
-expected_file = Path(__file__).parent / "expected" / "kmeans_expected.json"
+input_file = Path(__file__).parent / "input" / "kmeans_input.json"
 
 
-@pytest.mark.parametrize("test_input, expected", get_test_params(expected_file))
-def test_kmeans(test_input, expected):
+def get_test_inputs():
+    with input_file.open() as f:
+        return json.load(f)["test_cases"]
+
+
+@pytest.mark.parametrize("test_input", get_test_inputs())
+def test_kmeans(test_input):
     response = analysis_request("kmeans", test_input)
     try:
         result = json.loads(response.text)
