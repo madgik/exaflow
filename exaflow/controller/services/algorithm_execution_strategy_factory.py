@@ -1,6 +1,7 @@
 from typing import List
 from typing import Type
 
+from exaflow import exareme3_preprocessing_step_classes
 from exaflow.algorithms.specifications import AlgorithmType
 from exaflow.algorithms.specifications import ComponentType
 from exaflow.controller.services.api.algorithm_spec_dtos import specifications
@@ -29,7 +30,7 @@ def get_algorithm_execution_strategy(
 
     algorithm_name = analysis_request_dto.algorithm.name
     algo_type = specifications.get_algorithm_type(algorithm_name)
-    components = specifications.get_component_types(algorithm_name)
+    components = _get_required_component_types(analysis_request_dto)
     controller = _get_algorithm_controller(algo_type)
     strategy_type = _get_algorithm_strategy_type(algo_type, components)
 
@@ -45,6 +46,20 @@ def _get_algorithm_controller(algo_type: AlgorithmType) -> ControllerI:
     raise NotImplementedError(
         f"Could not get algorithm controller. Unsupported algorithm type: {algo_type}"
     )
+
+
+def _get_required_component_types(
+    analysis_request_dto: AnalysisRequestDTO,
+) -> List[ComponentType]:
+    algorithm_name = analysis_request_dto.algorithm.name
+    components = list(specifications.get_component_types(algorithm_name))
+    for preprocessing_step in analysis_request_dto.preprocessing or []:
+        preprocessing_step_cls = exareme3_preprocessing_step_classes[
+            preprocessing_step.name
+        ]
+        if preprocessing_step_cls.aggregation_server_required():
+            components.append(ComponentType.AGGREGATION_SERVER)
+    return components
 
 
 def _get_algorithm_strategy_type(

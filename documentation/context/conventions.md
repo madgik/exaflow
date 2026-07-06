@@ -52,6 +52,12 @@
   should not repeat schema shape, options, defaults, min/max bounds, or
   requiredness.
 - UDF helpers are registered through `@exareme3_udf`.
+- Preprocessing steps that need aggregation declare
+  `ComponentType.AGGREGATION_SERVER` in their specification components and must
+  explicitly declare the `agg_client` parameter on `transform_data()`.
+  Aggregation-aware preprocessing steps
+  should use the base `transform_data_and_metadata()` implementation instead of
+  overriding it. Do not rely on `**kwargs` for aggregation-client injection.
 - New algorithm work should use `.agents/skills/exaflow-algorithm-scaffold` and
   `.agents/skills/exaflow-algorithm-validate`.
 

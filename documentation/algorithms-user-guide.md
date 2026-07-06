@@ -313,8 +313,6 @@ all flows:
   default it matches `with_aggregation_server` and wraps the function with
   `library.lazy_aggregation.lazy_agg`, which buffers small payloads to reduce
   network chatter.
-- `agg_client_name` lets you use a different parameter name if your UDF already
-  has an argument called `agg_client`.
 
 ```python
 import numpy as np
@@ -362,6 +360,46 @@ The migrated flows share a small set of helpers to keep `run()` methods tidy:
 Treat these helpers as building blocks: copy the patterns from
 `exaflow/algorithms/exareme3/logistic_regression.py`,
 `linear_regression.py`, or `describe.py` when you need similar logic.
+
+### Aggregation-aware preprocessing steps
+
+Preprocessing steps that need the aggregation server must declare it in their
+specification:
+
+```python
+components=[specs.ComponentType.AGGREGATION_SERVER]
+```
+
+The runtime then configures the aggregation server for requests that include the
+step and always passes the aggregation client to the base
+`transform_data_and_metadata()` entrypoint. Aggregation-aware preprocessing
+steps should not override `transform_data_and_metadata()`; put the explicit
+`agg_client` parameter on `transform_data()` instead.
+
+```python
+from exaflow.algorithms import specifications as specs
+from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
+
+
+class GlobalPreprocessingStep(PreprocessingStep):
+  @classmethod
+  def get_specification(cls):
+    return specs.PreprocessingStepSpecification(
+      name="global_preprocessing_step",
+      desc="Example aggregation-aware preprocessing step.",
+      documentation="Example aggregation-aware preprocessing step.",
+      label="Global Preprocessing Step",
+      enabled=True,
+      components=[specs.ComponentType.AGGREGATION_SERVER],
+    )
+
+  def transform_data(self, *, data, agg_client):
+    global_count = agg_client.sum([float(len(data))])
+    return data
+```
+
+Do not rely on `**kwargs` for this injection path; the parameter must be
+declared explicitly.
 
 ## Aggregation server (SUM/MIN/MAX)
 

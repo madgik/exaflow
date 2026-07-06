@@ -9,6 +9,7 @@ from exaflow.aggregation_clients.exareme3_udf_aggregation_client import (
     Exareme3UDFAggregationClient as AggregationClient,
 )
 from exaflow.algorithms.exareme3.utils.metadata_enums import enforce_enum_order
+from exaflow.algorithms.exareme3.utils.registry import AGGREGATION_CLIENT_PARAMETER_NAME
 from exaflow.algorithms.exareme3.utils.registry import exareme3_registry
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.utils.pandas_utils import convert_to_pandas_dataframe
@@ -31,8 +32,12 @@ def run_udf(
 ):
     udf = _get_udf_or_raise(udf_registry_key)
     udf = _wrap_udf_with_lazy_aggregation_if_enabled(udf_registry_key, udf)
-    agg_client = _create_aggregation_client_if_required(request_id, udf_registry_key)
     preprocessing = system_args.preprocessing
+    agg_client = _create_aggregation_client_if_required(
+        request_id=request_id,
+        udf_registry_key=udf_registry_key,
+        preprocessing=preprocessing,
+    )
     metadata = enforce_enum_order(system_args.metadata)
     data = _load_worker_data_for_udf(
         inputdata=system_args.inputdata,
@@ -54,6 +59,9 @@ def run_udf(
             data=data,
             metadata=metadata,
             agg_client=agg_client,
+            inject_agg_client=exareme3_registry.aggregation_server_required(
+                udf_registry_key
+            ),
         )
     except BadInputError as e:
         logger = get_logger()
@@ -79,19 +87,35 @@ def _get_udf_or_raise(udf_registry_key: str):
 
 def _wrap_udf_with_lazy_aggregation_if_enabled(udf_registry_key: str, udf):
     if exareme3_registry.lazy_aggregation_enabled(udf_registry_key):
-        agg_client_name = exareme3_registry.agg_client_name(udf_registry_key)
-        return lazy_agg(agg_client_name=agg_client_name)(udf)
+        return lazy_agg(udf)
     return udf
 
 
 def _create_aggregation_client_if_required(
     request_id,
     udf_registry_key: str,
+    preprocessing: Optional[List[Dict[str, Any]]],
 ) -> Optional[AggregationClient]:
-    if not exareme3_registry.aggregation_server_required(udf_registry_key):
+    if not (
+        exareme3_registry.aggregation_server_required(udf_registry_key)
+        or _preprocessing_requires_aggregation_server(preprocessing)
+    ):
         return None
     agg_dns = worker_config.aggregation_server.dns
     return AggregationClient(request_id, aggregator_dns=agg_dns)
+
+
+def _preprocessing_requires_aggregation_server(
+    preprocessing: Optional[List[Dict[str, Any]]],
+) -> bool:
+    for preprocessing_step in preprocessing or []:
+        preprocessing_step_name = preprocessing_step["name"]
+        preprocessing_step_cls = exareme3_preprocessing_step_classes[
+            preprocessing_step_name
+        ]
+        if preprocessing_step_cls.aggregation_server_required():
+            return True
+    return False
 
 
 def _collect_extra_columns(preprocessing: Optional[List[Dict[str, Any]]]) -> set[str]:
@@ -171,6 +195,7 @@ def _apply_preprocessing_steps_to_data_and_metadata(
         data, metadata = preprocessing_step.transform_data_and_metadata(
             data=data,
             metadata=step_metadata,
+            agg_client=agg_client,
         )
         _check_min_rows_or_raise(
             data=data,
@@ -187,10 +212,16 @@ def _execute_udf(
     data,
     metadata: dict,
     agg_client: Optional[AggregationClient],
+    inject_agg_client: bool,
 ):
-    if agg_client:
-        kw_args["agg_client"] = agg_client
+    udf_signature = inspect.signature(udf)
+    if (
+        agg_client
+        and inject_agg_client
+        and AGGREGATION_CLIENT_PARAMETER_NAME in udf_signature.parameters
+    ):
+        kw_args[AGGREGATION_CLIENT_PARAMETER_NAME] = agg_client
     kw_args["data"] = data
-    if "metadata" in inspect.signature(udf).parameters:
+    if "metadata" in udf_signature.parameters:
         kw_args["metadata"] = metadata
     return udf(**kw_args)
