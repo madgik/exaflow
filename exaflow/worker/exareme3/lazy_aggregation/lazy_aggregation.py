@@ -114,7 +114,8 @@ class LazyAggregationRewriter:
             # Logging must never interfere with the rewrite process.
             pass
 
-    def rewrite(self, func, agg_client_name: str = "agg_client"):
+    def rewrite(self, func):
+        aggregation_client_parameter = "agg_client"
         try:
             source_lines, start_line = inspect.getsourcelines(func)
             source = textwrap.dedent("".join(source_lines))
@@ -134,7 +135,10 @@ class LazyAggregationRewriter:
         # Strip decorators to avoid re-entering lazy_agg inside the rewritten body.
         func_def.decorator_list = []
 
-        new_body, has_lazy = self._rewrite_body(func_def.body, agg_client_name)
+        new_body, has_lazy = self._rewrite_body(
+            func_def.body,
+            aggregation_client_parameter,
+        )
         if not has_lazy:
             return func  # Nothing to rewrite
         func_def.body = new_body
@@ -171,7 +175,7 @@ class LazyAggregationRewriter:
             return None
         return None
 
-    def _is_global_call_assign(self, stmt, agg_client_name: str):
+    def _is_global_call_assign(self, stmt, aggregation_client_parameter: str):
         target_name = self._get_assign_target(stmt)
         if target_name is None:
             return False
@@ -182,7 +186,7 @@ class LazyAggregationRewriter:
             return False
         if not isinstance(call.func.value, ast.Name):
             return False
-        if call.func.value.id != agg_client_name:
+        if call.func.value.id != aggregation_client_parameter:
             return False
         if call.func.attr not in {"sum", "min", "max"}:
             return False
@@ -193,7 +197,7 @@ class LazyAggregationRewriter:
         self._tmp_counter += 1
         return name
 
-    def _hoist_globals_in_expr(self, expr, agg_client_name: str):
+    def _hoist_globals_in_expr(self, expr, aggregation_client_parameter: str):
         """
         Returns (prefix_statements, new_expr) where prefix_statements are Assign nodes
         hoisting any agg_client.{sum|min|max} calls found in the expression.
@@ -211,7 +215,7 @@ class LazyAggregationRewriter:
             is_global_call = (
                 isinstance(expr.func, ast.Attribute)
                 and isinstance(expr.func.value, ast.Name)
-                and expr.func.value.id == agg_client_name
+                and expr.func.value.id == aggregation_client_parameter
                 and expr.func.attr in {"sum", "min", "max"}
             )
             contains_comp = any(
@@ -233,13 +237,14 @@ class LazyAggregationRewriter:
                 )
 
             func_prefixes, new_func = self._hoist_globals_in_expr(
-                expr.func, agg_client_name
+                expr.func, aggregation_client_parameter
             )
             arg_results = [
-                self._hoist_globals_in_expr(arg, agg_client_name) for arg in expr.args
+                self._hoist_globals_in_expr(arg, aggregation_client_parameter)
+                for arg in expr.args
             ]
             kw_results = [
-                self._hoist_globals_in_expr(kw.value, agg_client_name)
+                self._hoist_globals_in_expr(kw.value, aggregation_client_parameter)
                 for kw in expr.keywords
             ]
             arg_prefixes, new_args = combine(arg_results)
@@ -256,30 +261,37 @@ class LazyAggregationRewriter:
 
         if isinstance(expr, ast.BoolOp):
             parts = [
-                self._hoist_globals_in_expr(v, agg_client_name) for v in expr.values
+                self._hoist_globals_in_expr(v, aggregation_client_parameter)
+                for v in expr.values
             ]
             prefixes, new_vals = combine(parts)
             expr.values = new_vals
             return prefixes, expr
 
         if isinstance(expr, ast.BinOp):
-            left_p, new_left = self._hoist_globals_in_expr(expr.left, agg_client_name)
+            left_p, new_left = self._hoist_globals_in_expr(
+                expr.left, aggregation_client_parameter
+            )
             right_p, new_right = self._hoist_globals_in_expr(
-                expr.right, agg_client_name
+                expr.right, aggregation_client_parameter
             )
             expr.left = new_left
             expr.right = new_right
             return [*left_p, *right_p], expr
 
         if isinstance(expr, ast.UnaryOp):
-            pre, operand = self._hoist_globals_in_expr(expr.operand, agg_client_name)
+            pre, operand = self._hoist_globals_in_expr(
+                expr.operand, aggregation_client_parameter
+            )
             expr.operand = operand
             return pre, expr
 
         if isinstance(expr, ast.Compare):
-            left_p, new_left = self._hoist_globals_in_expr(expr.left, agg_client_name)
+            left_p, new_left = self._hoist_globals_in_expr(
+                expr.left, aggregation_client_parameter
+            )
             right_parts = [
-                self._hoist_globals_in_expr(c, agg_client_name)
+                self._hoist_globals_in_expr(c, aggregation_client_parameter)
                 for c in expr.comparators
             ]
             right_p, new_right = combine(right_parts)
@@ -288,10 +300,14 @@ class LazyAggregationRewriter:
             return [*left_p, *right_p], expr
 
         if isinstance(expr, ast.IfExp):
-            test_p, new_test = self._hoist_globals_in_expr(expr.test, agg_client_name)
-            body_p, new_body = self._hoist_globals_in_expr(expr.body, agg_client_name)
+            test_p, new_test = self._hoist_globals_in_expr(
+                expr.test, aggregation_client_parameter
+            )
+            body_p, new_body = self._hoist_globals_in_expr(
+                expr.body, aggregation_client_parameter
+            )
             orelse_p, new_orelse = self._hoist_globals_in_expr(
-                expr.orelse, agg_client_name
+                expr.orelse, aggregation_client_parameter
             )
             expr.test = new_test
             expr.body = new_body
@@ -299,22 +315,27 @@ class LazyAggregationRewriter:
             return [*test_p, *body_p, *orelse_p], expr
 
         if isinstance(expr, ast.Subscript):
-            val_p, new_val = self._hoist_globals_in_expr(expr.value, agg_client_name)
+            val_p, new_val = self._hoist_globals_in_expr(
+                expr.value, aggregation_client_parameter
+            )
             slice_p, new_slice = self._hoist_globals_in_expr(
-                expr.slice, agg_client_name
+                expr.slice, aggregation_client_parameter
             )
             expr.value = new_val
             expr.slice = new_slice
             return [*val_p, *slice_p], expr
 
         if isinstance(expr, ast.Attribute):
-            pre, new_val = self._hoist_globals_in_expr(expr.value, agg_client_name)
+            pre, new_val = self._hoist_globals_in_expr(
+                expr.value, aggregation_client_parameter
+            )
             expr.value = new_val
             return pre, expr
 
         if isinstance(expr, ast.Tuple):
             parts = [
-                self._hoist_globals_in_expr(elt, agg_client_name) for elt in expr.elts
+                self._hoist_globals_in_expr(elt, aggregation_client_parameter)
+                for elt in expr.elts
             ]
             prefixes, new_elts = combine(parts)
             expr.elts = new_elts
@@ -322,7 +343,8 @@ class LazyAggregationRewriter:
 
         if isinstance(expr, ast.List):
             parts = [
-                self._hoist_globals_in_expr(elt, agg_client_name) for elt in expr.elts
+                self._hoist_globals_in_expr(elt, aggregation_client_parameter)
+                for elt in expr.elts
             ]
             prefixes, new_elts = combine(parts)
             expr.elts = new_elts
@@ -331,14 +353,15 @@ class LazyAggregationRewriter:
         if isinstance(expr, ast.Dict):
             key_parts = [
                 (
-                    self._hoist_globals_in_expr(k, agg_client_name)
+                    self._hoist_globals_in_expr(k, aggregation_client_parameter)
                     if k is not None
                     else ([], None)
                 )
                 for k in expr.keys
             ]
             val_parts = [
-                self._hoist_globals_in_expr(v, agg_client_name) for v in expr.values
+                self._hoist_globals_in_expr(v, aggregation_client_parameter)
+                for v in expr.values
             ]
             key_prefixes, new_keys = combine(key_parts)
             val_prefixes, new_vals = combine(val_parts)
@@ -348,7 +371,7 @@ class LazyAggregationRewriter:
 
         return [], expr
 
-    def _hoist_globals_in_stmt(self, stmt, agg_client_name: str):
+    def _hoist_globals_in_stmt(self, stmt, aggregation_client_parameter: str):
         """
         Returns a list of statements including hoisted global-call assignments
         needed by this statement, with the original statement last.
@@ -356,10 +379,12 @@ class LazyAggregationRewriter:
         new_stmts = []
         if isinstance(
             stmt, (ast.Assign, ast.AnnAssign)
-        ) and self._is_global_call_assign(stmt, agg_client_name):
+        ) and self._is_global_call_assign(stmt, aggregation_client_parameter):
             return [stmt]
         if isinstance(stmt, ast.Assign):
-            pre, new_value = self._hoist_globals_in_expr(stmt.value, agg_client_name)
+            pre, new_value = self._hoist_globals_in_expr(
+                stmt.value, aggregation_client_parameter
+            )
             stmt.value = new_value
             new_stmts.extend(pre)
             new_stmts.append(stmt)
@@ -367,14 +392,16 @@ class LazyAggregationRewriter:
         if isinstance(stmt, ast.AnnAssign):
             if stmt.value is not None:
                 pre, new_value = self._hoist_globals_in_expr(
-                    stmt.value, agg_client_name
+                    stmt.value, aggregation_client_parameter
                 )
                 stmt.value = new_value
                 new_stmts.extend(pre)
             new_stmts.append(stmt)
             return new_stmts
         if isinstance(stmt, ast.Expr):
-            pre, new_value = self._hoist_globals_in_expr(stmt.value, agg_client_name)
+            pre, new_value = self._hoist_globals_in_expr(
+                stmt.value, aggregation_client_parameter
+            )
             stmt.value = new_value
             new_stmts.extend(pre)
             new_stmts.append(stmt)
@@ -382,26 +409,32 @@ class LazyAggregationRewriter:
         if isinstance(stmt, ast.Return):
             if stmt.value is not None:
                 pre, new_value = self._hoist_globals_in_expr(
-                    stmt.value, agg_client_name
+                    stmt.value, aggregation_client_parameter
                 )
                 stmt.value = new_value
                 new_stmts.extend(pre)
             new_stmts.append(stmt)
             return new_stmts
         if isinstance(stmt, ast.If):
-            pre, new_test = self._hoist_globals_in_expr(stmt.test, agg_client_name)
+            pre, new_test = self._hoist_globals_in_expr(
+                stmt.test, aggregation_client_parameter
+            )
             stmt.test = new_test
             new_stmts.extend(pre)
             new_stmts.append(stmt)
             return new_stmts
         if isinstance(stmt, ast.While):
-            pre, new_test = self._hoist_globals_in_expr(stmt.test, agg_client_name)
+            pre, new_test = self._hoist_globals_in_expr(
+                stmt.test, aggregation_client_parameter
+            )
             stmt.test = new_test
             new_stmts.extend(pre)
             new_stmts.append(stmt)
             return new_stmts
         if isinstance(stmt, (ast.For, ast.AsyncFor)):
-            pre, new_iter = self._hoist_globals_in_expr(stmt.iter, agg_client_name)
+            pre, new_iter = self._hoist_globals_in_expr(
+                stmt.iter, aggregation_client_parameter
+            )
             stmt.iter = new_iter
             new_stmts.extend(pre)
             new_stmts.append(stmt)
@@ -409,14 +442,16 @@ class LazyAggregationRewriter:
         if isinstance(stmt, (ast.With, ast.AsyncWith)):
             for item in stmt.items:
                 pre, new_ctx = self._hoist_globals_in_expr(
-                    item.context_expr, agg_client_name
+                    item.context_expr, aggregation_client_parameter
                 )
                 new_stmts.extend(pre)
                 item.context_expr = new_ctx
             new_stmts.append(stmt)
             return new_stmts
         if isinstance(stmt, ast.Assert):
-            pre, new_test = self._hoist_globals_in_expr(stmt.test, agg_client_name)
+            pre, new_test = self._hoist_globals_in_expr(
+                stmt.test, aggregation_client_parameter
+            )
             stmt.test = new_test
             new_stmts.extend(pre)
             new_stmts.append(stmt)
@@ -475,7 +510,9 @@ class LazyAggregationRewriter:
 
         return [batch_assign, execute_call, *assigns]
 
-    def _rewrite_body(self, body, agg_client_name: str, insert_exec: bool = True):
+    def _rewrite_body(
+        self, body, aggregation_client_parameter: str, insert_exec: bool = True
+    ):
         new_body = []
         has_lazy = False
 
@@ -489,7 +526,9 @@ class LazyAggregationRewriter:
 
         expanded_body = []
         for stmt in body:
-            expanded_body.extend(self._hoist_globals_in_stmt(stmt, agg_client_name))
+            expanded_body.extend(
+                self._hoist_globals_in_stmt(stmt, aggregation_client_parameter)
+            )
         body = expanded_body
 
         new_body = []
@@ -503,7 +542,7 @@ class LazyAggregationRewriter:
                 targets=[ast.Name("_lazy_exec", ctx=ast.Store())],
                 value=ast.Call(
                     func=ast.Name("LazyAggregationExecutor", ctx=ast.Load()),
-                    args=[ast.Name(agg_client_name, ctx=ast.Load())],
+                    args=[ast.Name(aggregation_client_parameter, ctx=ast.Load())],
                     keywords=[],
                 ),
             )
@@ -535,7 +574,7 @@ class LazyAggregationRewriter:
         while i < len(body):
             stmt = body[i]
 
-            if self._is_global_call_assign(stmt, agg_client_name):
+            if self._is_global_call_assign(stmt, aggregation_client_parameter):
                 target = self._get_assign_target(stmt)
                 # If this global depends on earlier pending outputs, flush first
                 call_used = _used_names(stmt.value)
@@ -567,13 +606,17 @@ class LazyAggregationRewriter:
             j = i + 1
             if allow_hoist:
                 while j < len(body) and self._is_global_call_assign(
-                    body[j], agg_client_name
+                    body[j], aggregation_client_parameter
                 ):
                     call_used = _used_names(body[j].value)
                     call_used_no_client = {
-                        name for name in call_used if name != agg_client_name
+                        name
+                        for name in call_used
+                        if name != aggregation_client_parameter
                     }
-                    used_no_client = {name for name in used if name != agg_client_name}
+                    used_no_client = {
+                        name for name in used if name != aggregation_client_parameter
+                    }
                     if call_used_no_client.intersection(
                         used_no_client
                     ) or call_used_no_client.intersection(defined):
@@ -590,7 +633,7 @@ class LazyAggregationRewriter:
                     flush()
 
             rewritten_stmt, child_has_lazy = self._rewrite_children(
-                stmt, agg_client_name
+                stmt, aggregation_client_parameter
             )
             has_lazy = has_lazy or child_has_lazy
             new_body.append(rewritten_stmt)
@@ -602,32 +645,32 @@ class LazyAggregationRewriter:
             inserted_exec = True
         return new_body, has_lazy
 
-    def _rewrite_children(self, stmt, agg_client_name: str):
+    def _rewrite_children(self, stmt, aggregation_client_parameter: str):
         # Recursively rewrite statements that contain bodies.
         child_has_lazy = False
         if isinstance(stmt, (ast.If, ast.For, ast.While, ast.With, ast.AsyncWith)):
             stmt.body, body_lazy = self._rewrite_body(
-                stmt.body, agg_client_name, insert_exec=False
+                stmt.body, aggregation_client_parameter, insert_exec=False
             )
             stmt.orelse, orelse_lazy = self._rewrite_body(
-                stmt.orelse, agg_client_name, insert_exec=False
+                stmt.orelse, aggregation_client_parameter, insert_exec=False
             )
             child_has_lazy = body_lazy or orelse_lazy
         elif isinstance(stmt, ast.Try):
             stmt.body, body_lazy = self._rewrite_body(
-                stmt.body, agg_client_name, insert_exec=False
+                stmt.body, aggregation_client_parameter, insert_exec=False
             )
             stmt.orelse, orelse_lazy = self._rewrite_body(
-                stmt.orelse, agg_client_name, insert_exec=False
+                stmt.orelse, aggregation_client_parameter, insert_exec=False
             )
             stmt.finalbody, final_lazy = self._rewrite_body(
-                stmt.finalbody, agg_client_name, insert_exec=False
+                stmt.finalbody, aggregation_client_parameter, insert_exec=False
             )
             new_handlers = []
             handlers_lazy = False
             for handler in stmt.handlers:
                 rewritten_handler, handler_lazy = self._rewrite_exc_handler(
-                    handler, agg_client_name
+                    handler, aggregation_client_parameter
                 )
                 new_handlers.append(rewritten_handler)
                 handlers_lazy = handlers_lazy or handler_lazy
@@ -635,7 +678,9 @@ class LazyAggregationRewriter:
             child_has_lazy = body_lazy or orelse_lazy or final_lazy or handlers_lazy
         elif isinstance(stmt, ast.FunctionDef):
             inner_agg_name = (
-                stmt.args.args[0].arg if stmt.args.args else agg_client_name
+                stmt.args.args[0].arg
+                if stmt.args.args
+                else aggregation_client_parameter
             )
             # Avoid double-decoration; the parent rewrite will handle batching.
             stmt.decorator_list = []
@@ -644,14 +689,14 @@ class LazyAggregationRewriter:
             )
         return stmt, child_has_lazy
 
-    def _rewrite_exc_handler(self, handler, agg_client_name: str):
+    def _rewrite_exc_handler(self, handler, aggregation_client_parameter: str):
         handler.body, handler_lazy = self._rewrite_body(
-            handler.body, agg_client_name, insert_exec=False
+            handler.body, aggregation_client_parameter, insert_exec=False
         )
         return handler, handler_lazy
 
 
-def lazy_agg(func=None, *, agg_client_name: str = "agg_client"):
+def lazy_agg(func=None):
     """
     Decorator to apply LazyAggregationRewriter to a function.
     """
@@ -665,7 +710,7 @@ def lazy_agg(func=None, *, agg_client_name: str = "agg_client"):
             if rewritten_func is None:
                 rewriter = LazyAggregationRewriter()
                 try:
-                    rewritten_func = rewriter.rewrite(fn, agg_client_name)
+                    rewritten_func = rewriter.rewrite(fn)
                 except Exception:
                     rewritten_func = fn
             return rewritten_func(*args, **kwargs)

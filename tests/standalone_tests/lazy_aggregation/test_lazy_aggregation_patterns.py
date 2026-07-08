@@ -230,18 +230,18 @@ def test_lazy_agg_falls_back_when_batch_raises():
     assert b == 2.0
 
 
-@lazy_agg(agg_client_name="client")
-def custom_client_name(client):
-    x: float = client.sum(np.array([4.0], dtype=float))
-    y: float = client.sum(np.array([5.0], dtype=float))
+@lazy_agg()
+def annotated_aggregation(agg_client):
+    x: float = agg_client.sum(np.array([4.0], dtype=float))
+    y: float = agg_client.sum(np.array([5.0], dtype=float))
     return float(np.asarray(x, dtype=float).reshape(-1)[0]) + float(
         np.asarray(y, dtype=float).reshape(-1)[0]
     )
 
 
-def test_lazy_agg_custom_client_name_and_annotations():
+def test_lazy_agg_handles_annotations():
     agg = RecordingAggClient()
-    total = custom_client_name(client=agg)
+    total = annotated_aggregation(agg)
 
     assert agg.calls == [("batch", 2)]
     assert total == 9.0

@@ -59,7 +59,7 @@ def _get_required_component_types(
         ]
         if preprocessing_step_cls.aggregation_server_required():
             components.append(ComponentType.AGGREGATION_SERVER)
-    return components
+    return list(dict.fromkeys(components))
 
 
 def _get_algorithm_strategy_type(
