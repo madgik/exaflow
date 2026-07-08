@@ -1,9 +1,13 @@
+from types import SimpleNamespace
+
 import pandas as pd
 import pytest
 
 from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
+from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.worker.exareme3.udf import udf_service
+from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import InsufficientDataError
 
 
@@ -53,6 +57,11 @@ class _AggAwareStep(_BaseStep):
     def transform_data_and_metadata(self, *, data, metadata, agg_client):
         self._params["received_client"].append(agg_client)
         return data, metadata
+
+
+class _BadInputStep(_BaseStep):
+    def transform_data_and_metadata(self, *, data, metadata, agg_client=None):
+        raise BadInputError("bad preprocessing input")
 
 
 class _BaseTransformAggStep(PreprocessingStep):
@@ -276,3 +285,50 @@ def test_execute_udf_passes_fixed_agg_client_name_to_aggregation_udf():
     )
 
     assert result == {"rows": 2, "agg_client": agg_client}
+
+
+def test_run_udf_converts_preprocessing_bad_input_to_bad_user_input(monkeypatch):
+    agg_client = _DummyAggClient()
+
+    def udf(data):
+        return {"rows": len(data)}
+
+    monkeypatch.setattr(udf_service, "_get_udf_or_raise", lambda _: udf)
+    monkeypatch.setattr(
+        udf_service,
+        "_wrap_udf_with_lazy_aggregation_if_enabled",
+        lambda _, udf: udf,
+    )
+    monkeypatch.setattr(
+        udf_service,
+        "_create_aggregation_client_if_required",
+        lambda **_: agg_client,
+    )
+    monkeypatch.setattr(
+        udf_service,
+        "_load_worker_data_for_udf",
+        lambda **_: pd.DataFrame({"x": [1, 2]}),
+    )
+    monkeypatch.setattr(
+        udf_service,
+        "exareme3_preprocessing_step_classes",
+        {"bad_input": _BadInputStep},
+    )
+    system_args = SimpleNamespace(
+        preprocessing=[{"name": "bad_input", "parameters": {}}],
+        metadata={"x": {"is_categorical": False}},
+        inputdata=None,
+        add_dataset_variable=False,
+        check_min_rows=False,
+    )
+
+    with pytest.raises(BadUserInput, match="bad preprocessing input"):
+        udf_service.run_udf(
+            request_id="req",
+            udf_registry_key="udf",
+            kw_args={},
+            system_args=system_args,
+        )
+
+    assert agg_client.unregistered is True
+    assert agg_client.closed is True

@@ -203,6 +203,7 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
                 "x": None,
                 "y": ["lefthippocampus", "righthippocampus"],
                 "parameters": {
+                    "k_selection": "manual",
                     "k": 4,
                     "tol": 0.0001,
                     "maxiter": 100,
