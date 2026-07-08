@@ -44,15 +44,15 @@ def run_udf(
         preprocessing=preprocessing,
         add_dataset_variable=system_args.add_dataset_variable,
     )
-    data, metadata = _apply_preprocessing_steps_to_data_and_metadata(
-        data=data,
-        metadata=metadata,
-        preprocessing=preprocessing,
-        check_min_rows=system_args.check_min_rows,
-        agg_client=agg_client,
-    )
 
     try:
+        data, metadata = _apply_preprocessing_steps_to_data_and_metadata(
+            data=data,
+            metadata=metadata,
+            preprocessing=preprocessing,
+            check_min_rows=system_args.check_min_rows,
+            agg_client=agg_client,
+        )
         return _execute_udf(
             udf=udf,
             kw_args=kw_args,
@@ -68,6 +68,7 @@ def run_udf(
         logger.info(
             f"Bad input while calling udf. (request_id={request_id})(udf={udf_registry_key})(error={e})"
         )
+        _cleanup_aggregation_client(agg_client)
         raise BadUserInput(str(e)) from e
     except TypeError as e:
         logger = get_logger()
@@ -157,15 +158,19 @@ def _check_min_rows_or_raise(
     if num_rows >= min_required:
         return
 
+    _cleanup_aggregation_client(agg_client)
+
+    raise InsufficientDataError(
+        f"Insufficient data returned {num_rows} rows; minimum required is {min_required}."
+    )
+
+
+def _cleanup_aggregation_client(agg_client: Optional[AggregationClient]) -> None:
     if agg_client:
         try:
             agg_client.unregister()
         finally:
             agg_client.close()
-
-    raise InsufficientDataError(
-        f"Insufficient data returned {num_rows} rows; minimum required is {min_required}."
-    )
 
 
 def _apply_preprocessing_steps_to_data_and_metadata(

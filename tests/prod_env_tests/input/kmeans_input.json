@@ -1,0 +1,78 @@
+{
+    "test_cases": [
+        {
+            "test_case_num": 0,
+            "inputdata": {
+                "data_model": "dementia:0.1",
+                "datasets": [
+                    "edsd0",
+                    "edsd1",
+                    "edsd2",
+                    "edsd3",
+                    "edsd4",
+                    "edsd5",
+                    "edsd6",
+                    "edsd7",
+                    "edsd8",
+                    "edsd9"
+                ],
+                "filters": null,
+                "variables": [
+                    "lefthippocampus",
+                    "righthippocampus"
+                ]
+            },
+            "preprocessing": null,
+            "algorithm": {
+                "x": null,
+                "y": [
+                    "lefthippocampus",
+                    "righthippocampus"
+                ],
+                "parameters": {
+                    "k_selection": "manual",
+                    "k": 4,
+                    "tol": 0.0001,
+                    "maxiter": 100
+                }
+            }
+        },
+        {
+            "test_case_num": 1,
+            "inputdata": {
+                "data_model": "dementia:0.1",
+                "datasets": [
+                    "edsd0",
+                    "edsd1",
+                    "edsd2",
+                    "edsd3",
+                    "edsd4",
+                    "edsd5",
+                    "edsd6",
+                    "edsd7",
+                    "edsd8",
+                    "edsd9"
+                ],
+                "filters": null,
+                "variables": [
+                    "leftamygdala",
+                    "rightamygdala"
+                ]
+            },
+            "preprocessing": null,
+            "algorithm": {
+                "x": null,
+                "y": [
+                    "leftamygdala",
+                    "rightamygdala"
+                ],
+                "parameters": {
+                    "k_selection": "manual",
+                    "k": 4,
+                    "tol": 0.0001,
+                    "maxiter": 100
+                }
+            }
+        }
+    ]
+}

@@ -24,7 +24,11 @@ class FederatedEstimator(Protocol):
     """Estimator interface that fits on federated data."""
 
     def fit(
-        self, X: np.ndarray, y: np.ndarray, *, agg_client: AggregationClient
+        self,
+        X: np.ndarray,
+        y: Optional[np.ndarray] = None,
+        *,
+        agg_client: AggregationClient,
     ) -> FederatedEstimatorResults: ...
 
 
