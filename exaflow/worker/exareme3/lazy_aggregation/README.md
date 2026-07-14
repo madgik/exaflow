@@ -9,7 +9,7 @@
 - Agg calls buried inside expressions (e.g., `min([agg_client.min(x)[0], ...])`) are hoisted to temporaries first, so they can be batched while preserving evaluation order. Comprehension bodies are not hoisted to avoid scoping changes.
 - If `agg_client.aggregate_batch` exists, it is used; otherwise, execution falls back to individual `sum`/`min`/`max` calls. Single-op batches are also executed directly to avoid noisy `batch(1)` recordings.
 - Injected AST nodes are location-copied and line-offset so tracebacks still point to the original source file/line.
-- Custom aggregation client names are supported via `@lazy_agg(agg_client_name="client")`.
+- Aggregation-aware functions must use the reserved `agg_client` parameter name.
 
 ## Behaviors covered by tests
 
@@ -22,7 +22,6 @@
 - **Min/Max ops**: `min`/`max` calls batch together like `sum`.
 - **Expression hoisting**: Agg calls inside expressions are hoisted to temps for batching (excluding comprehensions).
 - **Batch fallback**: If `aggregate_batch` raises, execution reverts to eager individual calls.
-- **Custom client name**: Works when the aggregation client parameter is named differently.
 - **Tracebacks**: Exceptions report original file/line numbers post-rewrite.
 - **Globals**: Mutations of globals force batching to flush to preserve order; globals can be read safely.
 - **Embedded calls**: Previously eager-only; now hoisted for batching when safe (non-comprehension expressions).

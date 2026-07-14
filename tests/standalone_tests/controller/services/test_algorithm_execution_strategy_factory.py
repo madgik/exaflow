@@ -39,6 +39,11 @@ class _Specifications:
         return []
 
 
+class _AggregationSpecifications:
+    def get_component_types(self, algo_name):
+        return [ComponentType.AGGREGATION_SERVER]
+
+
 def _request(preprocessing=None):
     return AnalysisRequestDTO(
         inputdata=AnalysisInputDataDTO(
@@ -72,6 +77,25 @@ def test_preprocessing_aggregation_requirement_contributes_component(monkeypatch
     )
 
     assert ComponentType.AGGREGATION_SERVER in components
+
+
+def test_required_components_are_deduplicated(monkeypatch):
+    monkeypatch.setattr(factory, "specifications", _AggregationSpecifications())
+    monkeypatch.setattr(
+        factory,
+        "exareme3_preprocessing_step_classes",
+        {"global": _AggregationPreprocessing},
+    )
+
+    components = factory._get_required_component_types(
+        _request(
+            preprocessing=[
+                AnalysisPreprocessingStepDTO(name="global", parameters={}),
+            ]
+        )
+    )
+
+    assert components == [ComponentType.AGGREGATION_SERVER]
 
 
 def test_preprocessing_aggregation_component_selects_aggregation_strategy():

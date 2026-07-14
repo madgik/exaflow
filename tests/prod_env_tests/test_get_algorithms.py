@@ -40,3 +40,19 @@ def test_preprocessing_specifications_include_longitudinal_transformer():
 
     preprocessing_names = [preprocessing["name"] for preprocessing in result]
     assert "longitudinal_transformer" in preprocessing_names
+
+
+def test_preprocessing_specifications_include_kmeans_cluster_creator():
+    request = requests.get(preprocessing_specifications_url)
+    result = json.loads(request.text)
+
+    kmeans_spec = next(
+        preprocessing
+        for preprocessing in result
+        if preprocessing["name"] == "kmeans_cluster_creator"
+    )
+    parameter_names = set(kmeans_spec["parameters"])
+
+    assert "cluster_variables" in parameter_names
+    assert "output_mode" in parameter_names
+    assert "k_selection" in parameter_names

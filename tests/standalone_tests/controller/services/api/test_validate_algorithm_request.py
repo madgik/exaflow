@@ -2,8 +2,15 @@ import pytest
 from pydantic import ValidationError
 
 import exaflow.controller.services.api.analysis_request_validator as analysis_request_validator
+from exaflow.algorithms.exareme3.linear_model.cox_regression_classical import (
+    ClassicalCoxRegression,
+)
+from exaflow.algorithms.exareme3.linear_model.linear_regression import LinearRegression
 from exaflow.algorithms.exareme3.preprocessing.categorical_column_creator import (
     CategoricalColumnCreator,
+)
+from exaflow.algorithms.exareme3.preprocessing.kmeans_cluster_creator import (
+    KMeansClusterCreator,
 )
 from exaflow.algorithms.exareme3.preprocessing.longitudinal_transformer import (
     LongitudinalTransformer,
@@ -49,6 +56,9 @@ def _cde(code, sql_type, *, categorical=False, enumerations=None):
 def _cdes():
     return {
         "age": _cde("age", "int"),
+        "crp": _cde("crp", "real"),
+        "bmi": _cde("bmi", "real"),
+        "followup_months": _cde("followup_months", "real"),
         "gender": _cde(
             "gender",
             "text",
@@ -63,6 +73,12 @@ def _cdes():
         ),
         "outcome": _cde(
             "outcome",
+            "text",
+            categorical=True,
+            enumerations={"yes": "yes", "no": "no"},
+        ),
+        "event": _cde(
+            "event",
             "text",
             categorical=True,
             enumerations={"yes": "yes", "no": "no"},
@@ -127,7 +143,22 @@ def _validate(request):
         algorithms_specs={"sample_algorithm": _algorithm_spec()},
         preprocessing_steps_specs={
             "categorical_column_creator": CategoricalColumnCreator.get_specification(),
+            "kmeans_cluster_creator": KMeansClusterCreator.get_specification(),
             "longitudinal_transformer": LongitudinalTransformer.get_specification(),
+        },
+        worker_landscape_aggregator=FakeWorkerLandscapeAggregator(),
+        smpc_enabled=False,
+        smpc_optional=False,
+    )
+
+
+def _validate_with_algorithm_spec(request, algorithm_spec):
+    algorithm_spec = algorithm_spec.model_copy(update={"required_preprocessing": []})
+    return analysis_request_validator.validate_analysis_request(
+        analysis_request_dto=request,
+        algorithms_specs={algorithm_spec.name: algorithm_spec},
+        preprocessing_steps_specs={
+            "kmeans_cluster_creator": KMeansClusterCreator.get_specification(),
         },
         worker_landscape_aggregator=FakeWorkerLandscapeAggregator(),
         smpc_enabled=False,
@@ -165,6 +196,22 @@ def _risk_group_step(rules=None):
                 },
             },
             "default_enumeration": "low",
+        },
+    )
+
+
+def _kmeans_cluster_step(**parameters):
+    return AnalysisPreprocessingStepDTO(
+        name="kmeans_cluster_creator",
+        parameters={
+            "code": "kmeans_cluster",
+            "cluster_variables": ["age", "crp"],
+            "k_selection": "manual",
+            "k": 3,
+            "output_mode": "full",
+            "maxiter": 100,
+            "tol": 0.0001,
+            **parameters,
         },
     )
 
@@ -263,6 +310,46 @@ def test_rejects_rules_dict_value_that_is_not_a_filter():
 
 def test_derived_categorical_cde_is_available_to_algorithm_x():
     _validate(_request(preprocessing=[_risk_group_step()], x=["risk_group", "gender"]))
+
+
+def test_kmeans_cluster_categorical_cde_is_available_to_linear_regression_x():
+    request = AnalysisRequestDTO(
+        inputdata=AnalysisInputDataDTO(
+            data_model=DATA_MODEL,
+            datasets=["dataset_a"],
+            variables=["age", "crp", "bmi", "gender"],
+        ),
+        preprocessing=[_kmeans_cluster_step()],
+        algorithm=AnalysisAlgorithmDTO(
+            name="linear_regression",
+            x=["kmeans_cluster", "gender"],
+            y=["bmi"],
+            parameters={},
+        ),
+        flags={},
+    )
+
+    _validate_with_algorithm_spec(request, LinearRegression.get_specification())
+
+
+def test_kmeans_cluster_categorical_cde_is_available_to_cox_covariates():
+    request = AnalysisRequestDTO(
+        inputdata=AnalysisInputDataDTO(
+            data_model=DATA_MODEL,
+            datasets=["dataset_a"],
+            variables=["age", "crp", "followup_months", "event"],
+        ),
+        preprocessing=[_kmeans_cluster_step()],
+        algorithm=AnalysisAlgorithmDTO(
+            name="cox_regression_classical",
+            x=["event", "kmeans_cluster"],
+            y=["followup_months"],
+            parameters={"event_var": "event", "positive_class": "yes"},
+        ),
+        flags={},
+    )
+
+    _validate_with_algorithm_spec(request, ClassicalCoxRegression.get_specification())
 
 
 def test_derived_categorical_cde_contains_rule_and_default_enumerations():
