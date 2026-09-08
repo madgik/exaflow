@@ -226,7 +226,7 @@ class LongitudinalTransformer(PreprocessingStep):
             suffixes=(VISIT1_VALUE_SUFFIX, VISIT2_VALUE_SUFFIX),
             how="inner",
         )
-        result = merged[key_cols].copy()
+        result = merged[key_cols].copy(deep=False)
 
         strategy_dispatch = {
             LongitudinalStrategy.FIRST.value: lambda series_v1, series_v2: series_v1,

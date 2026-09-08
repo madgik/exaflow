@@ -212,7 +212,7 @@ class MissingValuesHandler(PreprocessingStep):
         fill_values: Dict[str, object],
     ) -> pd.DataFrame:
         if not strategies:
-            return data.copy()
+            return data
 
         missing_columns = sorted(set(strategies) - set(data.columns))
         if missing_columns:
@@ -221,9 +221,8 @@ class MissingValuesHandler(PreprocessingStep):
                 f"the runtime data: {missing_columns}."
             )
 
-        transformed = data.copy()
         # Align missing value representation so None/pd.NA are treated consistently.
-        transformed = transformed.where(pd.notna(transformed), np.nan)
+        transformed = data.where(pd.notna(data), np.nan)
 
         drop_columns = [
             column

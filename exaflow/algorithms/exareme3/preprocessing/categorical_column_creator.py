@@ -141,16 +141,15 @@ class CategoricalColumnCreator(PreprocessingStep):
         *,
         data: pd.DataFrame,
     ) -> pd.DataFrame:
-        transformed_data = data.copy()
-        match_count = pd.Series(0, index=transformed_data.index)
+        match_count = pd.Series(0, index=data.index)
         output = pd.Series(
-            [self._default_enumeration] * len(transformed_data),
-            index=transformed_data.index,
+            [self._default_enumeration] * len(data),
+            index=data.index,
             dtype=object,
         )
 
         for enumeration, filter_ in self._rules.items():
-            mask = _evaluate_filter(transformed_data, filter_)
+            mask = _evaluate_filter(data, filter_)
             match_count = match_count + mask.astype(int)
             output.loc[mask] = enumeration
 
@@ -159,8 +158,8 @@ class CategoricalColumnCreator(PreprocessingStep):
                 "Rows matched multiple categorical_column_creator rules."
             )
 
-        transformed_data[self._code] = output
-        return transformed_data
+        data[self._code] = output
+        return data
 
 
 def _new_categorical_metadata(
