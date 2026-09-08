@@ -67,7 +67,11 @@ class PreprocessingStep(ABC):
         *,
         data: pd.DataFrame,
     ) -> pd.DataFrame:
-        """Transform runtime data used by local UDF execution."""
+        """Transform invocation-owned data, potentially modifying it in place.
+
+        Callers must use the returned dataframe and cannot assume it is independent
+        of the input. Copy before calling if the original data must be preserved.
+        """
 
     def transform_data_and_metadata(
         self,

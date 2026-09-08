@@ -110,8 +110,7 @@ class FederatedAnovaTwoWay:
         levels_a: List,
         levels_b: List,
     ) -> pd.DataFrame:
-        subset = data[[y, x1, x2]].copy()
-        subset.dropna(inplace=True)
+        subset = data[[y, x1, x2]].dropna()
         subset[x1] = pd.Categorical(subset[x1], categories=levels_a)
         subset[x2] = pd.Categorical(subset[x2], categories=levels_b)
         subset[y] = subset[y].astype(float)

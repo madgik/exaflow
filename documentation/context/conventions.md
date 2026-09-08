@@ -52,6 +52,10 @@
   should not repeat schema shape, options, defaults, min/max bounds, or
   requiredness.
 - UDF helpers are registered through `@exareme3_udf`.
+- Preprocessing owns the dataframe loaded for each UDF invocation and may modify
+  or return it directly. Callers must use the returned dataframe; direct callers
+  needing an unchanged input must copy it first. These mutations do not write
+  back to DuckDB. Algorithm-internal copies may still protect reused inputs.
 - Preprocessing steps that need aggregation declare
   `ComponentType.AGGREGATION_SERVER` in their specification components and must
   explicitly declare the `agg_client` parameter on `transform_data()`.
