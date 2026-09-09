@@ -107,6 +107,7 @@ class AlgorithmName(str, Enum):
     TTEST_PAIRED = "ttest_paired"
     COX_REGRESSION_STACKED = "cox_regression_stacked"
     OUTLIER_REPORT = "outlier_report"
+    STANDARDIZED_MEAN_DIFFERENCE = "standardized_mean_difference"
 
     def __str__(self) -> str:
         return str.__str__(self)

@@ -12,6 +12,9 @@ from exaflow.algorithms.federated.sql.sql import FederatedSQLResults
 from exaflow.algorithms.federated.statistics.primitive_statistics import (
     PrimitiveStatistics,
 )
+from exaflow.algorithms.federated.statistics.standardized_mean_difference import (
+    FederatedStandardizedMeanDifference,
+)
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
@@ -244,7 +247,6 @@ UNIVARIATE_METHODS = [
 BIVARIATE_METHODS = [
     "covariance",
     "pearson_correlation",
-    "standardized_mean_differences",
 ]
 
 ALL_METHODS = UNIVARIATE_METHODS + BIVARIATE_METHODS
@@ -298,13 +300,6 @@ def _centralized_per_group(df: pd.DataFrame, method: str, ddof: int = 0) -> dict
                     results[group_key] = 0.0
                 else:
                     results[group_key] = float(cov / (np.sqrt(var_x) * np.sqrt(var_y)))
-        elif method == "standardized_mean_differences":
-            var1 = np.nanvar(x, ddof=1) if n_x > 1 else 0.0
-            var2 = np.nanvar(y, ddof=1) if n_y > 1 else 0.0
-            pooled_sd = np.sqrt(((n_x - 1) * var1 + (n_y - 1) * var2) / (n_x + n_y - 2))
-            results[group_key] = (
-                float((avg_x - avg_y) / pooled_sd) if pooled_sd != 0 else 0.0
-            )
         else:
             raise ValueError(f"Unknown method: {method}")
     return results
@@ -587,8 +582,7 @@ class TestFederatedSQLPairwiseSMD(FederatedAlgorithmTest):
     def compute_federated_result(self, X, y, *, agg_client, **kwargs):
         g1 = kwargs["g1"]
         g2 = kwargs["g2"]
-        aggregator = NumpyAggregator(agg_client)
-        ps = PrimitiveStatistics(aggregator)
+        smd = FederatedStandardizedMeanDifference(agg_client)
 
         x1 = X[X["group"] == g1]["x"].to_numpy(dtype=float)
         x2 = X[X["group"] == g2]["x"].to_numpy(dtype=float)
@@ -596,7 +590,7 @@ class TestFederatedSQLPairwiseSMD(FederatedAlgorithmTest):
             x1 = np.array([np.nan], dtype=float)
         if len(x2) == 0:
             x2 = np.array([np.nan], dtype=float)
-        return ps.standardized_mean_differences(x1, x2)
+        return smd.compute(x1, x2)
 
     def compare(self, federated_output, centralized_output, **kwargs):
         assert np.isclose(
