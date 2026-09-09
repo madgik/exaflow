@@ -1,11 +1,8 @@
 import numpy as np
 import pytest
 
-from exaflow.algorithms.federated.statistics.primitive_statistics import (
-    PrimitiveStatistics,
-)
-from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
-    NumpyAggregator,
+from exaflow.algorithms.federated.statistics.standardized_mean_difference import (
+    FederatedStandardizedMeanDifference,
 )
 from tests.standalone_tests.federated_algorithms.utils.federated_algorithm_test import (
     FederatedAlgorithmTest,
@@ -49,9 +46,8 @@ class TestFederatedSMD(FederatedAlgorithmTest):
         return (mean1 - mean2) / pooled_sd
 
     def compute_federated_result(self, X, y, *, agg_client, **kwargs):
-        aggregator = NumpyAggregator(agg_client)
-        stats = PrimitiveStatistics(aggregator)
-        return stats.standardized_mean_differences(X, y)
+        smd = FederatedStandardizedMeanDifference(agg_client)
+        return smd.compute(X, y)
 
     def compare(self, federated_output, centralized_output, **kwargs):
         np.testing.assert_allclose(

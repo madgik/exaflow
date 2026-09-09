@@ -21,6 +21,7 @@ from exaflow.algorithms.federated.statistics import FederatedAnovaTwoWay
 from exaflow.algorithms.federated.statistics import FederatedBinnedMannWhitneyUTest
 from exaflow.algorithms.federated.statistics import FederatedDescriptiveStatistics
 from exaflow.algorithms.federated.statistics import FederatedOutlierReport
+from exaflow.algorithms.federated.statistics import FederatedStandardizedMeanDifference
 from exaflow.algorithms.federated.statistics import FederatedTTestIndependent
 from exaflow.algorithms.federated.statistics import FederatedTTestOneSample
 from exaflow.algorithms.federated.statistics import FederatedTTestPaired
@@ -52,4 +53,5 @@ __all__ = [
     "FederatedClassificationScorer",
     "FederatedOutlierReport",
     "FederatedBinnedMannWhitneyUTest",
+    "FederatedStandardizedMeanDifference",
 ]
