@@ -7,6 +7,7 @@ from .histogram import FederatedGroupedHistogram
 from .outlier_report import FederatedOutlierReport
 from .pearson_correlation import FederatedPearsonCorrelation
 from .percentile import Percentile
+from .standardized_mean_difference import FederatedStandardizedMeanDifference
 from .ttest_independent import FederatedTTestIndependent
 from .ttest_onesample import FederatedTTestOneSample
 from .ttest_paired import FederatedTTestPaired
@@ -19,6 +20,7 @@ __all__ = [
     "FederatedDescriptiveStatistics",
     "FederatedGroupedHistogram",
     "FederatedPearsonCorrelation",
+    "FederatedStandardizedMeanDifference",
     "FederatedTTestIndependent",
     "FederatedTTestOneSample",
     "FederatedTTestPaired",

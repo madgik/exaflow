@@ -46,7 +46,6 @@ UNIVARIATE_METHODS = [
 BIVARIATE_METHODS = [
     "covariance",
     "pearson_correlation",
-    "standardized_mean_differences",
 ]
 
 ALL_METHODS = UNIVARIATE_METHODS + BIVARIATE_METHODS
@@ -94,14 +93,6 @@ class TestPrimitiveFederatedStats(FederatedAlgorithmTest):
         elif method == "pearson_correlation":
             r, _ = stats.pearsonr(x, y)
             return r
-        elif method == "standardized_mean_differences":
-            n1, n2 = len(x), len(y)
-            mean1, mean2 = np.mean(x), np.mean(y)
-            var1, var2 = np.var(x, ddof=1), np.var(y, ddof=1)
-            pooled_sd = np.sqrt(((n1 - 1) * var1 + (n2 - 1) * var2) / (n1 + n2 - 2))
-            if pooled_sd == 0:
-                return 0.0
-            return (mean1 - mean2) / pooled_sd
         return None
 
     def compute_federated_result(self, X, y, *, agg_client, **kwargs):
