@@ -56,3 +56,4 @@
 - [HISTOGRAM](docs/histogram.md)
 - [OUTLIER_REPORT](docs/outlier_report.md)
 - [BINNED_MANN_WHITNEY_U_TEST](docs/binned_mann_whitney_u_test.md)
+- [STANDARDIZED_MEAN_DIFFERENCE](docs/standardized_mean_difference.md)
