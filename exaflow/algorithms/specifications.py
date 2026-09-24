@@ -57,6 +57,7 @@ class ParameterDictValueType(str, Enum):
 @unique
 class PreprocessingOutputType(str, Enum):
     NEW_CATEGORICAL_COLUMN = "new_categorical_column"
+    NEW_NUMERICAL_COLUMN = "new_numerical_column"
 
 
 @unique
@@ -177,6 +178,7 @@ class ParameterSpecification(ImmutableBaseModel):
 class PreprocessingOutputSpecification(ImmutableBaseModel):
     type: PreprocessingOutputType
     code_parameter: Optional[str] = None
+    multiple: bool = False
 
 
 class WorkflowStepSpecification(ImmutableBaseModel):

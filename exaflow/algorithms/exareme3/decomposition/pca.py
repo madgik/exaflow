@@ -1,18 +1,10 @@
-from typing import List
-
-from pydantic import BaseModel
-
 from exaflow.algorithms import specifications as specs
+from exaflow.algorithms.exareme3.decomposition.pca_common import PCAResult
+from exaflow.algorithms.exareme3.decomposition.pca_common import build_pca_result
+from exaflow.algorithms.exareme3.decomposition.pca_common import model_result_payload
+from exaflow.algorithms.exareme3.decomposition.pca_common import run_federated_pca
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.decomposition.pca import FederatedPCA
-
-
-class PCAResult(BaseModel):
-    title: str
-    n_obs: int
-    eigenvalues: List[float]
-    eigenvectors: List[List[float]]
 
 
 class PCA(Algorithm):
@@ -55,27 +47,18 @@ class PCA(Algorithm):
             },
             identical_results=True,
         )
-        n_obs = result["n_obs"]
-        eigenvalues = result["eigenvalues"]
-        eigenvectors = result["eigenvectors"]
-
-        result = PCAResult(
-            title="Eigenvalues and Eigenvectors",
-            n_obs=n_obs,
-            eigenvalues=eigenvalues,
-            eigenvectors=eigenvectors,
+        return build_pca_result(
+            payload=result,
+            variables=self.y,
+            pca_variant="pca",
         )
-        return result
 
 
 @exareme3_udf(with_aggregation_server=True)
 def local_step(agg_client, data, y_vars):
-    X = data[y_vars]
-
-    model = FederatedPCA(agg_client=agg_client)
-    model.fit(X)
-    return dict(
-        n_obs=model.n_samples_seen_,
-        eigenvalues=model.explained_variance_.tolist(),
-        eigenvectors=model.components_.tolist(),
+    execution = run_federated_pca(
+        agg_client=agg_client,
+        data=data,
+        variables=y_vars,
     )
+    return model_result_payload(execution.model)

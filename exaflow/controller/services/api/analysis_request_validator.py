@@ -235,9 +235,18 @@ def _validate_and_apply_preprocessing(
             inputdata=transformed_inputdata,
             metadata=step_metadata,
         )
+        variables_before_step = list(transformed_inputdata.variables)
         transformed_variables = preprocessing_step.transform_variables(
-            variables=list(transformed_inputdata.variables),
+            variables=variables_before_step.copy(),
         )
+        generated_variables = []
+        if preprocessing_step_spec.output and preprocessing_step_spec.output.multiple:
+            generated_variables = _validate_multiple_generated_variables(
+                variables_before_step=variables_before_step,
+                candidate_variables=transformed_variables,
+                data_model_cdes={**data_model_cdes, **transformed_data_model_cdes},
+                preprocessing_step_name=name,
+            )
         transformed_inputdata = transformed_inputdata.model_copy(
             update={"variables": transformed_variables}
         )
@@ -248,6 +257,7 @@ def _validate_and_apply_preprocessing(
             preprocessing_step_spec=preprocessing_step_spec,
             params=params,
             metadata=transformed_metadata,
+            generated_variables=generated_variables,
         )
         transformed_data_model_cdes = _convert_metadata_to_data_model_cdes(
             transformed_metadata
@@ -304,6 +314,25 @@ def _validate_preprocessing_output_name(
     data_model_cdes: Dict[str, CommonDataElement],
 ) -> None:
     output = preprocessing_step_spec.output
+    if output and output.multiple:
+        return
+
+    if (
+        output
+        and output.type == PreprocessingOutputType.NEW_NUMERICAL_COLUMN
+        and output.code_parameter
+    ):
+        code = params.get(output.code_parameter)
+        if not isinstance(code, str) or not code.strip():
+            raise BadUserInput(
+                f"Preprocessing step '{preprocessing_step_spec.name}' requires a non-blank generated code."
+            )
+        if code in data_model_cdes:
+            raise BadUserInput(
+                f"Preprocessing step '{preprocessing_step_spec.name}' cannot create CDE '{code}' because it already exists."
+            )
+        return
+
     if (
         not output
         or output.type != PreprocessingOutputType.NEW_CATEGORICAL_COLUMN
@@ -323,8 +352,40 @@ def _derive_preprocessing_output_metadata(
     preprocessing_step_spec: PreprocessingStepSpecification,
     params: Dict[str, Any],
     metadata: Dict[str, dict],
+    generated_variables: Optional[List[str]] = None,
 ) -> None:
     output = preprocessing_step_spec.output
+    if (
+        output
+        and output.type == PreprocessingOutputType.NEW_NUMERICAL_COLUMN
+        and output.code_parameter
+        and not output.multiple
+    ):
+        code = params[output.code_parameter]
+        metadata[code] = {
+            "code": code,
+            "label": code,
+            "sql_type": "real",
+            "is_categorical": False,
+            "enumerations": None,
+        }
+        return
+
+    if (
+        output
+        and output.type == PreprocessingOutputType.NEW_NUMERICAL_COLUMN
+        and output.multiple
+    ):
+        for code in generated_variables or []:
+            metadata[code] = {
+                "code": code,
+                "label": code,
+                "sql_type": "real",
+                "is_categorical": False,
+                "enumerations": None,
+            }
+        return
+
     if (
         not output
         or output.type != PreprocessingOutputType.NEW_CATEGORICAL_COLUMN
@@ -348,6 +409,38 @@ def _derive_preprocessing_output_metadata(
         "is_categorical": True,
         "enumerations": enumerations,
     }
+
+
+def _validate_multiple_generated_variables(
+    *,
+    variables_before_step: List[str],
+    candidate_variables: List[str],
+    data_model_cdes: Dict[str, CommonDataElement],
+    preprocessing_step_name: str,
+) -> List[str]:
+    if candidate_variables[: len(variables_before_step)] != variables_before_step:
+        raise BadUserInput(
+            f"Preprocessing step '{preprocessing_step_name}' changed existing variable order."
+        )
+
+    generated_variables = candidate_variables[len(variables_before_step) :]
+
+    for variable in generated_variables:
+        if not isinstance(variable, str) or not variable.strip():
+            raise BadUserInput(
+                f"Preprocessing step '{preprocessing_step_name}' produced a blank variable name."
+            )
+        if variable in data_model_cdes:
+            raise BadUserInput(
+                f"Preprocessing step '{preprocessing_step_name}' cannot create CDE '{variable}' because it already exists."
+            )
+
+    if len(candidate_variables) != len(set(candidate_variables)):
+        raise BadUserInput(
+            f"Preprocessing step '{preprocessing_step_name}' produced duplicate variables."
+        )
+
+    return generated_variables
 
 
 def _convert_data_model_cdes_to_metadata(

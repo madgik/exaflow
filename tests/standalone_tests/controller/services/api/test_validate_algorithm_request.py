@@ -2,12 +2,14 @@ import pytest
 from pydantic import ValidationError
 
 import exaflow.controller.services.api.analysis_request_validator as analysis_request_validator
+from exaflow.algorithms.exareme3.linear_model.linear_regression import LinearRegression
 from exaflow.algorithms.exareme3.preprocessing.categorical_column_creator import (
     CategoricalColumnCreator,
 )
 from exaflow.algorithms.exareme3.preprocessing.longitudinal_transformer import (
     LongitudinalTransformer,
 )
+from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import InputDataSpecification
 from exaflow.algorithms.specifications import InputDataStatType
@@ -15,6 +17,9 @@ from exaflow.algorithms.specifications import InputDataType
 from exaflow.algorithms.specifications import ParameterDictValueType
 from exaflow.algorithms.specifications import ParameterSpecification
 from exaflow.algorithms.specifications import ParameterType
+from exaflow.algorithms.specifications import PreprocessingOutputSpecification
+from exaflow.algorithms.specifications import PreprocessingOutputType
+from exaflow.algorithms.specifications import PreprocessingStepSpecification
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisAlgorithmDTO
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisInputDataDTO
 from exaflow.controller.services.api.analysis_request_dtos import (
@@ -263,6 +268,224 @@ def test_rejects_rules_dict_value_that_is_not_a_filter():
 
 def test_derived_categorical_cde_is_available_to_algorithm_x():
     _validate(_request(preprocessing=[_risk_group_step()], x=["risk_group", "gender"]))
+
+
+def _numerical_output_spec():
+    return PreprocessingStepSpecification(
+        name="numerical_creator",
+        desc="Creates one numerical column.",
+        documentation="Creates one numerical column.",
+        label="Numerical creator",
+        enabled=True,
+        parameters={},
+        output=PreprocessingOutputSpecification(
+            type=PreprocessingOutputType.NEW_NUMERICAL_COLUMN,
+            code_parameter="code",
+        ),
+    )
+
+
+class FakeMultipleNumericalCreator(PreprocessingStep):
+    def __init__(self, *, params):
+        super().__init__(params=params)
+        self._codes = list(params["codes"])
+
+    @classmethod
+    def get_specification(cls):
+        return _multiple_numerical_output_spec()
+
+    def validate_params(self, *, inputdata, metadata):
+        return None
+
+    def transform_variables(self, *, variables):
+        return list(variables) + self._codes
+
+    def transform_metadata(self, *, metadata):
+        return dict(metadata)
+
+    def transform_data(self, *, data):
+        return data
+
+
+def _multiple_numerical_output_spec():
+    return PreprocessingStepSpecification(
+        name="fake_multiple_numerical_creator",
+        desc="Creates numerical columns.",
+        documentation="Creates numerical columns.",
+        label="Multiple numerical creator",
+        enabled=True,
+        parameters={
+            "codes": ParameterSpecification(
+                label="Generated codes",
+                desc="Generated numerical column codes.",
+                types=[ParameterType.TEXT],
+                required=True,
+                multiple=True,
+            )
+        },
+        output=PreprocessingOutputSpecification(
+            type=PreprocessingOutputType.NEW_NUMERICAL_COLUMN,
+            multiple=True,
+        ),
+    )
+
+
+def _validate_with_fake_multiple_creator(monkeypatch, codes, *, variables=None):
+    monkeypatch.setitem(
+        analysis_request_validator.exareme3_preprocessing_step_classes,
+        "fake_multiple_numerical_creator",
+        FakeMultipleNumericalCreator,
+    )
+    request = _request(
+        variables=variables or ["age", "gender", "diagnosis", "outcome"],
+        preprocessing=[
+            AnalysisPreprocessingStepDTO(
+                name="fake_multiple_numerical_creator",
+                parameters={"codes": codes},
+            )
+        ],
+    )
+    return analysis_request_validator._validate_and_apply_preprocessing(
+        analysis_request_dto=request,
+        preprocessing_steps_specs={
+            "fake_multiple_numerical_creator": _multiple_numerical_output_spec()
+        },
+        data_model_cdes=_cdes(),
+    )
+
+
+def test_multiple_numerical_outputs_preserve_order_and_metadata(monkeypatch):
+    transformed_inputdata, transformed_cdes = _validate_with_fake_multiple_creator(
+        monkeypatch,
+        ["derived_b", "derived_a"],
+    )
+
+    assert transformed_inputdata.variables[-2:] == ["derived_b", "derived_a"]
+    assert transformed_cdes["derived_b"].model_dump() == {
+        "code": "derived_b",
+        "label": "derived_b",
+        "sql_type": "real",
+        "is_categorical": False,
+        "enumerations": None,
+        "min": None,
+        "max": None,
+    }
+    assert transformed_cdes["derived_a"].model_dump() == {
+        "code": "derived_a",
+        "label": "derived_a",
+        "sql_type": "real",
+        "is_categorical": False,
+        "enumerations": None,
+        "min": None,
+        "max": None,
+    }
+
+
+def test_multiple_numerical_collision_rejects_whole_step(monkeypatch):
+    with pytest.raises(BadUserInput, match="cannot create CDE 'age'"):
+        _validate_with_fake_multiple_creator(
+            monkeypatch,
+            ["derived_a", "age"],
+        )
+
+
+def test_multiple_numerical_duplicate_output_rejects_whole_step(monkeypatch):
+    with pytest.raises(BadUserInput, match="duplicate variables"):
+        _validate_with_fake_multiple_creator(
+            monkeypatch,
+            ["derived_a", "derived_a"],
+        )
+
+
+def test_multiple_numerical_blank_output_rejects_whole_step(monkeypatch):
+    with pytest.raises(BadUserInput, match="blank variable name"):
+        _validate_with_fake_multiple_creator(
+            monkeypatch,
+            ["derived_a", "   "],
+        )
+
+
+def test_multiple_numerical_failure_does_not_commit_variables_or_metadata(monkeypatch):
+    original_variables = ["age", "gender", "diagnosis", "outcome"]
+    with pytest.raises(BadUserInput):
+        _validate_with_fake_multiple_creator(
+            monkeypatch,
+            ["derived_a", "age"],
+            variables=original_variables,
+        )
+
+    assert original_variables == ["age", "gender", "diagnosis", "outcome"]
+    assert "derived_a" not in _cdes()
+
+
+def test_downstream_validation_sees_all_multiple_numerical_outputs(monkeypatch):
+    _, transformed_cdes = _validate_with_fake_multiple_creator(
+        monkeypatch,
+        ["derived_b", "derived_a"],
+    )
+    transformed_cdes["derived_b"] = transformed_cdes["derived_b"]
+    transformed_cdes["derived_a"] = transformed_cdes["derived_a"]
+
+    analysis_request_validator._validate_algorithm_inputdatas(
+        x=["derived_b", "derived_a"],
+        y=["age"],
+        algorithm_specs=LinearRegression.get_specification(),
+        data_model_cdes={**_cdes(), **transformed_cdes},
+    )
+
+
+def test_numerical_output_metadata_is_derived_for_one_generated_column():
+    metadata = {name: cde.model_dump() for name, cde in _cdes().items()}
+    spec = _numerical_output_spec()
+
+    analysis_request_validator._validate_preprocessing_output_name(
+        preprocessing_step_spec=spec,
+        params={"code": "derived_x"},
+        data_model_cdes=metadata,
+    )
+    analysis_request_validator._derive_preprocessing_output_metadata(
+        preprocessing_step_spec=spec,
+        params={"code": "derived_x"},
+        metadata=metadata,
+    )
+
+    assert metadata["derived_x"] == {
+        "code": "derived_x",
+        "label": "derived_x",
+        "sql_type": "real",
+        "is_categorical": False,
+        "enumerations": None,
+    }
+
+
+def test_numerical_output_collision_is_rejected():
+    with pytest.raises(BadUserInput, match="cannot create CDE 'age'"):
+        analysis_request_validator._validate_preprocessing_output_name(
+            preprocessing_step_spec=_numerical_output_spec(),
+            params={"code": "age"},
+            data_model_cdes=_cdes(),
+        )
+
+
+def test_numerical_output_blank_code_is_rejected():
+    with pytest.raises(BadUserInput, match="non-blank generated code"):
+        analysis_request_validator._validate_preprocessing_output_name(
+            preprocessing_step_spec=_numerical_output_spec(),
+            params={"code": "   "},
+            data_model_cdes=_cdes(),
+        )
+
+
+def test_downstream_validation_accepts_a_generated_numerical_cde():
+    data_model_cdes = _cdes()
+    data_model_cdes["derived_x"] = _cde("derived_x", "real")
+
+    analysis_request_validator._validate_algorithm_inputdatas(
+        x=["derived_x"],
+        y=["age"],
+        algorithm_specs=LinearRegression.get_specification(),
+        data_model_cdes=data_model_cdes,
+    )
 
 
 def test_derived_categorical_cde_contains_rule_and_default_enumerations():

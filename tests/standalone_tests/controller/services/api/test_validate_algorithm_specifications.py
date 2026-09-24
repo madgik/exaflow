@@ -109,6 +109,37 @@ def test_preprocessing_spec_dto_exposes_enum_output_type():
 
     assert dto.output.type == PreprocessingOutputTypeDTO.NEW_CATEGORICAL_COLUMN
     assert dto.output.code_parameter == "code"
+    assert dto.output.multiple is False
+
+
+def test_preprocessing_spec_dto_exposes_numerical_output_type():
+    preprocessing_spec = _sample_preprocessing_spec(
+        output=PreprocessingOutputSpecification(
+            type=PreprocessingOutputType.NEW_NUMERICAL_COLUMN,
+            code_parameter="code",
+        )
+    )
+
+    dto = _convert_transformer_specification_to_dto(preprocessing_spec)
+
+    assert dto.output.type == PreprocessingOutputTypeDTO.NEW_NUMERICAL_COLUMN
+    assert dto.output.code_parameter == "code"
+    assert dto.output.multiple is False
+
+
+def test_preprocessing_spec_dto_serializes_multiple_output_marker():
+    preprocessing_spec = _sample_preprocessing_spec(
+        output=PreprocessingOutputSpecification(
+            type=PreprocessingOutputType.NEW_NUMERICAL_COLUMN,
+            multiple=True,
+        )
+    )
+
+    dto = _convert_transformer_specification_to_dto(preprocessing_spec)
+
+    assert dto.output.type == PreprocessingOutputTypeDTO.NEW_NUMERICAL_COLUMN
+    assert dto.output.code_parameter is None
+    assert dto.output.multiple is True
 
 
 def test_parameter_dict_value_type_supports_filter():

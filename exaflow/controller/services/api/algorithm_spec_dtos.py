@@ -74,11 +74,13 @@ class ParameterSpecificationDTO(ImmutableBaseModel):
 @unique
 class PreprocessingOutputTypeDTO(str, Enum):
     NEW_CATEGORICAL_COLUMN = PreprocessingOutputType.NEW_CATEGORICAL_COLUMN.value
+    NEW_NUMERICAL_COLUMN = PreprocessingOutputType.NEW_NUMERICAL_COLUMN.value
 
 
 class PreprocessingOutputSpecificationDTO(ImmutableBaseModel):
     type: PreprocessingOutputTypeDTO
     code_parameter: Optional[str] = None
+    multiple: bool = False
 
 
 class PreprocessingStepSpecificationDTO(ImmutableBaseModel):
@@ -246,6 +248,7 @@ def _convert_preprocessing_output_specification_to_dto(
     return PreprocessingOutputSpecificationDTO(
         type=PreprocessingOutputTypeDTO(spec.type.value),
         code_parameter=spec.code_parameter,
+        multiple=spec.multiple,
     )
 
 
