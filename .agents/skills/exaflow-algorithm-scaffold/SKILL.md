@@ -19,6 +19,17 @@ Human-facing setup guide: `documentation/new-algorithm-setup.md`.
 1. Implement or update docs under `documentation/algorithms/` and `exaflow/algorithms/federated/docs/`.
 1. Run validation with `$exaflow-algorithm-validate` (fast, then strict when requested).
 
+## Algorithm Developer Profile
+
+Algorithm work may change algorithm-owned implementation, tests, fixtures, docs,
+and narrow registration/index files only. Do not modify controller, worker,
+aggregation server, protobuf, Kubernetes, config, dependency, privacy/security,
+API route, DTO, or orchestration code from an algorithm task.
+
+If an algorithm needs system-owned behavior, stop algorithm implementation and
+return a System Feature Request with the needed capability, current limitation,
+minimal requested system interface, algorithm-side impact, and evidence.
+
 ## Execution-First Contract
 
 Agents using this skill must keep working until the Definition of Done is met or a concrete blocker is proven by a failing command.
@@ -62,6 +73,7 @@ Definition of Done:
 - Standalone parity test exists and passes.
 - Prod validation test and non-empty expected fixture exist.
 - Registration touchpoints and docs are patched.
+- Algorithm profile boundary validation passes.
 - `validate_algorithms.py --new-algorithm <name>` passes with no warnings.
 - Focused standalone `pytest` passes. Ignore import order, formatting-only lint,
   and other purely mechanical style issues; automated tools handle them.

@@ -130,6 +130,42 @@ Do not run on your own:
 Use focused file reads, scoped searches, `--stat`, `-q`, and path-specific test
 commands instead.
 
+## Agent Profiles
+
+Algorithm work must run under the **Algorithm Developer Profile** unless the
+user explicitly asks for system/runtime changes. In this profile, agents may
+change algorithm-owned files only: Exareme3 wrappers, federated core logic,
+algorithm standalone tests, prod validation tests/fixtures, algorithm docs, and
+narrow algorithm registration/index files.
+
+Allowed narrow shared files are limited to algorithm exposure and metadata:
+`exaflow/algorithms/specifications.py`, federated `__init__.py` exports, and
+federated README/index entries. Do not use algorithm work to change controller,
+worker, aggregation server, protobuf, Kubernetes, config, dependency, privacy,
+security, API route, DTO, or orchestration code.
+
+If an algorithm cannot be implemented through existing algorithm interfaces, stop
+and write a System Feature Request instead of patching system-owned code:
+
+```text
+System feature needed for algorithm: <algorithm_id>
+
+Needed capability:
+<one sentence>
+
+Current limitation:
+<which existing API/spec/UDF/runtime behavior prevents implementation>
+
+Minimal requested system change:
+<interface or behavior requested, without implementation details unless obvious>
+
+Algorithm-side impact:
+<what can proceed now and what remains blocked>
+
+Evidence:
+<file/test/error references>
+```
+
 ## Architecture Rules
 
 See `documentation/context/architecture.md` and

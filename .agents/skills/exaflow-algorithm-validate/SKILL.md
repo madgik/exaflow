@@ -18,6 +18,17 @@ Human-facing setup guide: `documentation/new-algorithm-setup.md`.
 1. Use `--strict` to run standalone + prod_env runtime suites.
 1. Inspect JSON output and resolve `failed` entries first, then `warn` entries.
 
+## Algorithm Developer Profile
+
+Algorithm work may change algorithm-owned implementation, tests, fixtures, docs,
+and narrow registration/index files only. Do not modify controller, worker,
+aggregation server, protobuf, Kubernetes, config, dependency, privacy/security,
+API route, DTO, or orchestration code from an algorithm task.
+
+If an algorithm needs system-owned behavior, stop algorithm implementation and
+return a System Feature Request with the needed capability, current limitation,
+minimal requested system interface, algorithm-side impact, and evidence.
+
 ## Execution-First Contract
 
 Agents using this skill must treat validator output as the source of truth. A task is not complete while `failed` or `warnings` are non-empty.
@@ -27,6 +38,7 @@ Definition of Done:
 - `validate_algorithms.py --new-algorithm <name>` exits successfully.
 - Validator JSON contains no `failed` entries.
 - Validator JSON contains no `warnings` entries.
+- Algorithm profile boundary validation passes.
 - New or changed algorithm contracts should not be backwards compatible by
   default. Treat legacy request shapes, aliases, fallback paths, deprecated
   output fields, compatibility shims, and silent normalization for old callers

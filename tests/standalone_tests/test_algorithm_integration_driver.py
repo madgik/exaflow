@@ -200,3 +200,70 @@ def test_validator_fails_fixture_with_replacement_placeholders(tmp_path):
     ]
     assert placeholder_rows
     assert placeholder_rows[0]["severity"] == "failed"
+
+
+def test_validator_algorithm_profile_allows_algorithm_and_registration_paths():
+    changed_files = [
+        "exaflow/algorithms/exareme3/example_test.py",
+        "exaflow/algorithms/federated/statistics/example_test.py",
+        "exaflow/algorithms/federated/statistics/__init__.py",
+        "exaflow/algorithms/federated/__init__.py",
+        "exaflow/algorithms/federated/README.md",
+        "exaflow/algorithms/specifications.py",
+        "tests/standalone_tests/federated_algorithms/statistics/test_example_test.py",
+        "tests/prod_env_tests/test_example_test.py",
+        "tests/prod_env_tests/expected/example_test_expected.json",
+        "documentation/algorithms/example_test.md",
+    ]
+
+    violations = VALIDATOR.algorithm_profile_boundary_violations(changed_files)
+
+    assert violations == []
+
+
+def test_validator_algorithm_profile_blocks_system_owned_paths():
+    changed_files = [
+        "exaflow/algorithms/exareme3/example_test.py",
+        "exaflow/controller/quart/endpoints.py",
+        "exaflow/worker/grpc_server.py",
+        "exaflow/protos/worker/worker.proto",
+        "kubernetes/values.yaml",
+        "pyproject.toml",
+    ]
+
+    violations = VALIDATOR.algorithm_profile_boundary_violations(changed_files)
+
+    assert violations == [
+        "exaflow/controller/quart/endpoints.py",
+        "exaflow/protos/worker/worker.proto",
+        "exaflow/worker/grpc_server.py",
+        "kubernetes/values.yaml",
+        "pyproject.toml",
+    ]
+
+
+def test_validator_reports_algorithm_profile_boundary_failure(tmp_path):
+    report = []
+
+    VALIDATOR.check_algorithm_profile_boundary(
+        report,
+        repo_root=tmp_path,
+        changed_files=[
+            "exaflow/algorithms/exareme3/example_test.py",
+            "exaflow/controller/services/api/algorithm_request_dtos.py",
+        ],
+    )
+
+    rows = [entry.to_dict() for entry in report]
+    failed = [row for row in rows if row["severity"] == "failed"]
+    assert len(failed) == 1
+    assert failed[0]["check"] == "algorithm_profile_boundary"
+    assert "System Feature Request" in failed[0]["next_action"]
+
+
+def test_validator_ignores_system_feature_request_docs_as_algorithm_targets():
+    algorithms = VALIDATOR.map_changed_files_to_algorithms(
+        ["documentation/algorithms/kmeans_cluster_creator_system_feature_request.md"]
+    )
+
+    assert algorithms == set()

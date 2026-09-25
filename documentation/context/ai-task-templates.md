@@ -189,10 +189,15 @@ Algorithm:
 
 Constraints:
 
+- Work under the Algorithm Developer Profile.
 - Use repository scaffold/validation skills for new algorithms.
 - Keep algorithm id consistent everywhere.
 - Prefer specification-level validation.
 - Do not leave placeholders.
+- Do not modify controller, worker, aggregation server, protobuf, Kubernetes,
+  config, dependency, privacy/security, API route, DTO, or orchestration code.
+- If system-owned code is required, stop and return a System Feature Request
+  instead of implementing that system change.
 
 Return:
 
@@ -200,6 +205,7 @@ Return:
 1. Files changed
 1. Validation skill output
 1. Tests run
+1. System Feature Request, if blocked by system-owned behavior
 1. Remaining risks
 
 ## Security-Sensitive Change Template
