@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import numpy as np
 
@@ -53,6 +54,7 @@ def test_kmeans_run_stores_centers_in_reusable_contract(monkeypatch):
     )
     algorithm = KMeans(
         engine=SimpleNamespace(),
+        logger=Mock(),
         inputdata=Inputdata(
             data_model="dm:0.1",
             datasets=["dataset"],

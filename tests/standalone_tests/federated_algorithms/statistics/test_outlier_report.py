@@ -1,4 +1,5 @@
 import math
+from unittest.mock import Mock
 
 import pandas as pd
 import pytest
@@ -18,6 +19,7 @@ from exaflow.worker_communication import InsufficientDataError
 def _make_algorithm(params):
     return OutlierReport(
         engine=None,
+        logger=Mock(),
         inputdata=Inputdata(
             data_model="dm:0.1",
             datasets=["d1"],

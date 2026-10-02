@@ -90,6 +90,7 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
         algorithm_cls = exareme3_algorithm_classes[self._algorithm_name]
         algorithm = algorithm_cls(
             engine=engine,
+            logger=self._logger,
             inputdata=transformed_inputdata,
             x=self._analysis_request_dto.algorithm.x,
             y=self._analysis_request_dto.algorithm.y,
