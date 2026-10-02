@@ -31,7 +31,6 @@ class FederatedCrossValidator:
         data: pd.DataFrame | None = None,
         categorical_vars: list[str] | None = None,
         numerical_vars: list[str] | None = None,
-        p: int = 0,
         agg_client: AggregationClient,
     ) -> dict:
         metrics_per_fold: dict[str, list] = {}
@@ -68,7 +67,7 @@ class FederatedCrossValidator:
                     y_test,
                     agg_client=agg_client,
                     n_train=n_train,
-                    p=p,
+                    p=X_test.shape[1],
                 )
 
                 metrics_with_obs = dict(metrics)
@@ -89,7 +88,7 @@ class FederatedCrossValidator:
                     y_test,
                     agg_client=agg_client,
                     n_train=n_train,
-                    p=p,
+                    p=X_test.shape[1],
                 )
 
                 metrics_with_obs = dict(metrics)

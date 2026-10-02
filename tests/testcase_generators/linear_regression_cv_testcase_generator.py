@@ -1,96 +1,145 @@
 import numpy as np
-import pandas as pd
-import statsmodels.api as sm
-import statsmodels.formula.api as smf
-from sklearn.base import BaseEstimator
-from sklearn.base import RegressorMixin
-from sklearn.model_selection import cross_val_score
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import r2_score
+from sklearn.model_selection import KFold
 
 from exaflow.algorithms.exareme3.model_selection.cross_validation.linear_regression_cv import (
-    CVLinearRegressionResult,
+    LinearRegressionCV,
+)
+from exaflow.algorithms.exareme3.model_selection.cross_validation.linear_regression_cv import (
+    LinearRegressionCVResult,
 )
 from tests.testcase_generators.testcase_generator import TestCaseGenerator
 
 
-class StatsmodelsWrapper(BaseEstimator, RegressorMixin):
-    """Wrapper for statsmodels regression model with formula, exposing the same
-    methods as regression in sklearn. It is used as a wrapper for statsmodels
-    OLS in order to be able to use sklearn's `cross_val_score`."""
-
-    def __init__(self, model_class, formula):
-        self.model_class = model_class
-        self.formula = formula
-
-    def fit(self, X, y):
-        data = pd.concat([y, X], axis=1)
-        self.model_ = self.model_class(self.formula, data=data, missing="drop").fit()
-        return self
-
-    def predict(self, X):
-        X = sm.add_constant(X)
-        return self.model_.predict(X)
-
-
 class LinearRegressionTestCaseGenerator(TestCaseGenerator):
-    def compute_expected_output(self, input_data, params):
+    """Centralized reference using unshuffled folds in the supplied row order.
+
+    Distributed comparisons must use the same fold membership; worker-local
+    KFold splits generally differ from KFold over concatenated rows.
+    """
+
+    def compute_expected_output(self, input_data, params, metadata):
         y, X = input_data
         n_splits = params["n_splits"]
+        if n_splits > len(y):
+            return None
 
-        if n_splits >= len(y):
-            return  # Discard invalid test case
+        categorical = [
+            cde["code"]
+            for cde in metadata
+            if cde["code"] in X.columns and cde["isCategorical"]
+        ]
+        numerical = [name for name in X.columns if name not in categorical]
 
-        [yname] = y.columns
-        xnames = X.columns
-        formula = f"{yname}~{'+'.join(xnames)}"
+        def design(frame, levels):
+            columns = [
+                (frame[name] == level).to_numpy(dtype=float)
+                for name in categorical
+                for level in levels[name][1:]
+            ] + [frame[name].to_numpy(dtype=float) for name in numerical]
+            return np.column_stack(columns) if columns else np.empty((len(frame), 0))
 
-        model = StatsmodelsWrapper(smf.ols, formula)
-
-        try:
-            neg_rms_errors = cross_val_score(
-                model,
-                X,
-                y,
-                cv=n_splits,
-                scoring="neg_root_mean_squared_error",
+        metrics = {key: [] for key in ["rmse", "mae", "r2", "f_stat"]}
+        n_obs = []
+        y_values = y.iloc[:, 0].to_numpy(dtype=float)
+        for train, test in KFold(n_splits=n_splits, shuffle=False).split(X):
+            levels = {
+                name: sorted(X.iloc[train][name].unique()) for name in categorical
+            }
+            X_train, X_test = (
+                design(X.iloc[train], levels),
+                design(X.iloc[test], levels),
             )
-            rms_errors = np.array([-e for e in neg_rms_errors])
-            r2s = np.array(cross_val_score(model, X, y, cv=n_splits, scoring="r2"))
-            neg_maes = cross_val_score(
-                model, X, y, cv=n_splits, scoring="neg_mean_absolute_error"
+            y_train, y_test = y_values[train], y_values[test]
+            p = X_train.shape[1]
+            if p:
+                model = LinearRegression().fit(X_train, y_train)
+                predicted = model.predict(X_test)
+            else:
+                predicted = np.full(len(test), y_train.mean())
+            rss = np.square(y_test - predicted).sum()
+            tss = np.square(y_test - y_test.mean()).sum()
+            f_stat = float("nan")
+            if p > 0 and len(train) - p - 1 > 0 and tss > 0:
+                if rss <= tss * np.finfo(float).eps * 100:
+                    f_stat = float("inf")
+                else:
+                    f_stat = (tss - rss) * (len(train) - p - 1) / (p * rss)
+            metrics["rmse"].append(np.sqrt(mean_squared_error(y_test, predicted)))
+            metrics["mae"].append(mean_absolute_error(y_test, predicted))
+            metrics["r2"].append(
+                r2_score(y_test, predicted, force_finite=False)
+                if len(test) >= 2 and tss > 0
+                else float("nan")
             )
-            maes = np.array([-e for e in neg_maes])
-        except Exception as exc:
-            if exc.__class__.__name__ != "PatsyError":
-                raise
-            return  # Discard test case if the formula parser cannot parse formula
+            metrics["f_stat"].append(f_stat)
+            n_obs.append(len(train))
 
-        result = CVLinearRegressionResult(
-            dependent_var=yname,
-            indep_vars=[""],
-            n_obs=[0],
-            mean_sq_error=(rms_errors.mean(), rms_errors.std(ddof=1)),
-            r_squared=(r2s.mean(), r2s.std(ddof=1)),
-            mean_abs_error=(maes.mean(), maes.std(ddof=1)),
-        )
+        def summary(values):
+            if not np.isfinite(values).all():
+                return None, None
+            return float(np.mean(values)), float(np.std(values, ddof=1))
 
-        if result_has_nan(result):
-            return  # Some results have nans, not sure why but discard
+        feature_names = [
+            f"{name}[{level}]"
+            for name in categorical
+            for level in sorted(X[name].unique())[1:]
+        ] + numerical
+        return LinearRegressionCVResult(
+            dependent_var=y.columns[0],
+            indep_vars=["Intercept"] + feature_names,
+            n_obs=n_obs,
+            root_mean_sq_error=summary(metrics["rmse"]),
+            r_squared=summary(metrics["r2"]),
+            mean_abs_error=summary(metrics["mae"]),
+            f_stat=summary(metrics["f_stat"]),
+        ).model_dump(mode="json")
 
-        return result.model_dump()
-
-
-def result_has_nan(result):
-    if np.isnan(result.mean_sq_error).any():
-        return True
-    if np.isnan(result.mean_abs_error).any():
-        return True
-    if np.isnan(result.r_squared).any():
-        return True
-    return False
+    def generate_test_case(self):
+        case = super().generate_test_case()
+        generated_input = case["input"]
+        inputdata = dict(generated_input["inputdata"])
+        x, y = list(inputdata.pop("x")), list(inputdata.pop("y"))
+        inputdata["variables"] = x + y
+        case["input"] = {
+            "inputdata": inputdata,
+            "preprocessing": [
+                {
+                    "name": "missing_values_handler",
+                    "parameters": {"strategies": {name: "drop" for name in x + y}},
+                }
+            ],
+            "algorithm": {
+                "name": "linear_regression_cv",
+                "x": x,
+                "y": y,
+                "parameters": generated_input["parameters"],
+            },
+        }
+        return case
 
 
 if __name__ == "__main__":
-    with open("exareme3/algorithms/linear_regression_cv.json") as specs_file:
-        pcagen = LinearRegressionTestCaseGenerator(specs_file)
+    specification = LinearRegressionCV.get_specification()
+    # The shared random-input generator takes grouped variable specifications.
+    generator_spec = {
+        "inputdata": {
+            name: {
+                **getattr(specification, name).model_dump(
+                    mode="json", exclude_none=True
+                ),
+                "multiple": getattr(specification, name).max_count != 1,
+            }
+            for name in ["x", "y"]
+        },
+        "parameters": {
+            name: parameter.model_dump(mode="json", exclude_none=True)
+            for name, parameter in specification.parameters.items()
+        },
+    }
+    generator = LinearRegressionTestCaseGenerator(generator_spec)
     with open("linear_regression_cv_expected.json", "w") as expected_file:
-        pcagen.write_test_cases(expected_file, num_test_cases=50)
+        generator.write_test_cases(expected_file, num_test_cases=50)
