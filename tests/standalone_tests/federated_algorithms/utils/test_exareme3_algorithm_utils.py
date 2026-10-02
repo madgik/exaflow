@@ -1,4 +1,5 @@
 import math
+from unittest.mock import Mock
 
 import pytest
 
@@ -28,6 +29,7 @@ class DummyAlgorithm(Algorithm):
 def _make_algorithm(results):
     return DummyAlgorithm(
         engine=DummyEngine(results),
+        logger=Mock(),
         inputdata=Inputdata(
             data_model="dummy:0.1",
             datasets=["d1"],
@@ -62,3 +64,12 @@ def test_run_local_udf_identical_results_raises_on_real_mismatch():
 
     with pytest.raises(RuntimeError, match="Inconsistent UDF responses"):
         algo.run_local_udf(_dummy_udf, kw_args={}, identical_results=True)
+
+    algo._logger.info.assert_called_once_with(
+        "Inconsistent UDF responses for '%s': "
+        "worker result at index 0 = %r; worker result at index %s = %r",
+        "_dummy_udf",
+        {"metric": 1.0},
+        1,
+        {"metric": 2.0},
+    )

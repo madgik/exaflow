@@ -18,6 +18,7 @@ class Algorithm(ABC):
         self,
         *,
         engine,
+        logger,
         inputdata: Inputdata,
         x: Optional[List[str]] = None,
         y: Optional[List[str]] = None,
@@ -25,6 +26,7 @@ class Algorithm(ABC):
         parameters: Optional[Dict[str, Any]] = None,
     ):
         self._engine = engine
+        self._logger = logger
         self._inputdata: Inputdata = inputdata
         self._x: List[str] = list(x or [])
         self._y: List[str] = list(y or [])
@@ -85,6 +87,14 @@ class Algorithm(ABC):
         first = results[0]
         for idx, result in enumerate(results[1:], start=1):
             if not _values_equal(result, first):
+                self._logger.info(
+                    "Inconsistent UDF responses for '%s': "
+                    "worker result at index 0 = %r; worker result at index %s = %r",
+                    func.__name__,
+                    first,
+                    idx,
+                    result,
+                )
                 raise RuntimeError(
                     f"Inconsistent UDF responses for '{func.__name__}': "
                     f"worker result at index {idx} differs from index 0."
