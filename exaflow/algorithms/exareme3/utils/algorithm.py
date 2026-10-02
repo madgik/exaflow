@@ -130,6 +130,7 @@ def _is_nan(value: Any) -> bool:
 
 
 def _values_equal(left: Any, right: Any) -> bool:
+    """Compare nested results exactly, allowing rounding in nonwhole float pairs."""
     if _is_nan(left) and _is_nan(right):
         return True
 
@@ -142,5 +143,10 @@ def _values_equal(left: Any, right: Any) -> bool:
         if len(left) != len(right):
             return False
         return all(_values_equal(lv, rv) for lv, rv in zip(left, right))
+
+    if isinstance(left, float) and isinstance(right, float):
+        if left.is_integer() and right.is_integer():
+            return left == right
+        return math.isclose(left, right, rel_tol=1e-9, abs_tol=1e-12)
 
     return left == right

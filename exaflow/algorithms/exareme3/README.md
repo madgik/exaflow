@@ -9,7 +9,13 @@
   - Constructor receives `engine`, `inputdata`, and optional `parameters`.
   - Use `self.run_local_udf(func=..., kw_args=...)` to execute UDFs on workers.
   - `self.run_local_udf(..., identical_results=True)` enforces that all worker
-    responses are identical and returns one result.
+    responses match recursively and returns the first result. Dictionary keys,
+    sequence lengths and order, and non-float values must match exactly. Two
+    whole-valued floats also compare exactly; other float pairs use relative
+    tolerance `1e-9` and absolute tolerance `1e-12`. Mixed integer/float pairs use
+    exact numeric equality. Matching NaNs and matching infinities are accepted.
+    Whole-valued continuous statistics follow the exact comparison rule even at
+    magnitudes where numerical rounding can produce different whole values.
   - Global step contract (`Algorithm.run`): it only has direct access to the
     preprocessed `inputdata` and algorithm `parameters`; it does not directly
     access worker dataframes or metadata.
