@@ -1,11 +1,19 @@
 import numpy as np
+import pandas as pd
 import pytest
 from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
+from exaflow.algorithms.exareme3.decomposition.pca_with_transformations import (
+    local_step as transformed_pca_local_step,
+)
 from exaflow.algorithms.federated.decomposition.pca import FederatedPCA
+from exaflow.algorithms.federated.decomposition.pca import canonicalize_component_signs
 from tests.standalone_tests.federated_algorithms.utils import FederatedAlgorithmTest
+from tests.standalone_tests.federated_algorithms.utils.federated_algorithm_test import (
+    _simulate_federated_execution,
+)
 
 TEST_CASES = [
     np.array(
@@ -1088,3 +1096,206 @@ class TestFederatedPCA(FederatedAlgorithmTest):
     @pytest.mark.parametrize("X", TEST_CASES)
     def test_federated_algorithm_with_multiple_workers(self, X):
         self.run_comparison(X=X, y=np.zeros((X.shape[0],), dtype=float), n_workers=3)
+
+
+def _fit_partitioned(X, n_workers):
+    parts = [
+        part.copy() for part in np.array_split(np.asarray(X, dtype=float), n_workers)
+    ]
+
+    def worker_fn(worker_id, agg_client):
+        return FederatedPCA(agg_client=agg_client).fit(parts[worker_id])
+
+    return _simulate_federated_execution(n_workers, worker_fn)[0]
+
+
+def _fit_transformed_partitioned(X, transformations, n_workers):
+    frame = pd.DataFrame(np.asarray(X, dtype=float), columns=["a", "b", "c"])
+    parts = np.array_split(frame, n_workers)
+
+    def worker_fn(worker_id, agg_client):
+        return transformed_pca_local_step(
+            agg_client=agg_client,
+            data=parts[worker_id].copy(),
+            y_vars=["a", "b", "c"],
+            data_transformation=transformations,
+        )
+
+    return _simulate_federated_execution(n_workers, worker_fn)[0]
+
+
+def test_independent_fits_replay_state_components_and_scores():
+    X = np.array(
+        [
+            [1.0, 2.0, 4.0],
+            [2.0, 1.0, 3.0],
+            [3.0, 5.0, 2.0],
+            [4.0, 4.0, 6.0],
+            [5.0, 8.0, 5.0],
+            [6.0, 7.0, 7.0],
+            [7.0, 11.0, 8.0],
+            [8.0, 10.0, 9.0],
+        ]
+    )
+    first = _fit_partitioned(X, n_workers=3)
+    second = _fit_partitioned(X, n_workers=3)
+
+    np.testing.assert_allclose(first.mean_, second.mean_)
+    np.testing.assert_allclose(first.scale_, second.scale_)
+    np.testing.assert_allclose(first.explained_variance_, second.explained_variance_)
+    np.testing.assert_allclose(first.components_, second.components_)
+    np.testing.assert_allclose(first.transform(X.copy()), second.transform(X.copy()))
+
+
+def test_eigh_matches_previous_general_eig_solver_for_separated_components():
+    X = np.array(
+        [
+            [1.0, 2.0, 4.0],
+            [2.0, 1.0, 3.0],
+            [3.0, 5.0, 2.0],
+            [4.0, 4.0, 6.0],
+            [5.0, 8.0, 5.0],
+            [6.0, 7.0, 7.0],
+            [7.0, 11.0, 8.0],
+            [8.0, 10.0, 9.0],
+        ]
+    )
+    model = _fit_partitioned(X, n_workers=1)
+    standardized = (X - model.mean_) / model.scale_
+    covariance = standardized.T @ standardized / (len(X) - 1)
+
+    eigenvalues, eigenvectors = np.linalg.eig(covariance)
+    order = eigenvalues.argsort()[::-1]
+    previous_eig_values = eigenvalues[order].real
+    previous_eig_components = canonicalize_component_signs(
+        eigenvectors[:, order].real.T
+    )
+
+    np.testing.assert_allclose(model.explained_variance_, previous_eig_values)
+    np.testing.assert_allclose(model.components_, previous_eig_components)
+    np.testing.assert_allclose(
+        model.transform(X.copy()), standardized @ previous_eig_components.T
+    )
+
+
+def test_worker_partition_replay_is_stable_across_partition_counts():
+    X = np.array(
+        [
+            [1.0, 2.0, 4.0],
+            [2.0, 1.0, 3.0],
+            [3.0, 5.0, 2.0],
+            [4.0, 4.0, 6.0],
+            [5.0, 8.0, 5.0],
+            [6.0, 7.0, 7.0],
+            [7.0, 11.0, 8.0],
+            [8.0, 10.0, 9.0],
+        ]
+    )
+    reference = _fit_partitioned(X, n_workers=1)
+
+    for n_workers in (2, 3, 4):
+        replay = _fit_partitioned(X, n_workers=n_workers)
+        np.testing.assert_allclose(
+            replay.explained_variance_, reference.explained_variance_
+        )
+        np.testing.assert_allclose(replay.components_, reference.components_)
+        np.testing.assert_allclose(
+            replay.transform(X.copy()), reference.transform(X.copy())
+        )
+
+
+def test_component_sign_rule_uses_largest_loading_and_first_tie():
+    components = np.array(
+        [
+            [-0.8, 0.2, 0.1],
+            [0.5, -0.5, 0.1],
+        ]
+    )
+
+    canonicalized = canonicalize_component_signs(components)
+
+    np.testing.assert_allclose(canonicalized[0], [0.8, -0.2, -0.1])
+    np.testing.assert_allclose(canonicalized[1], components[1])
+
+
+def test_feature_order_is_preserved_and_only_loading_coordinates_are_permuted():
+    X = np.array(
+        [
+            [1.0, 2.0, 4.0],
+            [2.0, 1.0, 3.0],
+            [3.0, 5.0, 2.0],
+            [4.0, 4.0, 6.0],
+            [5.0, 8.0, 5.0],
+            [6.0, 7.0, 7.0],
+            [7.0, 11.0, 8.0],
+            [8.0, 10.0, 9.0],
+        ]
+    )
+    original = _fit_partitioned(X, n_workers=1)
+    permutation = [2, 1, 0]
+    reordered = _fit_partitioned(X[:, permutation], n_workers=1)
+
+    np.testing.assert_allclose(
+        original.components_, reordered.components_[:, permutation]
+    )
+    np.testing.assert_allclose(
+        original.transform(X.copy()), reordered.transform(X[:, permutation].copy())
+    )
+
+
+def test_repeated_eigenvalues_compare_as_a_subspace():
+    rng = np.random.default_rng(42)
+    latent = rng.normal(size=(300, 3))
+    transform = np.array([[1.0, 0.5, 0.0], [0.5, 1.0, 0.0], [0.0, 0.0, 1.0]])
+    X = latent @ np.linalg.cholesky(transform).T
+    first = _fit_partitioned(X, n_workers=1)
+    second = _fit_partitioned(X, n_workers=3)
+
+    assert np.all(np.diff(first.explained_variance_) <= 0)
+    np.testing.assert_allclose(
+        first.components_ @ first.components_.T,
+        np.eye(X.shape[1]),
+        atol=1e-8,
+    )
+    np.testing.assert_allclose(
+        first.components_[1:].T @ first.components_[1:],
+        second.components_[1:].T @ second.components_[1:],
+        atol=1e-8,
+    )
+
+
+def test_near_equal_eigenvalues_are_detectable_without_changing_the_contract():
+    rng = np.random.default_rng(7)
+    centered = rng.normal(size=(400, 3))
+    centered -= centered.mean(axis=0)
+    orthogonal, _ = np.linalg.qr(centered)
+    covariance = np.array([[1.0, 1e-5, 0.0], [1e-5, 1.0, 0.0], [0.0, 0.0, 1.0]])
+    X = np.sqrt(399.0) * orthogonal[:, :3] @ np.linalg.cholesky(covariance).T
+    model = _fit_partitioned(X, n_workers=2)
+    gaps = np.diff(model.explained_variance_)
+    relative_gap = abs(gaps[-1]) / model.explained_variance_[-2]
+
+    assert relative_gap < 1e-3
+    assert np.all(np.isfinite(model.transform(X)))
+
+
+def test_transformed_pca_replays_for_log_and_exp_recipes():
+    X = np.array(
+        [
+            [1.0, 2.0, 1.5],
+            [2.0, 3.0, 2.5],
+            [3.0, 4.0, 3.5],
+            [4.0, 5.0, 4.5],
+            [5.0, 6.0, 5.5],
+            [6.0, 7.0, 6.5],
+        ]
+    )
+
+    for transformations in (
+        {"log": ["a"]},
+        {"exp": ["c"]},
+    ):
+        first = _fit_transformed_partitioned(X, transformations, n_workers=2)
+        second = _fit_transformed_partitioned(X, transformations, n_workers=2)
+        np.testing.assert_allclose(first["eigenvalues"], second["eigenvalues"])
+        np.testing.assert_allclose(first["eigenvectors"], second["eigenvectors"])

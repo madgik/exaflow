@@ -7,6 +7,26 @@ import numpy as np
 from exaflow.algorithms.federated.utils import to_numpy
 
 
+def canonicalize_component_signs(components):
+    """Choose a deterministic sign for each PCA component.
+
+    Eigenvectors are defined up to sign.  Choosing the loading with the
+    greatest absolute magnitude as the anchor makes component replay stable
+    for well-separated eigenvalues.  ``np.argmax`` deliberately keeps the
+    first feature when anchors tie, which matches the caller's feature order.
+    """
+    components = np.asarray(components, dtype=float)
+    if components.ndim != 2:
+        raise ValueError("components must be a two-dimensional array.")
+
+    canonicalized = np.array(components, copy=True)
+    anchors = np.argmax(np.abs(canonicalized), axis=1)
+    signs = np.sign(canonicalized[np.arange(canonicalized.shape[0]), anchors])
+    signs[signs == 0] = 1.0
+    canonicalized *= signs[:, np.newaxis]
+    return canonicalized
+
+
 class FederatedPCA:
     """Federated PCA via aggregated moments and eigendecomposition."""
 
@@ -49,8 +69,9 @@ class FederatedPCA:
             gramian.shape
         )
         covariance = total_gramian / (total_n_obs - 1)
+        covariance = (covariance + covariance.T) / 2.0
 
-        eigenvalues, eigenvectors = np.linalg.eig(covariance)
+        eigenvalues, eigenvectors = np.linalg.eigh(covariance)
         idx = eigenvalues.argsort()[::-1]
         eigenvalues = eigenvalues[idx]
         eigenvectors = eigenvectors[:, idx]
@@ -59,7 +80,7 @@ class FederatedPCA:
         self.n_samples_seen_ = int(total_n_obs)
         self.mean_ = means
         self.scale_ = sigmas
-        self.components_ = eigenvectors.real
+        self.components_ = canonicalize_component_signs(eigenvectors.real)
         self.explained_variance_ = eigenvalues.real
         return self
 
