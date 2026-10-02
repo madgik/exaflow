@@ -27,15 +27,22 @@ ALPHA = 0.05
 
 
 class BasicStats(NamedTuple):
-    mean: float
-    std: float
+    mean: float | None
+    std: float | None
+
+    @classmethod
+    def from_values(cls, values):
+        values = np.asarray(values, dtype=float)
+        if not np.isfinite(values).all():
+            return cls(mean=None, std=None)
+        return cls(mean=float(values.mean()), std=float(values.std(ddof=1)))
 
 
 class LinearRegressionCVResult(BaseModel):
     dependent_var: str
     indep_vars: List[str]
     n_obs: List[int]
-    mean_sq_error: BasicStats
+    root_mean_sq_error: BasicStats
     r_squared: BasicStats
     mean_abs_error: BasicStats
     f_stat: BasicStats
@@ -54,10 +61,18 @@ class LinearRegressionCV(Algorithm):
                 "encoded with a consistent global schema.\n\n"
                 "The 'n_splits' setting controls the number of cross-validation "
                 "folds. It must be between 2 and 20. Default is 5.\n\n"
-                "The result summarizes fold-level regression metrics including "
-                "R-squared, adjusted R-squared, residual standard error, mean "
-                "squared error, root mean squared error, mean absolute error, "
-                "and F statistic.\n\n"
+                "Results contain root_mean_sq_error (RMSE), r_squared, "
+                "mean_abs_error, and f_stat as [mean, sample standard deviation] "
+                "across folds. A metric summary is [null, null] if any fold "
+                "is undefined or infinite. R-squared can be negative and is "
+                "undefined for constant test outcomes or fewer than two test "
+                "observations. n_obs lists training observations per fold. "
+                "The F diagnostic uses (TSS - RSS) * (n_train - p - 1) / "
+                "(p * RSS), with held-out sums of squares and p encoded "
+                "predictors excluding the intercept; it is not a conventional "
+                "fitted-model significance test. It is undefined with no "
+                "predictors, no outcome variation, or nonpositive residual "
+                "degrees of freedom, and diverges for a perfect fit.\n\n"
                 "Reference behavior is aligned with scikit-learn KFold "
                 "cross-validation around an OLS-style linear regression model. "
                 "Fold metrics are computed from aggregated prediction and "
@@ -128,24 +143,16 @@ class LinearRegressionCV(Algorithm):
         )
         indep_var_names = metrics["feature_names"]
 
-        rmse = np.asarray(metrics["rmse"], dtype=float)
-        r2 = np.asarray(metrics["r2"], dtype=float)
-        mae = np.asarray(metrics["mae"], dtype=float)
-        fstats = np.asarray(metrics["f_stat"], dtype=float)
         nobs = [int(v) for v in metrics["n_obs"]]
 
         result = LinearRegressionCVResult(
             dependent_var=y_var,
             indep_vars=indep_var_names,
             n_obs=nobs,
-            mean_sq_error=BasicStats(
-                mean=float(rmse.mean()), std=float(rmse.std(ddof=1))
-            ),
-            r_squared=BasicStats(mean=float(r2.mean()), std=float(r2.std(ddof=1))),
-            mean_abs_error=BasicStats(
-                mean=float(mae.mean()), std=float(mae.std(ddof=1))
-            ),
-            f_stat=BasicStats(mean=float(fstats.mean()), std=float(fstats.std(ddof=1))),
+            root_mean_sq_error=BasicStats.from_values(metrics["rmse"]),
+            r_squared=BasicStats.from_values(metrics["r2"]),
+            mean_abs_error=BasicStats.from_values(metrics["mae"]),
+            f_stat=BasicStats.from_values(metrics["f_stat"]),
         )
         return result
 

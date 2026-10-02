@@ -23,6 +23,30 @@ Files affected:
 
 Date:
 
+## Accepted Decisions
+
+### Decision: Correct Linear Regression CV Metrics and Name RMSE Explicitly
+
+Status: Accepted
+
+Context: The CV scorer received a default predictor count of zero and replaced
+all metrics with zero. The response also named its RMSE field `mean_sq_error`.
+
+Decision: Derive predictor count after encoding, calculate metrics independently,
+and replace `mean_sq_error` with `root_mean_sq_error` without an alias. A metric
+summary is `[null, null]` if any fold is undefined or infinite. Keep the existing
+F diagnostic formula, documented separately from fitted-model inference.
+
+Consequences: API consumers must migrate the field name and accept null
+summaries. Controller and workers require a coordinated rollout because the
+regression scoring aggregation sequence changes. Rollback must include the
+consumer migration. Dataset loading and privacy thresholds are unaffected.
+
+Files affected: The shared CV/scorer modules, linear regression CV runtime,
+tests and fixtures, and `documentation/algorithms/linear_regression_cv.md`.
+
+Date: 2026-10-02
+
 ## Inferred Decisions
 
 ### Decision: Keep Federated Core Logic Separately Testable
