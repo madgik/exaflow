@@ -121,6 +121,40 @@ The scaffold also patches common integration touchpoints when enabled:
 If the validator reports a missing symbol in one of those files, either rerun
 the scaffold with registration enabled or patch the reported file manually.
 
+## Algorithm Developer Profile
+
+Algorithm tasks are intentionally scoped to algorithm-owned files and narrow
+registration/index updates. Do not change controller, worker, aggregation server,
+protobuf, Kubernetes, config, dependency, privacy/security, API route, DTO, or
+runtime orchestration code while implementing an algorithm.
+
+If the algorithm needs a system capability that current algorithm interfaces do
+not provide, stop and create a system feature request instead of patching the
+system code from the algorithm task:
+
+```text
+System feature needed for algorithm: <algorithm_id>
+
+Needed capability:
+<one sentence>
+
+Current limitation:
+<which existing API/spec/UDF/runtime behavior prevents implementation>
+
+Minimal requested system change:
+<interface or behavior requested, without implementation details unless obvious>
+
+Algorithm-side impact:
+<what can proceed now and what remains blocked>
+
+Evidence:
+<file/test/error references>
+```
+
+The algorithm validator enforces this profile against changed and untracked
+files. Boundary failures mean the algorithm task is blocked until the system
+feature is handled separately.
+
 ## Family Defaults
 
 | Family | Use when | Command option |

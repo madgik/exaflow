@@ -35,6 +35,16 @@
   algorithm specifications exposed under `GET /specifications/*`.
 - `documentation/api-specification.md` documents the API contract for clients.
 
+### Agent Profiles
+
+- Algorithm development runs under the Algorithm Developer Profile: algorithm
+  wrappers, federated core logic, algorithm tests, fixtures, docs, and narrow
+  registration/index edits only.
+- Controller, worker, aggregation server, protobuf, Kubernetes, config,
+  dependency, privacy/security, API route, DTO, and orchestration changes are
+  system-owned and should be requested through a separate System Feature
+  Request when needed by an algorithm.
+
 ### Algorithms
 
 - Runtime Exareme3 algorithm wrappers live under
