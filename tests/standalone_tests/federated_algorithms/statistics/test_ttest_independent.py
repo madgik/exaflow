@@ -124,6 +124,10 @@ class TestFederatedTTestIndependent(FederatedAlgorithmTest):
         cohens_d = mean_diff / np.sqrt(pooled_var)
 
         return {
+            "n_a": len(sample_a),
+            "n_b": len(sample_b),
+            "mean_a": float(np.mean(sample_a)),
+            "mean_b": float(np.mean(sample_b)),
             "t_stat": float(t_stat),
             "p_value": float(p_value),
             "df": float(df),
@@ -147,6 +151,12 @@ class TestFederatedTTestIndependent(FederatedAlgorithmTest):
         )
 
     def compare(self, federated_output, centralized_output, **kwargs):
+        assert federated_output["n_a"] == centralized_output["n_a"]
+        assert federated_output["n_b"] == centralized_output["n_b"]
+        for key in ("mean_a", "mean_b"):
+            np.testing.assert_allclose(
+                federated_output[key], centralized_output[key], rtol=1e-12
+            )
         np.testing.assert_allclose(
             federated_output["t_stat"],
             centralized_output["t_stat"],

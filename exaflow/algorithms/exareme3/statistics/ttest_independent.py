@@ -9,6 +9,10 @@ from exaflow.algorithms.federated.statistics.ttest_independent import (
 
 
 class TTestIndependentResult(BaseModel):
+    n_a: int
+    n_b: int
+    mean_a: float
+    mean_b: float
     t_stat: float
     df: float
     p: float
@@ -133,6 +137,10 @@ class TTestIndependent(Algorithm):
             identical_results=True,
         )
         return TTestIndependentResult(
+            n_a=result["n_a"],
+            n_b=result["n_b"],
+            mean_a=result["mean_a"],
+            mean_b=result["mean_b"],
             t_stat=result["t_stat"],
             df=result["df"],
             p=result["p_value"],
