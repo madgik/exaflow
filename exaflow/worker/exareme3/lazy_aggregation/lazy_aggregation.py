@@ -4,20 +4,24 @@ import inspect
 import os
 import textwrap
 from collections import defaultdict
-from enum import Enum
 from functools import wraps
 from typing import Dict
 from typing import List
 from typing import Set
 from typing import Tuple
 
+from exaflow.aggregation_clients.constants import AggregationType
+
 
 class LazyAggregationExecutor:
     """
     Small helper that batches global aggregations when possible.
 
-    - Tries to use agg_client.aggregate_batch with AggregationType when available.
-    - Falls back to issuing individual sum/min/max calls to preserve behaviour.
+    - Uses agg_client.aggregate_batch with AggregationType when available.
+    - Issues individual sum/min/max calls only for clients without batch support.
+      A failed batch is never replayed eagerly: the batch already consumed an
+      aggregation step, so a replay would desynchronize workers and hide the
+      original error.
     """
 
     def __init__(self, agg_client):
@@ -27,26 +31,10 @@ class LazyAggregationExecutor:
         if not batch:
             return []
 
-        # Prefer a batch call if the client supports it
         aggregate_batch = getattr(self.agg_client, "aggregate_batch", None)
         if aggregate_batch:
-            try:
-
-                class AggregationType(Enum):
-                    SUM = "SUM"
-                    MIN = "MIN"
-                    MAX = "MAX"
-
-                    def __str__(self):
-                        return self.name
-
-                mapped = [
-                    (getattr(AggregationType, op.upper()), value) for op, value in batch
-                ]
-                return list(aggregate_batch(mapped))
-            except Exception:
-                # Fallback to eager execution
-                pass
+            mapped = [(AggregationType[op.upper()], value) for op, value in batch]
+            return list(aggregate_batch(mapped))
 
         results = []
         for op, value in batch:

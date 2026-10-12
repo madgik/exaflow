@@ -221,8 +221,20 @@ def fallback_when_batch_unavailable(agg_client):
     )
 
 
-def test_lazy_agg_falls_back_when_batch_raises():
+def test_lazy_agg_propagates_batch_errors_without_eager_replay():
     agg = RaisingBatchAggClient()
+    with pytest.raises(RuntimeError, match="no batch support"):
+        fallback_when_batch_unavailable(agg)
+
+    assert agg.calls == []
+
+
+class EagerOnlyAggClient(RecordingAggClient):
+    aggregate_batch = None
+
+
+def test_lazy_agg_uses_eager_calls_for_clients_without_batch_support():
+    agg = EagerOnlyAggClient()
     a, b = fallback_when_batch_unavailable(agg)
 
     assert agg.calls == [("sum", 1), ("min", 1)]
