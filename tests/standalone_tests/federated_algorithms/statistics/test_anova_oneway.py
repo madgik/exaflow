@@ -511,3 +511,18 @@ class TestFederatedAnovaOneWay(FederatedAlgorithmTest):
             n_workers=3,
             categories=categories,
         )
+
+
+def test_sample_stds_use_bessel_correction():
+    from tests.standalone_tests.federated_algorithms.utils.dummy_agg_client import (
+        DummyAggClient,
+    )
+
+    groups = [np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.5, 6.0, 7.5])]
+    model = FederatedAnovaOneWay(DummyAggClient()).fit(
+        groups=groups, categories=["a", "b"]
+    )
+
+    np.testing.assert_allclose(
+        model.sample_stds_, [np.std(g, ddof=1) for g in groups], rtol=1e-12
+    )
