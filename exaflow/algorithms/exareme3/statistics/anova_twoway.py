@@ -19,6 +19,7 @@ class AnovaResult(BaseModel):
     df: List[int]
     f_stat: List[Optional[float]]
     f_pvalue: List[Optional[float]]
+    partial_eta_squared: List[Optional[float]]
 
 
 class AnovaTwoWay(Algorithm):
@@ -38,8 +39,9 @@ class AnovaTwoWay(Algorithm):
                 "The ANOVA table contains rows for the first factor, the "
                 "second factor, their interaction, and residuals. For each "
                 "testable term it reports sum of squares, degrees of freedom, "
-                "F statistic, and p-value; residual rows report sum of squares "
-                "and degrees of freedom only.\n\n"
+                "F statistic, p-value, and partial eta-squared "
+                "(SS_term / (SS_term + SS_residual)); residual rows report sum "
+                "of squares and degrees of freedom only.\n\n"
                 "The 'sstype' setting selects the sums-of-squares type:\n"
                 "  - 1 computes Type I sequential sums of squares.\n"
                 "  - 2 computes Type II marginal sums of squares. Default is 2.\n\n"
@@ -140,4 +142,5 @@ def local_step(agg_client, data, x1, x2, y, sstype):
         "df": [model.df_[term] for term in terms],
         "f_stat": [model.f_stat_[term] for term in terms],
         "f_pvalue": [model.f_pvalue_[term] for term in terms],
+        "partial_eta_squared": [model.partial_eta_squared_[term] for term in terms],
     }
