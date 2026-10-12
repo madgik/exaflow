@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any
 from typing import List
 
@@ -106,7 +107,9 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
             self._analysis_request_dto.algorithm.parameters,
             [h.worker_id for h in self._local_worker_tasks_handlers],
         )
-        result = algorithm.run()
+        # Algorithms block on worker gRPC calls; run them off the event loop so
+        # other requests (e.g. the /healthcheck liveness probe) keep being served.
+        result = await asyncio.to_thread(algorithm.run)
         self._logger.info(
             f"Execution completed: {self._algorithm_name} ({self._request_id})"
         )
