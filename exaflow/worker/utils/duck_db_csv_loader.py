@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import duckdb
@@ -96,11 +97,12 @@ def _load_variables_metadata(
     table_name = f"{table_prefix}_variables_metadata"
     conn.execute(f'DROP TABLE IF EXISTS "{table_name}"')
     conn.execute(f'CREATE TABLE "{table_name}" (code TEXT, metadata TEXT)')
-    for variable in _collect_all_variables(metadata):
-        conn.execute(
-            f'INSERT INTO "{table_name}" VALUES (?, ?)',
-            [variable["code"], json.dumps(_reformat_metadata(variable))],
-        )
+    rows = [
+        [variable["code"], json.dumps(_reformat_metadata(variable))]
+        for variable in _collect_all_variables(metadata)
+    ]
+    if rows:
+        conn.executemany(f'INSERT INTO "{table_name}" VALUES (?, ?)', rows)
 
 
 def _reformat_metadata(metadata: dict) -> dict:
@@ -126,12 +128,20 @@ def _reformat_metadata(metadata: dict) -> dict:
     return reformatted
 
 
+_SOURCE_CSV_COL = "__source_csv_idx"
+
+
 def _create_primary_data_table(
     conn: duckdb.DuckDBPyConnection,
     table_prefix: str,
     csv_paths: list[Path],
     metadata: dict | None = None,
-):
+) -> dict[str, Path]:
+    """Create the primary data table and return the dataset code -> CSV map.
+
+    Each CSV is read once into a staging table tagged with its source index,
+    so dataset codes are derived without re-reading the files.
+    """
     if not csv_paths:
         raise ValueError("No CSV files provided to create the primary data table.")
 
@@ -140,11 +150,11 @@ def _create_primary_data_table(
     table_name = f"{table_prefix}__primary_data"
     conn.execute(f'DROP TABLE IF EXISTS "{table_name}"')
 
-    column_map: dict[Path, list[str]] = {}
+    # Header sniffing has a fixed per-file cost and DuckDB releases the GIL.
+    with ThreadPoolExecutor() as pool:
+        column_map = dict(zip(csv_paths, pool.map(_read_csv_columns, csv_paths)))
     combined_columns: list[str] = []
-    for csv_path in csv_paths:
-        columns = _read_csv_columns(csv_path)
-        column_map[csv_path] = columns
+    for columns in column_map.values():
         for column in columns:
             if column not in combined_columns:
                 combined_columns.append(column)
@@ -188,6 +198,7 @@ def _create_primary_data_table(
                 col_type = (column_types or {}).get(column, "VARCHAR")
                 select_fields.append(f'CAST(NULL AS {col_type}) AS "{quoted_column}"')
 
+        select_fields.append(f'{len(params)} AS "{_SOURCE_CSV_COL}"')
         select_statements.append(
             "SELECT "
             + ", ".join(select_fields)
@@ -195,16 +206,26 @@ def _create_primary_data_table(
         )
         params.append(str(csv_path))
 
+    staging_table = f"{table_name}__staging"
     query = " UNION ALL ".join(select_statements)
-    conn.execute(f'CREATE TABLE "{table_name}" AS {query}', params)
+    conn.execute(f'CREATE TEMP TABLE "{staging_table}" AS {query}', params)
+    try:
+        conn.execute(
+            f'CREATE TABLE "{table_name}" AS '
+            f'SELECT * EXCLUDE ("{_SOURCE_CSV_COL}") FROM "{staging_table}"'
+        )
+        return _datasets_from_staging_table(conn, staging_table, csv_paths, column_map)
+    finally:
+        conn.execute(f'DROP TABLE IF EXISTS "{staging_table}"')
 
 
 def _read_csv_columns(csv_path: Path) -> list[str]:
     # Use DuckDB's sniffer to automatically detect delimiters (e.g. semicolon)
     # limit=0 reads only the header/schema without scanning the whole file
     try:
-        rel = duckdb.read_csv(str(csv_path), header=True)
-        return rel.columns
+        # Own connection: the module-level default connection is not thread-safe.
+        with duckdb.connect() as conn:
+            return conn.read_csv(str(csv_path), header=True).columns
     except Exception:
         # Fallback or empty if file is unreadable/empty
         return []
@@ -216,48 +237,38 @@ def _read_data_model_csvs(data_model_dir: Path) -> list[Path]:
     )
 
 
-def _dataset_codes_from_csv(csv_path: Path) -> set[str]:
-    # Use DuckDB to handle various delimiters (comma, semicolon) and read only the 'dataset' column
-    try:
-        # Check if 'dataset' column exists first using the schema
-        # We can reuse the sniffing logic via read_csv just for headers/types if needed,
-        # but a simple query is more direct. However, if the column doesn't exist, it throws.
-        # So first sniff columns.
-        columns = _read_csv_columns(csv_path)
-        if "dataset" not in columns:
+def _datasets_from_staging_table(
+    conn: duckdb.DuckDBPyConnection,
+    staging_table: str,
+    csv_paths: list[Path],
+    column_map: dict[Path, list[str]],
+) -> dict[str, Path]:
+    codes_per_csv: dict[int, set[str]] = {idx: set() for idx in range(len(csv_paths))}
+    if any(DATASET_COL in columns for columns in column_map.values()):
+        rows = conn.execute(
+            f'SELECT DISTINCT "{DATASET_COL}", "{_SOURCE_CSV_COL}" '
+            f'FROM "{staging_table}"'
+        ).fetchall()
+        for dataset_code, source_idx in rows:
+            # Filter out empty/None values and strip strings
+            if dataset_code:
+                codes_per_csv[source_idx].add(str(dataset_code).strip())
+
+    datasets: dict[str, Path] = {}
+    for idx, csv_path in enumerate(csv_paths):
+        if DATASET_COL not in column_map[csv_path]:
             LOGGER.warning(
                 "CSV file %s is missing a 'dataset' column. Skipping it when deriving assigned datasets.",
                 csv_path,
             )
-            return set()
-
-        # Extract unique dataset codes
-        query = f"SELECT DISTINCT dataset FROM read_csv_auto('{csv_path}', HEADER=TRUE)"
-        results = duckdb.query(query).fetchall()
-
-        # Filter out empty/None values and strip strings
-        dataset_codes = {str(row[0]).strip() for row in results if row[0]}
-
-        if dataset_codes:
-            return dataset_codes
-
-    except Exception as e:
-        LOGGER.warning(f"Failed to read dataset codes from {csv_path}: {e}")
-        return set()
-
-    LOGGER.warning(
-        "CSV file %s does not contain any non-empty 'dataset' values.", csv_path
-    )
-    return set()
-
-
-def _datasets_from_csv_files(csv_paths: list[Path]) -> dict[str, Path]:
-    datasets: dict[str, Path] = {}
-    for csv_path in csv_paths:
-        dataset_codes = _dataset_codes_from_csv(csv_path)
-        if not dataset_codes:
             continue
-        for dataset_code in dataset_codes:
+        if not codes_per_csv[idx]:
+            LOGGER.warning(
+                "CSV file %s does not contain any non-empty 'dataset' values.",
+                csv_path,
+            )
+            continue
+        for dataset_code in codes_per_csv[idx]:
             if dataset_code in datasets and datasets[dataset_code] != csv_path:
                 raise ValueError(
                     f"Dataset '{dataset_code}' is defined in multiple CSV files inside {csv_path.parent}"
@@ -323,7 +334,9 @@ def load_all_csvs_from_data_folder(request_id: str) -> str:
             data_model_id += 1
             table_prefix = _sanitize_name(f"{code}:{version}")
 
-            _create_primary_data_table(conn, table_prefix, csv_paths, metadata)
+            dataset_csv_map = _create_primary_data_table(
+                conn, table_prefix, csv_paths, metadata
+            )
             _load_variables_metadata(conn, table_prefix, metadata)
             properties = {}
             properties["cdes"] = metadata
@@ -339,7 +352,6 @@ def load_all_csvs_from_data_folder(request_id: str) -> str:
                 ],
             )
 
-            dataset_csv_map = _datasets_from_csv_files(csv_paths)
             assigned_datasets = sorted(dataset_csv_map.keys())
 
             for dataset_code in assigned_datasets:

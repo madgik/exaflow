@@ -112,3 +112,42 @@ def test_create_primary_data_table_without_types_still_works(tmp_csv):
 
         count = conn.execute('SELECT COUNT(*) FROM "test__primary_data"').fetchone()[0]
         assert count == 3
+
+
+def _write_csv(path, header, rows):
+    with path.open("w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(header)
+        writer.writerows(rows)
+    return path
+
+
+def test_create_primary_data_table_returns_dataset_csv_map(tmp_path):
+    first = _write_csv(tmp_path / "a.csv", ["dataset", "age"], [["ds1", 1], ["ds2", 2]])
+    second = _write_csv(tmp_path / "b.csv", ["dataset", "age"], [[" ds3 ", 3]])
+    no_dataset = _write_csv(tmp_path / "c.csv", ["age"], [[4]])
+
+    with duckdb.connect(":memory:") as conn:
+        dataset_map = _create_primary_data_table(
+            conn, "test", [first, second, no_dataset], METADATA
+        )
+        tables = {
+            row[0]
+            for row in conn.execute("SELECT table_name FROM duckdb_tables()").fetchall()
+        }
+        columns = [
+            row[0] for row in conn.execute('DESCRIBE "test__primary_data"').fetchall()
+        ]
+
+    assert dataset_map == {"ds1": first, "ds2": first, "ds3": second}
+    assert tables == {"test__primary_data"}
+    assert columns[0] == "dataset" and "__source_csv_idx" not in columns
+
+
+def test_create_primary_data_table_rejects_dataset_in_multiple_csvs(tmp_path):
+    first = _write_csv(tmp_path / "a.csv", ["dataset", "age"], [["ds1", 1]])
+    second = _write_csv(tmp_path / "b.csv", ["dataset", "age"], [["ds1", 2]])
+
+    with duckdb.connect(":memory:") as conn:
+        with pytest.raises(ValueError, match="defined in multiple CSV files"):
+            _create_primary_data_table(conn, "test", [first, second], METADATA)
