@@ -8,14 +8,14 @@ ordered by impact.
 
 All three branches start from `master` and pass the standalone suite on their
 own. Merged together with this branch (perf, bugfixes, enhancements, feedback,
-in that order) they merge without conflicts and pass all 1544 standalone tests.
+in that order) they merge without conflicts and pass all 1546 standalone tests.
 Environment-backed suites (`tests/algorithm_validation_tests`,
 `tests/prod_env_tests`) were not run because they need a deployed federation.
 
 | Branch | Commits | Contents |
 |---|---|---|
-| `claude/perf-speedups` | 4 | Fewer aggregation-server round-trips, cached lazy-aggregation rewrite, faster worker startup. |
-| `claude/bugfixes` | 14 | SQL injection, controller availability, resource leaks, validation gaps, statistics errors. |
+| `claude/perf-speedups` | 5 | Fewer aggregation-server round-trips, cached lazy-aggregation rewrite, faster worker startup. |
+| `claude/bugfixes` | 15 | SQL injection, controller availability, resource leaks, validation gaps, statistics errors. |
 | `claude/algorithm-enhancements` | 8 | Effect sizes, Welch's ANOVA, odds ratios, t-test summaries. |
 
 ### `claude/perf-speedups`
@@ -40,6 +40,9 @@ Environment-backed suites (`tests/algorithm_validation_tests`,
   byte-identical DuckDB database.
 - KMeans local sums use `bincount` instead of `np.add.at` (~2x faster, same
   summation order).
+- The worker landscape aggregator and `/healthcheck` query workers
+  concurrently, so a refresh takes as long as the slowest worker instead of
+  the sum over all workers.
 
 ### `claude/bugfixes`
 
@@ -59,8 +62,10 @@ Environment-backed suites (`tests/algorithm_validation_tests`,
   `max_wait_for_aggregation_inputs` (120 s in prod values) after `Cleanup`.
 - **Transport:** the worker `RunUdf` path used gRPC's 4 MiB default message
   limit while the aggregation server allows 100 MiB; both sides now use 100 MiB.
-- **Error masking:** the lazy-aggregation executor swallowed batch failures and
-  replayed them as individual calls on new aggregation steps.
+- **Error masking and races in lazy aggregation:** the executor swallowed batch
+  failures and replayed them as individual calls on new aggregation steps, and
+  the rewriter exec'd rewritten UDFs into the shared module namespace, which
+  races with concurrent requests.
 - **Validation:** falsy parameter values (`0`, `0.0`) skipped type, enum and
   min/max checks; booleans were accepted as ints; empty dataset lists and a
   missing global worker produced HTTP 500 instead of a clear error.
@@ -102,14 +107,6 @@ validation gaps.
   around it with defensive `int(...)` casts in many UDFs. Results already use
   JSON bytes (`json-bytes-v1`); doing the same for `kw_args` and `system_args`
   would remove the casts. This is a protobuf contract change.
-- **H2. Lazy-aggregation rewrite executes into the UDF module's globals**
-  (`exaflow/worker/exareme3/lazy_aggregation/lazy_aggregation.py:156-160`) and
-  temporarily rebinds the function name. Two concurrent rewrites of the same UDF
-  can leave the rewritten function bound in the module. The perf branch caches
-  the rewrite so it happens once per process; building the function with
-  `types.FunctionType(code, func.__globals__, ...)` instead of `exec` into the
-  module would remove the race. With concurrent analyses (bugfix branch) this
-  matters more.
 
 ### Medium
 
@@ -127,31 +124,26 @@ validation gaps.
   requests the dataset list twice with nothing in between, and marks a worker as
   loaded even when both calls fail, so it is never retried. It looks like a
   leftover from a removed "load data" RPC.
-- **M4. Worker landscape updates are sequential.** `_get_workers_info` and
-  `_get_data_models_metadata_per_worker` (`worker_landscape_aggregator.py:658`)
-  make 1 + 2 x data-models RPCs per worker, one after another; a single slow
-  worker delays the registry refresh for the whole federation. A
-  `ThreadPoolExecutor` per update would bound it by the slowest worker.
-- **M5. New DuckDB connection per UDF call**
+- **M4. New DuckDB connection per UDF call**
   (`exaflow/worker/exareme3/udf/udf_db.py:74`). Opening the read-only connection
   takes ~13 ms of the ~16 ms data load on the test fixture. A process-wide
   read-only connection with per-call cursors would remove it; it must be opened
   after the startup loader closes its read-write connection.
-- **M6. Raw-moment variance formulas.** Pearson, describe and the t-tests compute
+- **M5. Raw-moment variance formulas.** Pearson, describe and the t-tests compute
   variance as `n * sum(x^2) - sum(x)^2`, which loses all precision when the mean
   is large relative to the spread (e.g. values around 1e8 with standard
   deviation 1). A two-pass computation (global mean, then centered sums) costs
   one more aggregation round-trip and is exact enough for any realistic data.
-- **M7. One-sample t-test `mean_diff` holds the sample mean**, not `mean - mu`
+- **M6. One-sample t-test `mean_diff` holds the sample mean**, not `mean - mu`
   (`exaflow/algorithms/federated/statistics/ttest_onesample.py:73`). The
   validation fixtures encode the same convention, so renaming needs a
   coordinated UI change.
-- **M8. Readiness/startup semantics.** The startup probe still uses
+- **M7. Readiness/startup semantics.** The startup probe still uses
   `/healthcheck`, so a controller started while a worker is down keeps
   restarting until every worker answers. Decide whether a partial federation is
   acceptable for serving and, if so, check only the global worker or require a
   quorum.
-- **M9. `anova_twoway` `sstype`** is declared `INT` but its default is the
+- **M8. `anova_twoway` `sstype`** is declared `INT` but its default is the
   string `"2"` (`exaflow/algorithms/exareme3/statistics/anova_twoway.py:78`).
 
 ### Low
