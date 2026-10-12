@@ -39,7 +39,10 @@ class AnovaOneWay(Algorithm):
                 "variation into between-group and within-group components and "
                 "reports the F statistic and p-value for the group effect, "
                 "with eta-squared (SS_between / SS_total) and omega-squared "
-                "effect sizes.\n\n"
+                "effect sizes. Welch's ANOVA, which does not assume equal "
+                "group variances, is reported alongside the classical test "
+                "and is empty when a group has fewer than two observations "
+                "or zero variance.\n\n"
                 "The result includes the ANOVA table, Tukey HSD pairwise "
                 "comparisons, group min/max summaries, group means, sample "
                 "standard deviations, and confidence interval information.\n\n"
@@ -104,6 +107,10 @@ class AnovaOneWay(Algorithm):
             "f_stat": result["f_stat"],
             "eta_squared": result["eta_squared"],
             "omega_squared": result["omega_squared"],
+            "welch_f_stat": result["welch_f_stat"],
+            "welch_df_explained": result["welch_df_explained"],
+            "welch_df_residual": result["welch_df_residual"],
+            "welch_p_value": result["welch_p_value"],
         }
 
         # Tukey table into list-of-dicts (records)
@@ -192,6 +199,10 @@ def local_step(agg_client, data, x_var, y_var):
         "p_value": float(model.pvalue),
         "eta_squared": model.eta_squared,
         "omega_squared": model.omega_squared,
+        "welch_f_stat": model.welch_f_stat,
+        "welch_df_explained": model.welch_df_between,
+        "welch_df_residual": model.welch_df_within,
+        "welch_p_value": model.welch_p_value,
         "thsd A": model.thsd_["A"].tolist(),
         "thsd B": model.thsd_["B"].tolist(),
         "thsd mean(A)": model.thsd_["mean(A)"].tolist(),

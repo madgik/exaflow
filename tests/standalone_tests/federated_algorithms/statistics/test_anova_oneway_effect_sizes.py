@@ -44,3 +44,32 @@ def test_effect_sizes_are_none_without_variation():
     assert _effect_sizes(
         ss_between=0.0, ss_within=0.0, df_between=1.0, ms_within=0.0
     ) == (None, None)
+
+
+def test_welch_anova_matches_statsmodels():
+    from statsmodels.stats.oneway import anova_oneway
+
+    groups = [
+        np.array([1.0, 2.0, 3.5, 2.2]),
+        np.array([4.0, 5.5, 6.1, 7.0, 5.0]),
+        np.array([2.0, 3.0, 2.5]),
+    ]
+    model = FederatedAnovaOneWay(DummyAggClient()).fit(
+        groups=groups, categories=["a", "b", "c"]
+    )
+    reference = anova_oneway(groups, use_var="unequal", welch_correction=True)
+
+    np.testing.assert_allclose(model.welch_f_stat, reference.statistic, rtol=1e-10)
+    np.testing.assert_allclose(model.welch_p_value, reference.pvalue, rtol=1e-10)
+    np.testing.assert_allclose(
+        [model.welch_df_between, model.welch_df_within], reference.df, rtol=1e-10
+    )
+
+
+def test_welch_anova_is_none_for_single_observation_group():
+    model = FederatedAnovaOneWay(DummyAggClient()).fit(
+        groups=[np.array([1.0, 2.0, 4.0]), np.array([5.0])], categories=["a", "b"]
+    )
+
+    assert model.welch_f_stat is None
+    assert model.welch_p_value is None
