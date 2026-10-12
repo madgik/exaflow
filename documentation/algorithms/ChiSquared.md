@@ -55,6 +55,13 @@ Degrees of freedom are:
 (rows - 1) * (columns - 1)
 ```
 
+Cramer's V effect size is computed from the chi-squared statistic without
+continuity correction (`chi2_u`):
+
+```text
+V = sqrt(chi2_u / (n * (min(rows, columns) - 1)))
+```
+
 ## Federated computation
 
 The test is computed without sharing row-level data. Each site builds a
@@ -111,8 +118,9 @@ Output:
 | Field | Description |
 |---|---|
 | `chi2` | Chi-squared statistic. |
-| `p` | P-value. |
+| `p_value` | P-value. |
 | `dof` | Degrees of freedom. |
+| `cramers_v` | Cramer's V effect size; `null` when the table has one row or column. |
 | `expected` | Expected counts under independence. |
 | `x_labels` | Factor-level row labels. |
 | `y_labels` | Outcome-level column labels. |
@@ -126,7 +134,8 @@ scipy.stats.chi2_contingency(cross_tab)
 ```
 
 Reference behavior is aligned with SciPy's chi-squared test on the centralized
-contingency table.
+contingency table. Cramer's V is compared with
+`scipy.stats.contingency.association(table, method="cramer")`.
 
 ## Limitations and assumptions
 

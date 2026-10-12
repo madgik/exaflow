@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from scipy.stats import chi2_contingency
 
@@ -8,12 +9,13 @@ from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
 
 
 class ChiSquaredTestResult(tuple):
-    def __new__(cls, chi2, p, dof, expected, x_labels, y_labels):
+    def __new__(cls, chi2, p, dof, expected, x_labels, y_labels, cramers_v=None):
         return super().__new__(cls, (chi2, p, dof, expected))
 
-    def __init__(self, chi2, p, dof, expected, x_labels, y_labels):
+    def __init__(self, chi2, p, dof, expected, x_labels, y_labels, cramers_v=None):
         self.x_labels = x_labels
         self.y_labels = y_labels
+        self.cramers_v = cramers_v
 
 
 class ChiSquared:
@@ -69,4 +71,25 @@ class ChiSquared:
         chi2, p, dof, expected = chi2_contingency(cross_tab_table)
         x_labels = [str(x) for x in cross_tab_table.index.tolist()]
         y_labels = [str(y) for y in cross_tab_table.columns.tolist()]
-        return ChiSquaredTestResult(chi2, p, dof, expected, x_labels, y_labels)
+        return ChiSquaredTestResult(
+            chi2,
+            p,
+            dof,
+            expected,
+            x_labels,
+            y_labels,
+            cramers_v=_cramers_v(cross_tab_table.to_numpy(dtype=float)),
+        )
+
+
+def _cramers_v(table: np.ndarray):
+    """Cramer's V from the uncorrected chi-squared statistic.
+
+    Matches scipy.stats.contingency.association(method="cramer"); undefined
+    (None) when the pruned table has a single row or column.
+    """
+    min_dim = min(table.shape)
+    if min_dim < 2:
+        return None
+    chi2_uncorrected = chi2_contingency(table, correction=False)[0]
+    return float(np.sqrt(chi2_uncorrected / (table.sum() * (min_dim - 1))))
