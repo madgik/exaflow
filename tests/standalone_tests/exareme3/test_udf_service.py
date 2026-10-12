@@ -332,3 +332,52 @@ def test_run_udf_converts_preprocessing_bad_input_to_bad_user_input(monkeypatch)
 
     assert agg_client.unregistered is True
     assert agg_client.closed is True
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_run_udf_closes_aggregation_client_channel(monkeypatch, fail):
+    agg_client = _DummyAggClient()
+
+    def udf(data):
+        if fail:
+            raise RuntimeError("udf failed")
+        return {"rows": len(data)}
+
+    monkeypatch.setattr(udf_service, "_get_udf_or_raise", lambda _: udf)
+    monkeypatch.setattr(
+        udf_service,
+        "_wrap_udf_with_lazy_aggregation_if_enabled",
+        lambda _, udf: udf,
+    )
+    monkeypatch.setattr(
+        udf_service,
+        "_create_aggregation_client_if_required",
+        lambda **_: agg_client,
+    )
+    monkeypatch.setattr(
+        udf_service,
+        "_load_worker_data_for_udf",
+        lambda **_: pd.DataFrame({"x": [1, 2]}),
+    )
+    system_args = SimpleNamespace(
+        preprocessing=[],
+        metadata={"x": {"is_categorical": False}},
+        inputdata=None,
+        add_dataset_variable=False,
+        check_min_rows=False,
+    )
+
+    def _run():
+        return udf_service.run_udf(
+            request_id="req",
+            udf_registry_key="udf",
+            kw_args={},
+            system_args=system_args,
+        )
+
+    if fail:
+        with pytest.raises(RuntimeError, match="udf failed"):
+            _run()
+    else:
+        assert _run() == {"rows": 2}
+    assert agg_client.closed is True

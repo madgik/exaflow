@@ -93,6 +93,7 @@ class AggregationContext:
         self.batch_payloads: Optional[List[List[np.ndarray]]] = None
         self.batch_vector_lengths: Optional[List[Optional[int]]] = None
         self.batch_result: Optional[List[np.ndarray]] = None
+        self.closed = False
         self.condition = threading.Condition()
 
     def reset_step(self) -> None:
@@ -111,6 +112,18 @@ class AggregationContext:
         self.state = AggregationState.FAILED
         self.condition.notify_all()
 
+    def close(self) -> None:
+        self.closed = True
+        self.condition.notify_all()
+
+    def abort_if_closed(self, context) -> None:
+        if self.closed:
+            context.abort(
+                grpc.StatusCode.ABORTED,
+                f"Aggregation context for request_id='{self.request_id}' "
+                "was cleaned up.",
+            )
+
     def ensure_step(self, step: int, operations, context) -> None:
         def _can_start_new_step() -> bool:
             return (
@@ -120,6 +133,7 @@ class AggregationContext:
             )
 
         while True:
+            self.abort_if_closed(context)
             if step <= self.current_step:
                 context.abort(
                     grpc.StatusCode.INVALID_ARGUMENT,
@@ -205,9 +219,13 @@ class AggregationContext:
 
     def wait_for_ready(self, context) -> None:
         ready = self.condition.wait_for(
-            lambda: self.state in {AggregationState.READY, AggregationState.FAILED},
+            lambda: (
+                self.closed
+                or self.state in {AggregationState.READY, AggregationState.FAILED}
+            ),
             timeout=config.max_wait_for_aggregation_inputs,
         )
+        self.abort_if_closed(context)
         if ready:
             return
         received = len(self.batch_payloads[0]) if self.batch_payloads else 0
@@ -489,8 +507,10 @@ class AggregationServer(AggregationServerServicer):
                 status=Status.NOT_FOUND, status_message="No such request_id"
             )
 
+        # Wake workers still blocked on this context so they fail fast instead
+        # of holding their gRPC threads until max_wait_for_aggregation_inputs.
         with agg_ctx.condition:
-            agg_ctx.reset_step()
+            agg_ctx.close()
 
         logger.info(
             f"[CLEANUP] Removed AggregationContext for request_id='{request.request_id}'"

@@ -743,3 +743,25 @@ def test_unregister_reduces_expected_workers(controller_factory):
 
     controller.cleanup()
     client.close()
+
+
+def test_cleanup_aborts_workers_waiting_for_contributions(
+    controller_factory, worker_factory, inline_grpc_stub, monkeypatch
+):
+    monkeypatch.setattr(aggregation_config, "max_wait_for_aggregation_inputs", 5)
+    request_id = "cleanup-while-waiting"
+    controller = controller_factory(request_id)
+    controller.configure(2)
+    worker = worker_factory(request_id)
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(worker._aggregate_request, AggregationType.SUM, [1.0])
+        _wait_for_batch_mode(inline_grpc_stub, request_id)
+        started = time.time()
+        controller.cleanup()
+
+        with pytest.raises(InlineRpcError) as exc:
+            future.result(timeout=2)
+
+    assert exc.value.code() == grpc.StatusCode.ABORTED
+    assert time.time() - started < 2

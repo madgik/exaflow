@@ -38,14 +38,13 @@ def run_udf(
         udf_registry_key=udf_registry_key,
         preprocessing=preprocessing,
     )
-    metadata = enforce_enum_order(system_args.metadata)
-    data = _load_worker_data_for_udf(
-        inputdata=system_args.inputdata,
-        preprocessing=preprocessing,
-        add_dataset_variable=system_args.add_dataset_variable,
-    )
-
     try:
+        metadata = enforce_enum_order(system_args.metadata)
+        data = _load_worker_data_for_udf(
+            inputdata=system_args.inputdata,
+            preprocessing=preprocessing,
+            add_dataset_variable=system_args.add_dataset_variable,
+        )
         data, metadata = _apply_preprocessing_steps_to_data_and_metadata(
             data=data,
             metadata=metadata,
@@ -76,6 +75,10 @@ def run_udf(
             f"Error calling udf. (udf={udf_registry_key})({kw_args=})({system_args=})(error={e})"
         )
         raise
+    finally:
+        # Every RunUdf call opens its own gRPC channel; close it on all paths.
+        if agg_client:
+            agg_client.close()
 
 
 def _get_udf_or_raise(udf_registry_key: str):
