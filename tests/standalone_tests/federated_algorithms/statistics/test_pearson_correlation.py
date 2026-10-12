@@ -6,6 +6,9 @@ import scipy.stats as st
 from exaflow.algorithms.federated.statistics.pearson_correlation import (
     FederatedPearsonCorrelation,
 )
+from tests.standalone_tests.federated_algorithms.utils.dummy_agg_client import (
+    DummyAggClient,
+)
 from tests.standalone_tests.federated_algorithms.utils.federated_algorithm_test import (
     FederatedAlgorithmTest,
 )
@@ -236,3 +239,14 @@ class TestFederatedPearsonCorrelation(FederatedAlgorithmTest):
             y_vars=case["y_vars"],
             alpha=case["alpha"],
         )
+
+
+@pytest.mark.parametrize("constant", [0.1, 0.3, 7.7])
+def test_constant_columns_have_zero_correlation(constant):
+    data = pd.DataFrame({"c": [constant] * 7, "y": np.arange(7.0)})
+    result = FederatedPearsonCorrelation(DummyAggClient()).corrcoef(
+        data=data, x_vars=["c"], y_vars=["y"], alpha=0.05
+    )
+
+    assert result.correlations == [[0.0]]
+    assert result.p_values == [[1.0]]

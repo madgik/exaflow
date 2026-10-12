@@ -79,14 +79,22 @@ class FederatedPearsonCorrelation:
                 "Not enough observations to compute Pearson correlation."
             )
 
-        d = (
-            np.sqrt(total_n_obs * total_sxx - total_sx * total_sx)
-            * np.sqrt(total_n_obs * total_syy - total_sy * total_sy)[:, np.newaxis]
-        )
-        correlations = (
-            total_n_obs * total_sxy - total_sx * total_sy[:, np.newaxis]
-        ) / d
+        x_constant, y_constant = self._globally_constant_columns(x, y)
+        # Raw-moment variances can cancel to tiny negative/positive noise for
+        # constant columns; clamp them and zero constant columns explicitly.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            d = (
+                np.sqrt(np.maximum(total_n_obs * total_sxx - total_sx * total_sx, 0))
+                * np.sqrt(np.maximum(total_n_obs * total_syy - total_sy * total_sy, 0))[
+                    :, np.newaxis
+                ]
+            )
+            correlations = (
+                total_n_obs * total_sxy - total_sx * total_sy[:, np.newaxis]
+            ) / d
         correlations[d == 0] = 0
+        correlations[y_constant, :] = 0
+        correlations[:, x_constant] = 0
         correlations = correlations.clip(-1, 1)
         t_squared = correlations**2 * (
             df / ((1.0 - correlations) * (1.0 + correlations))
@@ -108,3 +116,21 @@ class FederatedPearsonCorrelation:
             ci_lo=ci_lo.tolist(),
             ci_hi=ci_hi.tolist(),
         )
+
+    def _globally_constant_columns(self, x: np.ndarray, y: np.ndarray):
+        """Exact zero-variance detection: global min equals global max."""
+        values = np.concatenate([x, y], axis=1)
+        n_cols = values.shape[1]
+        if values.shape[0]:
+            local_min = values.min(axis=0)
+            local_max = values.max(axis=0)
+        else:
+            local_min = np.full(n_cols, np.inf)
+            local_max = np.full(n_cols, -np.inf)
+        # One MIN round-trip for both bounds: max(v) == -min(-v).
+        bounds = np.asarray(
+            self.agg_client.min(np.concatenate([local_min, -local_max])),
+            dtype=float,
+        ).reshape(-1)
+        constant = bounds[:n_cols] == -bounds[n_cols:]
+        return constant[: x.shape[1]], constant[x.shape[1] :]
