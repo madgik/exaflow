@@ -3,6 +3,7 @@ import datetime
 import inspect
 import os
 import textwrap
+import types
 from collections import defaultdict
 from functools import wraps
 from typing import Dict
@@ -139,13 +140,26 @@ class LazyAggregationRewriter:
         # self._log_rewritten(func_def, filename)
 
         code_obj = compile(module_ast, filename=filename, mode="exec")
+        func_code = next(
+            const
+            for const in code_obj.co_consts
+            if isinstance(const, types.CodeType) and const.co_name == func_def.name
+        )
         env = func.__globals__
         env["LazyAggregationExecutor"] = LazyAggregationExecutor
-        original_binding = env.get(func.__name__)
-        exec(code_obj, env)
-        rewritten = env[func.__name__]
-        if original_binding is not None:
-            env[func.__name__] = original_binding
+        # Build the function from its code object instead of exec-ing the module
+        # code into func.__globals__: exec rebinds the function name in the
+        # shared module namespace, which races with concurrent requests and
+        # leaks nested functions into module globals.
+        closure = func.__closure__ if func_code.co_freevars else None
+        rewritten = types.FunctionType(
+            func_code, env, func.__name__, func.__defaults__, closure
+        )
+        rewritten.__kwdefaults__ = func.__kwdefaults__
+        rewritten.__annotations__ = dict(func.__annotations__)
+        rewritten.__doc__ = func.__doc__
+        rewritten.__qualname__ = func.__qualname__
+        rewritten.__module__ = func.__module__
         return rewritten
 
     def _get_assign_target(self, stmt):
