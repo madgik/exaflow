@@ -378,3 +378,20 @@ def test_parameter_validation_accepts_bool_for_boolean_parameters():
     spec = _int_parameter_spec(types=[ParameterType.BOOLEAN], min=None, max=None)
 
     _validate_parameters(False, spec)
+
+
+def test_rejects_request_without_datasets():
+    request = AnalysisRequestDTO(
+        inputdata=AnalysisInputDataDTO(
+            data_model=DATA_MODEL,
+            datasets=[],
+            variables=["age", "gender", "diagnosis", "outcome"],
+        ),
+        algorithm=AnalysisAlgorithmDTO(
+            name="sample_algorithm", x=["gender"], y=["outcome"], parameters={}
+        ),
+        flags={},
+    )
+
+    with pytest.raises(BadUserInput, match="At least one dataset"):
+        _validate(request)

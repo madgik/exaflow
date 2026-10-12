@@ -379,8 +379,12 @@ def _validate_inputdata_training_datasets(
     training_datasets: List[str],
 ):
     """
-    Validates that the dataset values exist.
+    Validates that at least one dataset is requested and that all exist.
     """
+    if not requested_training_datasets:
+        raise BadUserInput(
+            f"At least one dataset must be provided for data_model:{requested_data_model}"
+        )
     non_existing_datasets = [
         dataset
         for dataset in requested_training_datasets
