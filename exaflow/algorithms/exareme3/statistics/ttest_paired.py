@@ -7,6 +7,7 @@ from exaflow.algorithms.federated.statistics.ttest_paired import FederatedTTestP
 
 
 class TTestPairedResult(BaseModel):
+    n_obs: int
     t_stat: float
     df: int
     p: float
@@ -101,6 +102,7 @@ class TTestPaired(Algorithm):
             identical_results=True,
         )
         return TTestPairedResult(
+            n_obs=result["n_obs"],
             t_stat=result["t_stat"],
             df=result["df"],
             p=result["p_value"],

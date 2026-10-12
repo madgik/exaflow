@@ -121,6 +121,7 @@ Output:
 | `ci_lower` | Lower confidence interval bound. |
 | `ci_upper` | Upper confidence interval bound. |
 | `cohens_d` | Standardized mean difference using pooled standard deviation. |
+| `hedges_g` | Cohen's d times the exact small-sample correction `J(df) = Gamma(df/2) / (sqrt(df/2) * Gamma((df-1)/2))`. |
 
 ## Validation against state-of-the-art implementation
 

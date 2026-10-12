@@ -114,6 +114,7 @@ Output:
 
 | Field | Description |
 |---|---|
+| `n_obs` | Number of complete pairs. |
 | `t_stat` | t statistic. |
 | `df` | Degrees of freedom. |
 | `p` | P-value. |
