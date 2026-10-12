@@ -103,7 +103,8 @@ Output:
 - The implementation uses pooled variance, equivalent to an equal-variance
   independent t-test.
 - The selected `groupA` and `groupB` define the sign of the mean difference.
-- One-sided alternatives replace one confidence bound with infinity.
+- One-sided alternatives report the one-sided (1 - alpha) bound, using the
+  critical value t\_{1-alpha}, and replace the other bound with infinity.
 - Cohen's d is computed from the pooled standard deviation.
 - Missing-value handling is performed before the selected samples are tested.
 

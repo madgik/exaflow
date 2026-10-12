@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import numpy as np
-import scipy.stats as st
 
+from exaflow.algorithms.federated.statistics.t_test_inference import (
+    t_test_p_value_and_ci,
+)
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils import to_numpy
 
@@ -80,33 +82,24 @@ class FederatedTTestIndependent:
         mean_a = sum_a_total / n_a_total
         mean_b = sum_b_total / n_b_total
 
-        sd_a = np.sqrt(
-            (sq_sum_a - 2 * mean_a * sum_a_total + (mean_a**2) * n_a_total)
-            / (n_a_total - 1)
-        )
-        sd_b = np.sqrt(
-            (sq_sum_b - 2 * mean_b * sum_b_total + (mean_b**2) * n_b_total)
-            / (n_b_total - 1)
-        )
-
-        pooled_var = ((n_a_total - 1) * sd_a**2 + (n_b_total - 1) * sd_b**2) / (
-            n_a_total + n_b_total - 2
-        )
+        # Pool sums of squares directly: a group of size 1 contributes 0 instead
+        # of 0 * NaN through its undefined sample variance.
+        ss_a = sq_sum_a - 2 * mean_a * sum_a_total + (mean_a**2) * n_a_total
+        ss_b = sq_sum_b - 2 * mean_b * sum_b_total + (mean_b**2) * n_b_total
+        pooled_var = (ss_a + ss_b) / (n_a_total + n_b_total - 2)
         sed = np.sqrt(pooled_var * (1 / n_a_total + 1 / n_b_total))
         t_stat = (mean_a - mean_b) / sed
         df = n_a_total + n_b_total - 2
         diff_mean = mean_a - mean_b
 
-        ci_lower, ci_upper = st.t.interval(1 - alpha, df, loc=diff_mean, scale=sed)
-
-        if alternative == "greater":
-            p_value = 1.0 - st.t.cdf(t_stat, df)
-            ci_upper = "Infinity"
-        elif alternative == "less":
-            p_value = 1.0 - st.t.cdf(-t_stat, df)
-            ci_lower = "-Infinity"
-        else:
-            p_value = (1.0 - st.t.cdf(abs(t_stat), df)) * 2.0
+        p_value, ci_lower, ci_upper = t_test_p_value_and_ci(
+            t_stat=t_stat,
+            df=df,
+            estimate=diff_mean,
+            se=sed,
+            alpha=alpha,
+            alternative=alternative,
+        )
 
         cohens_d = diff_mean / np.sqrt(pooled_var)
 

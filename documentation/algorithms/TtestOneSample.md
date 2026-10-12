@@ -101,7 +101,8 @@ Output:
 ## Technical decisions
 
 - Confidence intervals use the Student t distribution.
-- One-sided alternatives replace one confidence bound with infinity.
+- One-sided alternatives report the one-sided (1 - alpha) bound, using the
+  critical value t\_{1-alpha}, and replace the other bound with infinity.
 - Cohen's d is computed as `(mean - mu) / standard_deviation`.
 - Missing-value removal is handled before the sample reaches the test routine.
 
