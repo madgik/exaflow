@@ -115,6 +115,12 @@ async def healthcheck() -> str:
     return ""
 
 
+@algorithms.route("/livez", methods=["GET"])
+async def livez() -> str:
+    # Liveness only: unlike /healthcheck, it does not depend on worker health.
+    return ""
+
+
 @algorithms.route("/analysis", methods=["POST"])
 async def run_analysis() -> str:
     request_body = await request.json
