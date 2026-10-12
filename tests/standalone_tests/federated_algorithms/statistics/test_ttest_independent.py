@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+from scipy.special import gamma
 from statsmodels.stats.weightstats import CompareMeans
 from statsmodels.stats.weightstats import DescrStatsW
 
@@ -122,6 +123,10 @@ class TestFederatedTTestIndependent(FederatedAlgorithmTest):
         var_b = np.var(sample_b, ddof=1)
         pooled_var = ((n_a - 1) * var_a + (n_b - 1) * var_b) / (n_a + n_b - 2)
         cohens_d = mean_diff / np.sqrt(pooled_var)
+        df_pooled = n_a + n_b - 2
+        hedges_j = gamma(df_pooled / 2) / (
+            np.sqrt(df_pooled / 2) * gamma((df_pooled - 1) / 2)
+        )
 
         return {
             "n_a": len(sample_a),
@@ -136,6 +141,7 @@ class TestFederatedTTestIndependent(FederatedAlgorithmTest):
             "ci_lower": float(ci_lower),
             "ci_upper": float(ci_upper),
             "cohens_d": float(cohens_d),
+            "hedges_g": float(cohens_d * hedges_j),
         }
 
     def compute_federated_result(self, X, y, *, agg_client, **kwargs):
@@ -202,6 +208,12 @@ class TestFederatedTTestIndependent(FederatedAlgorithmTest):
         np.testing.assert_allclose(
             federated_output["cohens_d"],
             centralized_output["cohens_d"],
+            rtol=1e-7,
+            atol=1e-10,
+        )
+        np.testing.assert_allclose(
+            federated_output["hedges_g"],
+            centralized_output["hedges_g"],
             rtol=1e-7,
             atol=1e-10,
         )

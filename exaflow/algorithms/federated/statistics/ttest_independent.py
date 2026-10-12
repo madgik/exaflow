@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import scipy.stats as st
 
@@ -129,7 +131,15 @@ class FederatedTTestIndependent:
             ci_upper=ci_upper,
             ci_lower=ci_lower,
             cohens_d=cohens_d,
+            hedges_g=cohens_d * _hedges_correction(df),
         )
+
+
+def _hedges_correction(df: float) -> float:
+    """Exact small-sample bias correction J(df) turning Cohen's d into Hedges' g."""
+    return math.exp(math.lgamma(df / 2.0) - math.lgamma((df - 1.0) / 2.0)) / math.sqrt(
+        df / 2.0
+    )
 
 
 def _squeeze_if_needed(series):

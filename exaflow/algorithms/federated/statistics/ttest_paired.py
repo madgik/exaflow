@@ -96,6 +96,7 @@ class FederatedTTestPaired:
         cohens_d = mean_diff / sd_diff
 
         return dict(
+            n_obs=int(total_n_obs),
             t_stat=t_stat,
             df=int(df),
             p_value=p_value,

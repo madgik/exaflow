@@ -88,6 +88,7 @@ class TestFederatedTTestPaired(FederatedAlgorithmTest):
         cohens_d = mean_diff / sd_diff
 
         return {
+            "n_obs": len(sample_x),
             "t_stat": float(t_stat),
             "p_value": float(p_value),
             "df": float(df),
@@ -108,6 +109,7 @@ class TestFederatedTTestPaired(FederatedAlgorithmTest):
         )
 
     def compare(self, federated_output, centralized_output, **kwargs):
+        assert federated_output["n_obs"] == centralized_output["n_obs"]
         np.testing.assert_allclose(
             federated_output["t_stat"],
             centralized_output["t_stat"],

@@ -21,6 +21,7 @@ class TTestIndependentResult(BaseModel):
     ci_upper: str | float
     ci_lower: str | float
     cohens_d: float
+    hedges_g: float
 
 
 class TTestIndependent(Algorithm):
@@ -33,7 +34,8 @@ class TTestIndependent(Algorithm):
                 "Compare the means of a numerical variable between two "
                 "independent groups using pooled variance. Degrees of freedom "
                 "are n_a + n_b - 2, and Cohen's d is computed from the pooled "
-                "standard deviation.\n\n"
+                "standard deviation. Hedges' g applies the exact small-sample "
+                "bias correction J(df) to Cohen's d.\n\n"
                 "The 'alt_hypothesis' setting selects whether group A is "
                 "different from, less than, or greater than group B. Default is "
                 "'two-sided'.\n\n"
@@ -149,6 +151,7 @@ class TTestIndependent(Algorithm):
             ci_upper=result["ci_upper"],
             ci_lower=result["ci_lower"],
             cohens_d=result["cohens_d"],
+            hedges_g=result["hedges_g"],
         )
 
 
