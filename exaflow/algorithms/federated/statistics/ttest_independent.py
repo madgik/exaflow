@@ -117,6 +117,10 @@ class FederatedTTestIndependent:
         cohens_d = diff_mean / np.sqrt(pooled_var)
 
         return dict(
+            n_a=int(n_a_total),
+            n_b=int(n_b_total),
+            mean_a=mean_a,
+            mean_b=mean_b,
             t_stat=t_stat,
             df=float(df),
             p_value=p_value,

@@ -111,6 +111,8 @@ Output:
 
 | Field | Description |
 |---|---|
+| `n_a`, `n_b` | Observation counts of `groupA` and `groupB`. |
+| `mean_a`, `mean_b` | Means of `groupA` and `groupB`. |
 | `t_stat` | t statistic. |
 | `df` | Degrees of freedom. |
 | `p` | P-value. |
