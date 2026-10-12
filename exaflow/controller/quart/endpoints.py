@@ -1,3 +1,4 @@
+import asyncio
 from logging.config import dictConfig
 
 import pydantic
@@ -104,13 +105,13 @@ async def get_algorithm_specifications() -> str:
 
 @algorithms.route("/wla", methods=["POST"])
 async def update_wla() -> str:
-    get_worker_landscape_aggregator().update()
+    await asyncio.to_thread(get_worker_landscape_aggregator().update)
     return ""
 
 
 @algorithms.route("/healthcheck", methods=["GET"])
 async def healthcheck() -> str:
-    get_worker_landscape_aggregator().healthcheck()
+    await asyncio.to_thread(get_worker_landscape_aggregator().healthcheck)
     return ""
 
 
