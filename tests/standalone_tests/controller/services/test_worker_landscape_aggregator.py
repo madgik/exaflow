@@ -970,6 +970,25 @@ def test_get_training_and_validation_datasets(mocked_wla):
     assert not validation
 
 
+def test_get_training_and_validation_datasets_without_global_worker(
+    worker_landscape_aggregator, mocked_worker_infos, mocked_data_model_registry
+):
+    local_workers = [
+        info for info in mocked_worker_infos if info.role == WorkerRole.LOCALWORKER
+    ]
+    worker_landscape_aggregator._set_new_registries(
+        worker_registry=WorkerRegistry(workers_info=local_workers),
+        data_model_registry=mocked_data_model_registry,
+    )
+
+    training, validation = (
+        worker_landscape_aggregator.get_training_and_validation_datasets("tbi:0.1")
+    )
+
+    assert set(training) == {"dummy_tbi0", "dummy_tbi1", "dummy_tbi3"}
+    assert validation == []
+
+
 def test_get_training_and_validation_datasets_unknown_model(mocked_wla):
     with pytest.raises(BadUserInput):
         mocked_wla.get_training_and_validation_datasets("missing")

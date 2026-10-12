@@ -343,3 +343,55 @@ def test_longitudinal_fixed_cdes_are_available_for_parameter_validation():
     )
 
     _validate(request)
+
+
+def _int_parameter_spec(**overrides):
+    fields = dict(
+        label="K",
+        desc="k",
+        types=[ParameterType.INT],
+        required=True,
+        multiple=False,
+        min=1,
+        max=10,
+    )
+    fields.update(overrides)
+    return {"k": ParameterSpecification(**fields)}
+
+
+def _validate_parameters(value, spec):
+    analysis_request_validator._validate_parameters(
+        {"k": value},
+        spec,
+        _request().inputdata,
+        _cdes(),
+    )
+
+
+@pytest.mark.parametrize("value", [0, 0.0, -1, True, 11])
+def test_parameter_validation_rejects_out_of_range_and_bool_values(value):
+    with pytest.raises(BadUserInput):
+        _validate_parameters(value, _int_parameter_spec())
+
+
+def test_parameter_validation_accepts_bool_for_boolean_parameters():
+    spec = _int_parameter_spec(types=[ParameterType.BOOLEAN], min=None, max=None)
+
+    _validate_parameters(False, spec)
+
+
+def test_rejects_request_without_datasets():
+    request = AnalysisRequestDTO(
+        inputdata=AnalysisInputDataDTO(
+            data_model=DATA_MODEL,
+            datasets=[],
+            variables=["age", "gender", "diagnosis", "outcome"],
+        ),
+        algorithm=AnalysisAlgorithmDTO(
+            name="sample_algorithm", x=["gender"], y=["outcome"], parameters={}
+        ),
+        flags={},
+    )
+
+    with pytest.raises(BadUserInput, match="At least one dataset"):
+        _validate(request)

@@ -544,8 +544,11 @@ class WorkerLandscapeAggregator:
             data_model
         ]
 
+        # The global worker may be absent (not deployed or currently unreachable).
+        global_worker = self.get_global_worker()
+        global_worker_id = global_worker.id if global_worker else None
         for dataset, worker_id in datasets_locations.items():
-            if worker_id == self.get_global_worker().id:
+            if worker_id == global_worker_id:
                 validation_datasets.append(dataset)
             else:
                 training_datasets.append(dataset)
