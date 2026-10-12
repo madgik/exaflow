@@ -9,6 +9,8 @@ from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import InsufficientDataError
 
 LOGGER = logging.getLogger(__name__)
+# Must match the worker server limit (exaflow/worker/grpc_server.py).
+GRPC_MAX_MESSAGE_SIZE = 100 * 1024 * 1024
 
 
 class WorkerClientConnectionError(Exception):
@@ -26,7 +28,13 @@ class WorkerClientTimeoutException(Exception):
 class WorkerClient:
     def __init__(self, socket_addr: str):
         self._socket_addr = socket_addr
-        self._channel = grpc.insecure_channel(socket_addr)
+        self._channel = grpc.insecure_channel(
+            socket_addr,
+            options=[
+                ("grpc.max_send_message_length", GRPC_MAX_MESSAGE_SIZE),
+                ("grpc.max_receive_message_length", GRPC_MAX_MESSAGE_SIZE),
+            ],
+        )
         self._stub = worker_pb2_grpc.WorkerServiceStub(self._channel)
 
     def close(self) -> None:
