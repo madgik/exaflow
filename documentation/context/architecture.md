@@ -100,7 +100,8 @@ The Quart API exposes:
 - `GET /cdes_metadata`
 - `GET /data_models_attributes`
 - `POST /wla`
-- `GET /healthcheck`
+- `GET /healthcheck` (checks every worker; used by the startup probe)
+- `GET /livez` (controller process only; used by the liveness probe)
 - Flower routes: `GET /flower/input`, `POST /flower/result`
 
 `documentation/api-specification.md` is the human-facing API contract. The

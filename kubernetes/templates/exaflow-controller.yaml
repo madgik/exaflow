@@ -82,7 +82,7 @@ spec:
           timeoutSeconds: {{ .Values.controller.worker_tasks_timeout }}
         livenessProbe:
           httpGet:
-            path: /healthcheck
+            path: /livez
             port: 5000
           periodSeconds: 30
           timeoutSeconds: {{ .Values.controller.worker_tasks_timeout }}
