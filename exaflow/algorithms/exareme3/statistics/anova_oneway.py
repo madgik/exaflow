@@ -37,7 +37,9 @@ class AnovaOneWay(Algorithm):
                 "Tests whether a numerical outcome differs across groups "
                 "defined by one categorical factor. The ANOVA table decomposes "
                 "variation into between-group and within-group components and "
-                "reports the F statistic and p-value for the group effect.\n\n"
+                "reports the F statistic and p-value for the group effect, "
+                "with eta-squared (SS_between / SS_total) and omega-squared "
+                "effect sizes.\n\n"
                 "The result includes the ANOVA table, Tukey HSD pairwise "
                 "comparisons, group min/max summaries, group means, sample "
                 "standard deviations, and confidence interval information.\n\n"
@@ -100,6 +102,8 @@ class AnovaOneWay(Algorithm):
             "ms_explained": result["ms_explained"],
             "p_value": result["p_value"],
             "f_stat": result["f_stat"],
+            "eta_squared": result["eta_squared"],
+            "omega_squared": result["omega_squared"],
         }
 
         # Tukey table into list-of-dicts (records)
@@ -186,6 +190,8 @@ def local_step(agg_client, data, x_var, y_var):
         "ms_residual": float(model.ms_within),
         "f_stat": float(model.fvalue),
         "p_value": float(model.pvalue),
+        "eta_squared": model.eta_squared,
+        "omega_squared": model.omega_squared,
         "thsd A": model.thsd_["A"].tolist(),
         "thsd B": model.thsd_["B"].tolist(),
         "thsd mean(A)": model.thsd_["mean(A)"].tolist(),

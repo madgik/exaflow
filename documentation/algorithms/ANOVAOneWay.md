@@ -129,17 +129,20 @@ Output:
 
 | Field | Description |
 |---|---|
-| `n_obs` | Number of observations used in the test. |
-| `f_stat` | ANOVA F statistic. |
-| `p_value` | P-value for the omnibus group-mean test. |
-| `df_between` | Between-group degrees of freedom. |
-| `df_within` | Residual degrees of freedom. |
-| `ss_between` | Between-group sum of squares. |
-| `ss_within` | Within-group sum of squares. |
-| `ms_between` | Between-group mean square. |
-| `ms_within` | Within-group mean square. |
-| `group_stats` | Counts, means, standard deviations, minima, and maxima by group. |
-| `tukey_hsd` | Pairwise group comparisons. |
+| `anova_table` | ANOVA summary: `n_obs`, `y_label`, `x_label`, `df_explained`, `df_residual`, `ss_explained`, `ss_residual`, `ms_explained`, `ms_residual`, `f_stat`, `p_value`, `eta_squared`, and `omega_squared`. |
+| `tuckey_test` | Tukey HSD pairwise comparisons with `groupA`, `groupB`, `meanA`, `meanB`, `diff`, `se`, `t_stat`, and `p_tuckey`. |
+| `min_max_per_group` | Group `categories` with their `min` and `max`. |
+| `ci_info` | Per-group `means`, `sample_stds`, `m-s`, and `m+s`. |
+
+Effect sizes are computed from the ANOVA table:
+
+```text
+eta_squared   = ss_explained / (ss_explained + ss_residual)
+omega_squared = (ss_explained - df_explained * ms_residual)
+                / (ss_explained + ss_residual + ms_residual)
+```
+
+Both are `null` when the total sum of squares is zero.
 
 ## Validation against state-of-the-art implementation
 

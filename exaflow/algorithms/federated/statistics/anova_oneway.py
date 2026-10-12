@@ -136,6 +136,12 @@ class FederatedAnovaOneWay:
         self.ss_within = float(ss_residual)
         self.ms_between = float(ms_explained)
         self.ms_within = float(ms_residual)
+        self.eta_squared, self.omega_squared = _effect_sizes(
+            ss_between=self.ss_between,
+            ss_within=self.ss_within,
+            df_between=self.df_between,
+            ms_within=self.ms_within,
+        )
         self.categories_ = list(categories)
         self.group_stats_index_ = list(group_stats_index)
         self.means_ = gmeans.tolist()
@@ -233,3 +239,13 @@ class FederatedAnovaOneWay:
             "var_max_per_group": var_max_per_group,
             "group_stats_index": group_stats_index,
         }
+
+
+def _effect_sizes(*, ss_between, ss_within, df_between, ms_within):
+    """Eta-squared and omega-squared; None when the total variation is zero."""
+    ss_total = ss_between + ss_within
+    if ss_total <= 0:
+        return None, None
+    eta_squared = ss_between / ss_total
+    omega_squared = (ss_between - df_between * ms_within) / (ss_total + ms_within)
+    return float(eta_squared), float(omega_squared)
