@@ -52,23 +52,15 @@ class FederatedTTestIndependent:
                     float(n_b),
                     float(sample_a.sum()),
                     float(sample_b.sum()),
-                ],
-                dtype=float,
-            )
-        )
-        sq_sums_arr = self.agg_client.sum(
-            np.array(
-                [
                     float(np.dot(sample_a, sample_a)),
                     float(np.dot(sample_b, sample_b)),
                 ],
                 dtype=float,
             )
         )
-        n_a_total, n_b_total, sum_a_total, sum_b_total = np.asarray(
+        n_a_total, n_b_total, sum_a_total, sum_b_total, sq_sum_a, sq_sum_b = np.asarray(
             totals_arr, dtype=float
         ).reshape(-1)
-        sq_sum_a, sq_sum_b = np.asarray(sq_sums_arr, dtype=float).reshape(-1)
 
         if n_a_total < 1:
             raise BadInputError("Group A has no data.")

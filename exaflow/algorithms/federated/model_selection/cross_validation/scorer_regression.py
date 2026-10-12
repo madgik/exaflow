@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from exaflow.algorithms.federated.utils import fused_sum
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
 from exaflow.algorithms.federated.utils.interfaces import FederatedScorer
 
@@ -55,19 +56,21 @@ class FederatedRegressionScorer(FederatedScorer):
         n_train: int,
         p: int,
     ) -> dict:
-        rss_arr = agg_client.sum(np.array([local_stats["rss"]], dtype=float))
-        sum_abs_resid_arr = agg_client.sum(
-            np.array([local_stats["sum_abs_resid"]], dtype=float)
+        (totals,) = fused_sum(
+            agg_client,
+            [
+                local_stats["rss"],
+                local_stats["sum_abs_resid"],
+                local_stats["n_test"],
+                local_stats["sum_y"],
+                local_stats["sum_y_sq"],
+            ],
         )
-        n_test_arr = agg_client.sum(np.array([local_stats["n_test"]], dtype=float))
-        sum_y_arr = agg_client.sum(np.array([local_stats["sum_y"]], dtype=float))
-        sum_y_sq_arr = agg_client.sum(np.array([local_stats["sum_y_sq"]], dtype=float))
-
-        rss = float(np.asarray(rss_arr, dtype=float).reshape(-1)[0])
-        sum_abs_resid = float(np.asarray(sum_abs_resid_arr, dtype=float).reshape(-1)[0])
-        n_test = int(np.asarray(n_test_arr, dtype=float).reshape(-1)[0])
-        sum_y = float(np.asarray(sum_y_arr, dtype=float).reshape(-1)[0])
-        sum_y_sq = float(np.asarray(sum_y_sq_arr, dtype=float).reshape(-1)[0])
+        rss = float(totals[0])
+        sum_abs_resid = float(totals[1])
+        n_test = int(totals[2])
+        sum_y = float(totals[3])
+        sum_y_sq = float(totals[4])
         if n_test == 0:
             raise ValueError("Regression scoring requires a nonempty global test set.")
 

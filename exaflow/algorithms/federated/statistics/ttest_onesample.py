@@ -27,18 +27,25 @@ class FederatedTTestOneSample:
         diff_x = sum_x - n_obs * mu
         diff_sqrd_x = sqrd_x - 2 * mu * sum_x + n_obs * mu**2
 
-        total_n_obs_arr = self.agg_client.sum(np.array([float(n_obs)], dtype=float))
-        total_sum_x_arr = self.agg_client.sum(np.array([float(sum_x)], dtype=float))
-        total_sqrd_x_arr = self.agg_client.sum(np.array([float(sqrd_x)], dtype=float))
-        total_diff_x_arr = self.agg_client.sum(np.array([float(diff_x)], dtype=float))
-        total_diff_sqrd_x_arr = self.agg_client.sum(
-            np.array([float(diff_sqrd_x)], dtype=float)
+        totals_arr = self.agg_client.sum(
+            np.array(
+                [
+                    float(n_obs),
+                    float(sum_x),
+                    float(sqrd_x),
+                    float(diff_x),
+                    float(diff_sqrd_x),
+                ],
+                dtype=float,
+            )
         )
-        total_n_obs = float(np.asarray(total_n_obs_arr).reshape(-1)[0])
-        total_sum_x = float(np.asarray(total_sum_x_arr).reshape(-1)[0])
-        total_sqrd_x = float(np.asarray(total_sqrd_x_arr).reshape(-1)[0])
-        total_diff_x = float(np.asarray(total_diff_x_arr).reshape(-1)[0])
-        total_diff_sqrd_x = float(np.asarray(total_diff_sqrd_x_arr).reshape(-1)[0])
+        (
+            total_n_obs,
+            total_sum_x,
+            total_sqrd_x,
+            total_diff_x,
+            total_diff_sqrd_x,
+        ) = (float(value) for value in np.asarray(totals_arr, dtype=float).reshape(-1))
 
         if total_n_obs <= 1:
             raise BadInputError("Not enough observations for one-sample t-test.")

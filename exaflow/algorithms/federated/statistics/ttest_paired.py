@@ -42,17 +42,21 @@ class FederatedTTestPaired:
                     float(sum_y),
                     float(diff_sum),
                     float(diff_sq_sum),
+                    float(x_sq_sum),
+                    float(y_sq_sum),
                 ],
                 dtype=float,
             )
         )
-        total_x_sq_arr = self.agg_client.sum(np.array([float(x_sq_sum)], dtype=float))
-        total_y_sq_arr = self.agg_client.sum(np.array([float(y_sq_sum)], dtype=float))
-        total_n_obs, total_sum_x, total_sum_y, total_diff_sum, total_diff_sq_sum = (
-            np.asarray(totals_arr, dtype=float).reshape(-1)
-        )
-        total_x_sq = float(np.asarray(total_x_sq_arr).reshape(-1)[0])
-        total_y_sq = float(np.asarray(total_y_sq_arr).reshape(-1)[0])
+        (
+            total_n_obs,
+            total_sum_x,
+            total_sum_y,
+            total_diff_sum,
+            total_diff_sq_sum,
+            total_x_sq,
+            total_y_sq,
+        ) = np.asarray(totals_arr, dtype=float).reshape(-1)
 
         if total_n_obs <= 1:
             raise BadInputError("Not enough observations for paired t-test.")
