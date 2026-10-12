@@ -6,6 +6,7 @@ from scipy.special import expit
 from scipy.special import xlogy
 
 from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.utils import fused_sum
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
@@ -239,10 +240,9 @@ class FederatedLogisticRegression(FederatedEstimator):
         n_obs_local = int(y.size)
         y_sum_local = float(y.sum())
 
-        total_n_obs_arr = agg_client.sum(np.array([float(n_obs_local)], dtype=float))
-        total_y_sum_arr = agg_client.sum(np.array([float(y_sum_local)], dtype=float))
-        total_n_obs = int(np.asarray(total_n_obs_arr, dtype=float).reshape(-1)[0])
-        total_y_sum = float(np.asarray(total_y_sum_arr, dtype=float).reshape(-1)[0])
+        (totals,) = fused_sum(agg_client, [float(n_obs_local), y_sum_local])
+        total_n_obs = int(totals[0])
+        total_y_sum = float(totals[1])
 
         n_features = X.shape[1]
         self._handle_logreg_errors(total_n_obs, n_features, total_y_sum)
@@ -260,13 +260,10 @@ class FederatedLogisticRegression(FederatedEstimator):
             h_local = np.einsum("ji,j,jk->ik", X, w.reshape(-1), X)
             ll_local = np.sum(xlogy(y, mu) + xlogy(1 - y, 1 - mu))
 
-            grad_arr = agg_client.sum(grad_local)
-            h_arr = agg_client.sum(h_local)
-            ll_arr = agg_client.sum(np.array([float(ll_local)], dtype=float))
-
-            grad = np.asarray(grad_arr, dtype=float)
-            hessian = np.asarray(h_arr, dtype=float)
-            ll = float(np.asarray(ll_arr, dtype=float).reshape(-1)[0])
+            grad, hessian, ll_arr = fused_sum(
+                agg_client, grad_local, h_local, [float(ll_local)]
+            )
+            ll = float(ll_arr[0])
 
             try:
                 h_inv = np.linalg.inv(hessian)

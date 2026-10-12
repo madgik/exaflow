@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 from scipy import stats
 
+from exaflow.algorithms.federated.utils import fused_sum
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
@@ -227,31 +228,15 @@ class FederatedOLS(FederatedEstimator):
         sum_y_local = float(y.sum())
         sum_sq_y_local = float((y**2).sum())
 
-        if n_features > 0:
-            xTx = np.asarray(agg_client.sum(xTx_local), dtype=float)
-            xTy = np.asarray(agg_client.sum(xTy_local), dtype=float)
-        else:
-            xTx = np.zeros((0, 0), dtype=float)
-            xTy = np.zeros((0, 1), dtype=float)
-
-        n_obs = int(
-            np.asarray(
-                agg_client.sum(np.array([n_obs_local], dtype=float)),
-                dtype=float,
-            ).reshape(-1)[0]
+        xTx, xTy, scalars = fused_sum(
+            agg_client,
+            xTx_local,
+            xTy_local,
+            [n_obs_local, sum_y_local, sum_sq_y_local],
         )
-        sum_y = float(
-            np.asarray(
-                agg_client.sum(np.array([sum_y_local], dtype=float)),
-                dtype=float,
-            ).reshape(-1)[0]
-        )
-        sum_sq_y = float(
-            np.asarray(
-                agg_client.sum(np.array([sum_sq_y_local], dtype=float)),
-                dtype=float,
-            ).reshape(-1)[0]
-        )
+        n_obs = int(scalars[0])
+        sum_y = float(scalars[1])
+        sum_sq_y = float(scalars[2])
 
         if n_features > 0:
             xTx_inv = np.linalg.pinv(xTx)
@@ -271,10 +256,9 @@ class FederatedOLS(FederatedEstimator):
             rss_local = 0.0
             sum_abs_resid_local = 0.0
 
-        rss_arr = agg_client.sum(np.array([rss_local], dtype=float))
-        sum_abs_resid_arr = agg_client.sum(np.array([sum_abs_resid_local], dtype=float))
-        rss = float(np.asarray(rss_arr, dtype=float).reshape(-1)[0])
-        sum_abs_resid = float(np.asarray(sum_abs_resid_arr, dtype=float).reshape(-1)[0])
+        (resid_totals,) = fused_sum(agg_client, [rss_local, sum_abs_resid_local])
+        rss = float(resid_totals[0])
+        sum_abs_resid = float(resid_totals[1])
 
         if n_obs > 0:
             y_mean = sum_y / n_obs

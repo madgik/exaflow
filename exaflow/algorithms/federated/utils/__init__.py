@@ -26,3 +26,19 @@ def to_numpy(x) -> np.ndarray:
         except Exception:
             return x.to_numpy(zero_copy_only=False)
     return np.asarray(x, dtype=float)
+
+
+def fused_sum(agg_client, *arrays) -> list[np.ndarray]:
+    """Sum several arrays across workers in a single aggregation round-trip.
+
+    Each array is flattened, concatenated, summed once through ``agg_client``
+    and split back into float arrays with the original shapes.
+    """
+    arrays = [np.asarray(array, dtype=float) for array in arrays]
+    flat = np.concatenate([array.reshape(-1) for array in arrays])
+    total = np.asarray(agg_client.sum(flat), dtype=float).reshape(-1)
+    offsets = np.cumsum([array.size for array in arrays])[:-1]
+    return [
+        part.reshape(array.shape)
+        for part, array in zip(np.split(total, offsets), arrays)
+    ]
