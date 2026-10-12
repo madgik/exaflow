@@ -15,15 +15,17 @@ on Exaflow.
 - `decision-log.md`: lightweight architectural decision log.
 - `code-review-checklist.md`: human and AI review checklist.
 - `ai-task-templates.md`: reusable prompts for common agent tasks.
+- [FETA architecture and agent guidance](../feta/AGENTS.md): canonical FETA
+  decisions, implementation proposals, and open questions.
 
 ## How To Use This Context
 
 Start with `AGENTS.md` at the repository root, then open the context file that
 matches the task. `AGENTS.md` holds non-negotiable rules and algorithm workflow;
 this directory holds detailed reference material (commands, architecture,
-testing matrix, risks). For algorithm work, also read
+testing matrix, risks). For Exareme3 algorithm work, also read
 `documentation/new-algorithm-setup.md` and use the skills under
-`.agents/skills/`.
+`.agents/skills/`. For FETA work, follow the linked FETA decision record.
 
 Keep these files current when commands, architecture, risks, or conventions
 change. Mark uncertain information as `Unknown / TODO: verify` instead of

@@ -9,6 +9,10 @@ Durable reference material lives under `documentation/context/` — start with
 non-negotiable rules, algorithm workflow, and scope; use the context directory
 for full command lists, architecture detail, and validation matrices.
 
+For any FETA work, also read [FETA architecture and agent guidance](documentation/feta/AGENTS.md).
+That file is the canonical FETA decision record across algorithms, controller,
+and workers. Exareme3-specific scaffolding does not define FETA's workflow.
+
 ## Project Overview
 
 Exaflow is the execution engine behind the Medical Informatics Platform. It
@@ -18,7 +22,7 @@ with a Quart/Hypercorn controller, gRPC workers, optional aggregation server,
 algorithm implementations, Kubernetes deployment manifests, and a nested
 `exadata-validator` Python package.
 
-Unless a task explicitly targets Flower or SMPC, focus on the native Exareme3
+Unless a task explicitly targets FETA, Flower, or SMPC, focus on the native Exareme3
 federated pipeline described below. Flower and SMPC are optional add-ons with
 separate config, markers, and review requirements — see
 `documentation/context/risk-register.md`.
