@@ -21,6 +21,9 @@ class LogisticRegressionSummary(BaseModel):
     stderr: List[float]
     lower_ci: List[float]
     upper_ci: List[float]
+    odds_ratios: List[float]
+    or_lower_ci: List[float]
+    or_upper_ci: List[float]
     z_scores: List[float]
     pvalues: List[float]
     df_model: int
@@ -56,8 +59,10 @@ class LogisticRegression(Algorithm):
                 "function. The positive class is selected using the "
                 "positive_class parameter.\n\n"
                 "The result includes coefficients, standard errors, z-scores, "
-                "p-values, confidence intervals, degrees of freedom, pseudo "
-                "R-squared values, log-likelihoods, AIC, and BIC.\n\n"
+                "p-values, confidence intervals, odds ratios with their "
+                "confidence intervals (exponentiated coefficients and bounds), "
+                "degrees of freedom, pseudo R-squared values, log-likelihoods, "
+                "AIC, and BIC.\n\n"
                 "Reference behavior is aligned with statsmodels logistic "
                 "regression using smf.logit(formula, data).fit(method='newton') "
                 "for a model with an intercept. The method computes the same "
@@ -134,6 +139,9 @@ class LogisticRegression(Algorithm):
             stderr=model_stats["stderr"],
             lower_ci=model_stats["lower_ci"],
             upper_ci=model_stats["upper_ci"],
+            odds_ratios=model_stats["odds_ratios"],
+            or_lower_ci=model_stats["or_lower_ci"],
+            or_upper_ci=model_stats["or_upper_ci"],
             z_scores=model_stats["z_scores"],
             pvalues=model_stats["pvalues"],
             df_model=model_stats["df_model"],

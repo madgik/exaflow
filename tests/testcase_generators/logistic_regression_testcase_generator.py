@@ -83,6 +83,9 @@ class LogisticRegressionTestCaseGenerator(TestCaseGenerator):
             z_scores=model.tvalues.tolist(),
             lower_ci=model.conf_int()[0].tolist(),
             upper_ci=model.conf_int()[1].tolist(),
+            odds_ratios=np.exp(model.params).tolist(),
+            or_lower_ci=np.exp(model.conf_int()[0]).tolist(),
+            or_upper_ci=np.exp(model.conf_int()[1]).tolist(),
             n_obs=model.nobs,
             coefficients=model.params.tolist(),
         )

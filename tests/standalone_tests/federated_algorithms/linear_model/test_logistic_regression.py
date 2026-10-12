@@ -957,6 +957,9 @@ class TestFederatedLogisticRegression(FederatedAlgorithmTest):
             "stderr": model.bse.values.tolist(),
             "lower_ci": model.conf_int()[0].values.tolist(),
             "upper_ci": model.conf_int()[1].values.tolist(),
+            "odds_ratios": np.exp(model.params.values).tolist(),
+            "or_lower_ci": np.exp(model.conf_int()[0].values).tolist(),
+            "or_upper_ci": np.exp(model.conf_int()[1].values).tolist(),
             "z_scores": model.tvalues.values.tolist(),
             "pvalues": model.pvalues.values.tolist(),
             "df_model": int(model.df_model),
@@ -996,6 +999,10 @@ class TestFederatedLogisticRegression(FederatedAlgorithmTest):
         assert np.allclose(
             federated_output["upper_ci"], centralized_output["upper_ci"], atol=ci_atol
         )
+        for key in ("odds_ratios", "or_lower_ci", "or_upper_ci"):
+            assert np.allclose(
+                federated_output[key], centralized_output[key], rtol=5 * ci_atol
+            )
         assert np.allclose(
             federated_output["z_scores"], centralized_output["z_scores"], atol=z_atol
         )
