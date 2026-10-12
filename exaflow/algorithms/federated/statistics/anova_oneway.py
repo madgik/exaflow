@@ -140,9 +140,11 @@ class FederatedAnovaOneWay:
         thsd["t value"] = tval
         thsd["Pr(>|t|)"] = pval
 
+        # Bessel correction: sample variance = n / (n - 1) * population variance.
         variances = group_ssq / group_stats_count - gmeans**2
-        sample_vars = (group_stats_count - 1.0) / group_stats_count * variances
-        sample_stds = np.sqrt(sample_vars)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            sample_vars = group_stats_count / (group_stats_count - 1.0) * variances
+        sample_stds = np.sqrt(np.maximum(sample_vars, 0.0))
 
         self.nobs = int(n_obs)
         self.fvalue = float(f_stat)
