@@ -526,3 +526,19 @@ def test_sample_stds_use_bessel_correction():
     np.testing.assert_allclose(
         model.sample_stds_, [np.std(g, ddof=1) for g in groups], rtol=1e-12
     )
+
+
+def test_p_value_does_not_underflow_for_large_f_statistics():
+    import scipy.stats as st
+
+    from tests.standalone_tests.federated_algorithms.utils.dummy_agg_client import (
+        DummyAggClient,
+    )
+
+    groups = [np.arange(30.0) / 100, np.arange(30.0) / 100 + 5]
+    model = FederatedAnovaOneWay(DummyAggClient()).fit(
+        groups=groups, categories=["a", "b"]
+    )
+
+    assert model.pvalue > 0.0
+    np.testing.assert_allclose(model.pvalue, st.f_oneway(*groups).pvalue, rtol=1e-6)

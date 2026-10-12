@@ -271,7 +271,7 @@ class FederatedAnovaTwoWay:
         p_vals: List[Optional[float]] = [None, None, None, None]
         for idx in range(3):
             if f_vals[idx] is not None:
-                p_vals[idx] = float(1.0 - st.f.cdf(f_vals[idx], df_list[idx], df_resid))
+                p_vals[idx] = float(st.f.sf(f_vals[idx], df_list[idx], df_resid))
 
         return {
             "terms": terms,
