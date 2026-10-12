@@ -1,3 +1,4 @@
+import math
 from typing import Dict
 
 from exaflow import DType
@@ -52,9 +53,9 @@ def build_filter_clause(rules):
         return "(" + f" {cond} ".join(build_filter_clause(rule) for rule in rules) + ")"
 
     if "id" in rules:
-        column_name = f'"{rules["id"]}"'
+        column_name = _quote_identifier(rules["id"])
         op = FILTER_OPERATORS[rules["operator"]]
-        value = _format_value_if_string(rules["type"], rules["value"])
+        value = _format_value(rules["value"])
         return op(column_name, value)
 
     raise FilterError("Filters did not contain the keys: 'condition' or 'id'.")
@@ -92,17 +93,33 @@ def validate_filter(data_model: str, rules: dict, cdes: Dict[str, CommonDataElem
         )
 
 
-def _format_value_if_string(column_type, val):
-    if column_type != "string":
-        return val
+def _quote_identifier(identifier) -> str:
+    escaped = str(identifier).replace('"', '""')
+    return f'"{escaped}"'
 
-    def _quote(value):
-        escaped = str(value).replace("'", "''")
+
+def _format_value(value):
+    """Render a filter value as a SQL literal.
+
+    Quoting follows the value's own type, never the client-supplied rule
+    ``type``: a string sent with a numeric ``type`` must still be quoted,
+    otherwise it is injected into the query as raw SQL.
+    """
+    if isinstance(value, list):
+        return [_format_value(item) for item in value]
+    if value is None:
+        return "NULL"
+    if isinstance(value, str):
+        escaped = value.replace("'", "''")
         return f"'{escaped}'"
-
-    if isinstance(val, list):
-        return [_quote(item) for item in val]
-    return _quote(val)
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if not math.isfinite(value):
+            raise FilterError(f"Filter value {value} must be a finite number.")
+        return repr(value)
+    raise FilterError(
+        f"Filter value {value!r} should be of type int, float or str "
+        f"but was {type(value)}."
+    )
 
 
 def _check_filter_type(rules):
