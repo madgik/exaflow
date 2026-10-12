@@ -159,6 +159,16 @@ class FederatedAnovaOneWay:
             df_between=self.df_between,
             ms_within=self.ms_within,
         )
+        (
+            self.welch_f_stat,
+            self.welch_df_between,
+            self.welch_df_within,
+            self.welch_p_value,
+        ) = _welch_anova(
+            counts=group_stats_count,
+            sums=group_stats_sum,
+            sums_sq=group_ssq,
+        )
         self.categories_ = list(categories)
         self.group_stats_index_ = list(group_stats_index)
         self.means_ = gmeans.tolist()
@@ -266,3 +276,31 @@ def _effect_sizes(*, ss_between, ss_within, df_between, ms_within):
     eta_squared = ss_between / ss_total
     omega_squared = (ss_between - df_between * ms_within) / (ss_total + ms_within)
     return float(eta_squared), float(omega_squared)
+
+
+def _welch_anova(*, counts, sums, sums_sq):
+    """Welch's heteroscedastic one-way ANOVA from per-group sufficient statistics.
+
+    Returns (F, df_between, df_within, p-value), aligned with
+    statsmodels.stats.oneway.anova_oneway(use_var="unequal"). All values are
+    None when a group has fewer than two observations or zero variance.
+    """
+    counts = np.asarray(counts, dtype=float)
+    means = np.asarray(sums, dtype=float) / counts
+    k = counts.size
+    if k < 2 or np.any(counts < 2):
+        return None, None, None, None
+    variances = (np.asarray(sums_sq, dtype=float) - counts * means**2) / (counts - 1)
+    if np.any(variances <= 0):
+        return None, None, None, None
+
+    weights = counts / variances
+    total_weight = weights.sum()
+    weighted_mean = np.sum(weights * means) / total_weight
+    between = np.sum(weights * (means - weighted_mean) ** 2) / (k - 1)
+    tmp = np.sum((1.0 - weights / total_weight) ** 2 / (counts - 1))
+    f_stat = between / (1.0 + 2.0 * (k - 2) / (k**2 - 1) * tmp)
+    df_between = float(k - 1)
+    df_within = float((k**2 - 1) / (3.0 * tmp))
+    p_value = float(st.f.sf(f_stat, df_between, df_within))
+    return float(f_stat), df_between, df_within, p_value

@@ -129,7 +129,7 @@ Output:
 
 | Field | Description |
 |---|---|
-| `anova_table` | ANOVA summary: `n_obs`, `y_label`, `x_label`, `df_explained`, `df_residual`, `ss_explained`, `ss_residual`, `ms_explained`, `ms_residual`, `f_stat`, `p_value`, `eta_squared`, and `omega_squared`. |
+| `anova_table` | ANOVA summary: `n_obs`, `y_label`, `x_label`, `df_explained`, `df_residual`, `ss_explained`, `ss_residual`, `ms_explained`, `ms_residual`, `f_stat`, `p_value`, `eta_squared`, `omega_squared`, and Welch's test as `welch_f_stat`, `welch_df_explained`, `welch_df_residual`, and `welch_p_value`. |
 | `tuckey_test` | Tukey HSD pairwise comparisons with `groupA`, `groupB`, `meanA`, `meanB`, `diff`, `se`, `t_stat`, and `p_tuckey`. |
 | `min_max_per_group` | Group `categories` with their `min` and `max`. |
 | `ci_info` | Per-group `means`, `sample_stds`, `m-s`, and `m+s`. |
@@ -143,6 +143,19 @@ omega_squared = (ss_explained - df_explained * ms_residual)
 ```
 
 Both are `null` when the total sum of squares is zero.
+
+Welch's ANOVA does not assume equal group variances. With group weights
+`w_i = n_i / s_i^2`, `W = sum(w_i)` and weighted mean `m_w`:
+
+```text
+A    = sum(w_i * (mean_i - m_w)^2) / (k - 1)
+tmp  = sum((1 - w_i / W)^2 / (n_i - 1))
+F    = A / (1 + 2 * (k - 2) / (k^2 - 1) * tmp)
+df   = (k - 1, (k^2 - 1) / (3 * tmp))
+```
+
+It matches `statsmodels.stats.oneway.anova_oneway(use_var="unequal")` and is
+`null` when a group has fewer than two observations or zero variance.
 
 ## Validation against state-of-the-art implementation
 
