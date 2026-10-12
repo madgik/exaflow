@@ -42,3 +42,19 @@ def fused_sum(agg_client, *arrays) -> list[np.ndarray]:
         part.reshape(array.shape)
         for part, array in zip(np.split(total, offsets), arrays)
     ]
+
+
+def fused_min_max(agg_client, mins, maxs) -> tuple[np.ndarray, np.ndarray]:
+    """Global elementwise min of ``mins`` and max of ``maxs`` in one round-trip.
+
+    Uses a single MIN aggregation since ``max(x) == -min(-x)`` exactly in IEEE
+    arithmetic (NaN and inf propagate the same way).
+    """
+    mins = np.asarray(mins, dtype=float)
+    maxs = np.asarray(maxs, dtype=float)
+    flat = np.concatenate([mins.reshape(-1), -maxs.reshape(-1)])
+    total = np.asarray(agg_client.min(flat), dtype=float).reshape(-1)
+    return (
+        total[: mins.size].reshape(mins.shape),
+        -total[mins.size :].reshape(maxs.shape),
+    )

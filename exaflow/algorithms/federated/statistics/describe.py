@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 
 from exaflow.algorithms.federated.statistics.percentile import Percentile
+from exaflow.algorithms.federated.utils import fused_min_max
+from exaflow.algorithms.federated.utils import fused_sum
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
@@ -305,14 +307,6 @@ class FederatedDescribe:
         min_arr = np.array([num_stats[v]["min"] for v in numerical_vars], dtype=float)
         max_arr = np.array([num_stats[v]["max"] for v in numerical_vars], dtype=float)
 
-        num_dtps_arr = np.asarray(self.agg_client.sum(num_dtps_arr), dtype=float)
-        num_na_arr = np.asarray(self.agg_client.sum(num_na_arr), dtype=float)
-        num_total_arr = np.asarray(self.agg_client.sum(num_total_arr), dtype=float)
-        sx_arr = np.asarray(self.agg_client.sum(sx_arr), dtype=float)
-        sxx_arr = np.asarray(self.agg_client.sum(sxx_arr), dtype=float)
-        min_arr = np.asarray(self.agg_client.min(min_arr), dtype=float)
-        max_arr = np.asarray(self.agg_client.max(max_arr), dtype=float)
-
         cat_num_dtps = np.array(
             [cat_stats[v]["num_dtps"] for v in nominal_vars], dtype=float
         )
@@ -322,10 +316,40 @@ class FederatedDescribe:
         cat_num_total = np.array(
             [cat_stats[v]["num_total"] for v in nominal_vars], dtype=float
         )
+        level_counts_local = [
+            np.array(
+                [
+                    cat_stats[var]["counts"].get(level, 0)
+                    for level in nominal_levels[var]
+                ],
+                dtype=float,
+            )
+            for var in nominal_vars
+        ]
 
-        cat_num_dtps = np.asarray(self.agg_client.sum(cat_num_dtps), dtype=float)
-        cat_num_na = np.asarray(self.agg_client.sum(cat_num_na), dtype=float)
-        cat_num_total = np.asarray(self.agg_client.sum(cat_num_total), dtype=float)
+        (
+            num_dtps_arr,
+            num_na_arr,
+            num_total_arr,
+            sx_arr,
+            sxx_arr,
+            cat_num_dtps,
+            cat_num_na,
+            cat_num_total,
+            *level_counts,
+        ) = fused_sum(
+            self.agg_client,
+            num_dtps_arr,
+            num_na_arr,
+            num_total_arr,
+            sx_arr,
+            sxx_arr,
+            cat_num_dtps,
+            cat_num_na,
+            cat_num_total,
+            *level_counts_local,
+        )
+        min_arr, max_arr = fused_min_max(self.agg_client, min_arr, max_arr)
 
         global_records: List[Dict] = []
         for idx, var in enumerate(numerical_vars):
@@ -365,11 +389,7 @@ class FederatedDescribe:
                 )
                 continue
             levels = nominal_levels[var]
-            local_counts = np.array(
-                [cat_stats[var]["counts"].get(level, 0) for level in levels],
-                dtype=float,
-            )
-            counts_arr = np.asarray(self.agg_client.sum(local_counts), dtype=float)
+            counts_arr = level_counts[idx]
             counts = {
                 level: int(counts_arr[i])
                 for i, level in enumerate(levels)

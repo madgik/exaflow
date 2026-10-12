@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from exaflow.algorithms.federated.utils import fused_sum
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
 from exaflow.algorithms.federated.utils.interfaces import FederatedScorer
@@ -74,27 +75,20 @@ class FederatedClassificationScorer(FederatedScorer):
         n_train: int,
         p: int,
     ) -> dict:
-        tp_global = int(agg_client.sum(np.array([float(local_stats["tp"])]))[0])
-        fp_global = int(agg_client.sum(np.array([float(local_stats["fp"])]))[0])
-        tn_global = int(agg_client.sum(np.array([float(local_stats["tn"])]))[0])
-        fn_global = int(agg_client.sum(np.array([float(local_stats["fn"])]))[0])
-
-        tp_arr = np.asarray(
-            agg_client.sum(np.asarray(local_stats["tp_list"], dtype=float)),
-            dtype=float,
+        totals, tp_arr, fp_arr, tn_arr, fn_arr = fused_sum(
+            agg_client,
+            [
+                local_stats["tp"],
+                local_stats["fp"],
+                local_stats["tn"],
+                local_stats["fn"],
+            ],
+            local_stats["tp_list"],
+            local_stats["fp_list"],
+            local_stats["tn_list"],
+            local_stats["fn_list"],
         )
-        fp_arr = np.asarray(
-            agg_client.sum(np.asarray(local_stats["fp_list"], dtype=float)),
-            dtype=float,
-        )
-        tn_arr = np.asarray(
-            agg_client.sum(np.asarray(local_stats["tn_list"], dtype=float)),
-            dtype=float,
-        )
-        fn_arr = np.asarray(
-            agg_client.sum(np.asarray(local_stats["fn_list"], dtype=float)),
-            dtype=float,
-        )
+        tp_global, fp_global, tn_global, fn_global = (int(v) for v in totals)
 
         with np.errstate(divide="ignore", invalid="ignore"):
             tpr = np.divide(

@@ -5,6 +5,7 @@ from typing import List
 import numpy as np
 import pandas as pd
 
+from exaflow.algorithms.federated.utils import fused_sum
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
@@ -110,9 +111,9 @@ class FederatedGaussianNB(FederatedEstimator):
                 sums_local[class_idx, :] = np.nansum(X_class, axis=0)
                 sums_sq_local[class_idx, :] = np.nansum(X_class**2, axis=0)
 
-        counts_global = np.asarray(agg_client.sum(counts_local), dtype=float)
-        sums_global = np.asarray(agg_client.sum(sums_local), dtype=float)
-        sums_sq_global = np.asarray(agg_client.sum(sums_sq_local), dtype=float)
+        counts_global, sums_global, sums_sq_global = fused_sum(
+            agg_client, counts_local, sums_local, sums_sq_local
+        )
 
         if counts_global.size == 0:
             results = FederatedGaussianNBResults(

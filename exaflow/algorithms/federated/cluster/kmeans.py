@@ -6,6 +6,7 @@ from typing import Optional
 import numpy as np
 
 from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.utils import fused_min_max
 from exaflow.algorithms.federated.utils import fused_sum
 from exaflow.algorithms.federated.utils import to_numpy
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
@@ -140,13 +141,7 @@ class FederatedKMeans(FederatedEstimator):
             local_min = np.full((n_features,), np.inf, dtype=float)
             local_max = np.full((n_features,), -np.inf, dtype=float)
 
-        # One MIN round-trip for both bounds: max(x) == -min(-x).
-        bounds = np.asarray(
-            self._agg_client.min(np.concatenate([local_min, -local_max])),
-            dtype=float,
-        ).reshape(-1)
-        global_min = bounds[:n_features]
-        global_max = -bounds[n_features:]
+        global_min, global_max = fused_min_max(self._agg_client, local_min, local_max)
 
         best_result = None
         for init_idx in range(self.n_init_):
