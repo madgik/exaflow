@@ -1111,6 +1111,12 @@ class TestFederatedAnovaTwoWay(FederatedAlgorithmTest):
             assert np.isclose(
                 federated_output.f_pvalue_[term], aov.loc[term, "PR(>F)"], atol=1e-8
             )
+            ss_term = aov.loc[term, "sum_sq"]
+            assert np.isclose(
+                federated_output.partial_eta_squared_[term],
+                ss_term / (ss_term + aov.loc["Residual", "sum_sq"]),
+                atol=1e-8,
+            )
 
         assert np.isclose(
             federated_output.sum_sq_["Residuals"],
@@ -1122,6 +1128,7 @@ class TestFederatedAnovaTwoWay(FederatedAlgorithmTest):
         )
         assert federated_output.f_stat_["Residuals"] is None
         assert federated_output.f_pvalue_["Residuals"] is None
+        assert federated_output.partial_eta_squared_["Residuals"] is None
 
     @pytest.mark.parametrize("case", TEST_CASES)
     def test_federated_algorithm_with_one_worker(self, case):

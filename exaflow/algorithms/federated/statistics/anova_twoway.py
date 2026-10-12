@@ -102,6 +102,7 @@ class FederatedAnovaTwoWay:
         self.df_ = results["df"]
         self.f_stat_ = results["f_stat"]
         self.f_pvalue_ = results["f_pvalue"]
+        self.partial_eta_squared_ = results["partial_eta_squared"]
         return self
 
     def _build_dataframe(
@@ -227,6 +228,7 @@ class FederatedAnovaTwoWay:
                 "df": {term: 0 for term in terms},
                 "f_stat": {term: None for term in terms},
                 "f_pvalue": {term: None for term in terms},
+                "partial_eta_squared": {term: None for term in terms},
             }
 
         if sstype == 1:
@@ -277,10 +279,18 @@ class FederatedAnovaTwoWay:
             if f_vals[idx] is not None:
                 p_vals[idx] = float(1.0 - st.f.cdf(f_vals[idx], df_list[idx], df_resid))
 
+        # Partial eta-squared: SS_term / (SS_term + SS_residual).
+        partial_eta_sq: List[Optional[float]] = [None, None, None, None]
+        for idx in range(3):
+            denominator = sum_sq_list[idx] + sum_sq_list[3]
+            if df_list[idx] > 0 and denominator > 0:
+                partial_eta_sq[idx] = sum_sq_list[idx] / denominator
+
         return {
             "terms": terms,
             "sum_sq": dict(zip(terms, sum_sq_list)),
             "df": dict(zip(terms, df_list)),
             "f_stat": dict(zip(terms, f_vals)),
             "f_pvalue": dict(zip(terms, p_vals)),
+            "partial_eta_squared": dict(zip(terms, partial_eta_sq)),
         }

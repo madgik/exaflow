@@ -161,8 +161,9 @@ Output:
 | `df` | Degrees of freedom for each term. |
 | `f_stat` | F statistic for testable terms. |
 | `f_pvalue` | P-value for testable terms. |
+| `partial_eta_squared` | Partial eta-squared, `sum_sq_term / (sum_sq_term + sum_sq_residual)`, for testable terms. |
 
-Residual rows do not have F statistics or p-values.
+Residual rows do not have F statistics, p-values, or partial eta-squared.
 
 ## Validation against state-of-the-art implementation
 
