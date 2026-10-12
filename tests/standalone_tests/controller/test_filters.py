@@ -544,3 +544,42 @@ all_validate_filter_fail_cases = [
 def test_validate_filter_fail_cases_bad_filter(test_input, data_models):
     with pytest.raises(FilterError):
         validate_filter(DATA_MODEL, test_input, data_models)
+
+
+def test_build_filter_clause_quotes_strings_regardless_of_declared_type():
+    rule = {
+        "id": "test_gender_type",
+        "field": "test_gender_type",
+        "type": "integer",
+        "input": "text",
+        "operator": "equal",
+        "value": "'F' OR 1=1",
+    }
+
+    clause = build_filter_clause(rule)
+
+    assert clause == """"test_gender_type" = '''F'' OR 1=1'"""
+
+
+def test_build_filter_clause_escapes_column_identifier():
+    rule = {
+        "id": 'col" OR 1=1 --',
+        "type": "string",
+        "operator": "is_null",
+        "value": None,
+    }
+
+    assert build_filter_clause(rule) == '"col"" OR 1=1 --" IS NULL'
+
+
+@pytest.mark.parametrize("value", [True, {"a": 1}, float("nan")])
+def test_build_filter_clause_rejects_unsupported_values(value):
+    rule = {
+        "id": "test_age_value",
+        "type": "integer",
+        "operator": "equal",
+        "value": value,
+    }
+
+    with pytest.raises(FilterError):
+        build_filter_clause(rule)
