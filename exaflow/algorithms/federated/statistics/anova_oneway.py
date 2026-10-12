@@ -94,7 +94,7 @@ class FederatedAnovaOneWay:
         ms_explained = ss_explained / df_explained
         ms_residual = ss_residual / df_residual
         f_stat = ms_explained / ms_residual if ms_residual != 0 else 0.0
-        p_value = 1.0 - st.f.cdf(f_stat, df_explained, df_residual)
+        p_value = st.f.sf(f_stat, df_explained, df_residual)
 
         self.table_ = pd.DataFrame(
             [
