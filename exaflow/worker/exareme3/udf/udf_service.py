@@ -8,7 +8,6 @@ from exaflow import exareme3_preprocessing_step_classes
 from exaflow.aggregation_clients.exareme3_udf_aggregation_client import (
     Exareme3UDFAggregationClient as AggregationClient,
 )
-from exaflow.algorithms.exareme3.utils.metadata_enums import enforce_enum_order
 from exaflow.algorithms.exareme3.utils.registry import AGGREGATION_CLIENT_PARAMETER_NAME
 from exaflow.algorithms.exareme3.utils.registry import exareme3_registry
 from exaflow.algorithms.federated.utils import BadInputError
@@ -38,7 +37,7 @@ def run_udf(
         udf_registry_key=udf_registry_key,
         preprocessing=preprocessing,
     )
-    metadata = enforce_enum_order(system_args.metadata)
+    metadata = system_args.metadata
     data = _load_worker_data_for_udf(
         inputdata=system_args.inputdata,
         preprocessing=preprocessing,

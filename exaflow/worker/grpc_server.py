@@ -13,8 +13,9 @@ from grpc_health.v1 import health_pb2_grpc
 
 from exaflow.protos.worker import worker_pb2
 from exaflow.protos.worker import worker_pb2_grpc
-from exaflow.udf_result_serialization import UDF_RESULT_FORMAT_JSON_BYTES_V1
-from exaflow.udf_result_serialization import encode_udf_result
+from exaflow.udf_serialization import UDF_RESULT_FORMAT_JSON_BYTES_V1
+from exaflow.udf_serialization import decode_udf_payload
+from exaflow.udf_serialization import encode_udf_payload
 from exaflow.worker import config as worker_config
 from exaflow.worker.exareme3.udf import udf_service
 from exaflow.worker.utils import duck_db_csv_loader
@@ -128,10 +129,6 @@ def _data_model_attributes_to_proto(
     return worker_pb2.DataModelAttributes(
         tags=list(attributes.tags or []), properties=_dict_to_struct(props)
     )
-
-
-def _struct_to_dict(struct_message: struct_pb2.Struct) -> dict:
-    return json_format.MessageToDict(struct_message, preserving_proto_field_name=True)
 
 
 class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
@@ -277,9 +274,9 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
 
     def RunUdf(self, request, context):
         try:
-            kw_args = _struct_to_dict(request.kw_args)
+            kw_args = decode_udf_payload(request.kw_args)
             system_args = RunUdfSystemArgs.model_validate(
-                _struct_to_dict(request.system_args)
+                decode_udf_payload(request.system_args)
             )
             result = udf_service.run_udf(
                 request_id=request.request_id,
@@ -288,7 +285,7 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
                 system_args=system_args,
             )
             return worker_pb2.RunUdfResponse(
-                result=encode_udf_result(result),
+                result=encode_udf_payload(result),
                 result_format=UDF_RESULT_FORMAT_JSON_BYTES_V1,
             )
         except Exception as exc:  # noqa: BLE001

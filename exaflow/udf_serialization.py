@@ -6,11 +6,11 @@ import numpy as np
 UDF_RESULT_FORMAT_JSON_BYTES_V1 = "json-bytes-v1"
 
 
-def encode_udf_result(result: Any) -> bytes:
-    return json.dumps(_normalize_for_json(result)).encode("utf-8")
+def encode_udf_payload(payload: Any) -> bytes:
+    return json.dumps(_normalize_for_json(payload)).encode("utf-8")
 
 
-def decode_udf_result(payload: bytes) -> Any:
+def decode_udf_payload(payload: bytes) -> Any:
     return json.loads(payload.decode("utf-8"))
 
 

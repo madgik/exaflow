@@ -5,9 +5,9 @@ import pytest
 
 from exaflow.controller.worker_client.tasks_handler import WorkerTasksHandler
 from exaflow.protos.worker import worker_pb2
-from exaflow.udf_result_serialization import UDF_RESULT_FORMAT_JSON_BYTES_V1
-from exaflow.udf_result_serialization import decode_udf_result
-from exaflow.udf_result_serialization import encode_udf_result
+from exaflow.udf_serialization import UDF_RESULT_FORMAT_JSON_BYTES_V1
+from exaflow.udf_serialization import decode_udf_payload
+from exaflow.udf_serialization import encode_udf_payload
 from exaflow.worker import grpc_server
 
 
@@ -36,33 +36,38 @@ def test_worker_service_returns_json_bytes_run_udf_response(monkeypatch):
         lambda request_id: "mocked",
     )
     monkeypatch.setattr(grpc_server, "RunUdfSystemArgs", _DummyRunUdfSystemArgs)
-    struct_payloads = [{"alpha": 1}, {"system": "args"}]
-    monkeypatch.setattr(
-        grpc_server,
-        "_struct_to_dict",
-        lambda struct_message: struct_payloads.pop(0),
-    )
-    monkeypatch.setattr(
-        grpc_server.udf_service,
-        "run_udf",
-        lambda **kwargs: {"f_stat": float("inf")},
-    )
+    calls = []
+
+    def fake_run_udf(**kwargs):
+        calls.append(kwargs)
+        return {"f_stat": float("inf")}
+
+    monkeypatch.setattr(grpc_server.udf_service, "run_udf", fake_run_udf)
 
     service = grpc_server.WorkerService()
     response = service.RunUdf(
-        worker_pb2.RunUdfRequest(request_id="req", udf_registry_key="ols"),
+        worker_pb2.RunUdfRequest(
+            request_id="req",
+            udf_registry_key="ols",
+            kw_args=encode_udf_payload({"n_splits": 3, "big": 2**60 + 1}),
+            system_args=encode_udf_payload({"system": "args"}),
+        ),
         context=None,
     )
 
     assert response.result_format == UDF_RESULT_FORMAT_JSON_BYTES_V1
-    decoded = decode_udf_result(response.result)
+    decoded = decode_udf_payload(response.result)
     assert decoded["f_stat"] == float("inf")
+    kw_args = calls[0]["kw_args"]
+    assert kw_args == {"n_splits": 3, "big": 2**60 + 1}
+    assert type(kw_args["n_splits"]) is int
+    assert calls[0]["system_args"] == {"validated": {"system": "args"}}
 
 
 def test_worker_tasks_handler_decodes_json_bytes_run_udf_response(monkeypatch):
     client = _FakeWorkerClient(
         worker_pb2.RunUdfResponse(
-            result=encode_udf_result({"items": [1, {"value": 2.5}]}),
+            result=encode_udf_payload({"items": [1, {"value": 2.5}]}),
             result_format=UDF_RESULT_FORMAT_JSON_BYTES_V1,
         )
     )
@@ -80,12 +85,14 @@ def test_worker_tasks_handler_decodes_json_bytes_run_udf_response(monkeypatch):
     assert result == {"items": [1, {"value": 2.5}]}
     assert client.request.request_id == "req"
     assert client.request.udf_registry_key == "udf"
+    assert decode_udf_payload(client.request.kw_args) == {"alpha": 1}
+    assert decode_udf_payload(client.request.system_args) == {"metadata": {}}
 
 
 def test_worker_tasks_handler_decodes_linear_regression_infinite_f_stat(monkeypatch):
     client = _FakeWorkerClient(
         worker_pb2.RunUdfResponse(
-            result=encode_udf_result({"f_stat": float("inf")}),
+            result=encode_udf_payload({"f_stat": float("inf")}),
             result_format=UDF_RESULT_FORMAT_JSON_BYTES_V1,
         )
     )

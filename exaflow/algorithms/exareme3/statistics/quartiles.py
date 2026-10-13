@@ -102,7 +102,7 @@ def local_step(agg_client, data, y_var, q_values, num_bins, is_integer):
         result = estimator.compute(
             data[y_var],
             float(q),
-            num_bins=int(num_bins),
+            num_bins=num_bins,
             is_integer=bool(is_integer),
         )
         if result is None:

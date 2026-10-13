@@ -158,5 +158,5 @@ def local_step(
         sample_a,
         sample_b,
         alternative=str(alternative),
-        num_bins=int(num_bins),
+        num_bins=num_bins,
     )

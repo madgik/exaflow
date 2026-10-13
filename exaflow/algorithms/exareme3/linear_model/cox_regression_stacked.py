@@ -313,7 +313,7 @@ def cox_regression_stacked_local_step(
 
     model = FederatedStackedCoxRegression(
         time_grid_strategy=time_grid_strategy,
-        n_time_bins=int(n_time_bins),
+        n_time_bins=n_time_bins,
     )
     results = model.fit(
         X,

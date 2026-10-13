@@ -251,7 +251,6 @@ def local_step(
     - Aggregate confusion-matrix counts (threshold 0.5).
     - Approximate ROC curve on a fixed grid of thresholds via aggregated counts.
     """
-    n_splits = int(n_splits)
 
     cv_pipeline = FederatedPipeline(
         [

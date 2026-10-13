@@ -156,10 +156,12 @@ message GarbageCollectResponse {
 }
 
 message RunUdfRequest {
+  reserved 3, 4;
   string request_id = 1;
   string udf_registry_key = 2;
-  google.protobuf.Struct kw_args = 3;
-  google.protobuf.Struct system_args = 4;
+  // UTF-8 JSON objects, see exaflow/udf_serialization.py.
+  bytes kw_args = 5;
+  bytes system_args = 6;
 }
 
 message RunUdfResponse {

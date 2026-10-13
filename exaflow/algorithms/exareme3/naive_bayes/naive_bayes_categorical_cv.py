@@ -134,8 +134,6 @@ def local_step(
     Naive Bayes with secure aggregation.
     """
 
-    n_splits = int(n_splits)
-
     labels = list(categories[y_var])
     if not labels:
         return {

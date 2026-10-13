@@ -2,11 +2,11 @@ import math
 
 import numpy as np
 
-from exaflow.udf_result_serialization import decode_udf_result
-from exaflow.udf_result_serialization import encode_udf_result
+from exaflow.udf_serialization import decode_udf_payload
+from exaflow.udf_serialization import encode_udf_payload
 
 
-def test_udf_result_json_bytes_round_trip_normalizes_nested_numpy_and_tuples():
+def test_udf_payload_json_bytes_round_trip_normalizes_nested_numpy_and_tuples():
     result = {
         "nested": {
             "list": [np.int64(3), np.float64(4.5), (np.bool_(True), "x")],
@@ -15,7 +15,7 @@ def test_udf_result_json_bytes_round_trip_normalizes_nested_numpy_and_tuples():
         "tuple": (np.float32(1.25), np.array([5.5, 6.5])),
     }
 
-    decoded = decode_udf_result(encode_udf_result(result))
+    decoded = decode_udf_payload(encode_udf_payload(result))
 
     assert decoded == {
         "nested": {
@@ -26,9 +26,9 @@ def test_udf_result_json_bytes_round_trip_normalizes_nested_numpy_and_tuples():
     }
 
 
-def test_udf_result_json_bytes_round_trip_preserves_non_finite_floats():
-    decoded = decode_udf_result(
-        encode_udf_result(
+def test_udf_payload_json_bytes_round_trip_preserves_non_finite_floats():
+    decoded = decode_udf_payload(
+        encode_udf_payload(
             {
                 "nan": float("nan"),
                 "inf": float("inf"),

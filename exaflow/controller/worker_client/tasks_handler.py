@@ -3,12 +3,12 @@ from logging import Logger
 from typing import List
 
 from google.protobuf import json_format
-from google.protobuf import struct_pb2
 
 from exaflow.controller.worker_client.app import WorkerClientFactory
 from exaflow.protos.worker import worker_pb2
-from exaflow.udf_result_serialization import UDF_RESULT_FORMAT_JSON_BYTES_V1
-from exaflow.udf_result_serialization import decode_udf_result
+from exaflow.udf_serialization import UDF_RESULT_FORMAT_JSON_BYTES_V1
+from exaflow.udf_serialization import decode_udf_payload
+from exaflow.udf_serialization import encode_udf_payload
 from exaflow.worker_communication import CommonDataElement
 from exaflow.worker_communication import CommonDataElements
 from exaflow.worker_communication import DataModelAttributes
@@ -88,12 +88,6 @@ def _proto_attributes_to_model(
     return DataModelAttributes(
         tags=list(response.attributes.tags or []), properties=properties
     )
-
-
-def _dict_to_struct(data: dict) -> struct_pb2.Struct:
-    message = struct_pb2.Struct()
-    json_format.ParseDict(data, message, ignore_unknown_fields=True)
-    return message
 
 
 class WorkerTaskResult:
@@ -247,8 +241,8 @@ class WorkerTasksHandler:
             worker_pb2.RunUdfRequest(
                 request_id=request_id,
                 udf_registry_key=udf_registry_key,
-                kw_args=_dict_to_struct(kw_args),
-                system_args=_dict_to_struct(system_args),
+                kw_args=encode_udf_payload(kw_args),
+                system_args=encode_udf_payload(system_args),
             ),
             timeout,
         )
@@ -256,4 +250,4 @@ class WorkerTasksHandler:
             raise ValueError(
                 f"Unsupported RunUdfResponse result format: {response.result_format!r}"
             )
-        return decode_udf_result(response.result)
+        return decode_udf_payload(response.result)

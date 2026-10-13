@@ -5,7 +5,6 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
-from exaflow.algorithms.exareme3.utils.metadata_enums import add_ordered_enums
 from exaflow.algorithms.exareme3.utils.registry import get_udf_registry_key
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.controller import logger as ctrl_logger
@@ -45,7 +44,7 @@ class Exareme3AlgorithmFlowEngineInterface:
 
         system_args = RunUdfSystemArgs(
             inputdata=self._inputdata,
-            metadata=add_ordered_enums(self._metadata),
+            metadata=self._metadata,
             check_min_rows=check_min_rows,
             add_dataset_variable=add_dataset_variable,
             preprocessing=self._preprocessing,

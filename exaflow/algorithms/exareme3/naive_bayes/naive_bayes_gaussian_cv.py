@@ -132,7 +132,6 @@ def local_step(
     """
     Exaflow UDF that performs K-fold cross-validation for Gaussian Naive Bayes.
     """
-    n_splits = int(n_splits)
     class_labels = list(labels)
     if not class_labels:
         return {"labels": [], "confmats": [], "n_obs": []}
