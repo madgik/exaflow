@@ -59,7 +59,8 @@ df = n_A + n_B - 2
 ## Federated computation
 
 The test is computed without sharing row-level data. Each site contributes
-group-specific counts, sums, and sums of squares for the selected categories.
+group-specific counts and sums, then group-specific sums of squared deviations
+from the global group means.
 
 ### Aggregated quantities
 
@@ -67,7 +68,7 @@ group-specific counts, sums, and sums of squares for the selected categories.
 |---|---|
 | Count for group A and group B | Compute means, standard error, and degrees of freedom. |
 | Sum for each group | Compute group means. |
-| Sum of squares for each group | Compute group variances and pooled variance. |
+| Sum of squared deviations from each group mean | Compute pooled variance. |
 
 ### Federated flow
 
@@ -82,17 +83,20 @@ Input:
 Step 1:
     At each site:
         select observations in groupA and groupB
-        compute count, sum, and sum of squares for each group
+        compute count and sum for each group
 
 Step 2:
-    Aggregate group counts, sums, and sums of squares.
+    Aggregate group counts and sums.
+    Validate that both groups have observations and enough total degrees of freedom.
+    Compute group means.
 
 Step 3:
-    Validate that both groups have observations and enough total degrees of freedom.
+    At each site, compute the sum of squared deviations from each group mean.
+    Aggregate them.
 
 Step 4:
-    Compute group means, pooled variance, standard error, t statistic,
-    p-value, confidence interval, and Cohen's d.
+    Compute pooled variance, standard error, t statistic, p-value,
+    confidence interval, and Cohen's d.
 
 Output:
     independent t-test summary
@@ -102,6 +106,9 @@ Output:
 
 - The implementation uses pooled variance, equivalent to an equal-variance
   independent t-test.
+- Variances use a second aggregation round of squared deviations from the
+  global mean instead of raw moments, so they stay accurate when the mean is
+  large relative to the spread.
 - The selected `groupA` and `groupB` define the sign of the mean difference.
 - One-sided alternatives replace one confidence bound with infinity.
 - Cohen's d is computed from the pooled standard deviation.

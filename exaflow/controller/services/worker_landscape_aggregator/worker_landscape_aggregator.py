@@ -39,7 +39,6 @@ from exaflow.worker_communication import WorkerInfo
 from exaflow.worker_communication import WorkerRole
 
 WORKER_LANDSCAPE_AGGREGATOR_REQUEST_ID = "WORKER_LANDSCAPE_AGGREGATOR"
-LONGITUDINAL = "longitudinal"
 
 
 class ImmutableBaseModel(BaseModel, ABC):
@@ -114,12 +113,6 @@ class DataModelRegistry(ImmutableBaseModel):
     datasets_variables: Optional[DatasetsVariables] = Field(
         default_factory=DatasetsVariables
     )
-
-    def is_longitudinal(self, data_model: str) -> bool:
-        return (
-            LONGITUDINAL
-            in self.data_models_attributes.data_models_attributes[data_model].tags
-        )
 
     def get_cdes_specific_data_model(self, data_model) -> CommonDataElements:
         return self.data_models_cdes.data_models_cdes[data_model]
@@ -282,7 +275,6 @@ class WorkerLandscapeAggregator:
         self._registries = _wlaRegistries()
         self._keep_updating = True
         self._update_loop_thread = None
-        self._loaded_workers = set()
 
     def update(self):
         """
@@ -545,9 +537,11 @@ class WorkerLandscapeAggregator:
         datasets_locations = self.get_datasets_locations().datasets_locations[
             data_model
         ]
+        global_worker = self.get_global_worker()
+        global_worker_id = global_worker.id if global_worker else None
 
         for dataset, worker_id in datasets_locations.items():
-            if worker_id == self.get_global_worker().id:
+            if worker_id == global_worker_id:
                 validation_datasets.append(dataset)
             else:
                 training_datasets.append(dataset)
@@ -592,86 +586,24 @@ class WorkerLandscapeAggregator:
             .socket_addresses
         )
         workers_info = self._get_workers_info(workers_addresses)
-        cached_datasets = self._ensure_workers_data_loaded(workers_info)
         data_models_metadata_per_worker = self._get_data_models_metadata_per_worker(
-            workers_info, cached_datasets
+            workers_info
         )
         return workers_info, data_models_metadata_per_worker
-
-    def _ensure_workers_data_loaded(
-        self, workers: List[WorkerInfo]
-    ) -> Dict[str, DatasetsInfoPerDataModel]:
-        cached_datasets: Dict[str, DatasetsInfoPerDataModel] = {}
-        for worker_info in workers:
-            if worker_info.id in self._loaded_workers:
-                continue
-            try:
-                handler = WorkerInfoTasksHandler(
-                    worker_queue_addr=worker_info.socket_addr,
-                    tasks_timeout=self._worker_info_tasks_timeout,
-                    request_id=WORKER_LANDSCAPE_AGGREGATOR_REQUEST_ID,
-                )
-                datasets_per_data_model: DatasetsInfoPerDataModel | None = None
-                try:
-                    datasets_per_data_model = (
-                        handler.get_worker_datasets_per_data_model_task()
-                    )
-                except (WorkerClientConnectionError, WorkerClientTimeoutException):
-                    # Most commonly raised when metadata tables are missing (first boot)
-                    self._logger.debug(
-                        "Failed to fetch datasets for worker %s before loading data",
-                        worker_info.id,
-                        exc_info=True,
-                    )
-
-                if (
-                    datasets_per_data_model
-                    and datasets_per_data_model.datasets_info_per_data_model
-                ):
-                    cached_datasets[worker_info.id] = datasets_per_data_model
-                    self._loaded_workers.add(worker_info.id)
-                    continue
-
-                self._loaded_workers.add(worker_info.id)
-                try:
-                    datasets_per_data_model = (
-                        handler.get_worker_datasets_per_data_model_task()
-                    )
-                    if (
-                        datasets_per_data_model
-                        and datasets_per_data_model.datasets_info_per_data_model
-                    ):
-                        cached_datasets[worker_info.id] = datasets_per_data_model
-                except (WorkerClientConnectionError, WorkerClientTimeoutException):
-                    self._logger.debug(
-                        "Failed to fetch datasets after loading data for worker %s",
-                        worker_info.id,
-                        exc_info=True,
-                    )
-            except Exception:
-                self._logger.error(
-                    "Failed to auto-load data for worker %s", worker_info.id
-                )
-                self._logger.debug(traceback.format_exc())
-        return cached_datasets
 
     def _get_data_models_metadata_per_worker(
         self,
         workers: List[WorkerInfo],
-        cached_datasets: Optional[Dict[str, DatasetsInfoPerDataModel]] = None,
     ) -> DataModelsMetadataPerWorker:
-        cached_datasets = cached_datasets or {}
         data_models_metadata_per_worker = {}
 
         for worker_info in workers:
             data_models_metadata = {}
 
             worker_socket_addr = worker_info.socket_addr
-            datasets_per_data_model = cached_datasets.get(worker_info.id)
-            if not datasets_per_data_model:
-                datasets_per_data_model = self._get_worker_datasets_per_data_model(
-                    worker_socket_addr
-                )
+            datasets_per_data_model = self._get_worker_datasets_per_data_model(
+                worker_socket_addr
+            )
             if datasets_per_data_model:
                 for (
                     data_model,

@@ -32,7 +32,8 @@ class FederatedDescriptiveStatistics:
     - Per-dataset quantiles (q1/q2/q3) are exact (pandas). The global summary
       carries federated ``q1``/``q2``/``q3`` and ``median`` (= ``q2``) estimated
       across all datasets via a histogram-based percentile.
-    - Means and variances come from aggregated sufficient statistics (sx, sxx).
+    - Means come from aggregated sums (sx). Variances come from a second
+      aggregation round of sums of squares centered on the global mean.
     - Nominal counts flow through the aggregation client and zero-count levels are
       dropped in the global result per our contract.
     - NA handling remains pairwise complete per variable.

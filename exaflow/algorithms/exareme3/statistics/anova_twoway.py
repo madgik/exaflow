@@ -75,7 +75,7 @@ class AnovaTwoWay(Algorithm):
                     types=[specs.ParameterType.INT],
                     required=True,
                     multiple=False,
-                    default="2",
+                    default=2,
                     min=1,
                     max=2,
                 ),

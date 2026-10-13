@@ -320,11 +320,6 @@ def test_get_worker_specific_datasets(mocked_data_model_registry):
     assert set(datasets) == {"edsd0", "ppmi0"}
 
 
-def test_is_longitudinal(mocked_data_model_registry):
-    assert mocked_data_model_registry.is_longitudinal("tbi:0.1")
-    assert not mocked_data_model_registry.is_longitudinal("dementia:0.1")
-
-
 def test_get_data_models_attributes(mocked_data_model_registry):
     attributes = mocked_data_model_registry.get_data_models_attributes()
     assert attributes["tbi:0.1"].tags == ["tbi", "longitudinal"]
@@ -908,6 +903,20 @@ def test_get_datasets_per_worker(mocked_wla):
 
 def test_get_training_and_validation_datasets(mocked_wla):
     training, validation = mocked_wla.get_training_and_validation_datasets("tbi:0.1")
+    assert set(training) == {"dummy_tbi0", "dummy_tbi1", "dummy_tbi3"}
+    assert not validation
+
+
+def test_get_training_and_validation_datasets_without_global_worker(
+    worker_landscape_aggregator, mocked_worker_infos, mocked_data_model_registry
+):
+    worker_landscape_aggregator._set_new_registries(
+        worker_registry=WorkerRegistry(workers_info=mocked_worker_infos[1:]),
+        data_model_registry=mocked_data_model_registry,
+    )
+    training, validation = (
+        worker_landscape_aggregator.get_training_and_validation_datasets("tbi:0.1")
+    )
     assert set(training) == {"dummy_tbi0", "dummy_tbi1", "dummy_tbi3"}
     assert not validation
 

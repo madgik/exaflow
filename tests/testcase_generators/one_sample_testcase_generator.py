@@ -54,10 +54,10 @@ class OneSampleTtestTestCaseGenerator(TestCaseGenerator):
             "t_value": t_test_res_py["statistic"][0],
             "p_value": t_test_res_py["p.value"][0],
             "df": t_test_res_py["parameter"][0],
-            "mean_diff": t_test_res_py["estimate"][0],
+            "mean_diff": t_test_res_py["estimate"][0] - mu,
             "se_diff": t_test_res_py["stderr"][0],
-            "ci_upper": t_test_res_py["conf.int"][1],
-            "ci_lower": t_test_res_py["conf.int"][0],
+            "ci_upper": t_test_res_py["conf.int"][1] - mu,
+            "ci_lower": t_test_res_py["conf.int"][0] - mu,
             "cohens_d": cohens_d_res[0],
         }
 

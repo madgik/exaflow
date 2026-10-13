@@ -65,9 +65,7 @@ totals.
 |---|---|
 | Number of observations | Compute mean, standard error, and degrees of freedom. |
 | Sum of values | Compute sample mean. |
-| Sum of squared values | Compute sample variance. |
-| Sum of deviations from `mu` | Compute mean difference. |
-| Sum of squared deviations from `mu` | Compute standard deviation around the null mean. |
+| Sum of squared deviations from the global mean | Compute sample variance. |
 
 ### Federated flow
 
@@ -81,18 +79,22 @@ Input:
 Step 1:
     At each site:
         remove missing y values
-        compute n, sum(y), sum(y^2)
-        compute sum(y - mu) and sum((y - mu)^2)
+        compute n and sum(y)
 
 Step 2:
-    Aggregate all scalar sufficient statistics.
+    Aggregate n and sum(y).
+    Validate that the total number of observations is greater than one.
+    Compute the global mean.
 
 Step 3:
-    Validate that the total number of observations is greater than one.
+    At each site:
+        compute sum((y - mean)^2)
+    Aggregate it.
 
 Step 4:
-    Compute mean, standard deviation, standard error, t statistic,
-    degrees of freedom, p-value, confidence interval, and Cohen's d.
+    Compute standard deviation, standard error, mean difference (mean - mu),
+    t statistic, degrees of freedom, p-value, confidence interval, and
+    Cohen's d.
 
 Output:
     one-sample t-test summary
@@ -100,7 +102,11 @@ Output:
 
 ## Technical decisions
 
-- Confidence intervals use the Student t distribution.
+- Variance uses a second aggregation round of squared deviations from the
+  global mean instead of raw moments, so it stays accurate when the mean is
+  large relative to the spread.
+- Confidence intervals use the Student t distribution and are reported for
+  the mean difference `mean - mu`.
 - One-sided alternatives replace one confidence bound with infinity.
 - Cohen's d is computed as `(mean - mu) / standard_deviation`.
 - Missing-value removal is handled before the sample reaches the test routine.
@@ -114,10 +120,10 @@ Output:
 | `t_stat` | t statistic. |
 | `df` | Degrees of freedom. |
 | `p` | P-value. |
-| `mean_diff` | Sample mean. |
+| `mean_diff` | Sample mean minus `mu`. |
 | `se_diff` | Standard error of the mean. |
-| `ci_lower` | Lower confidence interval bound. |
-| `ci_upper` | Upper confidence interval bound. |
+| `ci_lower` | Lower confidence interval bound for `mean - mu`. |
+| `ci_upper` | Upper confidence interval bound for `mean - mu`. |
 | `cohens_d` | Standardized mean difference. |
 
 ## Validation against state-of-the-art implementation

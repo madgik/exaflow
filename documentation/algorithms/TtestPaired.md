@@ -68,10 +68,8 @@ sufficient statistics for the paired differences.
 | Quantity | Purpose |
 |---|---|
 | Number of pairs | Compute degrees of freedom and standard error. |
-| Sum of first and second measurements | Compute measurement means. |
 | Sum of paired differences | Compute mean difference. |
-| Sum of squared paired differences | Compute standard deviation of differences. |
-| Sum of squared first and second measurements | Compute supporting summary statistics. |
+| Sum of squared deviations of paired differences from the mean difference | Compute standard deviation of differences. |
 
 ### Federated flow
 
@@ -86,13 +84,17 @@ Step 1:
     At each site:
         keep complete pairs
         compute paired differences
-        compute count, sums, and squared sums
+        compute count and sum of differences
 
 Step 2:
-    Aggregate paired-difference sufficient statistics.
+    Aggregate count and sum.
+    Validate that more than one pair is available.
+    Compute the mean difference.
 
 Step 3:
-    Validate that more than one pair is available.
+    At each site, compute the sum of squared deviations of the differences
+    from the mean difference.
+    Aggregate it.
 
 Step 4:
     Compute mean difference, standard deviation of differences,
@@ -105,6 +107,9 @@ Output:
 ## Technical decisions
 
 - The sign of the reported mean difference is `y - x`.
+- Variances use a second aggregation round of squared deviations from the
+  global mean instead of raw moments, so they stay accurate when the mean is
+  large relative to the spread.
 - One-sided alternatives replace one confidence bound with infinity.
 - Cohen's d is computed as mean paired difference divided by the standard
   deviation of paired differences.

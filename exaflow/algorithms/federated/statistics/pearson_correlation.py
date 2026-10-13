@@ -51,24 +51,10 @@ class FederatedPearsonCorrelation:
         y = to_numpy(data[y_vars])
         n_obs = len(y)
 
-        sx = np.einsum("ij->j", x)
-        sy = np.einsum("ij->j", y)
-        sxx = np.einsum("ij,ij->j", x, x)
-        syy = np.einsum("ij,ij->j", y, y)
-        sxy = np.einsum("ji,jk->ki", x, y)
-
         total_n_obs_arr = self.agg_client.sum(np.array([float(n_obs)], dtype=float))
-        total_sx = self.agg_client.sum(sx)
-        total_sy = self.agg_client.sum(sy)
-        total_sxx = self.agg_client.sum(sxx)
-        total_syy = self.agg_client.sum(syy)
-        total_sxy = self.agg_client.sum(sxy)
+        total_sx = self.agg_client.sum(np.einsum("ij->j", x))
+        total_sy = self.agg_client.sum(np.einsum("ij->j", y))
         total_n_obs = float(np.asarray(total_n_obs_arr).reshape(-1)[0])
-        total_sx = np.asarray(total_sx, dtype=float)
-        total_sy = np.asarray(total_sy, dtype=float)
-        total_sxx = np.asarray(total_sxx, dtype=float)
-        total_syy = np.asarray(total_syy, dtype=float)
-        total_sxy = np.asarray(total_sxy, dtype=float)
 
         df = total_n_obs - 2
         if total_n_obs == 0:
@@ -79,13 +65,17 @@ class FederatedPearsonCorrelation:
                 "Not enough observations to compute Pearson correlation."
             )
 
-        d = (
-            np.sqrt(total_n_obs * total_sxx - total_sx * total_sx)
-            * np.sqrt(total_n_obs * total_syy - total_sy * total_sy)[:, np.newaxis]
-        )
-        correlations = (
-            total_n_obs * total_sxy - total_sx * total_sy[:, np.newaxis]
-        ) / d
+        x_centered = x - np.asarray(total_sx, dtype=float) / total_n_obs
+        y_centered = y - np.asarray(total_sy, dtype=float) / total_n_obs
+        total_sxx = self.agg_client.sum(np.einsum("ij,ij->j", x_centered, x_centered))
+        total_syy = self.agg_client.sum(np.einsum("ij,ij->j", y_centered, y_centered))
+        total_sxy = self.agg_client.sum(np.einsum("ji,jk->ki", x_centered, y_centered))
+        total_sxx = np.asarray(total_sxx, dtype=float)
+        total_syy = np.asarray(total_syy, dtype=float)
+        total_sxy = np.asarray(total_sxy, dtype=float)
+
+        d = np.sqrt(total_sxx) * np.sqrt(total_syy)[:, np.newaxis]
+        correlations = total_sxy / d
         correlations[d == 0] = 0
         correlations = correlations.clip(-1, 1)
         t_squared = correlations**2 * (

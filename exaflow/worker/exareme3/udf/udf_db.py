@@ -46,9 +46,7 @@ def load_algorithm_arrow_table(
 
 
 def _fetch_with_duckdb(inputdata: Inputdata, required_columns: Set[str]) -> pa.Table:
-    import duckdb
-
-    from exaflow.worker import config as worker_config
+    from exaflow.worker.worker_info.duckdb_adapter import read_only_cursor
 
     datasets = (inputdata.datasets or []) + (
         inputdata.validation_datasets if inputdata.validation_datasets else []
@@ -71,9 +69,9 @@ def _fetch_with_duckdb(inputdata: Inputdata, required_columns: Set[str]) -> pa.T
 
     query = f"SELECT {select_columns} FROM {table_name}{where_sql}"
 
-    with duckdb.connect(worker_config.duckdb.path, read_only=True) as conn:
+    with read_only_cursor() as cursor:
         # Use fetch_arrow_table for zero-copy loading
-        arrow_table = conn.execute(query).fetch_arrow_table()
+        arrow_table = cursor.execute(query).fetch_arrow_table()
 
     # Drop duplicate column names if any (Arrow tables enforce unique names usually, but good to be safe)
     # Note: Arrow handles duplicates differently than Pandas, usually by appending suffixes or erroring.

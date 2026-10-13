@@ -47,6 +47,56 @@ tests and fixtures, and `documentation/algorithms/linear_regression_cv.md`.
 
 Date: 2026-10-02
 
+## Proposed Decisions
+
+### Decision: One-sample t-test `mean_diff` Reports `mean - mu`
+
+Status: Proposed
+
+Context: `ttest_onesample` returned the sample mean in `mean_diff` and a
+confidence interval centred on the sample mean. The UI labels the field "Mean
+Difference" and charts it with its interval, and the notebook client plots it
+as a mean difference against a reference line at 0.
+
+Decision: `mean_diff` is `mean - mu` and `ci_lower`/`ci_upper` bound
+`mean - mu`. The field name is unchanged, so platform-ui and the notebook
+client need no change; their existing labels become correct.
+
+Consequences: Consumers that read `mean_diff` as the sample mean get a value
+shifted by `mu` (identical when `mu = 0`). Validation fixtures and the R
+testcase generator encode the new convention. Rollback is a revert of the
+federated core, fixtures, and docs.
+
+Files affected: `exaflow/algorithms/federated/statistics/ttest_onesample.py`,
+`tests/*/expected/ttest_onesample_expected.json`,
+`tests/testcase_generators/one_sample_testcase_generator.py`,
+`documentation/algorithms/TtestOneSample.md`.
+
+Date: 2026-10-13
+
+### Decision: Controller Probes Do Not Depend on Workers
+
+Status: Proposed
+
+Context: The controller startup and liveness probes used `/healthcheck`, which
+calls every worker. A single unreachable worker kept the controller failing its
+probes and restarting, although the worker landscape aggregator already drops
+unreachable workers and serves the remaining federation.
+
+Decision: A partial federation is acceptable for serving. Controller startup
+and liveness probes use `/datasets`, which is served from the in-memory
+registry. `/healthcheck` keeps its all-workers semantics for CI and manual
+checks. Analysis validation no longer assumes a global worker is present.
+
+Consequences: The controller stays up while workers are down; datasets on
+unreachable workers are simply absent from `/datasets` until they return.
+There is no readiness gate on worker availability.
+
+Files affected: `kubernetes/templates/exaflow-controller.yaml`,
+`exaflow/controller/services/worker_landscape_aggregator/worker_landscape_aggregator.py`.
+
+Date: 2026-10-13
+
 ## Inferred Decisions
 
 ### Decision: Keep Federated Core Logic Separately Testable
