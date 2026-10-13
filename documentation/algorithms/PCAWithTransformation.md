@@ -54,7 +54,11 @@ aggregated covariance matrix.
 
 The computation is performed without sharing row-level data. Log and exponential
 transforms are applied independently at each site. Centering and standardization
-use aggregated means and sample standard deviations.
+use aggregated means and sample standard deviations. Each standardization uses
+two aggregation rounds: the global mean comes first, then sums of squared
+deviations from that mean. Sample variances are never derived from raw moments
+(`sum(x^2) - n * mean^2`), which lose all precision when the mean is large
+relative to the spread.
 
 ### Aggregated quantities
 
@@ -62,7 +66,7 @@ use aggregated means and sample standard deviations.
 |---|---|
 | Number of observations | Compute means, variances, and covariance denominator. |
 | Feature sums after log/exp transforms | Compute global means for center/standardize. |
-| Feature sums of squares after log/exp transforms | Compute global sample standard deviations. |
+| Feature sums of squared deviations from the global mean after log/exp transforms | Compute global sample standard deviations. |
 | Standardized Gram matrix | Compute PCA covariance matrix. |
 
 ### Federated flow
@@ -82,13 +86,16 @@ Step 2:
 
 Step 3:
     If center or standardize is requested:
-        aggregate n, sums, and sums of squares after log/exp transforms
-        compute global means and sample standard deviations
+        aggregate n and sums after log/exp transforms
+        compute global means = sums / n
+        aggregate sum((x - global_mean)^2) for each variable
+        compute sample standard deviations = sqrt(sum_sq_dev / (n - 1))
         center or standardize selected variables
 
 Step 4:
     Run base PCA:
-        compute aggregated standardization statistics
+        aggregate n and sums, then compute global means
+        aggregate squared deviations, then compute standard deviations
         aggregate the standardized Gram matrix
         eigendecompose covariance
 

@@ -7,6 +7,27 @@ import numpy as np
 from exaflow.algorithms.federated.utils import to_numpy
 
 
+def global_mean_std(agg_client, X: np.ndarray):
+    """Global observation count, column means and sample standard deviations.
+
+    Two aggregation rounds: n and column sums give the global mean, then the
+    centered sums of squares give the variance. Raw moments (sum(x^2) - n*mean^2)
+    lose all precision when the mean is large relative to the spread.
+    """
+    totals = np.asarray(
+        agg_client.sum(np.append(float(len(X)), np.einsum("ij->j", X))), dtype=float
+    ).reshape(-1)
+    total_n_obs = float(totals[0])
+    means = totals[1:] / total_n_obs
+
+    centered = X - means
+    total_ssd = np.asarray(
+        agg_client.sum(np.einsum("ij,ij->j", centered, centered)), dtype=float
+    ).reshape(-1)
+    sigmas = np.sqrt(total_ssd / (total_n_obs - 1))
+    return total_n_obs, means, sigmas
+
+
 class FederatedPCA:
     """Federated PCA via aggregated moments and eigendecomposition."""
 
@@ -17,22 +38,7 @@ class FederatedPCA:
     def fit(self, X, y: Optional[None] = None):
         X = to_numpy(X)
 
-        n_obs = len(X)
-        sx = np.einsum("ij->j", X)
-        sxx = np.einsum("ij,ij->j", X, X)
-
-        total_n_obs_arr = self.agg_client.sum(np.array([float(n_obs)], dtype=float))
-        total_sx = self.agg_client.sum(sx)
-        total_sxx = self.agg_client.sum(sxx)
-
-        total_n_obs = float(total_n_obs_arr.reshape(-1)[0])
-        total_sx = np.asarray(total_sx, dtype=float)
-        total_sxx = np.asarray(total_sxx, dtype=float)
-
-        means = total_sx / total_n_obs
-        variances = (total_sxx - total_n_obs * means**2) / (total_n_obs - 1)
-        variances = np.maximum(variances, 0.0)
-        sigmas = np.sqrt(variances)
+        total_n_obs, means, sigmas = global_mean_std(self.agg_client, X)
         zero_sigma = sigmas == 0
         if np.any(zero_sigma):
             sigmas = sigmas.copy()

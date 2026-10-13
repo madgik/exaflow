@@ -8,6 +8,7 @@ from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.decomposition.pca import FederatedPCA
+from exaflow.algorithms.federated.decomposition.pca import global_mean_std
 from exaflow.worker_communication import BadUserInput
 
 
@@ -166,34 +167,12 @@ def local_step(
         if not X_values.flags.writeable:
             X_values = np.array(X_values, copy=True)
 
-        n_obs_local = float(X_values.shape[0])
-        sx_local = (
-            np.einsum("ij->j", X_values)
-            if n_obs_local > 0
-            else np.zeros(X_values.shape[1], dtype=float)
-        )
-        sxx_local = (
-            np.einsum("ij,ij->j", X_values, X_values)
-            if n_obs_local > 0
-            else np.zeros(X_values.shape[1], dtype=float)
-        )
-
-        total_n_obs_arr = agg_client.sum(np.array([n_obs_local], dtype=float))
-        total_sx_arr = agg_client.sum(sx_local)
-        total_sxx_arr = agg_client.sum(sxx_local)
-        total_n_obs = float(np.asarray(total_n_obs_arr, dtype=float).reshape(-1)[0])
+        with np.errstate(divide="ignore", invalid="ignore"):
+            total_n_obs, means, sigmas = global_mean_std(agg_client, X_values)
         if total_n_obs <= 1:
             # Degenerate case, keep things as-is (no meaningful stats)
-            means = np.zeros_like(sx_local)
-            sigmas = np.ones_like(sx_local)
-        else:
-            total_sx = np.asarray(total_sx_arr, dtype=float)
-            total_sxx = np.asarray(total_sxx_arr, dtype=float)
-
-            means = total_sx / total_n_obs
-            variances = (total_sxx - total_n_obs * means**2) / (total_n_obs - 1)
-            variances = np.maximum(variances, 0.0)
-            sigmas = np.sqrt(variances)
+            means = np.zeros_like(means)
+            sigmas = np.ones_like(sigmas)
 
         # Map column name -> index
         col_to_idx = {name: idx for idx, name in enumerate(X.columns)}

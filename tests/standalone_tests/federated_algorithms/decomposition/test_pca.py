@@ -1,11 +1,19 @@
 import numpy as np
+import pandas as pd
 import pytest
 from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
+from exaflow.algorithms.exareme3.decomposition.pca_with_transformations import (
+    local_step as pca_with_transformations_local_step,
+)
 from exaflow.algorithms.federated.decomposition.pca import FederatedPCA
+from exaflow.algorithms.federated.decomposition.pca import global_mean_std
 from tests.standalone_tests.federated_algorithms.utils import FederatedAlgorithmTest
+from tests.standalone_tests.federated_algorithms.utils.federated_algorithm_test import (
+    _simulate_federated_execution,
+)
 
 TEST_CASES = [
     np.array(
@@ -1088,3 +1096,61 @@ class TestFederatedPCA(FederatedAlgorithmTest):
     @pytest.mark.parametrize("X", TEST_CASES)
     def test_federated_algorithm_with_multiple_workers(self, X):
         self.run_comparison(X=X, y=np.zeros((X.shape[0],), dtype=float), n_workers=3)
+
+
+# Raw-moment variances (sum(x^2) - n * mean^2) lose every significant digit for
+# values around 1e8 with unit standard deviation.
+OFFSET = 1e8
+N_ROWS = 300
+N_WORKERS = 3
+RTOL = 1e-6
+
+_rng = np.random.default_rng(0)
+_LATENT = _rng.standard_normal((N_ROWS, 3))
+LARGE_OFFSET_X = OFFSET + _LATENT @ np.array(
+    [[1.0, 0.5, 0.0], [0.0, 1.0, 0.3], [0.0, 0.0, 2.0]]
+)
+PARTS = np.array_split(np.arange(N_ROWS), N_WORKERS)
+EXPECTED_EIGENVALUES = np.sort(np.linalg.eigvalsh(np.corrcoef(LARGE_OFFSET_X.T)))[::-1]
+
+
+def _run(worker_fn):
+    outputs = _simulate_federated_execution(
+        N_WORKERS, lambda worker_id, agg_client: worker_fn(PARTS[worker_id], agg_client)
+    )
+    return outputs[0]
+
+
+def test_global_mean_std_large_offset():
+    n_obs, means, sigmas = _run(
+        lambda rows, agg_client: global_mean_std(agg_client, LARGE_OFFSET_X[rows])
+    )
+    assert n_obs == N_ROWS
+    np.testing.assert_allclose(means, LARGE_OFFSET_X.mean(axis=0), rtol=RTOL)
+    np.testing.assert_allclose(sigmas, LARGE_OFFSET_X.std(axis=0, ddof=1), rtol=RTOL)
+
+
+def test_pca_large_offset():
+    model = _run(
+        lambda rows, agg_client: FederatedPCA(agg_client=agg_client).fit(
+            LARGE_OFFSET_X[rows].copy()
+        )
+    )
+    np.testing.assert_allclose(
+        model.explained_variance_, EXPECTED_EIGENVALUES, rtol=RTOL
+    )
+
+
+def test_pca_with_transformations_large_offset():
+    data = pd.DataFrame(LARGE_OFFSET_X, columns=["a", "b", "c"])
+    result = _run(
+        lambda rows, agg_client: pca_with_transformations_local_step(
+            agg_client,
+            data.iloc[rows].copy(),
+            ["a", "b", "c"],
+            # "c" stays raw so the base PCA standardization also sees the offset.
+            {"center": ["a"], "standardize": ["b"]},
+        )
+    )
+    assert result["n_obs"] == N_ROWS
+    np.testing.assert_allclose(result["eigenvalues"], EXPECTED_EIGENVALUES, rtol=RTOL)

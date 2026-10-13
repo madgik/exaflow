@@ -60,7 +60,10 @@ beta = (X'X)^+ X'y
 
 The model is computed without sharing row-level data. Each site contributes OLS
 sufficient statistics, and the coefficient vector and summary statistics are
-computed from the aggregated cross-products.
+computed from the aggregated cross-products. The total sum of squares uses a
+second pass around the global outcome mean instead of raw moments
+(`sum(y^2) - n * mean^2`), which lose all precision when the mean is large
+relative to the spread.
 
 ### Aggregated quantities
 
@@ -70,7 +73,8 @@ computed from the aggregated cross-products.
 | `X'X` | Estimate coefficients, covariance matrix, and rank. |
 | `X'y` | Estimate coefficients. |
 | Number of observations | Compute degrees of freedom and information criteria. |
-| `sum(y)` and `sum(y^2)` | Compute total sum of squares. |
+| `sum(y)` | Compute the global outcome mean. |
+| `sum((y - mean_y)^2)` | Compute total sum of squares. |
 | Residual sum of squares | Compute residual standard error, R-squared, F statistic, and log-likelihood. |
 | Sum of absolute residuals | Stored as a diagnostic quantity. |
 
@@ -96,19 +100,23 @@ Step 3:
         X'y
         n
         sum(y)
-        sum(y^2)
 
 Step 4:
     Aggregate sufficient statistics.
+    Compute mean_y = sum(y) / n.
 
 Step 5:
     Estimate coefficients with a pseudo-inverse of X'X.
 
 Step 6:
-    At each site, compute residual contributions using the shared coefficients.
+    At each site, compute using the shared coefficients and mean_y:
+        residual sum of squares
+        sum of absolute residuals
+        sum((y - mean_y)^2)
 
 Step 7:
-    Aggregate residual sum of squares and compute model summaries.
+    Aggregate residual sums and total sum of squares.
+    Compute model summaries.
 
 Output:
     coefficients, inferential statistics, and model fit statistics
