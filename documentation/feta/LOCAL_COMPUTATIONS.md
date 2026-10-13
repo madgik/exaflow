@@ -511,3 +511,10 @@ The FETA-owned helper preserves metadata order, discovers labels when metadata
 is empty and prunes globally absent categories. Existing kernels suffice; no
 additional local operation is added. Dense indicator memory grows with category
 count and is bounded by the existing resource checks.
+
+### Implemented Fisher support (2026-10-14)
+
+`feta_fisher_exact` combines two global string-label unions with a numeric
+indicator-table product. The table builder is reused within FETA from the
+chi-squared migration. Fisher inference uses SciPy on the controller's 2x2
+aggregate. No additional worker computation kernel is required.

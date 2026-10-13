@@ -724,3 +724,52 @@ def test_chi_squared_through_real_analysis_route(running_package):
     )
     assert not package.aggregation.sessions
     assert all(not worker.store.contexts for worker in package.workers)
+
+
+@pytest.mark.parametrize("valid", [True, False])
+def test_fisher_through_real_analysis_route(running_package, valid):
+    import pandas as pd
+    from scipy.stats import fisher_exact
+
+    from tests.standalone_tests.feta.test_feta_anova_oneway import assert_nested
+
+    package = running_package
+    filters = (
+        {"id": "group", "type": "string", "operator": "not_equal", "value": "other"}
+        if valid
+        else None
+    )
+    body = {
+        "inputdata": {
+            "data_model": "test:1.0",
+            "datasets": ["a", "b"],
+            "variables": ["group", "outcome"],
+            "filters": filters,
+        },
+        "algorithm": {"name": "feta_fisher_exact", "x": ["group"], "y": ["outcome"]},
+    }
+
+    async def run():
+        response = await package.app.test_client().post("/analysis", json=body)
+        payload = await response.get_data()
+        assert response.status_code == (200 if valid else 460), payload.decode()
+        return json.loads(payload) if valid else payload.decode()
+
+    actual = asyncio.run(run())
+    if valid:
+        frame = package.frame[package.frame.group != "other"]
+        table = pd.crosstab(frame.group, frame.outcome)
+        odds, p = fisher_exact(table)
+        assert_nested(
+            actual,
+            {
+                "odds_ratio": odds,
+                "p_value": p,
+                "x_labels": table.index.tolist(),
+                "y_labels": table.columns.tolist(),
+            },
+        )
+    else:
+        assert "exactly 2 observed levels" in actual
+    assert not package.aggregation.sessions
+    assert all(not worker.store.contexts for worker in package.workers)

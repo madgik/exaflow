@@ -886,3 +886,17 @@ tables raise a FETA input error and contexts are cleaned up.
 See [algorithm documentation](../algorithms/feta_chi_squared.md). Statistics
 migration still proceeds one algorithm at a time; Fisher's exact test is next
 only after user confirmation.
+
+### Fisher's exact test migration (2026-10-14)
+
+`feta_fisher_exact` receives typed `FedTensor` x/y inputs and globally discovers
+sorted observed labels through two string unions. Unlike chi-squared, declared
+metadata categories do not determine the table. Both variables must have
+exactly two observed levels among eligible workers, preserving the reference
+runtime's error message. A shared FETA-owned indicator-table computation creates
+the 2x2 table with one matrix-product aggregation. SciPy's default two-sided
+Fisher test preserves odds ratios, zero-cell behavior, p-values and label order.
+No new local operation or wire contract is added.
+
+See [algorithm documentation](../algorithms/feta_fisher_exact.md). The next
+statistics migration is standardized mean difference, after user confirmation.

@@ -442,3 +442,19 @@ Markdown links and `git diff --check` passed. No protobuf/deployment configurati
 change is needed. To roll back, remove the new algorithm/helper/tests/docs and
 restore the FETA metadata-order/explicit-logistic-sort changes; existing algorithm
 implementations remain intact.
+
+## Fisher's exact test milestone (2026-10-14)
+
+Implemented `feta_fisher_exact` using typed tensor inputs, two observed-label
+unions and the FETA-owned indicator-table computation shared with chi-squared.
+Preserves sorted observed labels, the reference two-level validation error,
+SciPy's default two-sided test and zero-cell behavior. No new operations,
+protobufs, deployment configuration or dependencies are required.
+
+Validation: 49 targeted tests passed, followed by 359 focused FETA/native-Fisher
+regression tests. A full development-tool deployment passed all three live
+Fisher/chi-squared full-response comparisons. Python syntax, documentation links
+and `git diff --check` passed; legacy/shared implementations were unchanged.
+Rollback consists of removing the new algorithm/tests/docs and restoring the
+FETA contingency helper before extraction; existing algorithms remain available.
+Standardized mean difference is next, pending user confirmation.
