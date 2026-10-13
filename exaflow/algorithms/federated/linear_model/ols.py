@@ -225,7 +225,6 @@ class FederatedOLS(FederatedEstimator):
         xTy_local = X.T @ y if n_features > 0 else np.zeros((0, 1), dtype=float)
         n_obs_local = float(y.size)
         sum_y_local = float(y.sum())
-        sum_sq_y_local = float((y**2).sum())
 
         if n_features > 0:
             xTx = np.asarray(agg_client.sum(xTx_local), dtype=float)
@@ -243,12 +242,6 @@ class FederatedOLS(FederatedEstimator):
         sum_y = float(
             np.asarray(
                 agg_client.sum(np.array([sum_y_local], dtype=float)),
-                dtype=float,
-            ).reshape(-1)[0]
-        )
-        sum_sq_y = float(
-            np.asarray(
-                agg_client.sum(np.array([sum_sq_y_local], dtype=float)),
                 dtype=float,
             ).reshape(-1)[0]
         )
@@ -276,11 +269,14 @@ class FederatedOLS(FederatedEstimator):
         rss = float(np.asarray(rss_arr, dtype=float).reshape(-1)[0])
         sum_abs_resid = float(np.asarray(sum_abs_resid_arr, dtype=float).reshape(-1)[0])
 
-        if n_obs > 0:
-            y_mean = sum_y / n_obs
-            tss = sum_sq_y - 2.0 * y_mean * sum_y + n_obs * (y_mean**2)
-        else:
-            tss = 0.0
+        # Second pass around the global mean: sum(y^2) - n * mean^2 cancels
+        # catastrophically when the mean is large relative to the spread.
+        y_mean = sum_y / n_obs if n_obs > 0 else 0.0
+        y_centered_local = y.reshape(-1) - y_mean
+        tss_arr = agg_client.sum(
+            np.array([float(np.dot(y_centered_local, y_centered_local))], dtype=float)
+        )
+        tss = float(np.asarray(tss_arr, dtype=float).reshape(-1)[0])
 
         return {
             "coefficients": coefficients.reshape(-1).tolist(),

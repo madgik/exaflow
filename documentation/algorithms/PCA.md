@@ -49,7 +49,11 @@ describe variance explained by each component.
 ## Federated computation
 
 The decomposition is computed without sharing row-level data. Sites contribute
-moments needed for global standardization and the standardized Gram matrix.
+the statistics needed for global standardization and the standardized Gram
+matrix. Standardization uses two aggregation rounds: the global mean comes
+first, then sums of squared deviations from that mean. Sample variances are
+never derived from raw moments (`sum(x^2) - n * mean^2`), which lose all
+precision when the mean is large relative to the spread.
 
 ### Aggregated quantities
 
@@ -57,7 +61,7 @@ moments needed for global standardization and the standardized Gram matrix.
 |---|---|
 | Number of observations | Compute means, sample variances, and covariance denominator. |
 | Feature sums | Compute global means. |
-| Feature sums of squares | Compute global sample variances. |
+| Feature sums of squared deviations from the global mean | Compute global sample variances. |
 | Standardized Gram matrix | Compute the covariance matrix for eigendecomposition. |
 
 ### Federated flow
@@ -70,26 +74,31 @@ Step 1:
     At each site, compute:
         n
         sum of each feature
-        sum of squares for each feature
 
 Step 2:
-    Aggregate n, sums, and sums of squares.
+    Aggregate n and sums.
+    Compute global means = sums / n.
 
 Step 3:
-    Compute global means and sample standard deviations.
+    At each site, compute:
+        sum((x - global_mean)^2) for each feature
 
 Step 4:
+    Aggregate the sums of squared deviations.
+    Compute sample standard deviations = sqrt(sum_sq_dev / (n - 1)).
+
+Step 5:
     At each site:
         center and scale X using global statistics
         compute the local standardized Gram matrix
 
-Step 5:
+Step 6:
     Aggregate the Gram matrix.
 
-Step 6:
+Step 7:
     Compute covariance = Gram / (n - 1).
 
-Step 7:
+Step 8:
     Eigendecompose covariance and sort eigenvalues descending.
 
 Output:
@@ -101,7 +110,8 @@ Output:
 - PCA is covariance-based.
 - Variables are standardized before eigendecomposition.
 - Sample variance uses denominator `n - 1`.
-- Negative variances from round-off are clipped to zero.
+- Sample variance is computed from squared deviations around the global mean
+  (two aggregation rounds), so it stays accurate for large-offset variables.
 - Zero standard deviations are replaced by `1.0` during scaling to avoid
   division by zero.
 - Eigenvectors are returned as rows ordered by descending eigenvalue.
