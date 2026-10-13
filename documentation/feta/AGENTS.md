@@ -364,8 +364,8 @@ arrays. Context IDs provide namespacing, not caller authorization.
   a new contract beyond the agreed tensor language.
 - After implementing and validating each algorithm, ask the user to continue
   before beginning the next. Keep the full migration objective active.
-- Completed runtime algorithms: `feta_pearson_correlation` and
-  `feta_ttest_onesample`. Remaining statistics modules are tracked in the
+- Completed runtime algorithms: `feta_pearson_correlation`,
+  `feta_ttest_onesample` and `feta_ttest_paired`. Remaining statistics modules are tracked in the
   [computation catalogue](LOCAL_COMPUTATIONS.md); they are not implicitly migrated.
 - One-sample t-test prepares only the required sample `y` and its `run(self, y)`
   receives one stored tensor. It uses three global sums
@@ -376,6 +376,12 @@ arrays. Context IDs provide namespacing, not caller authorization.
 - Its public parameters, numeric input contract and response model reuse the
   existing one-sample specification/model in place, with FETA routing and no
   preprocessing. Missing inputs remain rejected under the current FETA policy.
+- Paired t-test receives required named x/y inputs and computes x minus y,
+  preserving the existing runtime's direction. The difference tensor is stored
+  and reused. Five immediate global reductions supply count, sample sums,
+  difference sum and squared difference sum; inference runs on the controller.
+  Its response, one-sided infinity markers and constant-difference behavior are
+  preserved. No new worker operation or automatic batching is introduced.
 
 The missing-value rejection is an explicit initial FETA limitation: there is no
 FETA preprocessing path to reproduce Exareme3's selected preprocessing behavior.

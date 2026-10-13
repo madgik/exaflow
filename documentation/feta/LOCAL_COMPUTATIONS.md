@@ -16,8 +16,9 @@ postprocessing of completed global results belongs in the controller.
 ## Migration Status
 
 Runtime counterparts implemented and validated so far are
-`feta_pearson_correlation` and `feta_ttest_onesample`. The latter uses the existing
-length, multiply and sum operations; no new `federated_numpy` operator was needed.
+`feta_pearson_correlation`, `feta_ttest_onesample` and `feta_ttest_paired`. The
+t-tests use existing arithmetic, length and sum operations; no new
+`federated_numpy` operator was needed.
 The catalogue below describes requirements, not completion of the remaining
 algorithms. Migration proceeds one algorithm at a time with a user continuation
 decision after each validated implementation.

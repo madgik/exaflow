@@ -40,6 +40,9 @@ from tests.standalone_tests.feta.test_feta_pearson_correlation import (
 )
 from tests.standalone_tests.feta.test_feta_pearson_correlation import data
 from tests.standalone_tests.feta.test_feta_ttest_onesample import assert_reference
+from tests.standalone_tests.feta.test_feta_ttest_paired import (
+    assert_reference as assert_paired_reference,
+)
 
 
 @pytest.fixture
@@ -227,6 +230,51 @@ def test_one_sample_ttest_through_real_analysis_route(running_package, alternati
 
     result = asyncio.run(run())
     assert_reference(result, package.frame.y0.to_numpy(), parameters)
+    assert not package.aggregation.sessions
+    assert all(not worker.store.contexts for worker in package.workers)
+
+
+@pytest.mark.parametrize("alternative", ["two-sided", "less", "greater"])
+def test_paired_ttest_through_real_analysis_route(running_package, alternative):
+    package = running_package
+    parameters = {"alpha": 0.05, "alt_hypothesis": alternative}
+    body = {
+        "inputdata": {
+            "data_model": "test:1.0",
+            "datasets": ["a", "b"],
+            "variables": ["x0", "y0"],
+        },
+        "algorithm": {
+            "name": "feta_ttest_paired",
+            "x": ["x0"],
+            "y": ["y0"],
+            "parameters": parameters,
+        },
+    }
+
+    async def run():
+        client = package.app.test_client()
+        metadata = await client.get("/specifications/algorithms")
+        specifications = json.loads(await metadata.get_data())
+        specification = next(
+            spec for spec in specifications if spec["name"] == "feta_ttest_paired"
+        )
+        assert specification["type"] == "feta"
+        assert specification["required_preprocessing"] == []
+        response = await client.post("/analysis", json=body)
+        payload = await response.get_data()
+        assert response.status_code == 200, payload.decode()
+        result = json.loads(payload)
+        for group in ("x", "y"):
+            invalid = {**body, "algorithm": {**body["algorithm"], group: None}}
+            response = await client.post("/analysis", json=invalid)
+            assert response.status_code == 460
+        return result
+
+    result = asyncio.run(run())
+    assert_paired_reference(
+        result, package.frame.x0.to_numpy(), package.frame.y0.to_numpy(), parameters
+    )
     assert not package.aggregation.sessions
     assert all(not worker.store.contexts for worker in package.workers)
 

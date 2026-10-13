@@ -151,3 +151,13 @@ uv run pytest -q tests/prod_env_tests/test_feta_ttest_onesample.py
 The test selects complete cases identically for both algorithms, retains the
 normal algorithm's required missing-value handler, and sends no preprocessing
 to FETA. It compares every response field, including one-sided infinity markers.
+
+Paired t-test deployment parity, after development federation readiness:
+
+```bash
+uv run pytest -q tests/prod_env_tests/test_feta_ttest_paired.py
+```
+
+Both implementations receive identical complete-case filters on x and y.
+Every output field is compared, retaining x-minus-y direction and one-sided
+infinity markers. FETA requests contain no preprocessing.

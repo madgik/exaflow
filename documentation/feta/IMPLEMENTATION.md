@@ -145,8 +145,8 @@ additional algorithm is additive; existing algorithms and transport are unchange
 Rollback consists of removing its FETA module and associated discovery entry
 (which is automatic), tests and documentation; no stored-data migration is involved.
 
-Next proposed algorithm is `feta_ttest_paired`, pending the user's continuation
-decision. All other statistics modules remain to be migrated.
+The paired t-test was the next migration milestone and is now complete, as
+recorded below. Remaining statistics modules are still to be migrated.
 
 ## Specification-driven named inputs
 
@@ -182,3 +182,33 @@ uv run pytest -q tests/prod_env_tests/test_feta_pearson_correlation.py tests/pro
 
 Result: **15 passed in 3.46 seconds**, covering explicit/omitted Pearson x and
 the one-sample algorithm against their normal runtime counterparts.
+
+## Statistics migration: paired t-test
+
+Implemented `feta_ttest_paired` with typed named x/y inputs, the existing
+specification and response model reused in place, independent FETA routing, and
+no preprocessing. Paired differences are x minus y, preserving runtime direction.
+A stored difference tensor feeds five immediate reductions: count, each sample
+sum, difference sum and squared difference sum. Inference uses ordinary
+controller NumPy/SciPy. Unreported sample standard deviations from the old core
+are not computed. No new worker operators, protobuf changes or config are needed.
+
+```bash
+uv run pytest -q tests/standalone_tests/feta tests/standalone_tests/federated_algorithms/statistics/test_ttest_paired.py tests/standalone_tests/test_import_algorithm_modules_idempotent.py --disable-warnings --tb=short
+uv run inv deploy --no-install-dep --no-structure-data
+uv run pytest -q tests/prod_env_tests/test_feta_ttest_paired.py --disable-warnings --tb=short
+```
+
+Results: **208 focused tests passed** and **5 live development-deployment parity
+tests passed**. Tests cover all alternatives, multiple alpha values, uneven/empty
+partitions, privacy skips, small/constant samples, context/shape rejection, API
+discovery and required-group validation. Every response field is compared to the
+existing implementation with `rtol=1e-10`, `atol=1e-12`; t statistics and p-values
+are additionally checked against SciPy.
+
+This registration is additive. Existing algorithms and worker protocol are
+unchanged. Rollback removes the new module, its tests and documentation; no data
+or configuration migration is involved.
+
+The full statistics goal remains active. Next proposed algorithm is
+`feta_ttest_independent`, pending the user's requested continuation checkpoint.
