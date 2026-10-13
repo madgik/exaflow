@@ -14,25 +14,12 @@ Environment-backed suites (`tests/algorithm_validation_tests`,
 
 | Branch | Commits | Contents |
 |---|---|---|
-| `claude/perf-speedups` | 5 | Fewer aggregation-server round-trips, cached lazy-aggregation rewrite, faster worker startup. |
+| `claude/perf-speedups` | 6 | Cached lazy-aggregation rewrite, faster worker startup, concurrent worker landscape updates. |
 | `claude/bugfixes` | 15 | SQL injection, controller availability, resource leaks, validation gaps, statistics errors. |
 | `claude/algorithm-enhancements` | 8 | Effect sizes, Welch's ANOVA, odds ratios, t-test summaries. |
 
 ### `claude/perf-speedups`
 
-- Fuse independent SUM aggregations into one aggregation-server call through
-  the new `fused_sum` and `fused_min_max` helpers. Each call is a barrier across
-  all workers, so the number of calls dominates latency. Round-trips before and
-  after:
-  - logistic regression: 3 -> 1 per Newton iteration;
-  - OLS: 7 -> 2 (also used by each linear-regression CV fold);
-  - KMeans: 2 -> 1 per Lloyd iteration;
-  - Pearson: 6 -> 1; one-way ANOVA: 9 -> 2;
-  - describe: 10 + one per nominal variable -> 2 per dataset;
-  - t-tests: one-sample 5 -> 1, paired 3 -> 1, independent 2 -> 1;
-  - Gaussian Naive Bayes: 3 -> 1;
-  - CV scorers: classification 8 -> 1, regression 5 -> 1 per fold.
-    Results are numerically identical.
 - Cache the lazy-aggregation UDF rewrite per UDF; it was re-parsed and
   re-compiled on every `RunUdf` call (~1.3 ms each).
 - Worker startup reads each CSV once instead of four times and inserts CDE
@@ -107,6 +94,17 @@ validation gaps.
   around it with defensive `int(...)` casts in many UDFs. Results already use
   JSON bytes (`json-bytes-v1`); doing the same for `kw_args` and `system_args`
   would remove the casts. This is a protobuf contract change.
+- **H2. Lazy aggregation does not batch aggregations inside federated cores.**
+  The rewriter only reorders `agg_client.sum/min/max` calls written directly in
+  the UDF body. Most algorithms call the aggregation client inside
+  `exaflow/algorithms/federated` methods, so every call is a separate barrier
+  across all workers. Independent calls that could share one round-trip today:
+  logistic regression 3 per Newton iteration, OLS 7, KMeans 2 per Lloyd
+  iteration, Pearson 6, one-way ANOVA 9, describe 10 plus one per nominal
+  variable per dataset, one-sample t-test 5, paired t-test 3, Gaussian Naive
+  Bayes 3, CV scorers 8 (classification) and 5 (regression) per fold. Extending
+  lazy aggregation to these call sites would cut latency for iterative models
+  the most.
 
 ### Medium
 
