@@ -198,3 +198,15 @@ Development-deployment parity uses
 `inv deploy` and dataset discovery. The five standard fixtures compare complete
 responses with normal logistic regression on identical complete-case filters.
 Cross-validation is outside this validation scope.
+
+FETA standardized mean difference validation:
+
+```bash
+.venv/bin/python -m pytest -q tests/standalone_tests/feta/test_feta_standardized_mean_difference.py tests/standalone_tests/feta/test_smd_summary.py
+.venv/bin/python -m pytest -q tests/prod_env_tests/test_feta_standardized_mean_difference.py
+```
+
+The latter uses the development-deployed analysis API and compares full responses
+with the existing algorithm under identical non-null filters. Initialization
+privacy-report tests cover explicit zero, heterogeneous participating thresholds,
+skipped workers and rejection/cleanup when a worker omits its report.

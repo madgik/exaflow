@@ -36,6 +36,7 @@ class FetaRuntime:
         self.context_id = context_id or uuid4().hex
         self.deadline = time.monotonic() + self.settings.context_lifetime_minutes * 60
         self.step = 0
+        self.minimum_group_size = None
         self.closed = False
         self.execution_lock = RLock()
         self.state_lock = Lock()
@@ -89,6 +90,8 @@ class FetaRuntime:
             w.worker_id: w for w in self.all_workers if w.worker_id in responses
         }
         for worker_id, response in responses.items():
+            if not response.HasField("minimum_group_size"):
+                raise ValueError("FETA worker did not report its privacy minimum.")
             if response.worker_id != worker_id:
                 raise ValueError("FETA initialization worker identity mismatch.")
             returned_groups = {name for name in ("x", "y") if response.HasField(name)}
@@ -135,6 +138,9 @@ class FetaRuntime:
                 row_counts.add(descriptor.shape[0])
             if len(row_counts) != 1:
                 raise ValueError("FETA input groups have unaligned row counts.")
+        self.minimum_group_size = max(
+            response.minimum_group_size for response in responses.values()
+        )
         result = {}
         for group in columns:
             if group in column_groups:

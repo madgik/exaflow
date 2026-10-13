@@ -42,6 +42,7 @@ message InitializeResponse {
   TensorDescriptor x = 2;
   TensorDescriptor y = 3;
   repeated NamedTensor columns = 4;
+  optional uint64 minimum_group_size = 5;
 }
 message NamedTensor {
   string group = 1;

@@ -458,3 +458,26 @@ and `git diff --check` passed; legacy/shared implementations were unchanged.
 Rollback consists of removing the new algorithm/tests/docs and restoring the
 FETA contingency helper before extraction; existing algorithms remain available.
 Standardized mean difference is next, pending user confirmation.
+
+## Standardized mean difference milestone (2026-10-14)
+
+Implemented `feta_standardized_mean_difference` using typed per-column grouping
+metadata, filtered numerical tensors and centered squared-deviation sums.
+FETA owns the pairwise pooled-variance inference. The approved privacy policy
+reports worker minima during initialization and applies the maximum from eligible
+workers to global group counts. Integer groups retain their types and are sorted
+by their string representation, matching the reference pair order.
+
+Validation: 427 focused FETA/native-SMD regression tests passed; 29 final SMD
+checks passed, including heterogeneous thresholds and missing-report cleanup.
+Development-tool deployment passed all four live SMD/Fisher/chi-squared response
+comparisons. Changed Python syntax, Markdown links and `git diff --check` passed.
+Generated protobuf bindings match an independent regeneration into `/tmp`.
+Exareme3 and shared computation sources remain unchanged.
+
+Compatibility: FETA initialization requires presence of the new
+`minimum_group_size` response field. Regenerate with grpc_tools.protoc and deploy
+controller/workers together. No fallback privacy threshold is supplied for old
+workers. Rollback requires restoring the prior FETA protobuf, worker and
+controller together and removing the new SMD implementation; existing native
+algorithms remain available. Histogram is next after user confirmation.

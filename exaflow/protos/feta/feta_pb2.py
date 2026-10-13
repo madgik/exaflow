@@ -22,7 +22,7 @@ _sym_db = _symbol_database.Default()
 from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
-    b'\n\x1e\x65xaflow/protos/feta/feta.proto\x12\x0c\x65xaflow.feta\x1a\x1cgoogle/protobuf/struct.proto"\x05\n\x03\x41\x63k"$\n\x0e\x43ontextRequest\x12\x12\n\ncontext_id\x18\x01 \x01(\t"/\n\x0bStepRequest\x12\x12\n\ncontext_id\x18\x01 \x01(\t\x12\x0c\n\x04step\x18\x02 \x01(\x04"r\n\rDataSelection\x12\x12\n\ndata_model\x18\x01 \x01(\t\x12\x10\n\x08\x64\x61tasets\x18\x02 \x03(\t\x12\x11\n\tvariables\x18\x03 \x03(\t\x12(\n\x07\x66ilters\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct"\x7f\n\x11InitializeRequest\x12\x12\n\ncontext_id\x18\x01 \x01(\t\x12)\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x1b.exaflow.feta.DataSelection\x12\t\n\x01x\x18\x03 \x03(\t\x12\t\n\x01y\x18\x04 \x03(\t\x12\x15\n\rcolumn_groups\x18\x05 \x03(\t"\xa9\x01\n\x12InitializeResponse\x12\x11\n\tworker_id\x18\x01 \x01(\t\x12)\n\x01x\x18\x02 \x01(\x0b\x32\x1e.exaflow.feta.TensorDescriptor\x12)\n\x01y\x18\x03 \x01(\x0b\x32\x1e.exaflow.feta.TensorDescriptor\x12*\n\x07\x63olumns\x18\x04 \x03(\x0b\x32\x19.exaflow.feta.NamedTensor"Z\n\x0bNamedTensor\x12\r\n\x05group\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12.\n\x06tensor\x18\x03 \x01(\x0b\x32\x1e.exaflow.feta.TensorDescriptor"o\n\x10TensorDescriptor\x12\x11\n\ttensor_id\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\r\n\x05\x64type\x18\x03 \x01(\t\x12\x16\n\x0epartition_axis\x18\x04 \x01(\x05\x12\x12\n\nrow_layout\x18\x05 \x01(\t",\n\x0bStringArray\x12\x0e\n\x06values\x18\x01 \x03(\t\x12\r\n\x05\x64type\x18\x02 \x01(\t"X\n\x0bTensorValue\x12\x0f\n\x05\x61rrow\x18\x01 \x01(\x0cH\x00\x12,\n\x07strings\x18\x02 \x01(\x0b\x32\x19.exaflow.feta.StringArrayH\x00\x42\n\n\x08\x65ncoding"\xae\x01\n\x07Operand\x12\x13\n\x0b\x61rray_dtype\x18\x07 \x01(\t\x12\x13\n\ttensor_id\x18\x01 \x01(\tH\x00\x12\x0e\n\x04real\x18\x02 \x01(\x01H\x00\x12\x11\n\x07integer\x18\x03 \x01(\x12H\x00\x12*\n\x05\x61rray\x18\x04 \x01(\x0b\x32\x19.exaflow.feta.TensorValueH\x00\x12\x0e\n\x04text\x18\x05 \x01(\tH\x00\x12\x11\n\x07\x62oolean\x18\x06 \x01(\x08H\x00\x42\x07\n\x05value"\x98\x01\n\x0eLocalOperation\x12)\n\x04type\x18\x01 \x01(\x0e\x32\x1b.exaflow.feta.OperationType\x12%\n\x06inputs\x18\x02 \x03(\x0b\x32\x15.exaflow.feta.Operand\x12\x11\n\x04\x61xis\x18\x03 \x01(\x05H\x00\x88\x01\x01\x12\x18\n\x10selection_layout\x18\x04 \x01(\tB\x07\n\x05_axis"o\n\x0e\x45xecuteRequest\x12\x12\n\ncontext_id\x18\x01 \x01(\t\x12/\n\toperation\x18\x02 \x01(\x0b\x32\x1c.exaflow.feta.LocalOperation\x12\x18\n\x10\x61ggregation_step\x18\x03 \x01(\x04"\x91\x01\n\x0ePrepareRequest\x12\x12\n\ncontext_id\x18\x01 \x01(\t\x12\x0c\n\x04step\x18\x02 \x01(\x04\x12\x12\n\nworker_ids\x18\x03 \x03(\t\x12\r\n\x05shape\x18\x04 \x03(\x03\x12\r\n\x05\x64type\x18\x05 \x01(\t\x12+\n\x04kind\x18\x06 \x01(\x0e\x32\x1d.exaflow.feta.AggregationKind"n\n\rSubmitRequest\x12\x12\n\ncontext_id\x18\x01 \x01(\t\x12\x0c\n\x04step\x18\x02 \x01(\x04\x12\x11\n\tworker_id\x18\x03 \x01(\t\x12(\n\x05value\x18\x04 \x01(\x0b\x32\x19.exaflow.feta.TensorValue*\x95\x02\n\rOperationType\x12\x19\n\x15OPERATION_UNSPECIFIED\x10\x00\x12\x07\n\x03\x41\x44\x44\x10\x01\x12\x0c\n\x08SUBTRACT\x10\x02\x12\x0c\n\x08MULTIPLY\x10\x03\x12\n\n\x06\x44IVIDE\x10\x04\x12\t\n\x05POWER\x10\x05\x12\r\n\tTRANSPOSE\x10\x06\x12\x07\n\x03SUM\x10\x07\x12\n\n\x06MATMUL\x10\x08\x12\n\n\x06LENGTH\x10\t\x12\t\n\x05\x45QUAL\x10\n\x12\n\n\x06\x43OLUMN\x10\x0b\x12\n\n\x06\x46ILTER\x10\x0c\x12\x07\n\x03MIN\x10\r\x12\x07\n\x03MAX\x10\x0e\x12\n\n\x06UNIQUE\x10\x0f\x12\r\n\tONES_LIKE\x10\x10\x12\x10\n\x0c\x43OLUMN_STACK\x10\x11\x12\x07\n\x03\x45XP\x10\x12\x12\x07\n\x03LOG\x10\x13\x12\t\n\x05WHERE\x10\x14*S\n\x0f\x41ggregationKind\x12\x0e\n\nSUM_VALUES\x10\x00\x12\x0e\n\nMIN_VALUES\x10\x01\x12\x0e\n\nMAX_VALUES\x10\x02\x12\x10\n\x0cUNION_VALUES\x10\x03\x32\xe9\x01\n\nFetaWorker\x12V\n\x11InitializeContext\x12\x1f.exaflow.feta.InitializeRequest\x1a .exaflow.feta.InitializeResponse\x12G\n\x07\x45xecute\x12\x1c.exaflow.feta.ExecuteRequest\x1a\x1e.exaflow.feta.TensorDescriptor\x12:\n\x07\x43leanup\x12\x1c.exaflow.feta.ContextRequest\x1a\x11.exaflow.feta.Ack2\x82\x02\n\x0f\x46\x65taAggregation\x12:\n\x07Prepare\x12\x1c.exaflow.feta.PrepareRequest\x1a\x11.exaflow.feta.Ack\x12\x38\n\x06Submit\x12\x1b.exaflow.feta.SubmitRequest\x1a\x11.exaflow.feta.Ack\x12=\n\x05\x46\x65tch\x12\x19.exaflow.feta.StepRequest\x1a\x19.exaflow.feta.TensorValue\x12:\n\x07\x43leanup\x12\x1c.exaflow.feta.ContextRequest\x1a\x11.exaflow.feta.Ackb\x06proto3'
+    b'\n\x1e\x65xaflow/protos/feta/feta.proto\x12\x0c\x65xaflow.feta\x1a\x1cgoogle/protobuf/struct.proto"\x05\n\x03\x41\x63k"$\n\x0e\x43ontextRequest\x12\x12\n\ncontext_id\x18\x01 \x01(\t"/\n\x0bStepRequest\x12\x12\n\ncontext_id\x18\x01 \x01(\t\x12\x0c\n\x04step\x18\x02 \x01(\x04"r\n\rDataSelection\x12\x12\n\ndata_model\x18\x01 \x01(\t\x12\x10\n\x08\x64\x61tasets\x18\x02 \x03(\t\x12\x11\n\tvariables\x18\x03 \x03(\t\x12(\n\x07\x66ilters\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct"\x7f\n\x11InitializeRequest\x12\x12\n\ncontext_id\x18\x01 \x01(\t\x12)\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x1b.exaflow.feta.DataSelection\x12\t\n\x01x\x18\x03 \x03(\t\x12\t\n\x01y\x18\x04 \x03(\t\x12\x15\n\rcolumn_groups\x18\x05 \x03(\t"\xe1\x01\n\x12InitializeResponse\x12\x11\n\tworker_id\x18\x01 \x01(\t\x12)\n\x01x\x18\x02 \x01(\x0b\x32\x1e.exaflow.feta.TensorDescriptor\x12)\n\x01y\x18\x03 \x01(\x0b\x32\x1e.exaflow.feta.TensorDescriptor\x12*\n\x07\x63olumns\x18\x04 \x03(\x0b\x32\x19.exaflow.feta.NamedTensor\x12\x1f\n\x12minimum_group_size\x18\x05 \x01(\x04H\x00\x88\x01\x01\x42\x15\n\x13_minimum_group_size"Z\n\x0bNamedTensor\x12\r\n\x05group\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12.\n\x06tensor\x18\x03 \x01(\x0b\x32\x1e.exaflow.feta.TensorDescriptor"o\n\x10TensorDescriptor\x12\x11\n\ttensor_id\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\r\n\x05\x64type\x18\x03 \x01(\t\x12\x16\n\x0epartition_axis\x18\x04 \x01(\x05\x12\x12\n\nrow_layout\x18\x05 \x01(\t",\n\x0bStringArray\x12\x0e\n\x06values\x18\x01 \x03(\t\x12\r\n\x05\x64type\x18\x02 \x01(\t"X\n\x0bTensorValue\x12\x0f\n\x05\x61rrow\x18\x01 \x01(\x0cH\x00\x12,\n\x07strings\x18\x02 \x01(\x0b\x32\x19.exaflow.feta.StringArrayH\x00\x42\n\n\x08\x65ncoding"\xae\x01\n\x07Operand\x12\x13\n\x0b\x61rray_dtype\x18\x07 \x01(\t\x12\x13\n\ttensor_id\x18\x01 \x01(\tH\x00\x12\x0e\n\x04real\x18\x02 \x01(\x01H\x00\x12\x11\n\x07integer\x18\x03 \x01(\x12H\x00\x12*\n\x05\x61rray\x18\x04 \x01(\x0b\x32\x19.exaflow.feta.TensorValueH\x00\x12\x0e\n\x04text\x18\x05 \x01(\tH\x00\x12\x11\n\x07\x62oolean\x18\x06 \x01(\x08H\x00\x42\x07\n\x05value"\x98\x01\n\x0eLocalOperation\x12)\n\x04type\x18\x01 \x01(\x0e\x32\x1b.exaflow.feta.OperationType\x12%\n\x06inputs\x18\x02 \x03(\x0b\x32\x15.exaflow.feta.Operand\x12\x11\n\x04\x61xis\x18\x03 \x01(\x05H\x00\x88\x01\x01\x12\x18\n\x10selection_layout\x18\x04 \x01(\tB\x07\n\x05_axis"o\n\x0e\x45xecuteRequest\x12\x12\n\ncontext_id\x18\x01 \x01(\t\x12/\n\toperation\x18\x02 \x01(\x0b\x32\x1c.exaflow.feta.LocalOperation\x12\x18\n\x10\x61ggregation_step\x18\x03 \x01(\x04"\x91\x01\n\x0ePrepareRequest\x12\x12\n\ncontext_id\x18\x01 \x01(\t\x12\x0c\n\x04step\x18\x02 \x01(\x04\x12\x12\n\nworker_ids\x18\x03 \x03(\t\x12\r\n\x05shape\x18\x04 \x03(\x03\x12\r\n\x05\x64type\x18\x05 \x01(\t\x12+\n\x04kind\x18\x06 \x01(\x0e\x32\x1d.exaflow.feta.AggregationKind"n\n\rSubmitRequest\x12\x12\n\ncontext_id\x18\x01 \x01(\t\x12\x0c\n\x04step\x18\x02 \x01(\x04\x12\x11\n\tworker_id\x18\x03 \x01(\t\x12(\n\x05value\x18\x04 \x01(\x0b\x32\x19.exaflow.feta.TensorValue*\x95\x02\n\rOperationType\x12\x19\n\x15OPERATION_UNSPECIFIED\x10\x00\x12\x07\n\x03\x41\x44\x44\x10\x01\x12\x0c\n\x08SUBTRACT\x10\x02\x12\x0c\n\x08MULTIPLY\x10\x03\x12\n\n\x06\x44IVIDE\x10\x04\x12\t\n\x05POWER\x10\x05\x12\r\n\tTRANSPOSE\x10\x06\x12\x07\n\x03SUM\x10\x07\x12\n\n\x06MATMUL\x10\x08\x12\n\n\x06LENGTH\x10\t\x12\t\n\x05\x45QUAL\x10\n\x12\n\n\x06\x43OLUMN\x10\x0b\x12\n\n\x06\x46ILTER\x10\x0c\x12\x07\n\x03MIN\x10\r\x12\x07\n\x03MAX\x10\x0e\x12\n\n\x06UNIQUE\x10\x0f\x12\r\n\tONES_LIKE\x10\x10\x12\x10\n\x0c\x43OLUMN_STACK\x10\x11\x12\x07\n\x03\x45XP\x10\x12\x12\x07\n\x03LOG\x10\x13\x12\t\n\x05WHERE\x10\x14*S\n\x0f\x41ggregationKind\x12\x0e\n\nSUM_VALUES\x10\x00\x12\x0e\n\nMIN_VALUES\x10\x01\x12\x0e\n\nMAX_VALUES\x10\x02\x12\x10\n\x0cUNION_VALUES\x10\x03\x32\xe9\x01\n\nFetaWorker\x12V\n\x11InitializeContext\x12\x1f.exaflow.feta.InitializeRequest\x1a .exaflow.feta.InitializeResponse\x12G\n\x07\x45xecute\x12\x1c.exaflow.feta.ExecuteRequest\x1a\x1e.exaflow.feta.TensorDescriptor\x12:\n\x07\x43leanup\x12\x1c.exaflow.feta.ContextRequest\x1a\x11.exaflow.feta.Ack2\x82\x02\n\x0f\x46\x65taAggregation\x12:\n\x07Prepare\x12\x1c.exaflow.feta.PrepareRequest\x1a\x11.exaflow.feta.Ack\x12\x38\n\x06Submit\x12\x1b.exaflow.feta.SubmitRequest\x1a\x11.exaflow.feta.Ack\x12=\n\x05\x46\x65tch\x12\x19.exaflow.feta.StepRequest\x1a\x19.exaflow.feta.TensorValue\x12:\n\x07\x43leanup\x12\x1c.exaflow.feta.ContextRequest\x1a\x11.exaflow.feta.Ackb\x06proto3'
 )
 
 _globals = globals()
@@ -32,10 +32,10 @@ _builder.BuildTopDescriptorsAndMessages(
 )
 if not _descriptor._USE_C_DESCRIPTORS:
     DESCRIPTOR._loaded_options = None
-    _globals["_OPERATIONTYPE"]._serialized_start = 1636
-    _globals["_OPERATIONTYPE"]._serialized_end = 1913
-    _globals["_AGGREGATIONKIND"]._serialized_start = 1915
-    _globals["_AGGREGATIONKIND"]._serialized_end = 1998
+    _globals["_OPERATIONTYPE"]._serialized_start = 1692
+    _globals["_OPERATIONTYPE"]._serialized_end = 1969
+    _globals["_AGGREGATIONKIND"]._serialized_start = 1971
+    _globals["_AGGREGATIONKIND"]._serialized_end = 2054
     _globals["_ACK"]._serialized_start = 78
     _globals["_ACK"]._serialized_end = 83
     _globals["_CONTEXTREQUEST"]._serialized_start = 85
@@ -47,27 +47,27 @@ if not _descriptor._USE_C_DESCRIPTORS:
     _globals["_INITIALIZEREQUEST"]._serialized_start = 288
     _globals["_INITIALIZEREQUEST"]._serialized_end = 415
     _globals["_INITIALIZERESPONSE"]._serialized_start = 418
-    _globals["_INITIALIZERESPONSE"]._serialized_end = 587
-    _globals["_NAMEDTENSOR"]._serialized_start = 589
-    _globals["_NAMEDTENSOR"]._serialized_end = 679
-    _globals["_TENSORDESCRIPTOR"]._serialized_start = 681
-    _globals["_TENSORDESCRIPTOR"]._serialized_end = 792
-    _globals["_STRINGARRAY"]._serialized_start = 794
-    _globals["_STRINGARRAY"]._serialized_end = 838
-    _globals["_TENSORVALUE"]._serialized_start = 840
-    _globals["_TENSORVALUE"]._serialized_end = 928
-    _globals["_OPERAND"]._serialized_start = 931
-    _globals["_OPERAND"]._serialized_end = 1105
-    _globals["_LOCALOPERATION"]._serialized_start = 1108
-    _globals["_LOCALOPERATION"]._serialized_end = 1260
-    _globals["_EXECUTEREQUEST"]._serialized_start = 1262
-    _globals["_EXECUTEREQUEST"]._serialized_end = 1373
-    _globals["_PREPAREREQUEST"]._serialized_start = 1376
-    _globals["_PREPAREREQUEST"]._serialized_end = 1521
-    _globals["_SUBMITREQUEST"]._serialized_start = 1523
-    _globals["_SUBMITREQUEST"]._serialized_end = 1633
-    _globals["_FETAWORKER"]._serialized_start = 2001
-    _globals["_FETAWORKER"]._serialized_end = 2234
-    _globals["_FETAAGGREGATION"]._serialized_start = 2237
-    _globals["_FETAAGGREGATION"]._serialized_end = 2495
+    _globals["_INITIALIZERESPONSE"]._serialized_end = 643
+    _globals["_NAMEDTENSOR"]._serialized_start = 645
+    _globals["_NAMEDTENSOR"]._serialized_end = 735
+    _globals["_TENSORDESCRIPTOR"]._serialized_start = 737
+    _globals["_TENSORDESCRIPTOR"]._serialized_end = 848
+    _globals["_STRINGARRAY"]._serialized_start = 850
+    _globals["_STRINGARRAY"]._serialized_end = 894
+    _globals["_TENSORVALUE"]._serialized_start = 896
+    _globals["_TENSORVALUE"]._serialized_end = 984
+    _globals["_OPERAND"]._serialized_start = 987
+    _globals["_OPERAND"]._serialized_end = 1161
+    _globals["_LOCALOPERATION"]._serialized_start = 1164
+    _globals["_LOCALOPERATION"]._serialized_end = 1316
+    _globals["_EXECUTEREQUEST"]._serialized_start = 1318
+    _globals["_EXECUTEREQUEST"]._serialized_end = 1429
+    _globals["_PREPAREREQUEST"]._serialized_start = 1432
+    _globals["_PREPAREREQUEST"]._serialized_end = 1577
+    _globals["_SUBMITREQUEST"]._serialized_start = 1579
+    _globals["_SUBMITREQUEST"]._serialized_end = 1689
+    _globals["_FETAWORKER"]._serialized_start = 2057
+    _globals["_FETAWORKER"]._serialized_end = 2290
+    _globals["_FETAAGGREGATION"]._serialized_start = 2293
+    _globals["_FETAAGGREGATION"]._serialized_end = 2551
 # @@protoc_insertion_point(module_scope)

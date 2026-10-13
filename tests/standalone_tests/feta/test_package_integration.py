@@ -773,3 +773,42 @@ def test_fisher_through_real_analysis_route(running_package, valid):
         assert "exactly 2 observed levels" in actual
     assert not package.aggregation.sessions
     assert all(not worker.store.contexts for worker in package.workers)
+
+
+def test_smd_through_real_analysis_route(running_package):
+    from exaflow.algorithms.federated.statistics.standardized_mean_difference import (
+        FederatedStandardizedMeanDifference,
+    )
+    from tests.standalone_tests.feta.test_feta_anova_oneway import CentralAggregation
+    from tests.standalone_tests.feta.test_feta_anova_oneway import assert_nested
+
+    package = running_package
+    body = {
+        "inputdata": {
+            "data_model": "test:1.0",
+            "datasets": ["a", "b"],
+            "variables": ["group", "y0"],
+        },
+        "algorithm": {
+            "name": "feta_standardized_mean_difference",
+            "x": ["group"],
+            "y": ["y0"],
+        },
+    }
+
+    async def run():
+        response = await package.app.test_client().post("/analysis", json=body)
+        payload = await response.get_data()
+        assert response.status_code == 200, payload.decode()
+        return json.loads(payload)
+
+    expected = (
+        FederatedStandardizedMeanDifference(CentralAggregation())
+        .pairwise_by_group(
+            data=package.frame, group_var="group", value_var="y0", minimum_group_size=10
+        )[["group1", "group2", "smd"]]
+        .to_dict(orient="records")
+    )
+    assert_nested(asyncio.run(run()), {"comparisons": expected})
+    assert not package.aggregation.sessions
+    assert all(not worker.store.contexts for worker in package.workers)

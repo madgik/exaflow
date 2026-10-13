@@ -518,3 +518,12 @@ count and is bounded by the existing resource checks.
 indicator-table product. The table builder is reused within FETA from the
 chi-squared migration. Fisher inference uses SciPy on the controller's 2x2
 aggregate. No additional worker computation kernel is required.
+
+### Implemented SMD support (2026-10-14)
+
+`feta_standardized_mean_difference` combines observed group discovery, boolean
+filtering, global lengths, sums and centered squared-deviation sums. Pairwise
+pooled-variance inference runs on controller summaries. Existing kernels suffice.
+Initialization now reports worker privacy minima; the strictest participating
+minimum determines eligible global groups. Numeric categorical discovery follows
+the existing declared-code/equality-count FETA approach.

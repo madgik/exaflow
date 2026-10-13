@@ -900,3 +900,25 @@ No new local operation or wire contract is added.
 
 See [algorithm documentation](../algorithms/feta_fisher_exact.md). The next
 statistics migration is standardized mean difference, after user confirmation.
+
+### Standardized mean difference and group thresholds (2026-10-14)
+
+Approved policy: workers report their configured privacy minimum during context
+initialization. The controller records the highest minimum among participating
+workers; skipped workers do not contribute. SMD compares only groups whose
+global counts meet that minimum and the two-observation variance requirement.
+Uniform thresholds preserve the reference behavior; heterogeneous thresholds
+use the strictest participating policy.
+
+`feta_standardized_mean_difference` uses `FedColumns` for nominal x and a numeric
+`FedTensor` for y. Text levels use observed union; integer levels use declared
+codes and equality counts, rejecting undeclared codes. Pair order follows
+`str(code)`, matching the reference SQL grouping order. Centered deviations
+produce sample variances, and a nonpositive pooled variance returns zero. Existing
+operations suffice. See [algorithm documentation](../algorithms/feta_standardized_mean_difference.md).
+
+`InitializeResponse.minimum_group_size` is an optional protobuf field whose
+presence is required by the controller, including when its value is zero.
+Regenerate from `feta.proto` with grpc_tools.protoc and deploy FETA workers and
+controller together. No legacy RPC/source change is needed. Histogram is the
+next statistics migration, after user confirmation.

@@ -202,7 +202,9 @@ class FetaWorkerService(rpc.FetaWorkerServicer):
             columns: self.store.put(request.context_id, ctx, array, metadata)
             for columns, (array, metadata) in tensors.items()
         }
-        response = pb.InitializeResponse(worker_id=self.worker_id)
+        response = pb.InitializeResponse(
+            worker_id=self.worker_id, minimum_group_size=self.minimum_rows
+        )
         for name, columns in groups.items():
             if name in request.column_groups:
                 for column in columns:
