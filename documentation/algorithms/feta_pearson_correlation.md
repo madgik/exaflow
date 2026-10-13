@@ -94,7 +94,7 @@ The returned Pydantic model has `title`, `n_obs`, `correlations`, `p_values`,
 `ci_hi`, and `ci_lo`. Every matrix dictionary has `variables` containing ordered
 `x` names, and one key for each ordered `y` name holding its vector across `x`.
 The title is `Pearson Correlation Coefficient`. JSON serialization follows the
-existing Pearson result model, including undefined numerical results.
+copied FETA-owned Pearson result model, including undefined numerical results.
 
 ## Validation
 

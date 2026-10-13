@@ -2,9 +2,9 @@ from threading import Lock
 
 import grpc
 
-from exaflow.aggregation_serialization import bytes_to_ndarray
 from exaflow.feta.lifecycle import ContextClosedError
 from exaflow.feta.lifecycle import ResourceLimitError
+from exaflow.feta.operations import decode_tensor
 from exaflow.protos.feta import feta_pb2 as pb
 from exaflow.protos.feta import feta_pb2_grpc as rpc
 from exaflow.worker_communication import BadUserInput
@@ -95,7 +95,7 @@ class FetaAggregationClient(FetaRpcClient):
 
     def fetch(self, context_id, step):
         result = self.call("Fetch", pb.StepRequest(context_id=context_id, step=step))
-        return bytes_to_ndarray(result.arrow)
+        return decode_tensor(result, 100 * 1024 * 1024)
 
     def cleanup(self, context_id):
         self.call("Cleanup", pb.ContextRequest(context_id=context_id))

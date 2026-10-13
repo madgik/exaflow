@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Literal
 from typing import overload
 
 import numpy as np
@@ -40,6 +41,18 @@ class RuntimeFedTensor(FedTensor):
     def _binary(self, operation, other, reverse=False):
         inputs = (other, self) if reverse else (self, other)
         return self.runtime.apply(operation, inputs)
+
+    def _reduce(
+        self, operation: Literal["min", "max"], axis: int | None = None
+    ) -> TensorResult:
+        return self.runtime.apply(
+            {"min": OperationType.MIN, "max": OperationType.MAX}[operation],
+            (self,),
+            axis,
+        )
+
+    def _unique(self) -> NDArray:
+        return self.runtime.apply(OperationType.UNIQUE, (self,))
 
     def __eq__(self, other: FedTensor | str | int | float | bool) -> FedTensor:
         return self._binary(OperationType.EQUAL, other)

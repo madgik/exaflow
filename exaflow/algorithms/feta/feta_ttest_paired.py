@@ -1,8 +1,8 @@
 import numpy as np
 import scipy.stats as st
+from pydantic import BaseModel
 
-from exaflow.algorithms.exareme3.statistics.ttest_paired import TTestPaired
-from exaflow.algorithms.exareme3.statistics.ttest_paired import TTestPairedResult
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.feta import FedTensor
 from exaflow.algorithms.feta import federated_numpy as fnp
 from exaflow.algorithms.feta.algorithm import Algorithm
@@ -10,10 +10,85 @@ from exaflow.algorithms.specifications import AlgorithmType
 from exaflow.worker_communication import BadUserInput
 
 
+class TTestPairedResult(BaseModel):
+    t_stat: float
+    df: int
+    p: float
+    mean_diff: float
+    se_diff: float
+    ci_upper: str | float
+    ci_lower: str | float
+    cohens_d: float
+
+
 class FetaTTestPaired(Algorithm):
     @classmethod
     def get_specification(cls):
-        specification = TTestPaired.get_specification()
+        specification = specs.AlgorithmSpecification(
+            name="feta_ttest_paired",
+            desc="Paired-samples t-test comparing two related numerical measurements.",
+            documentation=(
+                "Compare the mean of paired differences between two related "
+                "numerical measurements. Degrees of freedom are n - 1, and "
+                "Cohen's d is computed from the paired differences.\n\n"
+                "The 'alt_hypothesis' setting selects the alternative hypothesis: "
+                "'two-sided', 'less', or 'greater'. Default is 'two-sided'.\n\n"
+                "The 'alpha' setting controls the significance level used for "
+                "confidence intervals. Default is 0.05.\n\n"
+                "The result includes the t statistic, p-value, confidence "
+                "interval, mean difference, standard error of the difference, "
+                "degrees of freedom, and Cohen's d.\n\n"
+                "Reference behavior is aligned with scipy.stats.ttest_rel "
+                "paired t-test methodology, with additional confidence "
+                "interval and effect-size reporting computed from aggregated "
+                "paired-difference statistics without sharing raw data."
+            ),
+            label="Paired t-test",
+            enabled=True,
+            required_preprocessing=[],
+            y=specs.InputDataSpecification(
+                label="Measurement 1",
+                desc="First numerical measurement in each pair.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
+                max_count=1,
+            ),
+            x=specs.InputDataSpecification(
+                label="Measurement 2",
+                desc="Second numerical measurement in each pair.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
+                max_count=1,
+            ),
+            parameters={
+                "alt_hypothesis": specs.ParameterSpecification(
+                    label="Alternative hypothesis",
+                    desc="Alternative hypothesis for the paired difference.",
+                    types=[specs.ParameterType.TEXT],
+                    required=True,
+                    multiple=False,
+                    default="two-sided",
+                    enums=specs.ParameterEnumSpecification(
+                        type=specs.ParameterEnumType.LIST,
+                        source=["two-sided", "less", "greater"],
+                    ),
+                ),
+                "alpha": specs.ParameterSpecification(
+                    label="Significance level",
+                    desc="Significance level used for confidence intervals.",
+                    types=[specs.ParameterType.REAL],
+                    required=True,
+                    multiple=False,
+                    default=0.05,
+                    min=0.0,
+                    max=1.0,
+                ),
+            },
+            type=specs.AlgorithmType.FETA,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
         return specification.model_copy(
             update={
                 "name": "feta_ttest_paired",

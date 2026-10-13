@@ -169,3 +169,16 @@ in `tests/standalone_tests/feta/test_package_integration.py`. After development
 `uv run pytest -q tests/prod_env_tests/test_feta_ttest_independent.py` to compare
 all original fixture cases against normal independent t-test through `/analysis`.
 Both requests use identical complete-case filters; FETA has no preprocessing.
+
+One-way ANOVA FETA parity is covered by
+`tests/standalone_tests/feta/test_feta_anova_oneway.py`, with aggregation-contract
+checks in `test_extrema_and_unique.py` and real package `/analysis` integration.
+After development deployment and dataset discovery, run
+`uv run pytest -q tests/prod_env_tests/test_feta_anova_oneway.py` to compare all
+five original cases and every nested response field against normal ANOVA.
+
+`tests/standalone_tests/feta/test_dependency_boundary.py` enforces production FETA
+ownership: no Exareme3, shared federated-algorithm, data-helper/filter or numeric
+serialization implementation imports. Named public platform contracts are allowed;
+legacy algorithm imports are confined to test reference paths. Package integration
+uses FETA's owned data loader, and live parity checks cover all five algorithms.

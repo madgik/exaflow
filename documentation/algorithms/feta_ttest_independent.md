@@ -3,8 +3,8 @@
 ## Overview
 
 Compare a numerical outcome between two independent groups using the
-pooled-variance Student t-test. The specification and response model reuse
-`ttest_independent` in place; execution uses FETA.
+pooled-variance Student t-test. FETA owns its specification and response model,
+initially copied from `ttest_independent`; execution is independent.
 
 ## Inputs
 

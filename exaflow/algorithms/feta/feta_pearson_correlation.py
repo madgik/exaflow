@@ -1,14 +1,11 @@
+from typing import Sequence
+
 import numpy as np
 import scipy.stats as st
+from pydantic import BaseModel
 from scipy import special
 
-from exaflow.algorithms.exareme3.statistics.pearson_correlation import (
-    PearsonCorrelation,
-)
-from exaflow.algorithms.exareme3.statistics.pearson_correlation import PearsonResult
-from exaflow.algorithms.exareme3.statistics.pearson_correlation import (
-    _format_result_matrices,
-)
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.feta import federated_numpy as fnp
 from exaflow.algorithms.feta.algorithm import Algorithm
 from exaflow.algorithms.feta.tensor import FedTensor
@@ -16,10 +13,69 @@ from exaflow.algorithms.specifications import AlgorithmType
 from exaflow.worker_communication import BadUserInput
 
 
+class PearsonResult(BaseModel):
+    title: str
+    n_obs: int
+    correlations: dict
+    p_values: dict
+    ci_hi: dict
+    ci_lo: dict
+
+
 class FetaPearsonCorrelation(Algorithm):
     @classmethod
     def get_specification(cls):
-        specification = PearsonCorrelation.get_specification()
+        specification = specs.AlgorithmSpecification(
+            name="feta_pearson_correlation",
+            desc="Pearson correlations for selected numerical variables.",
+            documentation=(
+                "Compute Pearson correlations for all pairs between the primary "
+                "variables and optional secondary variables. When no secondary "
+                "variables are provided, correlations are computed among the "
+                "primary variables. Missing values are handled by the selected "
+                "preprocessing step before correlations are computed.\n\n"
+                "The 'alpha' setting controls the confidence level for "
+                "correlation coefficient intervals. Default is 0.95.\n\n"
+                "The result includes correlation coefficients, p-values, "
+                "confidence intervals, and observation counts.\n\n"
+                "Reference behavior is aligned with standard Pearson product-"
+                "moment correlation methodology as exposed by scipy.stats. "
+                "The method computes the correlation matrix and inferential "
+                "quantities from aggregated sufficient statistics without "
+                "sharing raw data."
+            ),
+            label="Pearson Correlation",
+            enabled=True,
+            required_preprocessing=[],
+            y=specs.InputDataSpecification(
+                label="Variables",
+                desc="Numerical variables for the primary correlation axis.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
+            ),
+            x=specs.InputDataSpecification(
+                label="Additional variables",
+                desc="Optional numerical variables for the secondary axis.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=False,
+            ),
+            parameters={
+                "alpha": specs.ParameterSpecification(
+                    label="Confidence level",
+                    desc="Confidence level for correlation intervals.",
+                    types=[specs.ParameterType.REAL],
+                    required=True,
+                    multiple=False,
+                    default=0.95,
+                    min=0.0,
+                    max=1.0,
+                ),
+            },
+            type=specs.AlgorithmType.FETA,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
         documentation = specification.documentation.replace(
             "Missing values are handled by the selected preprocessing step before "
             "correlations are computed.",
@@ -84,3 +140,24 @@ class FetaPearsonCorrelation(Algorithm):
             ci_hi=hi,
             ci_lo=lo,
         )
+
+
+def _format_result_matrices(
+    result, *, row_names: Sequence[str], column_names: Sequence[str]
+):
+    correlations = result["correlations"]
+    p_values = result["p_values"]
+    ci_hi = result["ci_hi"]
+    ci_lo = result["ci_lo"]
+
+    def _build_matrix_dict(values_matrix):
+        matrix_dict = {"variables": list(row_names)}
+        matrix_dict.update({col: row for col, row in zip(column_names, values_matrix)})
+        return matrix_dict
+
+    return (
+        _build_matrix_dict(correlations),
+        _build_matrix_dict(p_values),
+        _build_matrix_dict(ci_hi),
+        _build_matrix_dict(ci_lo),
+    )

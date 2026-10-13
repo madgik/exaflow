@@ -10,7 +10,7 @@ from exaflow.algorithms.federated.statistics.pearson_correlation import (
 )
 from exaflow.algorithms.feta import FedTensor
 from exaflow.algorithms.feta.feta_pearson_correlation import FetaPearsonCorrelation
-from exaflow.algorithms.utils.inputdata_utils import Inputdata
+from exaflow.feta.inputdata import Inputdata
 from exaflow.worker_communication import BadUserInput
 from tests.standalone_tests.feta.helpers import federation
 

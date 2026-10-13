@@ -3,13 +3,13 @@ import logging
 from threading import Event
 
 from exaflow import feta_algorithm_classes
-from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.controller import config
 from exaflow.controller.services import get_worker_landscape_aggregator
 from exaflow.controller.services.feta.runtime import FetaRuntime
 from exaflow.controller.services.strategy_interface import AlgorithmExecutionStrategyI
 from exaflow.feta.clients import FetaAggregationClient
 from exaflow.feta.clients import FetaWorkerClient
+from exaflow.feta.inputdata import Inputdata
 from exaflow.feta.lifecycle import ContextClosedError
 from exaflow.feta.settings import FetaSettings
 from exaflow.worker_communication import BadUserInput

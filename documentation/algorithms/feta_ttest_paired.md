@@ -14,7 +14,8 @@ refer to the same selected rows. The algorithm receives named `FedTensor` inputs
 
 Parameters are `alpha` (significance level, default 0.05, range 0 to 1) and
 `alt_hypothesis` (`two-sided`, `less`, or `greater`, default `two-sided`). The
-specification uses the existing paired algorithm's input and parameter definitions.
+FETA-owned specification copies the paired algorithm's input and parameter
+contract without importing its implementation.
 
 Differences are **x minus y**, preserving the current runtime's direction.
 Missing values are rejected; preprocessing is unsupported. Workers below the
@@ -64,7 +65,7 @@ Prepare aligned x/y tensors; skip insufficient workers during initialization.
 Compute and store local d = x - y after validating context/partition alignment.
 Aggregate paired count, x sum, y sum, difference sum and squared difference sum.
 Compute t statistic, p-value, interval and effect size on the controller.
-Return the existing response model and clean up worker/aggregation contexts.
+Return the FETA-owned response model and clean up worker/aggregation contexts.
 ```
 
 ## Technical Decisions

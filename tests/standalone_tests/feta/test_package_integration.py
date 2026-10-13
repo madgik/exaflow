@@ -32,7 +32,7 @@ from exaflow.protos.aggregation_server import aggregation_server_pb2_grpc as leg
 from exaflow.protos.feta import feta_pb2 as pb
 from exaflow.protos.feta import feta_pb2_grpc as rpc
 from exaflow.worker import config as worker_config
-from exaflow.worker.exareme3.udf.udf_db import load_algorithm_arrow_table
+from exaflow.worker.feta.data_loader import load_algorithm_arrow_table
 from exaflow.worker.feta.service import FetaWorkerService
 from exaflow.worker_communication import CommonDataElement
 from tests.standalone_tests.feta.test_feta_pearson_correlation import (
@@ -551,5 +551,41 @@ def test_independent_ttest_through_real_analysis_route(running_package, alternat
 
     result = TTestIndependentResult(**asyncio.run(run()))
     assert_reference(result, package.frame.rename(columns={"y0": "value"}), parameters)
+    assert not package.aggregation.sessions
+    assert all(not worker.store.contexts for worker in package.workers)
+
+
+def test_anova_through_real_analysis_route(running_package):
+    from tests.standalone_tests.feta.test_feta_anova_oneway import assert_nested
+    from tests.standalone_tests.feta.test_feta_anova_oneway import reference
+
+    package = running_package
+    body = {
+        "inputdata": {
+            "data_model": "test:1.0",
+            "datasets": ["a", "b"],
+            "variables": ["group", "y0"],
+        },
+        "algorithm": {
+            "name": "feta_anova_oneway",
+            "x": ["group"],
+            "y": ["y0"],
+            "parameters": {},
+        },
+    }
+
+    async def run():
+        client = package.app.test_client()
+        response = await client.post("/analysis", json=body)
+        payload = await response.get_data()
+        assert response.status_code == 200, payload.decode()
+        specification = package.specifications.enabled_algorithms["feta_anova_oneway"]
+        assert specification.required_preprocessing == []
+        assert specification.type.value == "feta"
+        return json.loads(payload)
+
+    expected = reference(package.frame.rename(columns={"y0": "value"}))
+    expected["anova_table"]["y_label"] = "y0"
+    assert_nested(asyncio.run(run()), expected)
     assert not package.aggregation.sessions
     assert all(not worker.store.contexts for worker in package.workers)

@@ -1,10 +1,8 @@
 import numpy as np
 import scipy.stats as st
+from pydantic import BaseModel
 
-from exaflow.algorithms.exareme3.statistics.ttest_independent import TTestIndependent
-from exaflow.algorithms.exareme3.statistics.ttest_independent import (
-    TTestIndependentResult,
-)
+from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.feta import FedTensor
 from exaflow.algorithms.feta import federated_numpy as fnp
 from exaflow.algorithms.feta.algorithm import Algorithm
@@ -12,10 +10,111 @@ from exaflow.algorithms.specifications import AlgorithmType
 from exaflow.worker_communication import BadUserInput
 
 
+class TTestIndependentResult(BaseModel):
+    t_stat: float
+    df: float
+    p: float
+    mean_diff: float
+    se_diff: float
+    ci_upper: str | float
+    ci_lower: str | float
+    cohens_d: float
+
+
 class FetaTTestIndependent(Algorithm):
     @classmethod
     def get_specification(cls):
-        specification = TTestIndependent.get_specification()
+        specification = specs.AlgorithmSpecification(
+            name="feta_ttest_independent",
+            desc="Independent-samples t-test comparing a numerical variable across two groups.",
+            documentation=(
+                "Compare the means of a numerical variable between two "
+                "independent groups using pooled variance. Degrees of freedom "
+                "are n_a + n_b - 2, and Cohen's d is computed from the pooled "
+                "standard deviation.\n\n"
+                "The 'alt_hypothesis' setting selects whether group A is "
+                "different from, less than, or greater than group B. Default is "
+                "'two-sided'.\n\n"
+                "The 'alpha' setting controls the significance level used for "
+                "confidence intervals. Default is 0.05.\n\n"
+                "The 'groupA' and 'groupB' settings select the grouping-variable "
+                "categories compared by the test.\n\n"
+                "The result includes the t statistic, p-value, confidence "
+                "interval, group means, group sizes, degrees of freedom, and "
+                "Cohen's d.\n\n"
+                "Reference behavior is aligned with the equal-variance "
+                "independent t-test methodology used by scipy.stats.ttest_ind "
+                "with equal_var=True. The method computes the test quantities "
+                "from aggregated group statistics without sharing raw data."
+            ),
+            label="Independent t-test",
+            enabled=True,
+            required_preprocessing=[],
+            y=specs.InputDataSpecification(
+                label="Outcome",
+                desc="Numerical variable compared between groups.",
+                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.NUMERICAL],
+                required=True,
+                max_count=1,
+            ),
+            x=specs.InputDataSpecification(
+                label="Grouping variable",
+                desc="Categorical variable containing the two groups.",
+                types=[specs.InputDataType.TEXT],
+                stattypes=[specs.InputDataStatType.NOMINAL],
+                required=True,
+                max_count=1,
+            ),
+            parameters={
+                "alt_hypothesis": specs.ParameterSpecification(
+                    label="Alternative hypothesis",
+                    desc="Alternative hypothesis for the group comparison.",
+                    types=[specs.ParameterType.TEXT],
+                    required=True,
+                    multiple=False,
+                    default="two-sided",
+                    enums=specs.ParameterEnumSpecification(
+                        type=specs.ParameterEnumType.LIST,
+                        source=["two-sided", "less", "greater"],
+                    ),
+                ),
+                "alpha": specs.ParameterSpecification(
+                    label="Significance level",
+                    desc="Significance level used for confidence intervals.",
+                    types=[specs.ParameterType.REAL],
+                    required=True,
+                    multiple=False,
+                    default=0.05,
+                    min=0.0,
+                    max=1.0,
+                ),
+                "groupA": specs.ParameterSpecification(
+                    label="Group A",
+                    desc="Grouping-variable category used as group A.",
+                    types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
+                    required=True,
+                    multiple=False,
+                    enums=specs.ParameterEnumSpecification(
+                        type=specs.ParameterEnumType.INPUT_VAR_CDE_ENUMS,
+                        source=["x"],
+                    ),
+                ),
+                "groupB": specs.ParameterSpecification(
+                    label="Group B",
+                    desc="Grouping-variable category used as group B.",
+                    types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
+                    required=True,
+                    multiple=False,
+                    enums=specs.ParameterEnumSpecification(
+                        type=specs.ParameterEnumType.INPUT_VAR_CDE_ENUMS,
+                        source=["x"],
+                    ),
+                ),
+            },
+            type=specs.AlgorithmType.FETA,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
         return specification.model_copy(
             update={
                 "name": "feta_ttest_independent",

@@ -20,10 +20,18 @@ proposal to a confirmed decision.
 - The paradigm is named **FETA**. Use `feta` for its namespaces rather than
   naming it Exareme4. The module layout is recorded under Implementation Contracts.
 - FETA has a separate execution flow and orchestration, while continuing to
-  use the existing aggregation server. Existing Exareme3 helpers may be called
-  directly where needed; this reuse does not route execution through Exareme3.
-- Do not move code out of Exareme3 to make it reusable by FETA. Use existing
-  helpers in their current locations, including the worker data loader.
+  use the existing aggregation server process through its separate FETA service.
+- FETA owns its algorithm specifications, response models, mathematical helpers,
+  data selection, data loading, filter construction and serialization. Copy
+  required implementations into FETA; do not import Exareme3 or shared algorithm
+  libraries, and do not modify those implementations to support FETA. This
+  supersedes the earlier decision to call helpers in place.
+- Existing public platform contracts still integrate FETA with the engine:
+  specification schema types, configuration, registry, worker landscape, service
+  interface, protobufs and API error types. They are not computation helpers.
+  Third-party NumPy/SciPy/pandas/Pydantic libraries remain supported.
+- Tests may import the legacy implementations as independent parity references;
+  FETA production code cannot depend on those reference imports.
 - Algorithm developers write tensor expressions in the controller-side
   algorithm. FETA system engineers control the supported local operations and
   their implementations; algorithm developers compose those operations.
@@ -101,9 +109,10 @@ Initialization proceeds as follows:
 1. It sends an `InitializeContext` lifecycle request with the context ID,
    validated data selection, and input column groups.
 1. Each worker loads the required columns once, in one DuckDB query applying
-   dataset selection and filters. Reuse the existing
-   [Exareme3 data loader](../../exaflow/worker/exareme3/udf/udf_db.py) in place;
-   do not extract it into another module.
+   dataset selection and filters, using the FETA-owned
+   [data loader](../../exaflow/worker/feta/data_loader.py) and SQL filter builder.
+   Their initial implementations are copied from the existing loader/helpers;
+   the source implementations remain unchanged.
 1. The worker checks the privacy threshold and the temporary missing-value
    policy, then constructs the selected groups from the same loaded rows, restoring
    each group's requested column order.
@@ -289,9 +298,9 @@ centered = x - means  # Send means as an input to each worker; return FedTensor.
 Use typed protobuf messages over gRPC to transport operations, tensor
 references, parameters, and literal scalar/array inputs. The transport choice
 and message schemas are implemented in `feta.proto`.
-Reuse the existing Arrow tensor byte encoding in
-[aggregation_serialization.py](../../exaflow/aggregation_serialization.py)
-for numeric arrays carried in protobuf byte fields. Worker-side semantic
+Use the FETA-owned Arrow tensor byte encoding in
+[serialization.py](../../exaflow/feta/serialization.py), initially copied from
+the existing implementation, for numeric arrays carried in protobuf byte fields. Worker-side semantic
 validation is still required.
 
 Use one `LocalOperation` class for every operation, containing:
@@ -365,7 +374,7 @@ arrays. Context IDs provide namespacing, not caller authorization.
 - After implementing and validating each algorithm, ask the user to continue
   before beginning the next. Keep the full migration objective active.
 - Completed runtime algorithms: `feta_pearson_correlation`,
-  `feta_ttest_onesample`, `feta_ttest_paired` and `feta_ttest_independent`. Remaining statistics modules are tracked in the
+  `feta_ttest_onesample`, `feta_ttest_paired`, `feta_ttest_independent` and `feta_anova_oneway`. Remaining statistics modules are tracked in the
   [computation catalogue](LOCAL_COMPUTATIONS.md); they are not implicitly migrated.
 - One-sample t-test prepares only the required sample `y` and its `run(self, y)`
   receives one stored tensor. It uses three global sums
@@ -373,8 +382,8 @@ arrays. Context IDs provide namespacing, not caller authorization.
 - Preserve its existing `mean_diff` field as the sample mean and its confidence
   intervals as intervals for that mean. One-sided infinity markers, constant
   sample behavior and the insufficient-observation error remain unchanged.
-- Its public parameters, numeric input contract and response model reuse the
-  existing one-sample specification/model in place, with FETA routing and no
+- Its public parameters, numeric input contract and response fields match the
+  existing one-sample algorithm through FETA-owned definitions, with no
   preprocessing. Missing inputs remain rejected under the current FETA policy.
 - Paired t-test receives required named x/y inputs and computes x minus y,
   preserving the existing runtime's direction. The difference tensor is stored
@@ -435,8 +444,8 @@ migration; they need focused regression coverage when FETA is implemented.
 ### Modules and Protocol
 
 - `exaflow/algorithms/feta`: algorithm base class and
-  `feta_pearson_correlation`. Specifications and result formatting reuse existing
-  Pearson helpers in place; tensor expressions and calculation run in FETA.
+  `feta_pearson_correlation`. Specifications, response models and result
+  formatting are FETA-owned copies; tensor expressions and calculation run in FETA.
 - `exaflow/algorithms/feta/federated_numpy`: public typed NumPy-style function
   package. The initial functions are `sum(a, axis=None)` and `transpose(a)`.
 - `exaflow/controller/services/feta`: execution strategy and per-analysis
@@ -455,16 +464,19 @@ initialization and is propagated by approved operations.
 Requests may select either or both of the existing x/y groups. Responses include
 only the selected descriptor fields; omitted groups have no protobuf message
 presence and no stored array. The controller validates exact group presence,
-float64 matrix shapes, selected column counts and aligned row counts. The wire
+numerical/Unicode matrix shapes, selected column counts and aligned row counts. The wire
 schema is unchanged, but controllers sending y-only requests require workers
 with the updated initialization semantics; deploy those services together.
 
 Aggregation RPCs are `Prepare`, `Submit`, `Fetch`, and `Cleanup`. Preparation
-specifies the exact worker set, output shape/dtype, context, and step. Submission
+specifies the exact worker set, output shape/dtype, aggregation kind, context,
+and step. Union preparation uses a candidate-count upper bound instead of an
+exact result length. Submission
 acknowledges receipt without waiting for other workers. Contributions from
 unexpected workers, duplicates (including after result completion), incorrect
-steps, or inconsistent shapes/dtypes fail explicitly. Results are summed in
-stable worker-ID order, retained until fetch, and released after the single
+steps, or inconsistent shapes/dtypes fail explicitly. Sum/min/max combine
+contributions in stable worker-ID order; union returns sorted distinct labels.
+Results are retained until fetch and released after the single
 successful fetch. Fetch errors on expiry, cleanup, client cancellation, invalid
 contributions, or the configured aggregation wait timeout.
 Only one fetch may wait on a given step; concurrent duplicate fetches are
@@ -486,7 +498,7 @@ uv run python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. exaflo
 ### Operations and Limits
 
 The initial allowlist is `ADD`, `SUBTRACT`, `MULTIPLY`, `DIVIDE`, `POWER`,
-`TRANSPOSE`, `SUM`, `MATMUL`, `LENGTH`, `EQUAL`, `COLUMN`, and `FILTER`. Literals are Python numeric scalars or
+`TRANSPOSE`, `SUM`, `MATMUL`, `LENGTH`, `EQUAL`, `COLUMN`, `FILTER`, `MIN`, `MAX` and `UNIQUE`. Literals are Python numeric scalars or
 NumPy arrays with integer dtypes up to 64 bits, `float32`/`float64`, or booleans.
 String and boolean scalar literals are also supported. Numerical inputs loaded
 from DuckDB remain `float64`; text groups use fixed-width NumPy Unicode arrays.
@@ -621,8 +633,8 @@ Do not reintroduce the following earlier suggestions as accepted architecture:
   submit contributions and the controller fetches the global result directly.
 - Controller heartbeats or renewable leases for initial context expiry. Use
   the configured maximum lifetime from context creation instead.
-- Moving Exareme3 helpers into neutral modules for FETA reuse. Call the
-  existing helpers in place instead.
+- Moving or modifying Exareme3/shared algorithm helpers for FETA, or calling
+  them in place. Copy needed implementations into FETA-owned modules instead.
 
 ## Documentation Maintenance
 
@@ -639,8 +651,9 @@ Algorithm authors import the function package with
 Keep arithmetic, equality comparisons, and matrix multiplication
 in operator syntax. Do not add duplicate arithmetic function wrappers solely to
 mirror NumPy. Current public functions are `fnp.sum(a, axis=None)`,
-`fnp.transpose(a)` and `fnp.equal(a, b)`, which delegate distributed inputs to the existing tensor
-methods without adding worker requests or changing aggregation semantics.
+`fnp.transpose(a)`, `fnp.equal(a, b)`, `fnp.min(a, axis=None)`,
+`fnp.max(a, axis=None)` and `fnp.unique(a)`, which delegate distributed inputs to the existing tensor
+methods. The extrema and unique functions use their approved aggregation kinds.
 Existing `.sum()`, `.T`, `==`, indexing and `len(x)` remain available. Concrete
 NumPy arrays use the corresponding local NumPy computation; unsupported input
 types raise TypeError without attempting to convert distributed arrays.
@@ -685,3 +698,75 @@ sums and squared sums. Controller NumPy/SciPy preserves the existing pooled
 variance formulas, output fields, errors and nonfinite edge behavior. No
 preprocessing or automatic reduction batching is added. See the
 [algorithm documentation](../algorithms/feta_ttest_independent.md).
+
+### Global Unique, Minimum and Maximum / One-way ANOVA
+
+Confirmed after discussion: category discovery uses `fnp.unique`, with each
+worker computing distinct labels and the aggregation server returning their
+sorted union as a NumPy array. `fnp.min` and `fnp.max` use global minimum/maximum
+when contracting a partitioned axis, otherwise returning a local FedTensor.
+
+Distributed unique initially accepts Unicode category-label tensors only.
+Numerical global unique is not enabled as a way to release distinct outcome
+observations. Concrete numerical NumPy arrays execute unique locally. The
+initial API supports values-only unique (flattened input), and axis-only min/max;
+return_counts/indices/inverse, custom dtype, out, keepdims and initial are not
+exposed. Negative federated reduction axes remain unsupported.
+
+A typed StringArray transport carries distinct labels and their Unicode dtype.
+Workers report actual unique-result lengths; controller checks each against its
+input-size bound and checks dtype, partition and lineage. Aggregation preparation
+includes explicit kind SUM_VALUES/MIN_VALUES/MAX_VALUES/UNION_VALUES. Union
+contribution lengths and widths are bounded by preparation, unknown kinds fail,
+and malformed contributions terminate waiting fetches. Union memory reservation
+uses conservative input-size bounds. Labels are sorted and deduplicated, including
+labels absent on individual workers. Empty local sets contribute an empty array.
+
+Min/max operate on real numerical distributed tensors. Empty worker subsets
+contribute positive/negative infinity for float minima/maxima, or dtype bounds
+for integers. Globally empty reductions raise the NumPy-style no-identity error.
+NaNs propagate and real infinities are retained. Missing-aware extrema are not
+implemented by these functions.
+
+`feta_anova_oneway` is implemented with typed x/y inputs, observed-category
+union, stored filtered samples, and `1 + 5*k` immediate aggregations for k groups.
+Only eligible workers contribute categories. Mathematical inference is copied
+into FETA-owned `AnovaStatistics`; result formatting is also FETA-owned. The
+shared federated core and all Exareme3 implementations remain unchanged. FETA
+does not use their execution scaffolding. Preserve response field
+spelling, Tukey calculations, the reported standard-deviation formula,
+mean-plus/minus-standard-deviation bounds and zero residual-variance behavior.
+See the [ANOVA documentation](../algorithms/feta_anova_oneway.md).
+
+Deploy FETA controller, workers and aggregation server together for the new
+kind and string-array schema. Existing Exareme3 RPCs and deployment configuration
+are unchanged. The label and per-group extrema releases match existing ANOVA;
+privacy thresholds, lack of preprocessing and trust boundaries remain unchanged.
+Rollback restores FETA code/bindings and removes
+the new registration. No data migration is required.
+
+### Enforced FETA Ownership Boundary
+
+The following implementations are independent copies, maintained within FETA:
+
+- Each `algorithms/feta/feta_*.py` owns its specification and response model;
+  Pearson also owns its matrix formatter.
+- `algorithms/feta/_anova.py` owns ANOVA inference and output formatting.
+- `feta/inputdata.py` owns the worker/controller data-selection model.
+- `worker/feta/data_loader.py` and `filters.py` own SQL loading and filter building.
+- `feta/serialization.py` owns numeric Arrow encoding/decoding; operation contracts
+  retain FETA's typed Unicode transport.
+
+The dependency test `tests/standalone_tests/feta/test_dependency_boundary.py`
+checks all production FETA modules, including the aggregation implementation,
+and permits only FETA-owned modules and named public engine integration contracts.
+No production imports from `algorithms/exareme3`, `worker/exareme3`,
+`algorithms/federated`, `algorithms/utils`, shared filter helpers or shared
+aggregation serialization remain. The earlier shared ANOVA-core modification
+is reverted; its legacy source is unchanged.
+
+Duplicated implementation changes must be maintained and validated explicitly
+within each paradigm. Keep cross-paradigm parity tests as reference checks,
+without creating production dependencies between them. This ownership change
+preserves HTTP results, protobuf schemas, configuration, privacy and cleanup;
+rollback restores only FETA implementations and imports, requiring no data migration.

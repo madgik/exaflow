@@ -7,10 +7,10 @@ from threading import RLock
 
 import numpy as np
 
-from exaflow.aggregation_serialization import ndarray_to_bytes
 from exaflow.feta.lifecycle import ContextClosedError
 from exaflow.feta.lifecycle import ResourceLimitError
-from exaflow.feta.operations import decode_array
+from exaflow.feta.operations import decode_tensor
+from exaflow.feta.operations import encode_tensor
 from exaflow.feta.rpc import abort
 from exaflow.feta.settings import FetaSettings
 from exaflow.protos.feta import feta_pb2 as pb
@@ -26,6 +26,7 @@ class AggregationSession:
     step: int = 0
     shape: tuple = ()
     dtype: str = ""
+    kind: int = pb.SUM_VALUES
     contributions: dict = field(default_factory=dict)
     submitted: set = field(default_factory=set)
     result: object = None
@@ -63,19 +64,30 @@ class FetaAggregationService(rpc.FetaAggregationServicer):
             raise ValueError("Aggregation needs distinct participating worker IDs.")
         if any(not worker or len(worker) > 128 for worker in workers):
             raise ValueError("Invalid participating worker ID.")
+        if request.kind not in (
+            pb.SUM_VALUES,
+            pb.MIN_VALUES,
+            pb.MAX_VALUES,
+            pb.UNION_VALUES,
+        ):
+            raise ValueError("Unsupported FETA aggregation kind.")
+        unique = request.kind == pb.UNION_VALUES
         try:
             dtype = np.dtype(request.dtype)
         except TypeError as exc:
             raise ValueError("Invalid aggregation dtype.") from exc
         if (
-            dtype.kind not in "iuf"
-            or dtype.itemsize > 8
+            dtype.kind not in ("U" if unique else "iuf")
+            or (not unique and dtype.itemsize > 8)
+            or dtype.itemsize == 0
             or not dtype.isnative
             or (dtype.kind == "f" and dtype.itemsize < 4)
         ):
-            raise ValueError("Invalid numerical aggregation dtype.")
+            raise ValueError("Invalid aggregation dtype.")
         if len(shape) > 2 or any(n < 0 for n in shape):
             raise ValueError("Invalid aggregation shape.")
+        if unique and len(shape) != 1:
+            raise ValueError("Union preparation requires a candidate-count bound.")
         size = math.prod(shape) * dtype.itemsize
         if size > self.settings.max_tensor_bytes or (
             size * (len(workers) + 1) > self.settings.max_context_bytes
@@ -106,11 +118,12 @@ class FetaAggregationService(rpc.FetaAggregationServicer):
             session.step = request.step
             session.shape = shape
             session.dtype = str(dtype)
+            session.kind = request.kind
 
     def submit(self, request):
         session = self._get(request.context_id)
         try:
-            value = decode_array(request.value.arrow, self.settings.max_tensor_bytes)
+            value = decode_tensor(request.value, self.settings.max_tensor_bytes)
             with session.condition:
                 if session.closed:
                     raise ContextClosedError("FETA aggregation context is closed.")
@@ -122,7 +135,18 @@ class FetaAggregationService(rpc.FetaAggregationServicer):
                     raise ValueError("Contribution from an unexpected worker.")
                 if request.worker_id in session.submitted:
                     raise ValueError("Duplicate FETA contribution.")
-                if value.shape != session.shape or str(value.dtype) != session.dtype:
+                if session.kind == pb.UNION_VALUES:
+                    dtype = np.dtype(session.dtype)
+                    if (
+                        value.ndim != 1
+                        or value.dtype.kind != "U"
+                        or value.dtype.itemsize > dtype.itemsize
+                        or sum(v.size for v in session.contributions.values())
+                        + value.size
+                        > session.shape[0]
+                    ):
+                        raise ValueError("Union contribution exceeds prepared bounds.")
+                elif value.shape != session.shape or str(value.dtype) != session.dtype:
                     raise ValueError(
                         "Contribution shape/dtype differs from preparation."
                     )
@@ -132,9 +156,19 @@ class FetaAggregationService(rpc.FetaAggregationServicer):
                     return
                 # Stable worker order; do not hold a lock during NumPy computation.
                 values = [session.contributions[key] for key in sorted(session.workers)]
-            result = np.zeros(session.shape, dtype=session.dtype)
-            for value in values:
-                np.add(result, value, out=result)
+            if session.kind == pb.UNION_VALUES:
+                result = np.unique(
+                    np.concatenate(values).astype(session.dtype, copy=False)
+                )
+            elif session.kind in (pb.MIN_VALUES, pb.MAX_VALUES):
+                result = values[0].copy()
+                combine = np.minimum if session.kind == pb.MIN_VALUES else np.maximum
+                for value in values[1:]:
+                    combine(result, value, out=result)
+            else:
+                result = np.zeros(session.shape, dtype=session.dtype)
+                for value in values:
+                    np.add(result, value, out=result)
             with session.condition:
                 if session.closed or self.clock() >= session.deadline:
                     raise ContextClosedError(
@@ -230,7 +264,7 @@ class FetaAggregationService(rpc.FetaAggregationServicer):
     def Fetch(self, request, context):
         try:
             value = self.fetch(request, context.is_active)
-            return pb.TensorValue(arrow=ndarray_to_bytes(value))
+            return encode_tensor(value)
         except Exception as exc:
             abort(context, exc)
 

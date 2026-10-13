@@ -10,7 +10,7 @@ from numpy.typing import NDArray
 from exaflow.algorithms.feta.tensor import FedTensor
 from exaflow.algorithms.feta.tensor import TensorResult
 
-__all__ = ["sum", "transpose", "equal"]
+__all__ = ["sum", "transpose", "equal", "min", "max", "unique"]
 
 
 def _numerical_array(a: NDArray) -> NDArray:
@@ -82,3 +82,63 @@ def equal(a, b):
     if isinstance(b, FedTensor):
         return b == a
     return np.equal(a, b)
+
+
+@overload
+def min(a: FedTensor, axis: None = None) -> int | float: ...
+
+
+@overload
+def min(a: FedTensor, axis: int) -> TensorResult: ...
+
+
+@overload
+def min(
+    a: NDArray, axis: int | None = None
+) -> NDArray | np.integer | np.floating | np.bool_: ...
+
+
+def min(
+    a: FedTensor | NDArray, axis: int | None = None
+) -> TensorResult | np.integer | np.floating | np.bool_:
+    """Minimum; aggregate with minimum when reducing the distributed axis."""
+    if isinstance(a, FedTensor):
+        return a._reduce("min", axis)
+    return np.min(_numerical_array(a), axis=axis)
+
+
+@overload
+def max(a: FedTensor, axis: None = None) -> int | float: ...
+
+
+@overload
+def max(a: FedTensor, axis: int) -> TensorResult: ...
+
+
+@overload
+def max(
+    a: NDArray, axis: int | None = None
+) -> NDArray | np.integer | np.floating | np.bool_: ...
+
+
+def max(
+    a: FedTensor | NDArray, axis: int | None = None
+) -> TensorResult | np.integer | np.floating | np.bool_:
+    """Maximum; aggregate with maximum when reducing the distributed axis."""
+    if isinstance(a, FedTensor):
+        return a._reduce("max", axis)
+    return np.max(_numerical_array(a), axis=axis)
+
+
+def unique(a: FedTensor | NDArray) -> NDArray:
+    """Sorted distinct values; flatten input as NumPy does.
+
+    Only the values-only form is supported; axis, counts and indices are excluded.
+    Distributed inputs initially support string category labels only, combined
+    through an aggregation-server union. Numeric NumPy arrays execute locally.
+    """
+    if isinstance(a, FedTensor):
+        return a._unique()
+    if not isinstance(a, np.ndarray) or a.dtype.kind not in "iufU":
+        raise TypeError("Expected a numerical or Unicode array.")
+    return np.unique(a)

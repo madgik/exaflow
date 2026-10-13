@@ -4,9 +4,10 @@ from threading import Event
 import numpy as np
 import pyarrow as pa
 
-from exaflow.aggregation_serialization import bytes_to_ndarray
 from exaflow.controller.services.feta.runtime import FetaRuntime
 from exaflow.feta.lifecycle import ContextClosedError
+from exaflow.feta.operations import decode_tensor
+from exaflow.protos.feta import feta_pb2 as pb
 from exaflow.worker.feta.service import FetaWorkerService
 
 
@@ -17,6 +18,8 @@ class MockAggregation:
         self.lock = Condition()
         self.rounds = {}
         self.events = []
+        self.kinds = {}
+        self.dtypes = {}
         self.fetch_started = Event()
 
     def prepare(self, request):
@@ -24,13 +27,15 @@ class MockAggregation:
             key = (request.context_id, request.step)
             assert key not in self.rounds
             self.rounds[key] = (set(request.worker_ids), {})
+            self.kinds[key] = request.kind
+            self.dtypes[key] = request.dtype
             self.events.append(("prepare", request.step))
 
     def submit(self, request):
         with self.lock:
             expected, values = self.rounds[(request.context_id, request.step)]
             assert request.worker_id in expected and request.worker_id not in values
-            values[request.worker_id] = bytes_to_ndarray(request.value.arrow)
+            values[request.worker_id] = decode_tensor(request.value, 100 * 1024 * 1024)
             self.events.append(("submit", request.step))
             self.lock.notify_all()
 
@@ -51,13 +56,24 @@ class MockAggregation:
             expected, values = self.rounds.pop(key)
             assert set(values) == expected
             self.events.append(("fetch", step))
-            return np.sum([values[key] for key in sorted(values)], axis=0)
+            arrays = [values[worker] for worker in sorted(values)]
+            kind = self.kinds.pop(key)
+            dtype = self.dtypes.pop(key)
+            if kind == pb.UNION_VALUES:
+                return np.unique(np.concatenate(arrays).astype(dtype))
+            if kind == pb.MIN_VALUES:
+                return np.min(arrays, axis=0)
+            if kind == pb.MAX_VALUES:
+                return np.max(arrays, axis=0)
+            return np.sum(arrays, axis=0)
 
     def cleanup(self, context_id):
         with self.lock:
             self.rounds = {
                 key: value for key, value in self.rounds.items() if key[0] != context_id
             }
+            self.kinds = {k: v for k, v in self.kinds.items() if k[0] != context_id}
+            self.dtypes = {k: v for k, v in self.dtypes.items() if k[0] != context_id}
             self.lock.notify_all()
 
     def close(self):

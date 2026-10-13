@@ -5,10 +5,8 @@ import numpy as np
 import pyarrow as pa
 from google.protobuf.json_format import MessageToDict
 
-from exaflow.aggregation_serialization import ndarray_to_bytes
-from exaflow.algorithms.utils.inputdata_utils import Inputdata
-from exaflow.data_filters import FILTER_OPERATORS
 from exaflow.feta.clients import FetaAggregationClient
+from exaflow.feta.inputdata import Inputdata
 from exaflow.feta.lifecycle import ContextClosedError
 from exaflow.feta.lifecycle import ContextStore
 from exaflow.feta.lifecycle import ResourceLimitError
@@ -16,13 +14,15 @@ from exaflow.feta.operations import LocalOperation
 from exaflow.feta.operations import LocalTensorRef
 from exaflow.feta.operations import OperationType
 from exaflow.feta.operations import TensorMetadata
+from exaflow.feta.operations import encode_tensor
 from exaflow.feta.operations import evaluate
 from exaflow.feta.operations import infer_operation
 from exaflow.feta.operations import validate_array
 from exaflow.feta.rpc import abort
 from exaflow.protos.feta import feta_pb2 as pb
 from exaflow.protos.feta import feta_pb2_grpc as rpc
-from exaflow.worker.exareme3.udf.udf_db import load_algorithm_arrow_table
+from exaflow.worker.feta.data_loader import load_algorithm_arrow_table
+from exaflow.worker.feta.filters import FILTER_OPERATORS
 from exaflow.worker_communication import InsufficientDataError
 
 
@@ -211,9 +211,12 @@ class FetaWorkerService(rpc.FetaWorkerServicer):
                 "Aggregation instruction differs from operation placement."
             )
         result = evaluate(operation, inputs, result_meta)
-        if operation.type == OperationType.FILTER:
+        if operation.type in (OperationType.FILTER, OperationType.UNIQUE):
             result_meta = TensorMetadata(
-                result.shape, result_meta.dtype, 0, result_meta.row_layout
+                result.shape,
+                result_meta.dtype,
+                result_meta.partition_axis,
+                result_meta.row_layout,
             )
         if not active():
             raise ContextClosedError("FETA operation was cancelled.")
@@ -227,7 +230,7 @@ class FetaWorkerService(rpc.FetaWorkerServicer):
                         context_id=request.context_id,
                         step=request.aggregation_step,
                         worker_id=self.worker_id,
-                        value=pb.TensorValue(arrow=ndarray_to_bytes(result)),
+                        value=encode_tensor(result),
                     )
                 )
             finally:

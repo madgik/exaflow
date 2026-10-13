@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC
 from abc import abstractmethod
+from typing import Literal
 from typing import Union
 from typing import overload
 
@@ -19,6 +20,16 @@ class FedTensor(ABC):
     are tensors; contracting it returns an aggregated NumPy array or scalar.
     Raw worker-local arrays cannot be retrieved through this interface.
     """
+
+    @abstractmethod
+    def _reduce(
+        self, operation: Literal["min", "max"], axis: int | None = None
+    ) -> TensorResult:
+        """Dispatch a supported typed function without exposing runtime details."""
+
+    @abstractmethod
+    def _unique(self) -> NDArray:
+        """Return sorted distinct values across participating workers."""
 
     @abstractmethod
     def __eq__(self, other: FedTensor | str | int | float | bool) -> FedTensor:

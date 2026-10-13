@@ -12,11 +12,17 @@ for full command lists, architecture detail, and validation matrices.
 For any FETA work, also read [FETA architecture and agent guidance](documentation/feta/AGENTS.md).
 That file is the canonical FETA decision record across algorithms, controller,
 and workers. Exareme3-specific scaffolding does not define FETA's workflow.
+FETA owns its algorithm specifications, response models, mathematics, loading,
+filters and serialization. Copy required implementations into FETA; do not import
+Exareme3 or shared algorithm/helper libraries, or modify their code for FETA.
+Public platform interfaces (API specification types, configuration, registry,
+service interfaces, transport and API errors) remain integration contracts.
+Reference implementations may be imported in parity tests only.
 
 FETA algorithms import `FedTensor` and the `federated_numpy` package from
 `exaflow.algorithms.feta`. Keep arithmetic and matrix operators as tensor
 expressions; use the typed NumPy-style functions for supported non-arithmetic
-operations. The package exposes `sum`, `transpose` and `equal`; tensors also support
+operations. The package exposes `sum`, `transpose`, `equal`, `min`, `max` and `unique`; tensors also support
 column selection and boolean row indexing.
 FETA input preparation follows the specification and validated request. Algorithm
 `run` methods declare typed named inputs; the controller passes only selected

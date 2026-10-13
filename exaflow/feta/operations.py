@@ -4,9 +4,9 @@ from enum import IntEnum
 
 import numpy as np
 
-from exaflow.aggregation_serialization import bytes_to_ndarray
-from exaflow.aggregation_serialization import ndarray_to_bytes
 from exaflow.feta.lifecycle import ResourceLimitError
+from exaflow.feta.serialization import bytes_to_ndarray
+from exaflow.feta.serialization import ndarray_to_bytes
 from exaflow.protos.feta import feta_pb2 as pb
 
 
@@ -23,6 +23,9 @@ class OperationType(IntEnum):
     EQUAL = pb.EQUAL
     COLUMN = pb.COLUMN
     FILTER = pb.FILTER
+    MIN = pb.MIN
+    MAX = pb.MAX
+    UNIQUE = pb.UNIQUE
 
 
 @dataclass(frozen=True)
@@ -84,6 +87,45 @@ def decode_array(payload, max_bytes):
         raise ValueError("Invalid Arrow tensor payload.") from exc
 
 
+def encode_tensor(value):
+    """Typed Unicode transport for distinct labels; numeric values use Arrow."""
+    if value.dtype.kind == "U":
+        if value.ndim != 1:
+            raise ValueError("String transport requires a one-dimensional array.")
+        return pb.TensorValue(
+            strings=pb.StringArray(values=value.tolist(), dtype=str(value.dtype))
+        )
+    return pb.TensorValue(arrow=ndarray_to_bytes(value))
+
+
+def decode_tensor(message, max_bytes):
+    encoding = message.WhichOneof("encoding")
+    if encoding == "arrow":
+        return decode_array(message.arrow, max_bytes)
+    if encoding != "strings":
+        raise ValueError("Missing FETA tensor encoding.")
+    try:
+        dtype = np.dtype(message.strings.dtype)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Invalid FETA string array dtype.") from exc
+    if dtype.kind != "U" or not dtype.isnative or not dtype.itemsize:
+        raise ValueError("Invalid FETA string array dtype.")
+    values = message.strings.values
+    if len(values) * dtype.itemsize > max_bytes:
+        raise ResourceLimitError("FETA string array exceeds the tensor limit.")
+    if any(len(v) * 4 > dtype.itemsize for v in values):
+        raise ValueError("String exceeds declared Unicode width.")
+    return np.asarray(values, dtype=dtype)
+
+
+def aggregation_kind(op):
+    return {
+        OperationType.MIN: pb.MIN_VALUES,
+        OperationType.MAX: pb.MAX_VALUES,
+        OperationType.UNIQUE: pb.UNION_VALUES,
+    }.get(op, pb.SUM_VALUES)
+
+
 @dataclass(frozen=True)
 class LocalOperation:
     type: OperationType
@@ -138,8 +180,10 @@ class LocalOperation:
         if message.HasField("axis") and op_type not in (
             OperationType.SUM,
             OperationType.COLUMN,
+            OperationType.MIN,
+            OperationType.MAX,
         ):
-            raise ValueError("Only SUM and COLUMN accept an axis.")
+            raise ValueError("Only reductions and COLUMN accept an axis.")
         inputs = []
         for operand in message.inputs:
             kind = operand.WhichOneof("value")
@@ -194,8 +238,10 @@ def infer_operation(operation, metadata, max_bytes):
     if operation.axis is not None and op not in (
         OperationType.SUM,
         OperationType.COLUMN,
+        OperationType.MIN,
+        OperationType.MAX,
     ):
-        raise ValueError("Only SUM and COLUMN accept an axis.")
+        raise ValueError("Only reductions and COLUMN accept an axis.")
     distributed = [m for m in metadata if m.partition_axis >= 0]
     if not distributed:
         raise ValueError("A local operation requires a distributed tensor input.")
@@ -260,7 +306,13 @@ def infer_operation(operation, metadata, max_bytes):
         m = metadata[0]
         shape = m.shape[::-1]
         partition = len(m.shape) - 1 - m.partition_axis
-    elif op == OperationType.SUM:
+    elif op == OperationType.UNIQUE:
+        if dtype.kind != "U":
+            raise ValueError(
+                "Distributed UNIQUE initially supports string category labels only."
+            )
+        shape, partition = (math.prod(metadata[0].shape),), -1
+    elif op in (OperationType.SUM, OperationType.MIN, OperationType.MAX):
         m = metadata[0]
         axis = operation.axis
         if axis is not None and (axis < 0 or axis >= len(m.shape)):
@@ -271,7 +323,12 @@ def infer_operation(operation, metadata, max_bytes):
             if axis is None or axis == m.partition_axis
             else (m.partition_axis - int(axis < m.partition_axis))
         )
-        dtype = np.asarray(np.sum(np.zeros((), dtype=dtype))).dtype
+        if op == OperationType.SUM:
+            dtype = np.asarray(np.sum(np.zeros((), dtype=dtype))).dtype
+        elif dtype.kind not in "iuf":
+            raise ValueError("MIN and MAX require numerical tensors.")
+        elif partition >= 0 and axis is not None and m.shape[axis] == 0:
+            raise ValueError("Zero-size array reduction has no identity.")
     elif op == OperationType.LENGTH:
         m = metadata[0]
         if m.partition_axis != 0:
@@ -313,6 +370,18 @@ def evaluate(operation, inputs, expected):
         result = inputs[0].T
     elif op == OperationType.SUM:
         result = np.sum(inputs[0], axis=operation.axis)
+    elif op == OperationType.UNIQUE:
+        result = np.unique(inputs[0])
+    elif op in (OperationType.MIN, OperationType.MAX):
+        dtype = np.dtype(expected.dtype)
+        minimum = op == OperationType.MIN
+        if dtype.kind == "f":
+            neutral = np.inf if minimum else -np.inf
+        else:
+            limits = np.iinfo(dtype)
+            neutral = limits.max if minimum else limits.min
+        function = np.min if minimum else np.max
+        result = function(inputs[0], axis=operation.axis, initial=neutral)
     elif op == OperationType.LENGTH:
         result = np.int64(len(inputs[0]))
     elif op == OperationType.MATMUL:

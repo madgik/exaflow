@@ -59,7 +59,7 @@ The controller prepares only input groups selected under the specification
 and calls each algorithm with named tensors. Algorithm-specific defaults such
 as Pearson's omitted x are ordinary Python aliases inside `run`.
 FETA has a separate controller strategy and worker operation service. Its
-algorithms live in `exaflow/algorithms/feta` and shared contracts/utilities in
+algorithms live in `exaflow/algorithms/feta` and FETA-owned contracts/utilities in
 `exaflow/feta`. The controller prepares aggregation steps, workers submit
 partials, and the controller fetches the result directly. Existing services
 remain registered alongside FETA on the same processes and ports. See
@@ -156,3 +156,11 @@ contexts until cleanup.
   need verification.
 - Some Flower and SMPC paths appear optional or partly disabled in CI; verify
   before broad changes.
+
+FETA owns its specifications, response models, mathematical helpers, data loading,
+filters and numeric serialization. Required implementations are copied into FETA;
+production imports from Exareme3 and shared algorithm libraries are prohibited.
+Public engine specification types, configuration, discovery, worker landscape,
+service interfaces, protobufs and API errors remain platform integration points.
+The FETA dependency-boundary test enforces these imports. Legacy implementations
+remain available as parity-test references and are not changed for FETA.

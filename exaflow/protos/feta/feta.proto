@@ -49,7 +49,16 @@ message TensorDescriptor {
   int32 partition_axis = 4;
   string row_layout = 5;
 }
-message TensorValue { bytes arrow = 1; }
+message StringArray {
+  repeated string values = 1;
+  string dtype = 2;
+}
+message TensorValue {
+  oneof encoding {
+    bytes arrow = 1;
+    StringArray strings = 2;
+  }
+}
 message Operand {
   // Required for array literals; Arrow represents NumPy bool tensors as uint8.
   string array_dtype = 7;
@@ -76,6 +85,9 @@ enum OperationType {
   EQUAL = 10;
   COLUMN = 11;
   FILTER = 12;
+  MIN = 13;
+  MAX = 14;
+  UNIQUE = 15;
 }
 message LocalOperation {
   OperationType type = 1;
@@ -90,12 +102,19 @@ message ExecuteRequest {
   // Zero for a local result; otherwise submit the partial to this prepared step.
   uint64 aggregation_step = 3;
 }
+enum AggregationKind {
+  SUM_VALUES = 0;
+  MIN_VALUES = 1;
+  MAX_VALUES = 2;
+  UNION_VALUES = 3;
+}
 message PrepareRequest {
   string context_id = 1;
   uint64 step = 2;
   repeated string worker_ids = 3;
   repeated int64 shape = 4;
   string dtype = 5;
+  AggregationKind kind = 6;
 }
 message SubmitRequest {
   string context_id = 1;

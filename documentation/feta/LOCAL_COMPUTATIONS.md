@@ -16,7 +16,7 @@ postprocessing of completed global results belongs in the controller.
 ## Migration Status
 
 Runtime counterparts implemented and validated so far are
-`feta_pearson_correlation`, `feta_ttest_onesample`, `feta_ttest_paired` and `feta_ttest_independent`.
+`feta_pearson_correlation`, `feta_ttest_onesample`, `feta_ttest_paired`, `feta_ttest_independent` and `feta_anova_oneway`.
 Independent t-test adds string-label inputs, equality, column selection and
 boolean row indexing. Its inference uses existing numerical reductions.
 The catalogue below describes requirements, not completion of the remaining
@@ -26,7 +26,7 @@ decision after each validated implementation.
 ## Existing FETA foundation
 
 The current worker allowlist is `ADD`, `SUBTRACT`, `MULTIPLY`, `DIVIDE`, `POWER`,
-`TRANSPOSE`, `SUM`, `MATMUL`, `LENGTH`, `EQUAL`, `COLUMN` and `FILTER`. Operands are context-scoped references,
+`TRANSPOSE`, `SUM`, `MATMUL`, `LENGTH`, `EQUAL`, `COLUMN`, `FILTER`, `MIN`, `MAX` and `UNIQUE`. Operands are context-scoped references,
 numeric/string/boolean Python values, or supported numerical/boolean NumPy arrays.
 Tensors have rank at most two and support numerical, boolean and Unicode dtypes;
 object arrays remain rejected. Initial numerical inputs are float64, text inputs
@@ -34,12 +34,12 @@ retain labels, and missing values remain rejected.
 
 Arithmetic and transpose preserve a distributed tensor. Reducing its partitioned
 axis or contracting aligned distributed matrix dimensions automatically sums
-local contributions. Only global **sum** exists in the FETA protocol today.
+local contributions. Global sum, minimum, maximum and sorted category-label union are implemented.
 The shared legacy aggregation service's other operations do not automatically
 make them available through FETA.
 
 The public `exaflow.algorithms.feta.federated_numpy` package exposes the existing
-sum, transpose and equality operations, including `fnp.sum(a, axis=None)` and `fnp.transpose(a)`.
+sum, transpose, equality, min, max and unique operations, including `fnp.sum(a, axis=None)` and `fnp.transpose(a)`.
 Import it with `from exaflow.algorithms.feta import federated_numpy as fnp`.
 Arithmetic and matrix products continue to use operators. Tensor methods remain
 available, so the equivalent method expressions in this catalogue are valid.
@@ -75,9 +75,9 @@ readability, not as operation subclasses or batches.
 | Conditional replacement | `where(mask, x, replacement) -> Array` | Missing-aware sums/extrema and derived moments | Add with shape/dtype validation |
 | Row selection | `filter_rows(x, mask) -> Array` | Independent t-test, grouped summaries, percentile refinement | Implemented using x[mask]; same mask object preserves paired alignment |
 | Count reductions | `count_nonzero(mask, axis)`, `count_valid(x, axis)` | Category counts, outliers, percentile CDF, missing-aware moments | Add, or compose boolean cast plus sum; row length is not valid-value count |
-| Minimum and maximum | `minimum/maximum(x, axis, missing_policy)` | Range, one-way ANOVA, describe, numeric histogram, percentile, binned Mann–Whitney | Add local kernels and global min/max |
+| Minimum and maximum | `minimum/maximum(x, axis, missing_policy)` | Range, one-way ANOVA, describe, numeric histogram, percentile, binned Mann–Whitney | Implemented numeric min/max; missing-aware policy remains open |
 | Missing-aware sum | `sum_valid(x, axis)` plus valid counts | Primitive statistics, SMD, describe | Add or compose masks, replacement and ordinary sum; retain all-missing information |
-| Local unique values | `unique_nonmissing(x) -> category vector` | Cross tables, categorical/grouped histograms, grouped SMD | Add plus deterministic global union/discovery |
+| Local unique values | `unique_nonmissing(x) -> category vector` | Cross tables, categorical/grouped histograms, grouped SMD | Implemented sorted string-label unique/union; missing-aware discovery remains open |
 | Category encoding | `encode_categories(x, levels, unknown_policy) -> integer Array` | Categorical grouping and treatment coding | Add; typed strings or worker-side encoding require initialization support |
 | Category counts | `category_counts(x, levels, missing_policy) -> count vector` | Describe, categorical histograms | Add; supplied levels define a common output order |
 | Contingency counts | `contingency_counts(a, b, levels_a, levels_b, missing_policy) -> count matrix` | Cross-tabulation, chi-squared, Fisher, grouped categorical histogram | Add; fixed ordered level dictionaries |
@@ -176,9 +176,9 @@ not justify exposing sorted raw arrays or a generic row-download API.
 | Operator | Why needed | Current FETA |
 | --- | --- | --- |
 | Sum | Counts, sufficient statistics, histograms, contingency matrices and residual sums | Implemented |
-| Min | Global extrema and per-group minima | Not implemented |
-| Max | Global extrema and per-group maxima; categorical missing-presence flags | Not implemented |
-| Deterministic union | Discovered categories/group keys and, in other families, numeric event times/cluster identifiers | Not implemented; requires typed category transport and release rules |
+| Min | Global extrema and per-group minima | Implemented for real numerical tensors |
+| Max | Global extrema and per-group maxima; categorical missing-presence flags | Implemented for real numerical tensors |
+| Deterministic union | Discovered categories/group keys and, in other families, numeric event times/cluster identifiers | Implemented for string labels; numerical event times and broader releases remain open |
 
 No reviewed algorithm requires a global product, a standalone global average, or a
 merge of exact local quantiles. Mean and weighted group summaries come from
@@ -202,8 +202,8 @@ that behavior during migration rather than quietly changing it.
    their shapes match. Retain workers with empty filtered subsets as neutral
    contributors after initialization rather than changing the eligible population.
 1. **Result placement and reduction meaning.** Absence of a partitioned axis
-   does not imply sum for future kernels. Extrema require min/max; category
-   candidates require union; exact local quantiles and dataset summaries require
+   does not imply sum for future kernels. Extrema now use min/max and string category
+   candidates use union; exact local quantiles and dataset summaries require
    an explicitly local, protected result path. Operation semantics must determine
    the reduction. Do not sum local medians/stds, or average worker means.
 1. **Fixed categories and edges.** Every worker needs the same ordered category

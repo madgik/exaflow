@@ -60,7 +60,7 @@ Initialize aligned sample tensors and fix the eligible workers.
 Aggregate length, sample sum and squared sum in three successive steps.
 Derive reference-centered moments from completed sums on the controller.
 Compute t statistic, tails, confidence interval and effect size.
-Return the existing response model and clean up worker/aggregation contexts.
+Return the FETA-owned response model and clean up worker/aggregation contexts.
 ```
 
 ## Technical Decisions
@@ -75,7 +75,7 @@ from summation order are permitted. No additional worker operators are required.
 Fields are `n_obs`, `std`, `t_stat`, `df`, `p`, `mean_diff`, `se_diff`, `ci_upper`,
 `ci_lower`, and `cohens_d`. Despite its name, `mean_diff` preserves the existing
 sample-mean output rather than subtracting `mu`. Undefined numerical values use
-the existing Pydantic model's JSON serialization.
+the copied FETA-owned Pydantic model's JSON serialization.
 
 ## Validation and Limitations
 

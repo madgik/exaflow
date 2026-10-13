@@ -15,6 +15,7 @@ from exaflow.feta.operations import LocalOperation
 from exaflow.feta.operations import LocalTensorRef
 from exaflow.feta.operations import OperationType
 from exaflow.feta.operations import TensorMetadata
+from exaflow.feta.operations import aggregation_kind
 from exaflow.feta.operations import infer_operation
 from exaflow.feta.operations import validate_array
 from exaflow.feta.settings import FetaSettings
@@ -133,6 +134,12 @@ class FetaRuntime:
     def apply(self, op_type, inputs, axis=None):
         with self.execution_lock:
             self.check_active()
+            if op_type in (OperationType.MIN, OperationType.MAX):
+                shape = inputs[0].shape
+                if (axis is None and not np.prod(shape)) or (
+                    axis is not None and 0 <= axis < len(shape) and shape[axis] == 0
+                ):
+                    raise ValueError("Zero-size array reduction has no identity.")
             calls, predictions = {}, {}
             for worker_id, worker in self.workers.items():
                 operands, metadata = [], []
@@ -189,8 +196,9 @@ class FetaRuntime:
                 )
             first = next(iter(predictions.values()))
             global_result = first.partition_axis == -1
+            unique = op_type == OperationType.UNIQUE
             if global_result:
-                if any(m != first for m in predictions.values()):
+                if not unique and any(m != first for m in predictions.values()):
                     raise ValueError(
                         "FETA global result metadata differs across workers."
                     )
@@ -200,14 +208,38 @@ class FetaRuntime:
                         context_id=self.context_id,
                         step=self.step,
                         worker_ids=sorted(self.workers),
-                        shape=first.shape,
-                        dtype=first.dtype,
+                        shape=(sum(m.shape[0] for m in predictions.values()),)
+                        if unique
+                        else first.shape,
+                        dtype=str(
+                            np.result_type(
+                                *[np.dtype(m.dtype) for m in predictions.values()]
+                            )
+                        )
+                        if unique
+                        else first.dtype,
+                        kind=aggregation_kind(op_type),
                     )
                 )
                 for _, request in calls.values():
                     request.aggregation_step = self.step
             if global_result:
-                result = self._execute_global(calls, predictions)
+                result = self._execute_global(calls, predictions, unique)
+                if unique:
+                    max_count = sum(m.shape[0] for m in predictions.values())
+                    dtype = np.result_type(
+                        *[np.dtype(m.dtype) for m in predictions.values()]
+                    )
+                    if (
+                        result.ndim != 1
+                        or len(result) > max_count
+                        or result.dtype != dtype
+                    ):
+                        raise ValueError(
+                            "Aggregation returned invalid distinct-value metadata."
+                        )
+                    validate_array(result, self.settings.max_tensor_bytes)
+                    return result
                 if result.shape != first.shape or str(result.dtype) != first.dtype:
                     raise ValueError("Aggregation returned inconsistent FETA metadata.")
                 return result.item() if result.ndim == 0 else result
@@ -235,7 +267,7 @@ class FetaRuntime:
         if time.monotonic() >= self.deadline:
             raise ContextClosedError("FETA execution context expired.")
 
-    def _execute_global(self, calls, predictions):
+    def _execute_global(self, calls, predictions, unique=False):
         pool = ThreadPoolExecutor(max_workers=len(calls) + 1)
         futures = {
             pool.submit(worker.execute, request): worker_id
@@ -250,8 +282,22 @@ class FetaRuntime:
                 value = future.result()
                 if worker_id is None:
                     result = value
-                elif TensorMetadata.from_descriptor(value) != predictions[worker_id]:
-                    raise ValueError("Worker returned inconsistent FETA metadata.")
+                else:
+                    actual = TensorMetadata.from_descriptor(value)
+                    predicted = predictions[worker_id]
+                    if unique:
+                        if (
+                            len(actual.shape) != 1
+                            or not 0 <= actual.shape[0] <= predicted.shape[0]
+                        ):
+                            raise ValueError(
+                                "Worker returned invalid distinct-value shape."
+                            )
+                        predicted = TensorMetadata(
+                            actual.shape, predicted.dtype, -1, predicted.row_layout
+                        )
+                    if actual != predicted:
+                        raise ValueError("Worker returned inconsistent FETA metadata.")
             pool.shutdown(wait=True)
             return result
         except Exception:

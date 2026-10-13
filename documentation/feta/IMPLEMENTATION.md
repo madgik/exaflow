@@ -11,13 +11,18 @@ aggregation, and package/API integration tests for `feta_pearson_correlation`.
 - [x] Federation simulation, failure/security/lifecycle tests, real gRPC/API tests.
 - [x] Regression validation and architecture/config/protocol documentation.
 
+Ownership note: the independence update at the end of this record supersedes
+earlier milestone descriptions of helper reuse and shared inference. Historical
+validation results remain records of those earlier implementations.
+
 ## Implementation Choices
 
 - Separate FETA worker and aggregation gRPC services are registered alongside
   existing services. Existing Exareme3 protocols remain operational.
 - Shared FETA types and lifecycle utilities live in `exaflow/feta`; algorithms,
   worker execution, and controller orchestration retain their repository layers.
-- Existing Exareme3 data-loading helpers are reused in place.
+- Data loading and computation helpers are now FETA-owned copies; legacy
+  implementations remain unchanged.
 - No runtime implementation was present at the start; the initial workspace
   was clean. No agent delegation is in use.
 
@@ -260,5 +265,71 @@ development-deployment parity tests passed** against the final protocol.
 Changed Python syntax, local Markdown links, protobuf regeneration equivalence
 and `git diff --check` passed.
 
-The next proposed migration is `feta_anova_oneway`, pending the user's
+The approved one-way ANOVA migration follows below. The full statistics migration remains unfinished.
+
+## One-way ANOVA and Global Extrema / Unique
+
+Implemented `feta_anova_oneway`, using category-label union and five immediate
+reductions per category. Full ANOVA, Tukey, extrema and mean/std-bound outputs
+retain the original response and formulas. The mathematical core's new
+`fit_from_statistics` entry point reuses inference without Exareme3 execution;
+legacy fit delegates to it and its regression suite passes.
+
+Added typed `federated_numpy.min`, `max` and `unique`. Global unique initially
+releases sorted string category labels, not distinct numerical observations.
+Local NumPy unique supports numerical arrays. Min/max preserve distributed
+placement for local axes and use their respective aggregation kinds for global
+axes. Empty local subsets use neutral extrema; globally empty extrema fail.
+
+Protocol additions include aggregation kind and bounded typed string-array
+transport. Dynamic union shapes/dtypes are checked at worker acknowledgement,
+server submission and controller fetch. Invalid submissions wake waiting fetches.
+Controller, worker and aggregation service must deploy together; existing
+Exareme3 protocol, dataset storage and configuration are unchanged. Rollback
+restores FETA bindings/code, removes the registration, and restores the prior
+core fit entry point. No data migration is involved.
+
+```bash
+uv run pytest -q tests/standalone_tests/feta tests/standalone_tests/federated_algorithms/statistics/test_anova_oneway.py tests/standalone_tests/test_import_algorithm_modules_idempotent.py --disable-warnings --tb=short
+uv run inv deploy --no-install-dep --no-structure-data
+uv run pytest -q tests/prod_env_tests/test_feta_anova_oneway.py tests/prod_env_tests/test_feta_ttest_independent.py --disable-warnings --tb=short
+```
+
+Results: **290 focused regressions and package tests passed**, followed by
+**36 focused extrema/union/ANOVA checks passed** after final bound/skip cases.
+**10 live development-deployment parity cases passed**: all five ANOVA fixtures
+and all five independent t-test fixtures. Full nested responses use
+`rtol=1e-10`, `atol=1e-12`; SciPy independently validates ANOVA F-tests.
+No Docker/Kubernetes, Ruff or formatters were used.
+
+The next proposed migration is `feta_anova_twoway`, pending the user's
 continuation checkpoint. The full statistics migration remains unfinished.
+
+## FETA Implementation Independence
+
+Following the user's ownership decision, FETA copies the required implementations
+instead of importing Exareme3 or shared algorithm/helper libraries. All five
+algorithms now own specification definitions and Pydantic response models;
+Pearson owns formatting, and ANOVA owns its copied inference/formatting module.
+Worker/controller data selection, SQL loading/filters and Arrow serialization
+also live in FETA. The shared ANOVA core is restored exactly to its prior code.
+
+An import-boundary regression test permits FETA-owned production modules and
+explicit public platform contracts only. Tests can still import normal algorithms
+as numerical oracles. The common HTTP API, specification schema types, config,
+registry, worker landscape, service interface, error types and protobuf/service
+hosting remain platform integration points. No algorithm/math/data helper
+implementation is shared between the paradigms.
+
+Validation: **293 regression/package checks passed**, then **98 focused boundary,
+specification and t-test checks passed** after direct FETA specification typing.
+**30 live development-deployment parity cases passed** across Pearson, one-sample,
+paired and independent t-tests, and one-way ANOVA. Production-like tests use the
+development tools, with no Docker/Kubernetes.
+
+HTTP results, numeric formulas, transport, config, privacy thresholds and cleanup
+are unchanged. Internal response-model class identities are now FETA-owned.
+The copied implementations must be maintained independently. No data migration
+is needed. Rollback can restore only the FETA modules/imports; no legacy source
+change is required or retained. The statistics migration checkpoint remains
+`feta_anova_twoway`, which has not been started.
