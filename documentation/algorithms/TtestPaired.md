@@ -105,7 +105,13 @@ Output:
 ## Technical decisions
 
 - The sign of the reported mean difference is `y - x`.
-- One-sided alternatives replace one confidence bound with infinity.
+- Two-sided confidence intervals use the `1 - alpha/2` Student t quantile:
+  `mean_diff ± t(1 - alpha/2, df) * se`.
+- One-sided alternatives report a one-sided `1 - alpha` interval that uses
+  the `1 - alpha` quantile. `greater` returns
+  `[mean_diff - t(1 - alpha, df) * se, Infinity)` and `less` returns
+  `(-Infinity, mean_diff + t(1 - alpha, df) * se]`. This matches R `t.test`
+  and statsmodels `tconfint_mean(alternative=...)`.
 - Cohen's d is computed as mean paired difference divided by the standard
   deviation of paired differences.
 - The paired samples must have equal length after preprocessing.
@@ -125,10 +131,11 @@ Output:
 
 ## Validation against state-of-the-art implementation
 
-Standalone tests compare the result with:
+Standalone tests compare the result for every alternative with:
 
 ```text
-scipy.stats.ttest_rel(sample_x, sample_y, alternative="two-sided")
+scipy.stats.ttest_rel(sample_x, sample_y, alternative=alternative)
+DescrStatsW(sample_x - sample_y).tconfint_mean(alpha=alpha, alternative=alternative)
 ```
 
 Reference behavior is aligned with SciPy's paired t-test for the t statistic and

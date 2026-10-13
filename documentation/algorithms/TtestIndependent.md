@@ -103,7 +103,13 @@ Output:
 - The implementation uses pooled variance, equivalent to an equal-variance
   independent t-test.
 - The selected `groupA` and `groupB` define the sign of the mean difference.
-- One-sided alternatives replace one confidence bound with infinity.
+- Two-sided confidence intervals use the `1 - alpha/2` Student t quantile:
+  `mean_diff ± t(1 - alpha/2, df) * se`.
+- One-sided alternatives report a one-sided `1 - alpha` interval that uses
+  the `1 - alpha` quantile. `greater` returns
+  `[mean_diff - t(1 - alpha, df) * se, Infinity)` and `less` returns
+  `(-Infinity, mean_diff + t(1 - alpha, df) * se]`. This matches R `t.test`
+  and statsmodels `tconfint_diff(alternative=...)`.
 - Cohen's d is computed from the pooled standard deviation.
 - Missing-value handling is performed before the selected samples are tested.
 
@@ -122,11 +128,14 @@ Output:
 
 ## Validation against state-of-the-art implementation
 
-Standalone tests compare the result with `statsmodels.stats.weightstats`:
+Standalone tests compare the result for every alternative with
+`statsmodels.stats.weightstats`:
 
 ```text
 CompareMeans(DescrStatsW(sample_a), DescrStatsW(sample_b))
-    .ttest_ind(usevar="pooled", alternative="two-sided")
+    .ttest_ind(usevar="pooled", alternative=alternative)
+CompareMeans(DescrStatsW(sample_a), DescrStatsW(sample_b))
+    .tconfint_diff(alpha=alpha, alternative=alternative, usevar="pooled")
 ```
 
 Reference behavior is aligned with an equal-variance independent t-test.

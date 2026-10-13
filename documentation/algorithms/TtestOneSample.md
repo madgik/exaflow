@@ -100,8 +100,14 @@ Output:
 
 ## Technical decisions
 
-- Confidence intervals use the Student t distribution.
-- One-sided alternatives replace one confidence bound with infinity.
+- `mean_diff` and its confidence interval are reported for `mean - mu`.
+- Two-sided confidence intervals use the `1 - alpha/2` Student t quantile:
+  `mean_diff ± t(1 - alpha/2, df) * se`.
+- One-sided alternatives report a one-sided `1 - alpha` interval that uses
+  the `1 - alpha` quantile. `greater` returns
+  `[mean_diff - t(1 - alpha, df) * se, Infinity)` and `less` returns
+  `(-Infinity, mean_diff + t(1 - alpha, df) * se]`. This matches R `t.test`
+  and statsmodels `tconfint_mean(alternative=...)`.
 - Cohen's d is computed as `(mean - mu) / standard_deviation`.
 - Missing-value removal is handled before the sample reaches the test routine.
 
@@ -114,7 +120,7 @@ Output:
 | `t_stat` | t statistic. |
 | `df` | Degrees of freedom. |
 | `p` | P-value. |
-| `mean_diff` | Sample mean. |
+| `mean_diff` | `mean - mu`. |
 | `se_diff` | Standard error of the mean. |
 | `ci_lower` | Lower confidence interval bound. |
 | `ci_upper` | Upper confidence interval bound. |
@@ -123,10 +129,11 @@ Output:
 ## Validation against state-of-the-art implementation
 
 Standalone tests compare the result with `statsmodels.stats.weightstats.DescrStatsW`
-using:
+for every alternative (`two-sided`, `larger`, `smaller`) using:
 
 ```text
-DescrStatsW(sample).ttest_mean(value=mu, alternative="two-sided")
+DescrStatsW(sample).ttest_mean(value=mu, alternative=alternative)
+DescrStatsW(sample).tconfint_mean(alpha=alpha, alternative=alternative) - mu
 ```
 
 The method is also aligned with standard one-sample t-test formulas used by

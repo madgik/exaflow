@@ -94,20 +94,28 @@ TEST_CASES = [
     },
 ]
 
+ALTERNATIVES = ["two-sided", "greater", "less"]
+STATSMODELS_ALTERNATIVES = {
+    "two-sided": "two-sided",
+    "greater": "larger",
+    "less": "smaller",
+}
+
 
 class TestFederatedTTestIndependent(FederatedAlgorithmTest):
     def compute_centralized_result(self, X, y, **kwargs):
         sample_a = kwargs["sample_a"]
         sample_b = kwargs["sample_b"]
         alpha = kwargs["alpha"]
+        alternative = STATSMODELS_ALTERNATIVES[kwargs["alternative"]]
 
         d1 = DescrStatsW(sample_a)
         d2 = DescrStatsW(sample_b)
         cm = CompareMeans(d1, d2)
 
-        t_stat, p_value, df = cm.ttest_ind(usevar="pooled", alternative="two-sided")
+        t_stat, p_value, df = cm.ttest_ind(usevar="pooled", alternative=alternative)
         ci_lower, ci_upper = cm.tconfint_diff(
-            alpha=alpha, alternative="two-sided", usevar="pooled"
+            alpha=alpha, alternative=alternative, usevar="pooled"
         )
 
         mean_a = d1.mean
@@ -143,7 +151,7 @@ class TestFederatedTTestIndependent(FederatedAlgorithmTest):
             group_a="A",
             group_b="B",
             alpha=kwargs["alpha"],
-            alternative="two-sided",
+            alternative=kwargs["alternative"],
         )
 
     def compare(self, federated_output, centralized_output, **kwargs):
@@ -178,13 +186,13 @@ class TestFederatedTTestIndependent(FederatedAlgorithmTest):
             atol=1e-10,
         )
         np.testing.assert_allclose(
-            federated_output["ci_lower"],
+            float(federated_output["ci_lower"]),
             centralized_output["ci_lower"],
             rtol=1e-7,
             atol=1e-10,
         )
         np.testing.assert_allclose(
-            federated_output["ci_upper"],
+            float(federated_output["ci_upper"]),
             centralized_output["ci_upper"],
             rtol=1e-7,
             atol=1e-10,
@@ -199,7 +207,8 @@ class TestFederatedTTestIndependent(FederatedAlgorithmTest):
     @pytest.mark.parametrize(
         "case", TEST_CASES, ids=[case["name"] for case in TEST_CASES]
     )
-    def test_federated_algorithm_with_one_worker(self, case):
+    @pytest.mark.parametrize("alternative", ALTERNATIVES)
+    def test_federated_algorithm_with_one_worker(self, case, alternative):
         sample_a = np.asarray(case["group_a"], dtype=float)
         sample_b = np.asarray(case["group_b"], dtype=float)
         data = pd.DataFrame(
@@ -213,6 +222,7 @@ class TestFederatedTTestIndependent(FederatedAlgorithmTest):
             y=np.zeros((data.shape[0],), dtype=float),
             n_workers=1,
             alpha=case["alpha"],
+            alternative=alternative,
             sample_a=sample_a,
             sample_b=sample_b,
         )
@@ -220,7 +230,8 @@ class TestFederatedTTestIndependent(FederatedAlgorithmTest):
     @pytest.mark.parametrize(
         "case", TEST_CASES, ids=[case["name"] for case in TEST_CASES]
     )
-    def test_federated_algorithm_with_multiple_workers(self, case):
+    @pytest.mark.parametrize("alternative", ALTERNATIVES)
+    def test_federated_algorithm_with_multiple_workers(self, case, alternative):
         sample_a = np.asarray(case["group_a"], dtype=float)
         sample_b = np.asarray(case["group_b"], dtype=float)
         data = pd.DataFrame(
@@ -234,6 +245,7 @@ class TestFederatedTTestIndependent(FederatedAlgorithmTest):
             y=np.zeros((data.shape[0],), dtype=float),
             n_workers=3,
             alpha=case["alpha"],
+            alternative=alternative,
             sample_a=sample_a,
             sample_b=sample_b,
         )

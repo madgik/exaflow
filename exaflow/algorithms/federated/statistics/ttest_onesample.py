@@ -48,21 +48,23 @@ class FederatedTTestOneSample:
             (total_diff_sqrd_x - (total_diff_x**2 / total_n_obs)) / (total_n_obs - 1)
         )
         sed = sd / np.sqrt(total_n_obs)
-        t_stat = (smpl_mean - mu) / sed
+        mean_diff = smpl_mean - mu
+        t_stat = mean_diff / sed
         df = total_n_obs - 1
-
-        ci_lower, ci_upper = st.t.interval(1 - alpha, df, loc=smpl_mean, scale=sed)
 
         if alternative == "greater":
             p_value = 1.0 - st.t.cdf(t_stat, df)
+            ci_lower = mean_diff - st.t.ppf(1 - alpha, df) * sed
             ci_upper = "Infinity"
         elif alternative == "less":
             p_value = 1.0 - st.t.cdf(-t_stat, df)
             ci_lower = "-Infinity"
+            ci_upper = mean_diff + st.t.ppf(1 - alpha, df) * sed
         else:
             p_value = (1.0 - st.t.cdf(abs(t_stat), df)) * 2.0
+            ci_lower, ci_upper = st.t.interval(1 - alpha, df, loc=mean_diff, scale=sed)
 
-        cohens_d = (smpl_mean - mu) / sd
+        cohens_d = mean_diff / sd
 
         return dict(
             n_obs=int(total_n_obs),
@@ -70,7 +72,7 @@ class FederatedTTestOneSample:
             df=int(df),
             std=sd,
             p_value=p_value,
-            mean_diff=smpl_mean,
+            mean_diff=mean_diff,
             se_diff=sed,
             ci_upper=ci_upper,
             ci_lower=ci_lower,
