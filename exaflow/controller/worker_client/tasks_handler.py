@@ -96,10 +96,6 @@ def _dict_to_struct(data: dict) -> struct_pb2.Struct:
     return message
 
 
-class WorkerTaskResult:
-    """Deprecated placeholder kept for backward compatibility."""
-
-
 class WorkerTasksHandler:
     def __init__(self, worker_queue_addr: str, logger: Logger):
         self._worker_queue_addr = worker_queue_addr

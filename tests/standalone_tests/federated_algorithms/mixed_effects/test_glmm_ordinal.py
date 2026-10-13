@@ -175,6 +175,7 @@ class TestFederatedGLMMOrdinal(FederatedAlgorithmTest):
             y=np.asarray(kwargs["y_full"], dtype=int),
         )
 
+    @pytest.mark.slow
     @pytest.mark.parametrize(
         "case", CASE_MATRIX, ids=[case.name for case in CASE_MATRIX]
     )
@@ -193,6 +194,7 @@ class TestFederatedGLMMOrdinal(FederatedAlgorithmTest):
             y_full=y,
         )
 
+    @pytest.mark.slow
     @pytest.mark.parametrize(
         "case", CASE_MATRIX, ids=[case.name for case in CASE_MATRIX]
     )

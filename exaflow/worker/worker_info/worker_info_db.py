@@ -1,5 +1,6 @@
 import json
 import warnings
+from pathlib import Path
 from typing import List
 
 from pydantic import ValidationError
@@ -14,7 +15,7 @@ from exaflow.worker_communication import DatasetInfo
 from exaflow.worker_communication import DatasetProperties
 
 HEALTHCHECK_VALIDATION_STRING = "HEALTHCHECK"
-LOGGER = init_logger("WORKER DATA LOADER")
+LOGGER = init_logger("WORKER INFO DB")
 
 
 def get_data_models() -> List[str]:
@@ -123,7 +124,7 @@ def convert_csv_paths_to_absolute(dataset_path: str) -> str:
         into an absolute path using the current configuration.
     """
     relative_path = dataset_path.split(str(worker_config.data_path))[-1]
-    return f"{worker_config.data_path}/{relative_path}"
+    return str(Path(worker_config.data_path) / relative_path.lstrip("/"))
 
 
 def get_dataset_csv_paths(data_model, datasets: List[str]) -> List[str]:
