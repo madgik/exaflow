@@ -6,8 +6,6 @@ from typing import Optional
 import numpy as np
 
 from exaflow.algorithms.federated.utils import BadInputError
-from exaflow.algorithms.federated.utils import fused_min_max
-from exaflow.algorithms.federated.utils import fused_sum
 from exaflow.algorithms.federated.utils import to_numpy
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 
@@ -102,15 +100,15 @@ class FederatedKMeans(FederatedEstimator):
         X = to_numpy(x)
         if X.ndim == 1:
             X = X.reshape(-1, 1)
-        n_local, n_features = X.shape
         local_invalid = 0.0 if np.all(np.isfinite(X)) else 1.0
-        (totals,) = fused_sum(self._agg_client, [local_invalid, float(n_local)])
-        if totals[0] > 0.0:
+        global_invalid = float(self._agg_client.sum([local_invalid])[0])
+        if global_invalid > 0.0:
             raise BadInputError(
                 "K-means requires finite numerical values. Apply missing-value "
                 "handling and remove infinite values before fitting."
             )
 
+        n_local, n_features = X.shape
         self.n_features_ = int(n_features)
         self.feature_names_ = list(feature_names) if feature_names is not None else None
         self.init_method_ = self.init_method
@@ -118,7 +116,7 @@ class FederatedKMeans(FederatedEstimator):
         self.random_state_ = self.random_state
 
         # Global number of observations
-        total_n_obs = int(totals[1])
+        total_n_obs = int(self._agg_client.sum([float(n_local)])[0])
 
         # If there is no data at all, return empty centers
         if total_n_obs == 0:
@@ -141,7 +139,8 @@ class FederatedKMeans(FederatedEstimator):
             local_min = np.full((n_features,), np.inf, dtype=float)
             local_max = np.full((n_features,), -np.inf, dtype=float)
 
-        global_min, global_max = fused_min_max(self._agg_client, local_min, local_max)
+        global_min = np.asarray(self._agg_client.min(local_min), dtype=float)
+        global_max = np.asarray(self._agg_client.max(local_max), dtype=float)
 
         best_result = None
         for init_idx in range(self.n_init_):
@@ -278,9 +277,12 @@ class FederatedKMeans(FederatedEstimator):
                 sum_local = np.zeros((self.n_clusters, n_features), dtype=float)
                 count_local = np.zeros((self.n_clusters,), dtype=float)
 
-            sum_global, count_global = fused_sum(
-                self._agg_client, sum_local, count_local
+            sum_global_arr = self._agg_client.sum(sum_local.ravel())
+            count_global_arr = self._agg_client.sum(count_local)
+            sum_global = np.asarray(sum_global_arr, dtype=float).reshape(
+                (self.n_clusters, n_features)
             )
+            count_global = np.asarray(count_global_arr, dtype=float)
 
             new_centers = self._compute_centers_from_sums_and_counts(
                 sums=sum_global,
@@ -301,14 +303,15 @@ class FederatedKMeans(FederatedEstimator):
             labels=labels,
             n_features=n_features,
         )
+        final_count_global_arr = self._agg_client.sum(final_count_local)
+        final_count_global = np.asarray(final_count_global_arr, dtype=float)
         cluster_inertia_local = self._compute_cluster_inertia(
             X=X,
             centers=centers,
             labels=labels,
         )
-        final_count_global, cluster_inertia_global = fused_sum(
-            self._agg_client, final_count_local, cluster_inertia_local
-        )
+        cluster_inertia_global_arr = self._agg_client.sum(cluster_inertia_local)
+        cluster_inertia_global = np.asarray(cluster_inertia_global_arr, dtype=float)
         return {
             "centers": centers,
             "labels": labels,

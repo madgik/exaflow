@@ -10,8 +10,6 @@ import scipy.stats as st
 from statsmodels.stats.libqsturng import psturng
 
 from exaflow.algorithms.federated.utils import BadInputError
-from exaflow.algorithms.federated.utils import fused_min_max
-from exaflow.algorithms.federated.utils import fused_sum
 
 
 class FederatedAnovaOneWay:
@@ -186,21 +184,31 @@ class FederatedAnovaOneWay:
         overall_count_local = float(group_stats_count_local.sum())
         overall_ssq_local = float(group_ssq_local.sum())
 
-        totals, group_stats_sum, group_stats_count, group_ssq = fused_sum(
-            self.agg_client,
-            [n_obs_local, overall_sum_local, overall_count_local, overall_ssq_local],
-            group_stats_sum_local,
-            group_stats_count_local,
-            group_ssq_local,
+        total_n_obs_arr = self.agg_client.sum(np.array([n_obs_local], dtype=float))
+        total_overall_sum_arr = self.agg_client.sum(
+            np.array([overall_sum_local], dtype=float)
         )
-        var_min_per_group, var_max_per_group = fused_min_max(
-            self.agg_client, var_min_local, var_max_local
+        total_overall_count_arr = self.agg_client.sum(
+            np.array([overall_count_local], dtype=float)
         )
+        total_overall_ssq_arr = self.agg_client.sum(
+            np.array([overall_ssq_local], dtype=float)
+        )
+        group_stats_sum_arr = self.agg_client.sum(group_stats_sum_local)
+        group_stats_count_arr = self.agg_client.sum(group_stats_count_local)
+        group_ssq_arr = self.agg_client.sum(group_ssq_local)
+        var_min_arr = self.agg_client.min(var_min_local)
+        var_max_arr = self.agg_client.max(var_max_local)
 
-        n_obs = int(totals[0])
-        overall_sum = float(totals[1])
-        overall_count = float(totals[2])
-        overall_ssq = float(totals[3])
+        n_obs = int(np.asarray(total_n_obs_arr).reshape(-1)[0])
+        overall_sum = float(np.asarray(total_overall_sum_arr).reshape(-1)[0])
+        overall_count = float(np.asarray(total_overall_count_arr).reshape(-1)[0])
+        overall_ssq = float(np.asarray(total_overall_ssq_arr).reshape(-1)[0])
+        group_stats_sum = np.asarray(group_stats_sum_arr, dtype=float)
+        group_stats_count = np.asarray(group_stats_count_arr, dtype=float)
+        group_ssq = np.asarray(group_ssq_arr, dtype=float)
+        var_min_per_group = np.asarray(var_min_arr, dtype=float)
+        var_max_per_group = np.asarray(var_max_arr, dtype=float)
 
         nonzero_mask = group_stats_count != 0
         if not np.all(nonzero_mask):

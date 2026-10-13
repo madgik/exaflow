@@ -8,7 +8,6 @@ import scipy.stats as st
 from scipy import special
 
 from exaflow.algorithms.federated.utils import BadInputError
-from exaflow.algorithms.federated.utils import fused_sum
 from exaflow.algorithms.federated.utils import to_numpy
 
 
@@ -58,15 +57,18 @@ class FederatedPearsonCorrelation:
         syy = np.einsum("ij,ij->j", y, y)
         sxy = np.einsum("ji,jk->ki", x, y)
 
-        (
-            total_n_obs_arr,
-            total_sx,
-            total_sy,
-            total_sxx,
-            total_syy,
-            total_sxy,
-        ) = fused_sum(self.agg_client, [float(n_obs)], sx, sy, sxx, syy, sxy)
-        total_n_obs = float(total_n_obs_arr[0])
+        total_n_obs_arr = self.agg_client.sum(np.array([float(n_obs)], dtype=float))
+        total_sx = self.agg_client.sum(sx)
+        total_sy = self.agg_client.sum(sy)
+        total_sxx = self.agg_client.sum(sxx)
+        total_syy = self.agg_client.sum(syy)
+        total_sxy = self.agg_client.sum(sxy)
+        total_n_obs = float(np.asarray(total_n_obs_arr).reshape(-1)[0])
+        total_sx = np.asarray(total_sx, dtype=float)
+        total_sy = np.asarray(total_sy, dtype=float)
+        total_sxx = np.asarray(total_sxx, dtype=float)
+        total_syy = np.asarray(total_syy, dtype=float)
+        total_sxy = np.asarray(total_sxy, dtype=float)
 
         df = total_n_obs - 2
         if total_n_obs == 0:
