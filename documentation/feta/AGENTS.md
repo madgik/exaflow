@@ -869,3 +869,20 @@ configuration remain unchanged. Rollback removes the new registration and
 restores FETA inputs/operation code and bindings; no data migration is involved.
 Logistic cross-validation is not part of this priority migration. The remaining
 statistics migration still resumes at chi-squared, after the user's checkpoint.
+
+### Chi-squared migration (2026-10-14)
+
+`feta_chi_squared` receives both selected groups as `FedColumns`, retaining
+category metadata. Metadata preserves declared code order; algorithms requiring
+sorted levels, including logistic regression, sort their levels explicitly.
+Contingency counts use float indicator designs and `factor.T @ outcome` with
+one automatic sum aggregation. No new local operation is required. Declared
+categories are deduplicated; absent rows/columns are pruned. Empty metadata uses
+sorted observed string union. Unknown codes outside a declared domain are
+ignored, matching the reference contingency table. SciPy's default continuity
+correction, output orientation and category-code labels are preserved. Empty
+tables raise a FETA input error and contexts are cleaned up.
+
+See [algorithm documentation](../algorithms/feta_chi_squared.md). Statistics
+migration still proceeds one algorithm at a time; Fisher's exact test is next
+only after user confirmation.

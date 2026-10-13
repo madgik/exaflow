@@ -683,3 +683,44 @@ def test_logistic_through_real_analysis_route(running_package):
     assert_nested(asyncio.run(run()), LogisticRegression.run(proxy).model_dump())
     assert not package.aggregation.sessions
     assert all(not worker.store.contexts for worker in package.workers)
+
+
+def test_chi_squared_through_real_analysis_route(running_package):
+    import pandas as pd
+    from scipy.stats import chi2_contingency
+
+    from tests.standalone_tests.feta.test_feta_anova_oneway import assert_nested
+
+    package = running_package
+    body = {
+        "inputdata": {
+            "data_model": "test:1.0",
+            "datasets": ["a", "b"],
+            "variables": ["group", "outcome"],
+        },
+        "algorithm": {"name": "feta_chi_squared", "x": ["group"], "y": ["outcome"]},
+    }
+
+    async def run():
+        response = await package.app.test_client().post("/analysis", json=body)
+        payload = await response.get_data()
+        assert response.status_code == 200, payload.decode()
+        return json.loads(payload)
+
+    table = pd.crosstab(package.frame.group, package.frame.outcome).reindex(
+        index=["control", "treated", "other"], columns=["yes", "no"]
+    )
+    chi2, p, dof, expected = chi2_contingency(table)
+    assert_nested(
+        asyncio.run(run()),
+        {
+            "chi2": chi2,
+            "p_value": p,
+            "dof": dof,
+            "expected": expected.tolist(),
+            "x_labels": table.index.tolist(),
+            "y_labels": table.columns.tolist(),
+        },
+    )
+    assert not package.aggregation.sessions
+    assert all(not worker.store.contexts for worker in package.workers)

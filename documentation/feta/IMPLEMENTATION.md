@@ -422,3 +422,23 @@ conversion. Changed Python syntax, Markdown links, exact protobuf regeneration
 and git diff --check passed. Legacy Exareme3 and shared federated source have no
 diff. Numeric metadata code conversion is explicit for int/real/text SQL types;
 optional column groups follow selected-request presence.
+
+## Chi-squared milestone (2026-10-14)
+
+Added `feta_chi_squared` and a FETA-owned contingency-table helper using existing
+tensor operations. Both inputs use `FedColumns`; metadata order survives input
+preparation, while logistic regression explicitly sorts numerical category
+levels. Includes simulated federation parity, complete-package RPC integration
+and development-deployment response comparison with the existing chi-squared
+fixtures. Exareme3 and shared computation implementations remain unchanged.
+The next statistics algorithm is Fisher's exact test, pending user confirmation.
+
+Validation: the broad focused run passed 349 tests with one new-test import
+failure; after fixing that import, all 63 relevant simulation, package,
+logistic-regression and dependency-boundary tests passed. Development tools
+(`inv deploy --no-install-dep --no-structure-data`) deployed the full package;
+all six live chi-squared/logistic comparisons passed. Changed Python syntax,
+Markdown links and `git diff --check` passed. No protobuf/deployment configuration
+change is needed. To roll back, remove the new algorithm/helper/tests/docs and
+restore the FETA metadata-order/explicit-logistic-sort changes; existing algorithm
+implementations remain intact.

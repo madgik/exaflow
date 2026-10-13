@@ -101,9 +101,9 @@ class FetaStrategy(AlgorithmExecutionStrategyI):
                         converter = {"int": int, "real": float, "text": str}[
                             cde.sql_type
                         ]
-                        pairs = sorted(
+                        pairs = [
                             (converter(code), label) for code, label in enums.items()
-                        )
+                        ]
                         metadata[name] = ColumnMetadata(
                             cde.sql_type,
                             cde.is_categorical,

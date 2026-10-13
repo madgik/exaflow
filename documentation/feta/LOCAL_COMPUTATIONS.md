@@ -502,3 +502,12 @@ Cox tied events/censoring/suffix boundaries, whole-cluster partitioning, rejecte
 warm-state trials, local fold reproducibility, training/test separation and peak
 store growth. Documentation-only review: no new kernels, dtype support,
 preprocessing, privacy release or runtime routing is enabled here.
+
+### Implemented chi-squared support (2026-10-14)
+
+`feta_chi_squared` now supports contingency tables using category equality,
+float indicator column stacking and an automatically aggregated matrix product.
+The FETA-owned helper preserves metadata order, discovers labels when metadata
+is empty and prunes globally absent categories. Existing kernels suffice; no
+additional local operation is added. Dense indicator memory grows with category
+count and is bounded by the existing resource checks.

@@ -131,7 +131,7 @@ class FetaLogisticRegression(Algorithm):
                     raise BadUserInput(
                         f"Categorical variable {name} contains undeclared codes."
                     )
-                levels = [level for level, count in counts if count]
+                levels = sorted(level for level, count in counts if count)
             for level in levels[1:]:
                 columns.append((column == level) * 1.0)
                 feature_names.append(f"{name}[{level}]")
