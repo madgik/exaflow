@@ -7,6 +7,9 @@ from tests.standalone_tests.federated_algorithms.utils import FederatedAlgorithm
 from tests.standalone_tests.federated_algorithms.utils.dummy_agg_client import (
     DummyAggClient,
 )
+from tests.standalone_tests.federated_algorithms.utils.federated_algorithm_test import (
+    _simulate_federated_execution,
+)
 
 TEST_CASES = [
     (
@@ -490,3 +493,28 @@ def test_ols_f_stat_stays_finite_for_small_scale_non_perfect_fit():
     assert np.isfinite(result.fvalue)
     assert np.isfinite(result.f_pvalue)
     assert result.fvalue > 100.0
+
+
+def test_ols_tss_large_offset():
+    # sum(y^2) - n * mean^2 loses every significant digit for an outcome around
+    # 1e8 with unit-scale spread.
+    offset = 1e8
+    n_rows = 300
+    n_workers = 3
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal((n_rows, 2))
+    y = offset + X @ np.array([0.5, -0.3]) + rng.standard_normal(n_rows)
+    parts = np.array_split(np.arange(n_rows), n_workers)
+
+    outputs = _simulate_federated_execution(
+        n_workers,
+        lambda worker_id, agg_client: FederatedOLS(fit_intercept=True).fit(
+            X[parts[worker_id]], y[parts[worker_id]], agg_client=agg_client
+        ),
+    )
+    result = outputs[0]
+    expected = sm.OLS(y, sm.add_constant(X)).fit()
+
+    np.testing.assert_allclose(result.tss, expected.centered_tss, rtol=1e-6)
+    np.testing.assert_allclose(result.rsquared, expected.rsquared, rtol=1e-6)
+    np.testing.assert_allclose(result.fvalue, expected.fvalue, rtol=1e-6)
