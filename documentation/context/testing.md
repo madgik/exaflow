@@ -42,6 +42,16 @@ uv run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algo
 
 ## Full Local Standalone Tests
 
+FETA's focused suite includes simulated multi-worker execution with an
+independent mock aggregation server, plus the real Quart application, DuckDB
+loading, and localhost gRPC workers/aggregation services. Worker membership and
+metadata are provided by a test landscape; this is package integration, not a
+Kubernetes deployment test:
+
+```bash
+uv run pytest -q tests/standalone_tests/feta
+```
+
 CI runs:
 
 ```bash
@@ -121,3 +131,13 @@ CI also builds the package and smoke-tests the wheel.
 | Dependency update | Lockfile update, focused tests, lint/format, and CI-equivalent suite where feasible. |
 | Refactor without behavior change | Focused tests for touched modules and broader standalone tests if shared code moved. |
 | `exadata-validator` change | `cd exadata-validator && uv run pytest -q`; build/smoke test if packaging or CLI changes. |
+
+FETA deployment parity check (requires the deployed controller at port 5100):
+
+```bash
+uv run pytest -q tests/prod_env_tests/test_feta_pearson_correlation.py
+```
+
+This compares FETA and existing Pearson on identical complete-case selections,
+including omitted `x`. Structure and counts are exact; numerical values allow
+only summation-order differences (`rtol=1e-10`, `atol=1e-12`).

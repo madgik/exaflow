@@ -13,6 +13,11 @@ For any FETA work, also read [FETA architecture and agent guidance](documentatio
 That file is the canonical FETA decision record across algorithms, controller,
 and workers. Exareme3-specific scaffolding does not define FETA's workflow.
 
+FETA algorithms import `FedTensor` and the `federated_numpy` package from
+`exaflow.algorithms.feta`. Keep arithmetic and matrix operators as tensor
+expressions; use the typed NumPy-style functions for supported non-arithmetic
+operations. The initial package exposes `sum` and `transpose`.
+
 ## Project Overview
 
 Exaflow is the execution engine behind the Medical Informatics Platform. It
@@ -36,6 +41,8 @@ separate config, markers, and review requirements — see
 | `exaflow/worker` | Worker gRPC service, DuckDB loading, UDF execution, and worker metadata services. |
 | `exaflow/aggregation_server` | Optional gRPC aggregation service for federated vector operations. |
 | `exaflow/algorithms/exareme3` | Runtime algorithm wrappers, preprocessing steps, specifications, and UDF registrations. |
+| `exaflow/algorithms/feta` | Controller-authored FETA tensor algorithms and specifications. |
+| `exaflow/feta` | Shared FETA operation contracts, tensor API, RPC clients, settings, and lifecycle utilities. |
 | `exaflow/algorithms/federated` | Testable federated/statistical core implementations and implementation docs. |
 | `exaflow/protos` | gRPC protobuf definitions and generated Python files. |
 | `tests/standalone_tests` | Fast local tests for core logic, services, UDFs, aggregation, and algorithms. |

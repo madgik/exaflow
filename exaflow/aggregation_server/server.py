@@ -499,13 +499,20 @@ class AggregationServer(AggregationServerServicer):
 
 
 def serve():
+    from exaflow.feta.settings import FetaSettings
+
+    feta_settings = FetaSettings.from_config(config)
     logging.basicConfig(
         level=config.log_level.upper(),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
     server = grpc.server(
-        futures.ThreadPoolExecutor(max_workers=config.max_grpc_connections),
+        futures.ThreadPoolExecutor(
+            max_workers=feta_settings.aggregation_thread_capacity(
+                config.max_grpc_connections
+            )
+        ),
         options=[
             ("grpc.max_send_message_length", GRPC_MAX_MESSAGE_SIZE),
             ("grpc.max_receive_message_length", GRPC_MAX_MESSAGE_SIZE),
@@ -513,19 +520,39 @@ def serve():
     )
     add_AggregationServerServicer_to_server(AggregationServer(), server)
 
+    from exaflow.aggregation_server.feta import FetaAggregationService
+    from exaflow.feta.lifecycle import CleanupJob
+    from exaflow.protos.feta import feta_pb2_grpc
+
+    feta_service = FetaAggregationService(
+        feta_settings, wait_timeout=config.max_wait_for_aggregation_inputs
+    )
+    feta_pb2_grpc.add_FetaAggregationServicer_to_server(feta_service, server)
+
     health_servicer = health.HealthServicer()
     health_pb2_grpc.add_HealthServicer_to_server(health_servicer, server)
     health_servicer.set("Aggregation", health_pb2.HealthCheckResponse.SERVING)
+    health_servicer.set("feta.aggregation", health_pb2.HealthCheckResponse.SERVING)
+    cleanup_job = CleanupJob(
+        feta_service.expire,
+        feta_settings.cleanup_interval_seconds,
+        on_failure=lambda: health_servicer.set(
+            "feta.aggregation", health_pb2.HealthCheckResponse.NOT_SERVING
+        ),
+    )
 
     server.add_insecure_port(f"0.0.0.0:{config.port}")
     server.start()
+    cleanup_job.start()
     logger.info(f"Aggregation server running on 0.0.0.0:{config.port}")
 
     try:
         server.wait_for_termination()
     except KeyboardInterrupt:
         logger.info("Aggregation server shutting down…")
-        server.stop(0)
+    finally:
+        cleanup_job.stop()
+        server.stop(5).wait()
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ controller, and workers. Read it alongside the repository's
 architectural documentation here; other repository guidance should link here
 rather than duplicate these decisions.
 
-This document records design decisions, not an implemented runtime. Keep
+The initial runtime is implemented with the contracts below. Keep
 confirmed decisions, implementation proposals, and unresolved questions
 separate. Update the record as discussion continues; do not silently promote a
 proposal to a confirmed decision.
@@ -18,7 +18,7 @@ proposal to a confirmed decision.
 ### Identity, Ownership, and Execution
 
 - The paradigm is named **FETA**. Use `feta` for its namespaces rather than
-  naming it Exareme4. Exact module layout remains open.
+  naming it Exareme4. The module layout is recorded under Implementation Contracts.
 - FETA has a separate execution flow and orchestration, while continuing to
   use the existing aggregation server. Existing Exareme3 helpers may be called
   directly where needed; this reuse does not route execution through Exareme3.
@@ -52,8 +52,8 @@ proposal to a confirmed decision.
 - Use a FETA-specific algorithm base class and registry keyed by specification
   name. Discovery imports FETA algorithm modules, and shared specification
   loading registers their specifications with `AlgorithmType.FETA`. Duplicate
-  names fail explicitly. Exact module layout and discovery configuration remain
-  open.
+  names fail explicitly. `FETA_ALGORITHM_FOLDERS` configures discovery, defaulting
+  to `./exaflow/algorithms/feta`; imports reuse the existing idempotent importer.
 
 ### Context Initialization and Algorithm Inputs
 
@@ -107,8 +107,7 @@ Initialization proceeds as follows:
 1. The controller creates `FedTensor` objects for the eligible worker set and
    invokes `run(x, y)`.
 
-The initialization flow is confirmed. Exact protobuf fields and lifecycle
-response/error schemas remain to be specified.
+The initialization flow and protobuf schemas are implemented in `feta.proto`.
 
 ### Worker Storage and Lifecycle
 
@@ -122,13 +121,15 @@ response/error schemas remain to be specified.
   additions and deletions of different context IDs must not race with compound
   store operations or cleanup scans. Do not hold this lock during NumPy
   computation or network calls; execution on different contexts remains
-  concurrent. Per-context lifecycle coordination with in-flight operations
-  remains to be specified rather than introducing blanket tensor locks.
+  concurrent. Each operation holds references to immutable inputs and to its
+  original context object. Result publication checks that the same unexpired
+  object is still registered under the context ID. Cleanup removes the entry
+  and clears its stored values without waiting for NumPy computation.
 - Workers generate IDs for new results. Requests do not supply an output ID.
 - Reuse stored intermediate results. Detailed caching policy remains open.
 - At execution end, clean up each worker's context and all its associated
   values, including failure paths. Also clean up the aggregation-server
-  context. Failure and cancellation mechanisms remain to be designed.
+  context. Cleanup cancels aggregation waits before releasing worker contexts.
 - Use the FETA `context_id` as the aggregation-session identifier as well as
   the worker-store context identifier. The external analysis request ID can
   remain separate for logging.
@@ -164,8 +165,9 @@ response/error schemas remain to be specified.
 - Track elapsed lifetime using each process's monotonic clock. When the
   deadline is reached, the context is expired even if the execution is still
   active; close it and remove its stored values through the cleanup path.
-  The background scan interval and precise deadline-enforcement mechanics
-  remain to be specified.
+  The background scan interval defaults to 30 seconds. Access and result
+  publication also check the deadline, so expired data cannot be reused between
+  scans. Normal cleanup occurs immediately at execution end.
 - Expiry must terminate a waiting aggregation fetch with an error and prevent
   late operations from storing results into the expired context. It does not
   forcibly stop running NumPy computations; arrays still referenced by those
@@ -181,9 +183,17 @@ response/error schemas remain to be specified.
   it is not evidence that replay is safe.
 - On execution failure, terminate any pending aggregation wait and attempt
   cleanup of all initialized worker contexts and the aggregation-server
-  context. The cancellation/error-propagation mechanism remains open.
+  context. Removing the aggregation session marks it closed and notifies its
+  condition variable, waking a blocked fetch with a context-closed error.
+- Cancelling the controller coroutine triggers context cleanup even while its
+  synchronous execution runs off the event loop. RPC futures are cancelled
+  before cleanup, and new execution requests on closing clients are rejected.
+  Workers check RPC cancellation before loading or publishing data, so queued
+  initialization cannot repopulate a context after cancellation. Workers still
+  executing native code cannot publish
+  into closed contexts when that code finishes.
 - Automatic expiry for abandoned contexts is confirmed through the background
-  cleanup approach above. It has not yet been implemented.
+  cleanup approach above and is implemented on workers and aggregation services.
 
 ### Controller-Driven Aggregation Flow
 
@@ -209,9 +219,8 @@ NumPy array or concrete scalar. This remains automatic from the algorithm
 developer's perspective; no explicit federated-sum API is introduced.
 
 Determining eligible workers during initialization is separate from preparing
-each individual aggregation. The setup, submission, and fetch message schemas,
-result-release lifecycle, and timeout/cancellation behavior remain to be
-designed. All three stages identify the aggregation by the shared context ID
+each individual aggregation. The implemented setup, submission, and fetch
+messages all identify the aggregation by the shared context ID
 and controller-assigned step number.
 
 ### Tensor Model and Automatic Aggregation
@@ -274,7 +283,7 @@ centered = x - means  # Send means as an input to each worker; return FedTensor.
 
 Use typed protobuf messages over gRPC to transport operations, tensor
 references, parameters, and literal scalar/array inputs. The transport choice
-is confirmed; exact message schemas and enum values remain to be specified.
+and message schemas are implemented in `feta.proto`.
 Reuse the existing Arrow tensor byte encoding in
 [aggregation_serialization.py](../../exaflow/aggregation_serialization.py)
 for numeric arrays carried in protobuf byte fields. Worker-side semantic
@@ -287,13 +296,12 @@ Use one `LocalOperation` class for every operation, containing:
   values, or numeric NumPy arrays.
 - Operation-specific parameters, such as a numeric axis.
 
-Illustrative interface; the exact schema and enum names remain open:
+The operation class uses typed fields for its parameters (currently `axis`):
 
 ```python
 LocalOperation(
     type=OperationType.MULTIPLY,
     inputs=[LocalTensorRef("tensor-a81f"), 2.0],
-    parameters={},
 )
 ```
 
@@ -313,9 +321,10 @@ For operations whose results remain local, execution proceeds as follows:
 When an expression requires aggregation, use the controller-driven aggregation
 flow above: prepare the aggregation server before triggering contribution
 submission, then fetch the completed result directly at the controller.
-Local computations still use approved `LocalOperation` instances. How the
-submission instruction references a stored partial result or accompanies a
-local computation remains a protocol-design question.
+Local computations still use approved `LocalOperation` instances.
+`ExecuteRequest.aggregation_step` is zero for a local result or the prepared
+step number for an additive partial. Workers independently verify that this
+instruction matches the operation's actual placement before submitting.
 
 Requests describe operations; they do not carry executable Python, import paths,
 pickled functions, or arbitrary NumPy function names. Serialize operation data,
@@ -361,8 +370,8 @@ inherit Exareme3's execution structure.
   contribution, waits for the global result, and returns it to that worker.
   Its step-completion bookkeeping expects consumption by the workers. There
   is no controller result-fetch RPC. FETA's confirmed producer/consumer flow
-  therefore requires aggregation-server protocol and lifecycle changes; it
-  cannot be implemented solely by renaming existing client calls.
+  required the separate `FetaAggregation` service now registered alongside the
+  original service; Exareme3's existing protocol remains operational.
 - The [worker gRPC server](../../exaflow/worker/grpc_server.py) uses a
   `ThreadPoolExecutor`; a worker process is not single-threaded. Worker config
   normalizes `grpc.max_workers` to a fallback of `10`, and the
@@ -388,46 +397,144 @@ zero, clips coefficients to `[-1, 1]`, and handles perfect correlations in its
 p-value calculation. Preserve these behaviors and their output handling during
 migration; they need focused regression coverage when FETA is implemented.
 
-## Implementation Proposals — Not Yet Finalized
+## Implementation Contracts
 
-- Validate operation-specific fields on the worker, independently of controller
-  validation. Proposed checks include supported operation types and argument
-  schemas, context-scoped references, actual stored shapes and numeric dtypes,
-  valid axes, and resource limits.
-- Bound operation allocations and stored intermediates. Limits and enforcement
-  mechanisms remain open.
-- Expose separate aggregation-server prepare, contribution-submission, and
-  result-fetch calls to implement the confirmed controller-driven flow. Exact
-  RPC names and schemas are not finalized. Document the impact on existing
-  Exareme3 consumers when implementing changes to the shared server.
+### Modules and Protocol
 
-Do not interpret these proposals as an implemented security mechanism or a
-finalized protocol.
+- `exaflow/algorithms/feta`: algorithm base class and
+  `feta_pearson_correlation`. Specifications and result formatting reuse existing
+  Pearson helpers in place; tensor expressions and calculation run in FETA.
+- `exaflow/algorithms/feta/federated_numpy`: public typed NumPy-style function
+  package. The initial functions are `sum(a, axis=None)` and `transpose(a)`.
+- `exaflow/controller/services/feta`: execution strategy and per-analysis
+  runtime. Synchronous gRPC orchestration runs off the Quart event loop.
+- `exaflow/worker/feta`: independent operation executor and input preparation.
+- `exaflow/feta`: tensor API, shared operation contracts, clients, settings,
+  context storage, and cleanup job.
+- `exaflow/protos/feta/feta.proto`: separate `FetaWorker` and `FetaAggregation`
+  services on the existing worker and aggregation-server processes/ports.
 
-## Remaining Questions
+Worker RPCs are `InitializeContext`, `Execute`, and `Cleanup`. Initialization
+returns worker identity and input descriptors; execution returns a descriptor,
+never local array data. Each descriptor includes tensor ID, shape, dtype,
+numeric partition axis, and row-layout identity. The row layout originates at
+initialization and is propagated by approved operations.
 
-- Exact initialization protobuf and lifecycle response/error schemas. The
-  loading flow, prepared `float64` input tensors, `x`/`y`-only initial scope,
-  Pearson's omitted-`x` behavior, and insufficient-data skipping are settled.
-- Exact module layout and discovery configuration. A FETA-specific base class,
-  module discovery, name-keyed registry, and shared API routing are settled.
-- Final protobuf schemas, exact supported literal dtypes, and operation set.
-  Protobuf transport, Arrow tensor byte encoding, and sending ordinary NumPy
-  array inputs to every worker are confirmed.
-- Further helper reuse as implementation needs arise. Existing Exareme3 code
-  stays in place and may be called directly; FETA orchestration stays separate.
-- Aggregation setup, submission, and result-fetch schemas; submission
-  acknowledgements; result release after controller retrieval; and how
-  worker errors, deadlines, or cancellation terminate a waiting fetch.
-- Store concurrency, resource limits, caching, cancellation, and cleanup after
-  worker failure. Failing the execution after a worker failure and disabling
-  automatic operation retries are confirmed.
-- Configuration wiring, sweep interval, precise deadline enforcement, and
-  in-flight-operation lifecycle for maximum-lifetime expiry. The initial
-  default is 60 minutes; heartbeat renewal is out of scope.
-- Caller authorization and permitted result-release policies.
-- Tensor behavior beyond the agreed initial row-partitioned examples,
-  including broader broadcasting and length semantics after transformations.
+Aggregation RPCs are `Prepare`, `Submit`, `Fetch`, and `Cleanup`. Preparation
+specifies the exact worker set, output shape/dtype, context, and step. Submission
+acknowledges receipt without waiting for other workers. Contributions from
+unexpected workers, duplicates (including after result completion), incorrect
+steps, or inconsistent shapes/dtypes fail explicitly. Results are summed in
+stable worker-ID order, retained until fetch, and released after the single
+successful fetch. Fetch errors on expiry, cleanup, client cancellation, invalid
+contributions, or the configured aggregation wait timeout.
+Only one fetch may wait on a given step; concurrent duplicate fetches are
+rejected without consuming another waiting slot or replacing the first result.
+
+The controller starts fetch after dispatching worker requests and monitors the
+fetch and worker futures together. Any failed future cancels the aggregation;
+successful completion requires both the global result and valid worker
+acknowledgements. The aggregation process reserves `max_contexts` extra RPC
+threads above `max_grpc_connections`, leaving submission/control capacity
+available while result-fetch calls block.
+
+Regenerate the Python protocol from its source; never hand-edit generated files:
+
+```bash
+uv run python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. exaflow/protos/feta/feta.proto
+```
+
+### Operations and Limits
+
+The initial allowlist is `ADD`, `SUBTRACT`, `MULTIPLY`, `DIVIDE`, `POWER`,
+`TRANSPOSE`, `SUM`, `MATMUL`, and `LENGTH`. Literals are Python numeric scalars or
+NumPy arrays with integer dtypes up to 64 bits or `float32`/`float64`. Boolean,
+object, string, complex, non-native-endian, and higher-rank tensors are rejected. Inputs loaded
+from DuckDB are always `float64`.
+
+Supported tensors have rank at most two. Elementwise broadcasting cannot
+broadcast over a distributed record dimension or align different record
+layouts. `sum(axis=None)` contracts every dimension; explicit axes must be
+nonnegative and in range. Matrix multiplication supports aligned distributed
+contraction (`y.T @ x`), a row-partitioned matrix times a literal matrix, and a
+literal matrix times a column-partitioned matrix. Other placements fail
+explicitly. `len(x.T)` returns the replicated first dimension locally; length
+on a tensor partitioned along axis zero aggregates its local first dimensions.
+
+Store values are immutable. Reusing an intermediate `FedTensor` reuses its
+worker references without recomputation. There is no expression deduplication,
+automatic reduction cache, or automatic operation retry.
+
+All three service configurations accept a `[feta]` section. Defaults are:
+
+| Setting | Default |
+| --- | --- |
+| `context_lifetime_minutes` | 60 |
+| `cleanup_interval_seconds` | 30 |
+| `max_contexts` | 32 |
+| `max_context_bytes` | 268435456 (256 MiB) |
+| `max_tensor_bytes` | 67108864 (64 MiB) |
+
+Each context's initial deadline is process-local and monotonic. Configuration
+must be positive and finite; count/byte limits must be integers. Workers check
+predicted output size before evaluation, initial tensor size before constructing
+input arrays, and context capacity before storing results. The aggregation
+service also bounds retained contributions and output allocations. Temporary
+DuckDB loading and NumPy computation may use additional transient memory.
+The controller also checks its execution deadline before tensor operations and
+before returning the algorithm result. Expired contexts fail execution even if
+controller-side postprocessing has finished without another worker call.
+
+### Trust and Compatibility
+
+FETA uses the existing deployment's controller-to-worker trust boundary and
+gRPC transport; it does not introduce a new authentication system. Context and
+worker IDs provide scope/identity checks, not cryptographic authentication.
+Do not expose these RPCs directly to untrusted external callers. Worker-side
+operation validation prevents arbitrary code execution, but arbitrary
+compositions of allowed operations are not a differential-privacy guarantee.
+Minimum-row checks and existing privacy configuration are preserved.
+
+Existing HTTP request and Pearson response shapes are unchanged. The catalog
+adds type `feta` and algorithm ID `feta_pearson_correlation`; consumers with
+closed backend-type enums must accept `feta`. FETA rejects preprocessing,
+missing inputs, validation datasets, and optional execution flags initially.
+Existing Exareme3 services and algorithms continue using their original RPCs.
+Roll out the generated FETA protocol and services together on controller,
+workers, and aggregation server. Rollback disables/removes the FETA algorithm
+and restores the prior service images/configuration; existing algorithms do
+not require request migration.
+
+## Federated Local Computation Library Proposal
+
+The [federated local computation catalogue](LOCAL_COMPUTATIONS.md) reviews the
+full `algorithms/federated` tree, retaining the original 17-module statistics
+review and extending it to training, prediction, mixed effects, survival,
+preprocessing, composition and cross-validation. It maps sources to current
+operations, proposed kernels and required global reductions, and identifies hard
+problems around local optimization, risk sets, cluster ownership, row lineage,
+private output placement and intermediate memory. These are proposals and source
+observations, not approved operations, expanded preprocessing/missing policies,
+privacy releases or implemented algorithm migrations.
+
+## Validation and Future Scope
+
+Simulation tests use real operation/protobuf/storage code with an independent
+mock aggregation server and uneven worker partitions. Package integration tests
+use the actual Quart application, DuckDB loader, and localhost gRPC services;
+worker membership/metadata are supplied by a test landscape. Tests cover Pearson
+parity, rectangular orientation, omitted `x`, constant and small-sample cases,
+input rejection, worker skipping, broadcasting, cleanup, expiry, duplicate
+contributions, resource limits, and failure without retries.
+
+```bash
+uv run pytest -q tests/standalone_tests/feta
+```
+
+Full deployment/Kubernetes validation is separate from these integration tests.
+Future work may add preprocessing, additional input groups, broader layouts and
+operations, stronger authentication/data-release policies, retry deduplication,
+or caching. Those extensions are not part of the initial runtime requirements.
 
 ## Superseded Ideas
 
@@ -456,3 +563,46 @@ such. Verify links when moving or extending this record. Runtime, public API,
 protobuf, dependency, and deployment changes require their own implementation
 work and validation; this documentation record does not itself make those
 changes.
+
+### Public Typed Tensor Interface
+
+Algorithm authors import the function package with
+`from exaflow.algorithms.feta import federated_numpy as fnp`; the alias is optional.
+Keep arithmetic, comparisons as they become supported, and matrix multiplication
+in operator syntax. Do not add duplicate arithmetic function wrappers solely to
+mirror NumPy. Current public functions are `fnp.sum(a, axis=None)` and
+`fnp.transpose(a)`, which delegate distributed inputs to the existing tensor
+methods without adding worker requests or changing aggregation semantics.
+Existing `.sum()`, `.T` and `len(x)` remain available. Concrete real numerical
+NumPy arrays use the corresponding local NumPy computation; unsupported input
+types raise TypeError without attempting to convert distributed arrays.
+
+The sum overloads preserve the tensor method's scalar/full-reduction and
+axis-dependent return types. Transpose returns `FedTensor` for a distributed
+input and a NumPy array for a concrete input. Only the existing parameter subset
+is public: axis for sum and default axis reversal for transpose. Custom transpose
+axes and sum dtype/out/keepdims are not supported. Functions such as exp, log,
+sqrt, clip, masks and concatenation require separate operation implementations;
+they are not enabled merely because NumPy provides them.
+
+Pearson uses `fnp.sum` for feature and squared sums, and `fnp.transpose(y) @ x`
+for cross-products. Its six aggregation steps, output orientation and ordinary
+NumPy/SciPy postprocessing are unchanged. This interface addition does not change
+RPC schemas, worker operations, deployment settings or privacy boundaries.
+
+Algorithm authors import `FedTensor` from `exaflow.algorithms.feta`. Its abstract
+interface declares arithmetic, matrix multiplication, transpose, sum and length
+with typed operands and results. Prepared runtime tensors inherit that interface;
+algorithm `run` parameters are annotated with it. Elementwise arithmetic and
+transpose return `FedTensor`; length returns `int`. Overloads specify that
+`sum()` and `sum(axis=None)` return a concrete `int` or `float`. Axis-specific
+reductions retain union return types because partitioning and rank determine
+whether their results are tensors, arrays, or scalars. Matrix products return
+`FedTensor | NDArray`, since supported matrix operands are two-dimensional.
+
+Production parity validation compares both algorithms through `/analysis` using
+the same explicit complete-case filters. Normal Pearson retains its required
+missing-value handler (a no-op after filtering); FETA uses no preprocessing.
+Output structure,
+labels and observation counts must match exactly; numerical outputs use
+`rtol=1e-10`, `atol=1e-12` to allow summation-order rounding differences.

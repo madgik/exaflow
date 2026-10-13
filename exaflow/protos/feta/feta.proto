@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package exaflow.feta;
+
+import "google/protobuf/struct.proto";
+
+// Separate services: existing Exareme3 RPCs are unaffected.
+service FetaWorker {
+  rpc InitializeContext(InitializeRequest) returns (InitializeResponse);
+  rpc Execute(ExecuteRequest) returns (TensorDescriptor);
+  rpc Cleanup(ContextRequest) returns (Ack);
+}
+
+service FetaAggregation {
+  rpc Prepare(PrepareRequest) returns (Ack);
+  rpc Submit(SubmitRequest) returns (Ack);
+  rpc Fetch(StepRequest) returns (TensorValue);
+  rpc Cleanup(ContextRequest) returns (Ack);
+}
+
+message Ack {}
+message ContextRequest { string context_id = 1; }
+message StepRequest {
+  string context_id = 1;
+  uint64 step = 2;
+}
+message DataSelection {
+  string data_model = 1;
+  repeated string datasets = 2;
+  repeated string variables = 3;
+  google.protobuf.Struct filters = 4;
+}
+message InitializeRequest {
+  string context_id = 1;
+  DataSelection data = 2;
+  repeated string x = 3;
+  repeated string y = 4;
+}
+message InitializeResponse {
+  string worker_id = 1;
+  TensorDescriptor x = 2;
+  TensorDescriptor y = 3;
+}
+message TensorDescriptor {
+  string tensor_id = 1;
+  repeated int64 shape = 2;
+  string dtype = 3;
+  // -1 denotes an additive partial with no remaining distributed dimension.
+  int32 partition_axis = 4;
+  string row_layout = 5;
+}
+message TensorValue { bytes arrow = 1; }
+message Operand {
+  oneof value {
+    string tensor_id = 1;
+    double real = 2;
+    sint64 integer = 3;
+    TensorValue array = 4;
+  }
+}
+enum OperationType {
+  OPERATION_UNSPECIFIED = 0;
+  ADD = 1;
+  SUBTRACT = 2;
+  MULTIPLY = 3;
+  DIVIDE = 4;
+  POWER = 5;
+  TRANSPOSE = 6;
+  SUM = 7;
+  MATMUL = 8;
+  LENGTH = 9;
+}
+message LocalOperation {
+  OperationType type = 1;
+  repeated Operand inputs = 2;
+  optional int32 axis = 3;
+}
+message ExecuteRequest {
+  string context_id = 1;
+  LocalOperation operation = 2;
+  // Zero for a local result; otherwise submit the partial to this prepared step.
+  uint64 aggregation_step = 3;
+}
+message PrepareRequest {
+  string context_id = 1;
+  uint64 step = 2;
+  repeated string worker_ids = 3;
+  repeated int64 shape = 4;
+  string dtype = 5;
+}
+message SubmitRequest {
+  string context_id = 1;
+  uint64 step = 2;
+  string worker_id = 3;
+  TensorValue value = 4;
+}

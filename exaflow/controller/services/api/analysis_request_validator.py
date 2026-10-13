@@ -6,6 +6,7 @@ from typing import Optional
 
 from exaflow import exareme3_preprocessing_step_classes
 from exaflow.algorithms.specifications import AlgorithmSpecification
+from exaflow.algorithms.specifications import AlgorithmType
 from exaflow.algorithms.specifications import InputDataSpecification
 from exaflow.algorithms.specifications import InputDataStatType
 from exaflow.algorithms.specifications import InputDataType
@@ -88,6 +89,11 @@ def _validate_analysis_request_body(
     smpc_enabled: bool,
     smpc_optional: bool,
 ):
+    if (
+        algorithm_specs.type == AlgorithmType.FETA
+        and analysis_request_dto.preprocessing
+    ):
+        raise BadUserInput("FETA does not support preprocessing.")
     _validate_inputdata_base(
         inputdata=analysis_request_dto.inputdata,
         training_datasets=training_datasets,

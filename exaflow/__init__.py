@@ -26,6 +26,8 @@ __all__ = [
     "EXAREME3_ALGORITHM_FOLDERS",
     "exareme3_algorithm_classes",
     "exareme3_preprocessing_step_classes",
+    "FETA_ALGORITHM_FOLDERS",
+    "feta_algorithm_classes",
 ]
 
 
@@ -209,3 +211,27 @@ def get_exareme3_preprocessing_step_classes() -> Dict[str, type]:
 
 
 exareme3_preprocessing_step_classes = get_exareme3_preprocessing_step_classes()
+
+
+FETA_ALGORITHM_FOLDERS = os.getenv(
+    "FETA_ALGORITHM_FOLDERS", "./exaflow/algorithms/feta"
+)
+
+
+def get_feta_algorithm_classes():
+    from exaflow.algorithms.feta.algorithm import Algorithm
+    from exaflow.algorithms.specifications import AlgorithmType
+
+    import_algorithm_modules(FETA_ALGORITHM_FOLDERS)
+    registry = {}
+    for cls in Algorithm.__subclasses__():
+        specification = cls.get_specification()
+        if specification.type != AlgorithmType.FETA:
+            raise ValueError("FETA algorithms must declare AlgorithmType.FETA.")
+        if specification.name in registry:
+            raise ValueError(f"Duplicate FETA algorithm name: {specification.name}")
+        registry[specification.name] = cls
+    return registry
+
+
+feta_algorithm_classes = get_feta_algorithm_classes()

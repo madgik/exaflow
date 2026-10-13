@@ -314,6 +314,28 @@ def serve() -> None:
     worker_service = WorkerService(health_servicer=health_servicer)
     worker_pb2_grpc.add_WorkerServiceServicer_to_server(worker_service, server)
 
+    from exaflow.feta.lifecycle import CleanupJob
+    from exaflow.feta.settings import FetaSettings
+    from exaflow.protos.feta import feta_pb2_grpc
+    from exaflow.worker.feta.service import FetaWorkerService
+
+    feta_settings = FetaSettings.from_config(worker_config)
+    feta_service = FetaWorkerService(
+        worker_id=worker_config.identifier,
+        settings=feta_settings,
+        minimum_rows=worker_config.privacy.minimum_row_count,
+        aggregation_address=worker_config.aggregation_server.dns,
+    )
+    feta_pb2_grpc.add_FetaWorkerServicer_to_server(feta_service, server)
+    health_servicer.set("feta.worker", health_pb2.HealthCheckResponse.SERVING)
+    cleanup_job = CleanupJob(
+        feta_service.store.expire,
+        feta_settings.cleanup_interval_seconds,
+        on_failure=lambda: health_servicer.set(
+            "feta.worker", health_pb2.HealthCheckResponse.NOT_SERVING
+        ),
+    )
+
     listen_addr = f"{worker_config.grpc.ip}:{worker_config.grpc.port}"
     server.add_insecure_port(listen_addr)
     LOGGER.info("Worker gRPC server listening on %s", listen_addr)
@@ -325,11 +347,14 @@ def serve() -> None:
     )
 
     server.start()
+    cleanup_job.start()
     try:
         server.wait_for_termination()
     except KeyboardInterrupt:
         LOGGER.info("Worker gRPC server shutting down...")
-        server.stop(0)
+    finally:
+        cleanup_job.stop()
+        server.stop(5).wait()
 
 
 if __name__ == "__main__":

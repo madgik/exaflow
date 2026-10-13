@@ -96,7 +96,16 @@ Example:
 | `requires_validation_datasets` | `boolean` | Whether `inputdata.validation_datasets` is required. | If false, validation datasets are rejected. |
 | `parameters` | `object \| null` | Map of parameter name to `ParameterSpecificationDTO`. | Request parameter keys outside this map are rejected. |
 | `required_preprocessing` | `string[]` | Preprocessing step ids that must be included in execution requests. | The server rejects requests that omit any listed step. |
-| `type` | `string` | Algorithm backend type, for example `exareme3`. | Informational for clients; execution still uses `POST /analysis`. |
+| `type` | `string` | Algorithm backend type: `exareme3`, `feta`, or `flower`. | Informational for clients; execution still uses `POST /analysis`. |
+
+FETA algorithms use the same analysis request shape and are selected by their
+registered name, initially `feta_pearson_correlation`. Their specification type
+is `feta`; clients with a closed backend-type enum must accept this additional
+value. The existing `pearson_correlation` remains available. FETA initially
+rejects preprocessing, missing numerical inputs, validation datasets, and
+optional execution flags. Its Pearson response shape matches the existing
+Pearson response. See [FETA's contract](feta/AGENTS.md) and
+[the algorithm documentation](algorithms/feta_pearson_correlation.md).
 
 During request validation, the server uses this DTO to decide which variables
 are required, which CDEs are valid for each variable slot, which parameters are

@@ -9,6 +9,7 @@ from typing import Union
 from exaflow import FLOWER_ALGORITHM_FOLDERS
 from exaflow import exareme3_algorithm_classes
 from exaflow import exareme3_preprocessing_step_classes
+from exaflow import feta_algorithm_classes
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import AlgorithmType
 from exaflow.algorithms.specifications import ComponentType
@@ -54,6 +55,11 @@ class Specifications:
 
     def _load_specifications(self) -> None:
         self._load_exareme3_specifications()
+        for algorithm_name, algorithm_cls in feta_algorithm_classes.items():
+            spec = algorithm_cls.get_specification()
+            if spec.name != algorithm_name:
+                raise ValueError("FETA algorithm registry/specification name mismatch.")
+            self._add_specification(spec, f"FETA algorithm class '{algorithm_name}'")
         self._load_flower_specifications()
 
     def _load_exareme3_specifications(self) -> None:

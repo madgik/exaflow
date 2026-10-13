@@ -30,6 +30,10 @@ def get_algorithm_execution_strategy(
 
     algorithm_name = analysis_request_dto.algorithm.name
     algo_type = specifications.get_algorithm_type(algorithm_name)
+    if algo_type == AlgorithmType.FETA:
+        from exaflow.controller.services.feta.strategy import FetaStrategy
+
+        return FetaStrategy(analysis_request_dto)
     components = _get_required_component_types(analysis_request_dto)
     controller = _get_algorithm_controller(algo_type)
     strategy_type = _get_algorithm_strategy_type(algo_type, components)

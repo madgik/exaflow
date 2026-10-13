@@ -23,6 +23,13 @@ port="$LOCALWORKERS_PORT"
 enabled = "$AGGREGATION_SERVER_ENABLED"
 dns= "$AGGREGATION_SERVER_DNS"
 
+[feta]
+context_lifetime_minutes = 60
+cleanup_interval_seconds = 30
+max_contexts = 32
+max_context_bytes = 268435456
+max_tensor_bytes = 67108864
+
 
 [smpc]
 enabled = "$SMPC_ENABLED"

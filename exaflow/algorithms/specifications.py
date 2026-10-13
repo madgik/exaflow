@@ -15,6 +15,7 @@ from pydantic import model_validator
 class AlgorithmType(Enum):
     FLOWER = "flower"
     EXAREME3 = "exareme3"
+    FETA = "feta"
 
 
 @unique

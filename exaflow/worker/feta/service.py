@@ -1,0 +1,215 @@
+import numbers
+import re
+
+import numpy as np
+from google.protobuf.json_format import MessageToDict
+
+from exaflow.aggregation_serialization import ndarray_to_bytes
+from exaflow.algorithms.utils.inputdata_utils import Inputdata
+from exaflow.data_filters import FILTER_OPERATORS
+from exaflow.feta.clients import FetaAggregationClient
+from exaflow.feta.lifecycle import ContextClosedError
+from exaflow.feta.lifecycle import ContextStore
+from exaflow.feta.lifecycle import ResourceLimitError
+from exaflow.feta.operations import LocalOperation
+from exaflow.feta.operations import LocalTensorRef
+from exaflow.feta.operations import TensorMetadata
+from exaflow.feta.operations import evaluate
+from exaflow.feta.operations import infer_operation
+from exaflow.feta.operations import validate_array
+from exaflow.feta.rpc import abort
+from exaflow.protos.feta import feta_pb2 as pb
+from exaflow.protos.feta import feta_pb2_grpc as rpc
+from exaflow.worker.exareme3.udf.udf_db import load_algorithm_arrow_table
+from exaflow.worker_communication import InsufficientDataError
+
+
+def validate_filter_wire(rule):
+    """Guard the reused SQL builder even for requests bypassing the HTTP API."""
+    if not rule:
+        return
+    if "condition" in rule:
+        if rule["condition"] not in ("AND", "OR"):
+            raise ValueError("Invalid FETA filter condition.")
+        for child in rule.get("rules", []):
+            validate_filter_wire(child)
+        return
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", rule.get("id", "")):
+        raise ValueError("Invalid FETA filter variable identifier.")
+    if rule.get("operator") not in FILTER_OPERATORS:
+        raise ValueError("Unsupported FETA filter operator.")
+    if rule["operator"] in ("is_null", "is_not_null"):
+        return
+    values = rule.get("value")
+    values = values if isinstance(values, list) else [values]
+    if rule.get("type") == "string":
+        if any(not isinstance(value, str) for value in values):
+            raise ValueError("String filter requires string values.")
+    elif any(not isinstance(value, numbers.Real) for value in values):
+        raise ValueError("Numerical filter requires numerical values.")
+
+
+class FetaWorkerService(rpc.FetaWorkerServicer):
+    def __init__(
+        self,
+        worker_id,
+        settings=None,
+        minimum_rows=10,
+        loader=load_algorithm_arrow_table,
+        aggregation_address=None,
+        aggregation_factory=FetaAggregationClient,
+    ):
+        self.worker_id = worker_id
+        self.store = ContextStore(settings)
+        self.minimum_rows = minimum_rows
+        self.loader = loader
+        self.aggregation_address = aggregation_address
+        self.aggregation_factory = aggregation_factory
+
+    def initialize(self, request, active=lambda: True):
+        if not active():
+            raise ContextClosedError("FETA initialization was cancelled.")
+        data = request.data
+        if not re.fullmatch(r"[A-Za-z0-9_.:-]+", data.data_model):
+            raise ValueError("Invalid FETA data-model identifier.")
+        if not data.datasets or not request.x or not request.y:
+            raise ValueError("FETA requires datasets and prepared x/y column groups.")
+        variables = list(dict.fromkeys([*request.x, *request.y]))
+        if not set(variables).issubset(data.variables):
+            raise ValueError("FETA input columns are outside the selected variables.")
+        if any(not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) for name in variables):
+            raise ValueError("Invalid FETA input variable identifier.")
+        filters = MessageToDict(data.filters) if data.HasField("filters") else None
+        validate_filter_wire(filters)
+        inputdata = Inputdata(
+            data_model=data.data_model,
+            datasets=list(data.datasets),
+            variables=variables,
+            filters=filters,
+        )
+        # Reserve before loading: cleanup can close initialization in flight.
+        self.store.create(request.context_id, {})
+        ctx, _ = self.store.acquire(request.context_id, [])
+        try:
+            return self._load_inputs(request, inputdata, variables, ctx, active)
+        except Exception:
+            self.store.cleanup(request.context_id, expected_context=ctx)
+            raise
+
+    def _load_inputs(self, request, inputdata, variables, ctx, active):
+        if not active():
+            raise ContextClosedError("FETA initialization was cancelled.")
+        table = self.loader(inputdata, include_dataset=False)
+        nrows = getattr(table, "num_rows", len(table))
+        if nrows < self.minimum_rows:
+            raise InsufficientDataError(
+                f"Insufficient data returned {nrows} rows; minimum required is "
+                f"{self.minimum_rows}."
+            )
+        if getattr(table, "nbytes", 0) > self.store.settings.max_context_bytes:
+            raise ResourceLimitError("FETA input exceeds the context memory limit.")
+        groups = (
+            [request.x]
+            if list(request.x) == list(request.y)
+            else [request.x, request.y]
+        )
+        group_sizes = [nrows * len(columns) * 8 for columns in groups]
+        if any(size > self.store.settings.max_tensor_bytes for size in group_sizes):
+            raise ResourceLimitError("FETA input exceeds the tensor memory limit.")
+        if sum(group_sizes) > self.store.settings.max_context_bytes:
+            raise ResourceLimitError("FETA input exceeds the context memory limit.")
+        frame = table.to_pandas()
+        # TODO: replace temporary missing-value rejection when preprocessing is designed.
+        if frame[variables].isna().any().any():
+            raise ValueError("FETA does not yet support missing input values.")
+        tensors = {}
+        for name, columns in (("x", request.x), ("y", request.y)):
+            try:
+                array = frame[list(columns)].to_numpy(dtype=np.float64)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    "Selected FETA columns must contain numerical values."
+                ) from exc
+            validate_array(array, self.store.settings.max_tensor_bytes)
+            tensors[name] = (
+                array,
+                TensorMetadata(array.shape, "float64", 0, request.context_id),
+            )
+        identical = list(request.x) == list(request.y)
+        if identical:
+            tensors.pop("y")
+        if not active():
+            raise ContextClosedError("FETA initialization was cancelled.")
+        refs = {
+            name: self.store.put(request.context_id, ctx, array, metadata)
+            for name, (array, metadata) in tensors.items()
+        }
+        return pb.InitializeResponse(
+            worker_id=self.worker_id,
+            x=tensors["x"][1].descriptor(refs["x"]),
+            y=(tensors["x"] if identical else tensors["y"])[1].descriptor(
+                refs["x"] if identical else refs["y"]
+            ),
+        )
+
+    def execute(self, request, active=lambda: True):
+        if not active():
+            raise ContextClosedError("FETA operation was cancelled.")
+        operation = LocalOperation.from_proto(
+            request.operation, self.store.settings.max_tensor_bytes
+        )
+        ids = [v.tensor_id for v in operation.inputs if isinstance(v, LocalTensorRef)]
+        ctx, stored = self.store.acquire(request.context_id, ids)
+        stored = iter(stored)
+        inputs, metadata = [], []
+        for operand in operation.inputs:
+            if isinstance(operand, LocalTensorRef):
+                array, meta = next(stored)
+            else:
+                array = validate_array(operand, self.store.settings.max_tensor_bytes)
+                meta = TensorMetadata(array.shape, str(array.dtype), -1, "")
+            inputs.append(array)
+            metadata.append(meta)
+        result_meta = infer_operation(
+            operation, metadata, self.store.settings.max_tensor_bytes
+        )
+        global_result = result_meta.partition_axis == -1
+        if global_result != bool(request.aggregation_step):
+            raise ValueError(
+                "Aggregation instruction differs from operation placement."
+            )
+        result = evaluate(operation, inputs, result_meta)
+        if not active():
+            raise ContextClosedError("FETA operation was cancelled.")
+        tensor_id = self.store.put(request.context_id, ctx, result, result_meta)
+        if global_result:
+            self.store.check_active(request.context_id, ctx)
+            client = self.aggregation_factory(self.aggregation_address)
+            try:
+                client.submit(
+                    pb.SubmitRequest(
+                        context_id=request.context_id,
+                        step=request.aggregation_step,
+                        worker_id=self.worker_id,
+                        value=pb.TensorValue(arrow=ndarray_to_bytes(result)),
+                    )
+                )
+            finally:
+                client.close()
+        return result_meta.descriptor(tensor_id)
+
+    def InitializeContext(self, request, context):
+        try:
+            return self.initialize(request, context.is_active)
+        except Exception as exc:
+            abort(context, exc)
+
+    def Execute(self, request, context):
+        try:
+            return self.execute(request, context.is_active)
+        except Exception as exc:
+            abort(context, exc)
+
+    def Cleanup(self, request, context):
+        self.store.cleanup(request.context_id)
+        return pb.Ack()

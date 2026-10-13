@@ -38,7 +38,7 @@ flowchart TD
    selected algorithm name is carried in `algorithm.name`.
 1. `exaflow/controller/quart/endpoints.py` validates request shape and delegates
    to `validate_analysis_request`.
-1. `get_algorithm_execution_strategy` selects an Exareme3 or Flower strategy.
+1. `get_algorithm_execution_strategy` selects an Exareme3, FETA, or Flower strategy.
 1. Exareme3 strategy gets worker metadata, applies preprocessing metadata
    transforms, constructs `Exareme3AlgorithmFlowEngineInterface`, and runs the
    algorithm wrapper.
@@ -51,6 +51,16 @@ flowchart TD
 1. The algorithm returns a Pydantic model, serialized by the strategy as JSON.
 
 ## Module Boundaries
+
+FETA algorithms use the public `FedTensor` interface and `federated_numpy`
+function package under `exaflow.algorithms.feta`; sum and transpose functions
+reuse the same execution path as tensor methods, while arithmetic uses operators.
+FETA has a separate controller strategy and worker operation service. Its
+algorithms live in `exaflow/algorithms/feta` and shared contracts/utilities in
+`exaflow/feta`. The controller prepares aggregation steps, workers submit
+partials, and the controller fetches the result directly. Existing services
+remain registered alongside FETA on the same processes and ports. See
+[the canonical FETA architecture](../feta/AGENTS.md) for its complete contracts.
 
 - Controller HTTP routing should stay in `exaflow/controller/quart`.
 - Controller DTOs and request/spec validation should stay in
