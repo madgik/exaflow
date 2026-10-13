@@ -19,14 +19,15 @@ Public platform interfaces (API specification types, configuration, registry,
 service interfaces, transport and API errors) remain integration contracts.
 Reference implementations may be imported in parity tests only.
 
-FETA algorithms import `FedTensor` and the `federated_numpy` package from
+FETA algorithms import `FedTensor`, `FedColumns` and `federated_numpy` from
 `exaflow.algorithms.feta`. Keep arithmetic and matrix operators as tensor
 expressions; use the typed NumPy-style functions for supported non-arithmetic
 operations. The package exposes `sum`, `transpose`, `equal`, `min`, `max`, `unique`,
-`ones_like` and `column_stack`; tensors also support
+`ones_like`, `column_stack`, `exp`, `log` and `where`; tensors also support
 column selection and boolean row indexing.
 FETA input preparation follows the specification and validated request. Algorithm
-`run` methods declare typed named inputs; the controller passes only selected
+`run` methods declare typed named inputs; `column_inputs` statically declares
+FedColumns groups when per-column metadata/dtypes are needed. The controller passes only selected
 groups as keyword arguments. Do not add algorithm input-resolution hooks.
 For the statistics migration, validate one algorithm at a time and ask the user
 to continue before starting the next. Add NumPy-equivalent operations as needed;

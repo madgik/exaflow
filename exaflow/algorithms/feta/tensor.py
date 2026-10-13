@@ -22,6 +22,14 @@ class FedTensor(ABC):
     """
 
     @abstractmethod
+    def _unary(self, operation: Literal["exp", "log"]) -> FedTensor:
+        """Apply an approved numerical elementwise function."""
+
+    @abstractmethod
+    def _where(self, x: TensorOperand, y: TensorOperand) -> FedTensor:
+        """Select numerical values using this boolean tensor."""
+
+    @abstractmethod
     def _ones_like(self) -> FedTensor:
         """Create local ones with this tensor's shape, dtype and partitioning."""
 

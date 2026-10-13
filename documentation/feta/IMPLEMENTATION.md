@@ -372,3 +372,53 @@ factor ordering and cleanup. No Ruff, formatters or Docker/Kubernetes were used.
 
 The next proposed migration is `feta_chi_squared`, pending the user's
 continuation checkpoint. The full statistics migration remains unfinished.
+
+## FedColumns and Logistic Regression — 2026-10-14
+
+Implemented the approved column-collection approach and standard
+`feta_logistic_regression` before returning to statistics. Typed FedColumns owns
+ordered references, immutable column metadata and row-count metadata. Worker
+initialization loads a single aligned table and stores homogeneous columns;
+native integer collection dtypes are preserved alongside unchanged float64
+matrix inputs. Declarative column_inputs selects the representation without
+input-resolution hooks. Metadata comes from validated engine CDE contracts.
+
+Logistic regression preserves code-based feature names, categorical-first order,
+one intercept, class-count checks, Newton updates, inversion/pseudoinverse policy,
+50-iteration/1e-4 stopping rules and complete inference outputs. Text categories
+use union; numeric categories use declared-code presence counts, rejecting
+undeclared values without releasing arbitrary numerical uniques. Added fixed
+NumPy-equivalent exp, log and where operations and typed public functions.
+
+The initialization protocol adds column groups and named tensor descriptors.
+Controller and workers must update together; HTTP requests/results, aggregation
+schemas, config, privacy thresholds and data are unchanged. Internal input/model
+implementations remain FETA-owned, with no legacy/shared-helper imports.
+Rollback restores FETA modules/bindings and removes the new registration; no
+legacy source change or data migration is needed.
+
+Validation: **345 focused regression/package tests passed**. Simulations cover
+numerical, text categorical and mixed/numeric-category covariates, uneven/empty
+partitions, privacy skips, feature ordering, unknown codes, class errors,
+nonconvergence, forced pseudoinverse fallback, typed reference reuse, metadata
+immutability, dtype overlap, function semantics and cleanup. Statsmodels provides
+independent coefficient checks on identifiable designs. A real package API test
+uses mixed covariates through DuckDB and gRPC.
+
+**10 live development-deployment cases passed**: all five standard logistic
+fixtures and all five two-way ANOVA regression fixtures, comparing full responses
+with rtol=1e-10/atol=1e-12. A collinear-design check identified the normal solver's
+unstable-inverse behavior; fallback correctness is tested with inversion failure,
+and the numerical sensitivity is documented rather than changing solver policy.
+No Docker/Kubernetes, Ruff or formatters were used.
+
+The completed priority is standard logistic regression, not its cross-validation
+variant. The statistics goal remains unfinished; next proposed algorithm is
+feta_chi_squared, pending the user's continuation checkpoint.
+
+Final ownership/input checks: **48 package/logistic checks passed**, followed by
+**28 targeted logistic/function/boundary checks passed** after nullable integer
+conversion. Changed Python syntax, Markdown links, exact protobuf regeneration
+and git diff --check passed. Legacy Exareme3 and shared federated source have no
+diff. Numeric metadata code conversion is explicit for int/real/text SQL types;
+optional column groups follow selected-request presence.

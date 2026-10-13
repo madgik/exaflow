@@ -76,6 +76,12 @@ class FetaWorkerService(rpc.FetaWorkerServicer):
             raise ValueError("Invalid FETA data-model identifier.")
         if not data.datasets or not (request.x or request.y):
             raise ValueError("FETA requires datasets and a selected input group.")
+        if len(set(request.column_groups)) != len(request.column_groups) or set(
+            request.column_groups
+        ) - {"x", "y"}:
+            raise ValueError("Invalid FETA column groups.")
+        if any(not getattr(request, group) for group in request.column_groups):
+            raise ValueError("Column groups must have selected inputs.")
         variables = list(dict.fromkeys([*request.x, *request.y]))
         if not set(variables).issubset(data.variables):
             raise ValueError("FETA input columns are outside the selected variables.")
@@ -115,13 +121,21 @@ class FetaWorkerService(rpc.FetaWorkerServicer):
             for name, columns in (("x", request.x), ("y", request.y))
             if columns
         }
-        selections = set(groups.values())
+        selections = {
+            (selection, group in request.column_groups)
+            for group, names in groups.items()
+            for selection in (
+                [(name,) for name in names]
+                if group in request.column_groups
+                else [names]
+            )
+        }
         frame = table.to_pandas()
         # TODO: replace temporary missing-value rejection when preprocessing is designed.
         if frame[variables].isna().any().any():
             raise ValueError("FETA does not yet support missing input values.")
         tensors = {}
-        for columns in selections:
+        for columns, individual in selections:
             selected = frame[list(columns)]
             text_columns = [
                 pa.types.is_string(table.schema.field(c).type)
@@ -160,9 +174,20 @@ class FetaWorkerService(rpc.FetaWorkerServicer):
                     raise ResourceLimitError(
                         "FETA input exceeds the tensor memory limit."
                     )
-                array = selected.to_numpy(dtype=np.float64)
+                preserve_integer = (
+                    len(columns) == 1
+                    and individual
+                    and pa.types.is_integer(table.schema.field(columns[0]).type)
+                )
+                array = (
+                    selected.to_numpy(
+                        dtype=table.schema.field(columns[0]).type.to_pandas_dtype()
+                    )
+                    if preserve_integer
+                    else selected.to_numpy(dtype=np.float64)
+                )
             validate_array(array, self.store.settings.max_tensor_bytes)
-            tensors[columns] = (
+            tensors[(columns, individual)] = (
                 array,
                 TensorMetadata(array.shape, str(array.dtype), 0, request.context_id),
             )
@@ -179,8 +204,18 @@ class FetaWorkerService(rpc.FetaWorkerServicer):
         }
         response = pb.InitializeResponse(worker_id=self.worker_id)
         for name, columns in groups.items():
+            if name in request.column_groups:
+                for column in columns:
+                    response.columns.add(
+                        group=name,
+                        name=column,
+                        tensor=tensors[((column,), True)][1].descriptor(
+                            refs[((column,), True)]
+                        ),
+                    )
+                continue
             getattr(response, name).CopyFrom(
-                tensors[columns][1].descriptor(refs[columns])
+                tensors[(columns, False)][1].descriptor(refs[(columns, False)])
             )
         return response
 

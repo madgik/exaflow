@@ -35,11 +35,18 @@ message InitializeRequest {
   DataSelection data = 2;
   repeated string x = 3;
   repeated string y = 4;
+  repeated string column_groups = 5;
 }
 message InitializeResponse {
   string worker_id = 1;
   TensorDescriptor x = 2;
   TensorDescriptor y = 3;
+  repeated NamedTensor columns = 4;
+}
+message NamedTensor {
+  string group = 1;
+  string name = 2;
+  TensorDescriptor tensor = 3;
 }
 message TensorDescriptor {
   string tensor_id = 1;
@@ -90,6 +97,9 @@ enum OperationType {
   UNIQUE = 15;
   ONES_LIKE = 16;
   COLUMN_STACK = 17;
+  EXP = 18;
+  LOG = 19;
+  WHERE = 20;
 }
 message LocalOperation {
   OperationType type = 1;

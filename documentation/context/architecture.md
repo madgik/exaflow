@@ -164,3 +164,12 @@ Public engine specification types, configuration, discovery, worker landscape,
 service interfaces, protobufs and API errors remain platform integration points.
 The FETA dependency-boundary test enforces these imports. Legacy implementations
 remain available as parity-test references and are not changed for FETA.
+
+For mixed FETA tabular inputs, algorithms declare column_inputs and receive typed
+FedColumns with individually stored FedTensors and immutable CDE metadata.
+Initialization still loads one aligned query, sends selected x/y only and skips
+privacy-ineligible workers. Integer collection dtypes are preserved; existing
+matrix inputs retain float64 numerical loading. Standard FETA logistic regression
+encodes categories in tensor expressions and iterates controller-owned Newton
+updates using aggregated gradients, Hessians and likelihoods. No legacy or shared
+computation libraries are imported.

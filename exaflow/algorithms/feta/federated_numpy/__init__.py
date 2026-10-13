@@ -9,9 +9,13 @@ import numpy as np
 from numpy.typing import NDArray
 
 from exaflow.algorithms.feta.tensor import FedTensor
+from exaflow.algorithms.feta.tensor import TensorOperand
 from exaflow.algorithms.feta.tensor import TensorResult
 
 __all__ = [
+    "exp",
+    "log",
+    "where",
     "sum",
     "transpose",
     "equal",
@@ -193,3 +197,48 @@ def column_stack(tup: Sequence[FedTensor] | Sequence[NDArray]) -> FedTensor | ND
     if not all(isinstance(a, np.ndarray) for a in tensors):
         raise TypeError("column_stack requires NumPy arrays or FedTensors.")
     return np.column_stack(tensors)
+
+
+@overload
+def exp(a: FedTensor) -> FedTensor: ...
+
+
+@overload
+def exp(a: NDArray) -> NDArray: ...
+
+
+def exp(a: FedTensor | NDArray) -> FedTensor | NDArray:
+    """Elementwise exponential, preserving distributed placement."""
+    return a._unary("exp") if isinstance(a, FedTensor) else np.exp(_numerical_array(a))
+
+
+@overload
+def log(a: FedTensor) -> FedTensor: ...
+
+
+@overload
+def log(a: NDArray) -> NDArray: ...
+
+
+def log(a: FedTensor | NDArray) -> FedTensor | NDArray:
+    """Elementwise natural logarithm, preserving distributed placement."""
+    return a._unary("log") if isinstance(a, FedTensor) else np.log(_numerical_array(a))
+
+
+@overload
+def where(condition: FedTensor, x: TensorOperand, y: TensorOperand) -> FedTensor: ...
+
+
+@overload
+def where(
+    condition: NDArray, x: NDArray | int | float, y: NDArray | int | float
+) -> NDArray: ...
+
+
+def where(condition, x, y):
+    """Select aligned numerical values with a boolean distributed mask."""
+    if isinstance(condition, FedTensor):
+        return condition._where(x, y)
+    if isinstance(x, FedTensor) or isinstance(y, FedTensor):
+        raise TypeError("Distributed where requires a distributed condition.")
+    return np.where(condition, x, y)

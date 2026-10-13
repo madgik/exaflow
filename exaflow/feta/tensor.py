@@ -42,6 +42,14 @@ class RuntimeFedTensor(FedTensor):
         inputs = (other, self) if reverse else (self, other)
         return self.runtime.apply(operation, inputs)
 
+    def _unary(self, operation: Literal["exp", "log"]) -> FedTensor:
+        return self.runtime.apply(
+            {"exp": OperationType.EXP, "log": OperationType.LOG}[operation], (self,)
+        )
+
+    def _where(self, x: TensorOperand, y: TensorOperand) -> FedTensor:
+        return self.runtime.apply(OperationType.WHERE, (self, x, y))
+
     def _ones_like(self) -> FedTensor:
         return self.runtime.apply(OperationType.ONES_LIKE, (self,))
 

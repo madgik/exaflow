@@ -67,7 +67,8 @@ proposal to a confirmed decision.
 
 - The runtime prepares only the selected input groups declared in the
   specification and passes them to `run` by name. They are already
-  `FedTensor` objects; the algorithm does not cast them or select input columns
+  `FedTensor` objects, or `FedColumns` for declared tabular groups; the algorithm
+  does not cast them or select initial input columns
   through a `self.tensor(...)` call.
 
 - Each algorithm declares its typed named inputs, for example `run(self, y: FedTensor)` or `run(self, y: FedTensor, x: FedTensor | None = None)`. There is
@@ -93,7 +94,7 @@ proposal to a confirmed decision.
 - Initially support only the `x` and `y` input groups. Defer additional named
   groups beyond the first version.
 
-- Load initial numerical tensors as `float64`, matching the current Pearson
+- Load initial numerical matrix tensors as `float64`, matching the current Pearson
   computation. This does not change the integer return type of `len(x)` or
   settle the complete set of supported literal operand dtypes.
 
@@ -498,7 +499,7 @@ uv run python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. exaflo
 ### Operations and Limits
 
 The initial allowlist is `ADD`, `SUBTRACT`, `MULTIPLY`, `DIVIDE`, `POWER`,
-`TRANSPOSE`, `SUM`, `MATMUL`, `LENGTH`, `EQUAL`, `COLUMN`, `FILTER`, `MIN`, `MAX`, `UNIQUE`, `ONES_LIKE` and `COLUMN_STACK`. Literals are Python numeric scalars or
+`TRANSPOSE`, `SUM`, `MATMUL`, `LENGTH`, `EQUAL`, `COLUMN`, `FILTER`, `MIN`, `MAX`, `UNIQUE`, `ONES_LIKE`, `COLUMN_STACK`, `EXP`, `LOG` and `WHERE`. Literals are Python numeric scalars or
 NumPy arrays with integer dtypes up to 64 bits, `float32`/`float64`, or booleans.
 String and boolean scalar literals are also supported. Numerical inputs loaded
 from DuckDB remain `float64`; text groups use fixed-width NumPy Unicode arrays.
@@ -663,8 +664,7 @@ The sum overloads preserve the tensor method's scalar/full-reduction and
 axis-dependent return types. Transpose returns `FedTensor` for a distributed
 input and a NumPy array for a concrete input. Only the existing parameter subset
 is public: axis for sum and default axis reversal for transpose. Custom transpose
-axes and sum dtype/out/keepdims are not supported. Functions such as exp, log,
-sqrt, clip, logical mask combinations and concatenation require separate operation implementations;
+axes and sum dtype/out/keepdims are not supported. Functions such as sqrt, clip, logical mask combinations and concatenation require separate operation implementations;
 they are not enabled merely because NumPy provides them.
 
 Pearson uses `fnp.sum` for feature and squared sums, and `fnp.transpose(y) @ x`
@@ -809,3 +809,63 @@ controller and workers together; aggregation messages/kinds and existing
 Exareme3 protocols are unchanged. No config/data migration or privacy-threshold
 change is needed. Rollback removes the registration and design-operation
 extensions and restores the prior FETA code/bindings. Legacy code is unchanged.
+
+### FedColumns and Logistic Regression (2026-10-14)
+
+The user selected a typed column collection to support mixed covariates while
+preserving per-column metadata and dtypes. `FedColumns` exposes column selection
+by name returning a FedTensor, ordered names, read-only metadata and global nrows
+from shape metadata. It has no collection arithmetic, assignment, row filtering
+or len semantics. Individual tensors share workers, context and local row layout;
+construction and initialization validate those invariants.
+
+`ColumnMetadata` includes original SQL type, categorical flag, declared codes and
+display labels. Metadata is immutable. Column selection returns an existing
+reference without dispatch. Worker initialization loads all selected columns in
+one query and stores each homogeneous column independently. Integer collection
+columns retain their native integer dtype; existing numerical matrix inputs
+remain float64. Overlapping collection/matrix selections preserve each dtype.
+No mixed object arrays or named-axis tensor metadata are introduced.
+
+FETA algorithms declare `column_inputs` as static group-representation metadata;
+there are no executable resolution hooks. The controller still selects x/y from
+specifications and requests, loads only selected groups and supplies worker-
+landscape column metadata. Omitted optional groups remain omitted. Logistic run
+receives `x: FedColumns, y: FedTensor`; existing tensor algorithm signatures are
+unchanged. Additional named input groups remain out of scope.
+
+Typed protobuf initialization adds column_groups and named per-column responses.
+The controller validates exact column/group presence, duplicates, shape, dtype,
+partition and row alignment, including native integer descriptors. Controller
+and workers must be updated together; HTTP requests/results are unchanged.
+
+The next priority implementation is complete as `feta_logistic_regression`.
+Categorical encoding is intrinsic model algebra, not a preprocessing pipeline.
+Text levels use global string-label union. Numeric categorical levels use declared
+codes and aggregated presence counts in numeric order; undeclared codes fail
+explicitly. This does not enable global unique for numerical observation tensors.
+Display labels are retained as metadata; coefficient names preserve code-based
+reference naming. Categorical features precede numerical features, and one
+intercept is added.
+
+Approved NumPy-style exp/log/three-argument where are local operations. They
+preserve partitioning, validate shapes/alignment and predict allocation. Where
+requires a boolean tensor condition and numerical values; it cannot convert
+observations to string labels. Custom dtype/out/where arguments and one-argument
+where are not exposed. Ordinary NumPy arrays execute locally.
+
+The Newton workflow aggregates count/positive count, then gradient, Hessian and
+log-likelihood each iteration. Controller inv falls back to pinv only when inv
+raises; convergence remains max(abs(gradient)) \<= 1e-4 with 50 iterations. Owned
+summary helpers preserve standard errors, z-tests, 95% intervals, pseudo-R²,
+likelihoods and AIC/BIC. Hessian/likelihood retain their pre-update iteration
+semantics. Exact collinearity can make the reference inverse unstable and
+individual coefficients sensitive to partition/kernel rounding; no solver-policy
+change is introduced. See the [algorithm documentation](../algorithms/feta_logistic_regression.md).
+
+All implementations are FETA-owned copies or new FETA code. Existing Exareme3
+and shared algorithm libraries, data storage, privacy thresholds, cleanup and
+configuration remain unchanged. Rollback removes the new registration and
+restores FETA inputs/operation code and bindings; no data migration is involved.
+Logistic cross-validation is not part of this priority migration. The remaining
+statistics migration still resumes at chi-squared, after the user's checkpoint.

@@ -3,6 +3,7 @@ import logging
 from threading import Event
 
 from exaflow import feta_algorithm_classes
+from exaflow.algorithms.feta.columns import ColumnMetadata
 from exaflow.controller import config
 from exaflow.controller.services import get_worker_landscape_aggregator
 from exaflow.controller.services.feta.runtime import FetaRuntime
@@ -89,7 +90,27 @@ class FetaStrategy(AlgorithmExecutionStrategyI):
             self.runtime = runtime
             if self.cancelled.is_set():
                 raise ContextClosedError("FETA execution was cancelled.")
-            tensors = runtime.initialize(inputdata, columns)
+            column_groups = algorithm.column_inputs.intersection(columns)
+            metadata = {}
+            if column_groups:
+                cdes = landscape.get_cdes(request.inputdata.data_model)
+                for group in column_groups:
+                    for name in columns[group]:
+                        cde = cdes[name]
+                        enums = cde.enumerations or {}
+                        converter = {"int": int, "real": float, "text": str}[
+                            cde.sql_type
+                        ]
+                        pairs = sorted(
+                            (converter(code), label) for code, label in enums.items()
+                        )
+                        metadata[name] = ColumnMetadata(
+                            cde.sql_type,
+                            cde.is_categorical,
+                            tuple(code for code, _ in pairs),
+                            tuple(str(label) for _, label in pairs),
+                        )
+            tensors = runtime.initialize(inputdata, columns, column_groups, metadata)
             result = algorithm.run(**tensors)
             runtime.check_active()
             return result.model_dump_json()

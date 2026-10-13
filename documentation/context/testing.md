@@ -189,3 +189,12 @@ plus real `/analysis` package tests for both sums-of-squares types. Development
 parity uses `uv run pytest -q tests/prod_env_tests/test_feta_anova_twoway.py` after
 `inv deploy` and dataset discovery. Tests compare the complete normal response
 on identical complete-case selections; full-rank simulations also use statsmodels.
+
+Mixed-input FETA logistic regression tests live in
+`tests/standalone_tests/feta/test_feta_logistic_regression.py`, with function
+checks in `test_logistic_operations.py` and a real package /analysis test.
+Development-deployment parity uses
+`uv run pytest -q tests/prod_env_tests/test_feta_logistic_regression.py` after
+`inv deploy` and dataset discovery. The five standard fixtures compare complete
+responses with normal logistic regression on identical complete-case filters.
+Cross-validation is outside this validation scope.

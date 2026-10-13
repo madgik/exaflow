@@ -48,6 +48,12 @@ from tests.standalone_tests.feta.test_feta_ttest_paired import (
 @pytest.fixture
 def running_package(tmp_path, monkeypatch):
     frame = data(52)
+    frame["outcome"] = np.where(
+        np.random.default_rng(42).random(len(frame))
+        < 1 / (1 + np.exp(-frame["x0"] * 0.3)),
+        "yes",
+        "no",
+    )
     frame["group"] = np.resize(["control", "treated", "other"], len(frame))
     frame["dataset"] = ["a"] * 25 + ["b"] * 27
     database = tmp_path / "worker.duckdb"
@@ -126,8 +132,15 @@ def running_package(tmp_path, monkeypatch):
                     code=column, label=column, sql_type="real", is_categorical=False
                 )
                 for column in frame
-                if column not in ("dataset", "group")
+                if column not in ("dataset", "group", "outcome")
             }
+            cdes["outcome"] = CommonDataElement(
+                code="outcome",
+                label="Outcome",
+                sql_type="text",
+                is_categorical=True,
+                enumerations={"yes": "yes", "no": "no"},
+            )
             cdes["group"] = CommonDataElement(
                 code="group",
                 label="Group",
@@ -624,5 +637,49 @@ def test_twoway_anova_through_real_analysis_route(running_package, sstype):
     )
     expected["terms"] = ["group", "dataset", "group:dataset", "Residuals"]
     assert_nested(asyncio.run(run()), expected)
+    assert not package.aggregation.sessions
+    assert all(not worker.store.contexts for worker in package.workers)
+
+
+def test_logistic_through_real_analysis_route(running_package):
+    from types import SimpleNamespace
+
+    from exaflow.algorithms.exareme3.linear_model.logistic_regression import (
+        LogisticRegression,
+    )
+    from tests.standalone_tests.feta.test_feta_anova_oneway import CentralAggregation
+    from tests.standalone_tests.feta.test_feta_anova_oneway import assert_nested
+
+    package = running_package
+    body = {
+        "inputdata": {
+            "data_model": "test:1.0",
+            "datasets": ["a", "b"],
+            "variables": ["x0", "group", "outcome"],
+        },
+        "algorithm": {
+            "name": "feta_logistic_regression",
+            "x": ["x0", "group"],
+            "y": ["outcome"],
+            "parameters": {"positive_class": "yes"},
+        },
+    }
+
+    async def run():
+        response = await package.app.test_client().post("/analysis", json=body)
+        payload = await response.get_data()
+        assert response.status_code == 200, payload.decode()
+        return json.loads(payload)
+
+    proxy = SimpleNamespace(
+        x=["x0", "group"],
+        y=["outcome"],
+        metadata={"x0": {"is_categorical": False}, "group": {"is_categorical": True}},
+        get_parameter=lambda name: "yes",
+        run_local_udf=lambda func, kw_args, identical_results: func(
+            agg_client=CentralAggregation(), data=package.frame, **kw_args
+        ),
+    )
+    assert_nested(asyncio.run(run()), LogisticRegression.run(proxy).model_dump())
     assert not package.aggregation.sessions
     assert all(not worker.store.contexts for worker in package.workers)

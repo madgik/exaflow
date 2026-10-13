@@ -28,6 +28,9 @@ class OperationType(IntEnum):
     UNIQUE = pb.UNIQUE
     ONES_LIKE = pb.ONES_LIKE
     COLUMN_STACK = pb.COLUMN_STACK
+    EXP = pb.EXP
+    LOG = pb.LOG
+    WHERE = pb.WHERE
 
 
 @dataclass(frozen=True)
@@ -177,6 +180,8 @@ class LocalOperation:
             in (OperationType.MATMUL, OperationType.EQUAL, OperationType.FILTER)
             else 1
         )
+        if op_type == OperationType.WHERE:
+            expected_inputs = 3
         if op_type == OperationType.COLUMN_STACK:
             expected_inputs = len(message.inputs)
         if not message.inputs or len(message.inputs) != expected_inputs:
@@ -237,6 +242,8 @@ def infer_operation(operation, metadata, max_bytes):
         or op in (OperationType.MATMUL, OperationType.EQUAL, OperationType.FILTER)
         else 1
     )
+    if op == OperationType.WHERE:
+        expected = 3
     if op == OperationType.COLUMN_STACK:
         expected = len(metadata)
     if not metadata or len(metadata) != expected:
@@ -260,7 +267,7 @@ def infer_operation(operation, metadata, max_bytes):
     if op in BINARY or op in (OperationType.SUM, OperationType.MATMUL):
         if any(np.dtype(m.dtype).kind not in "iufb" for m in metadata):
             raise ValueError("Arithmetic and reductions require numerical tensors.")
-    if op in BINARY or op == OperationType.EQUAL:
+    if op in BINARY or op in (OperationType.EQUAL, OperationType.WHERE):
         if (
             op == OperationType.EQUAL
             and len({np.dtype(m.dtype).kind == "U" for m in metadata}) != 1
@@ -281,10 +288,22 @@ def infer_operation(operation, metadata, max_bytes):
                 padded = (1,) * (len(shape) - len(m.shape)) + m.shape
                 if padded[partition] != 1:
                     raise ValueError("Literal operands must broadcast over records.")
+        if op == OperationType.WHERE:
+            if np.dtype(metadata[0].dtype).kind != "b" or any(
+                np.dtype(m.dtype).kind not in "iufb" for m in metadata[1:]
+            ):
+                raise ValueError("WHERE requires a boolean mask and numerical values.")
+            dtype = np.result_type(*[np.dtype(m.dtype) for m in metadata[1:]])
         if op == OperationType.EQUAL:
             dtype = np.dtype("bool")
         if op == OperationType.DIVIDE:
             dtype = np.result_type(dtype, np.float64)
+    elif op in (OperationType.EXP, OperationType.LOG):
+        m = metadata[0]
+        if dtype.kind not in "iufb":
+            raise ValueError("EXP and LOG require numerical tensors.")
+        shape, partition = m.shape, m.partition_axis
+        dtype = np.result_type(dtype, np.float64)
     elif op == OperationType.ONES_LIKE:
         m = metadata[0]
         if dtype.kind not in "iufb":
@@ -387,6 +406,12 @@ def evaluate(operation, inputs, expected):
         result = BINARY[op](*inputs)
     elif op == OperationType.EQUAL:
         result = np.equal(*inputs)
+    elif op == OperationType.EXP:
+        result = np.exp(inputs[0])
+    elif op == OperationType.LOG:
+        result = np.log(inputs[0])
+    elif op == OperationType.WHERE:
+        result = np.where(*inputs)
     elif op == OperationType.ONES_LIKE:
         result = np.ones_like(inputs[0])
     elif op == OperationType.COLUMN_STACK:
