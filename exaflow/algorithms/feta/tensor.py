@@ -44,6 +44,10 @@ class FedTensor(ABC):
         """Dispatch a supported typed function without exposing runtime details."""
 
     @abstractmethod
+    def _histogram(self, edges: NDArray) -> NDArray:
+        """Aggregate local bin counts for explicit numerical edges."""
+
+    @abstractmethod
     def _unique(self) -> NDArray:
         """Return sorted distinct values across participating workers."""
 

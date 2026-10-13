@@ -527,3 +527,13 @@ pooled-variance inference runs on controller summaries. Existing kernels suffice
 Initialization now reports worker privacy minima; the strictest participating
 minimum determines eligible global groups. Numeric categorical discovery follows
 the existing declared-code/equality-count FETA approach.
+
+### Implemented histogram support (2026-10-14)
+
+`feta_histogram` now supports numerical and categorical targets, simple/Wilkinson
+boundaries, optional grouping and privacy count masking. `fnp.histogram` adds one
+NumPy-equivalent local kernel: numerical vectors plus explicit shared bin edges
+produce int64 counts automatically summed through the aggregation server. Text
+labels use observed union; integer categories use complete metadata codes and
+reject unexpected values. No numerical unique or arbitrary casting operation is
+introduced. Wilkinson boundary computation is owned by FETA.

@@ -65,6 +65,9 @@ class RuntimeFedTensor(FedTensor):
             axis,
         )
 
+    def _histogram(self, edges: NDArray) -> NDArray:
+        return self.runtime.apply(OperationType.HISTOGRAM, (self, edges))
+
     def _unique(self) -> NDArray:
         return self.runtime.apply(OperationType.UNIQUE, (self,))
 

@@ -31,6 +31,7 @@ class OperationType(IntEnum):
     EXP = pb.EXP
     LOG = pb.LOG
     WHERE = pb.WHERE
+    HISTOGRAM = pb.HISTOGRAM
 
 
 @dataclass(frozen=True)
@@ -177,7 +178,12 @@ class LocalOperation:
             2
             if op_type in BINARY
             or op_type
-            in (OperationType.MATMUL, OperationType.EQUAL, OperationType.FILTER)
+            in (
+                OperationType.MATMUL,
+                OperationType.EQUAL,
+                OperationType.FILTER,
+                OperationType.HISTOGRAM,
+            )
             else 1
         )
         if op_type == OperationType.WHERE:
@@ -239,7 +245,13 @@ def infer_operation(operation, metadata, max_bytes):
     expected = (
         2
         if op in BINARY
-        or op in (OperationType.MATMUL, OperationType.EQUAL, OperationType.FILTER)
+        or op
+        in (
+            OperationType.MATMUL,
+            OperationType.EQUAL,
+            OperationType.FILTER,
+            OperationType.HISTOGRAM,
+        )
         else 1
     )
     if op == OperationType.WHERE:
@@ -350,6 +362,25 @@ def infer_operation(operation, metadata, max_bytes):
         m = metadata[0]
         shape = m.shape[::-1]
         partition = len(m.shape) - 1 - m.partition_axis
+    elif op == OperationType.HISTOGRAM:
+        data, edges_metadata = metadata
+        edges = operation.inputs[1]
+        if (
+            data.partition_axis != 0
+            or len(data.shape) != 1
+            or np.dtype(data.dtype).kind not in "iuf"
+            or edges_metadata.partition_axis != -1
+            or not isinstance(edges, np.ndarray)
+            or edges.ndim != 1
+            or edges.size < 2
+            or edges.dtype.kind not in "iuf"
+            or not np.all(np.isfinite(edges))
+            or np.any(edges[1:] <= edges[:-1])
+        ):
+            raise ValueError(
+                "HISTOGRAM requires a numerical vector and strictly increasing finite literal edges."
+            )
+        shape, partition, dtype = (edges.size - 1,), -1, np.dtype("int64")
     elif op == OperationType.UNIQUE:
         if dtype.kind != "U":
             raise ValueError(
@@ -424,6 +455,8 @@ def evaluate(operation, inputs, expected):
         result = inputs[0].T
     elif op == OperationType.SUM:
         result = np.sum(inputs[0], axis=operation.axis)
+    elif op == OperationType.HISTOGRAM:
+        result = np.histogram(inputs[0], bins=inputs[1])[0]
     elif op == OperationType.UNIQUE:
         result = np.unique(inputs[0])
     elif op in (OperationType.MIN, OperationType.MAX):

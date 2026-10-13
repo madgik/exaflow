@@ -812,3 +812,85 @@ def test_smd_through_real_analysis_route(running_package):
     assert_nested(asyncio.run(run()), {"comparisons": expected})
     assert not package.aggregation.sessions
     assert all(not worker.store.contexts for worker in package.workers)
+
+
+@pytest.mark.parametrize("target", ["y0", "outcome"])
+@pytest.mark.parametrize("grouped", [False, True])
+def test_histogram_through_real_analysis_route(running_package, target, grouped):
+    from exaflow.algorithms.federated.statistics.histogram import (
+        FederatedGroupedHistogram,
+    )
+    from tests.standalone_tests.feta.test_feta_anova_oneway import CentralAggregation
+    from tests.standalone_tests.feta.test_feta_anova_oneway import assert_nested
+
+    package = running_package
+    body = {
+        "inputdata": {
+            "data_model": "test:1.0",
+            "datasets": ["a", "b"],
+            "variables": [target, *(["group"] if grouped else [])],
+        },
+        "algorithm": {
+            "name": "feta_histogram",
+            "y": [target],
+            "parameters": {"bins": 5},
+        },
+    }
+    if grouped:
+        body["algorithm"]["x"] = ["group"]
+
+    async def run():
+        response = await package.app.test_client().post("/analysis", json=body)
+        payload = await response.get_data()
+        assert response.status_code == 200, payload.decode()
+        return json.loads(payload)
+
+    metadata = {
+        "y0": {"sql_type": "real", "is_categorical": False},
+        "outcome": {
+            "sql_type": "text",
+            "is_categorical": True,
+            "enumerations": {"yes": "yes", "no": "no"},
+        },
+        "group": {
+            "sql_type": "text",
+            "is_categorical": True,
+            "enumerations": {label: label for label in ["control", "treated", "other"]},
+        },
+    }
+    native = (
+        FederatedGroupedHistogram(CentralAggregation())
+        .histogram(
+            data=package.frame,
+            y_var=target,
+            x_vars=["group"] if grouped else [],
+            metadata=metadata,
+            bins=5,
+            histogram_type="simple",
+            min_row_count=10,
+        )
+        .as_payload()
+    )
+    expected = [
+        {
+            "var": target,
+            "grouping_var": None,
+            "grouping_enum": None,
+            "bins": native["bins"],
+            "counts": native["counts"],
+        }
+    ]
+    for name, entry in native["grouped"].items():
+        for group, counts in zip(entry["groups"], entry["counts"]):
+            expected.append(
+                {
+                    "var": target,
+                    "grouping_var": name,
+                    "grouping_enum": group,
+                    "bins": native["bins"],
+                    "counts": counts,
+                }
+            )
+    assert_nested(asyncio.run(run()), {"histogram": expected})
+    assert not package.aggregation.sessions
+    assert all(not worker.store.contexts for worker in package.workers)

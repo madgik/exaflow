@@ -210,3 +210,16 @@ The latter uses the development-deployed analysis API and compares full response
 with the existing algorithm under identical non-null filters. Initialization
 privacy-report tests cover explicit zero, heterogeneous participating thresholds,
 skipped workers and rejection/cleanup when a worker omits its report.
+
+FETA histogram validation:
+
+```bash
+.venv/bin/python -m pytest -q tests/standalone_tests/feta/test_feta_histogram.py tests/standalone_tests/feta/test_histogram_operations.py
+.venv/bin/python -m pytest -q tests/prod_env_tests/test_feta_histogram.py
+```
+
+The live test compares complete responses against the five existing histogram
+fixtures using identical non-null filters on a development-tool deployment.
+Kernel tests include worker-side rejection of invalid literal bin edges. Algorithm
+simulations cover both binning methods, categorical metadata ordering, integer
+codes, grouping, count masking and privacy-based worker exclusion.

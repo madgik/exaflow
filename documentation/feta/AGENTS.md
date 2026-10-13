@@ -922,3 +922,30 @@ presence is required by the controller, including when its value is zero.
 Regenerate from `feta.proto` with grpc_tools.protoc and deploy FETA workers and
 controller together. No legacy RPC/source change is needed. Histogram is the
 next statistics migration, after user confirmation.
+
+### Histogram migration (2026-10-14)
+
+Added the approved NumPy-equivalent `fnp.histogram` operation for numerical
+row-partitioned vectors. Workers receive explicit finite, strictly increasing
+literal bin edges, compute local unweighted counts and submit additive partials.
+The function returns global int64 counts and concrete edges. Integer bin counts
+can derive edges from global extrema or an explicit range. Density, weights and
+automatic bin-width estimators are outside the initial function contract.
+
+The HISTOGRAM operation is added to `feta.proto`; regenerate bindings with
+`grpc_tools.protoc` and deploy controller/workers together before using it.
+The Wilkinson boundary helper is copied into FETA; legacy source is unchanged.
+
+Confirmed after clarification: categorical codes are complete in metadata.
+Integer target categories use declared codes and equality counts; unexpected
+codes raise an explicit input error. Numeric unique remains restricted. Text
+category discovery retains the existing observed-label union; output orders
+metadata categories first, including unobserved categories. Both selected groups
+use `FedColumns`, exposing categorical flags, SQL types and declared ordering.
+
+`feta_histogram` supports simple/Wilkinson numerical histograms, categorical
+targets and optional categorical grouping. Counts below the strictest participating
+worker minimum are masked as None, including zero counts. Integer Wilkinson
+bins have a step floor of one. Constant simple inputs use an upper bound one
+above the observed value. See [algorithm documentation](../algorithms/feta_histogram.md).
+Quartiles is the next statistics migration, after user confirmation.

@@ -481,3 +481,32 @@ controller/workers together. No fallback privacy threshold is supplied for old
 workers. Rollback requires restoring the prior FETA protobuf, worker and
 controller together and removing the new SMD implementation; existing native
 algorithms remain available. Histogram is next after user confirmation.
+
+## Histogram preparation (2026-10-14; incomplete)
+
+Numerical `fnp.histogram` and its allowlisted local kernel are implemented, with
+worker/controller edge validation, allocation bounds and automatic count sum.
+The NumPy function returns `(counts, edges)`. Wilkinson sizing is copied into
+FETA. Twelve targeted tests cover NumPy parity, rightmost edges, constant data,
+empty filtered partitions, explicit range and malformed worker requests.
+
+Completing the histogram algorithm awaits the categorical integer-discovery
+policy. No completed-algorithm or live-deployment parity claim is made yet.
+
+## Histogram milestone completed (2026-10-14)
+
+Completed `feta_histogram` following user confirmation that categorical metadata
+is complete. Integer categories use declared-code counts and reject unknown
+codes; numerical unique remains restricted. Both x/y representations are typed
+column collections, supporting metadata-based numerical/categorical selection,
+category order and integer Wilkinson sizing. Grouped and ungrouped histograms
+preserve output ordering and privacy masking. Missing values remain rejected.
+
+Validation: 536 focused FETA/native-histogram regression tests and 54 final
+histogram checks passed. All five
+live fixture comparisons passed after development-tool deployment. Generated
+bindings match independent regeneration, and legacy/shared computation sources
+remain unchanged. HISTOGRAM is a new FETA operation enum value; deploy regenerated
+controller/workers together. Rollback restores the preceding FETA protocol,
+tensor functions and operation dispatcher and removes the new algorithm/helper;
+native histogram remains available. Quartiles is next after user confirmation.

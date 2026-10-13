@@ -13,6 +13,7 @@ from exaflow.algorithms.feta.tensor import TensorOperand
 from exaflow.algorithms.feta.tensor import TensorResult
 
 __all__ = [
+    "histogram",
     "exp",
     "log",
     "where",
@@ -242,3 +243,36 @@ def where(condition, x, y):
     if isinstance(x, FedTensor) or isinstance(y, FedTensor):
         raise TypeError("Distributed where requires a distributed condition.")
     return np.where(condition, x, y)
+
+
+def histogram(
+    a: FedTensor | NDArray,
+    bins: int | NDArray = 10,
+    range: tuple[float, float] | None = None,
+) -> tuple[NDArray, NDArray]:
+    """NumPy-style unweighted histogram; distributed counts are summed globally.
+
+    Distributed input must be a row-partitioned numerical vector. Only integer
+    bin counts or explicit finite, strictly increasing edges are supported.
+    Density, weights and automatic bin-width estimators are excluded.
+    """
+    if not isinstance(a, FedTensor):
+        return np.histogram(_numerical_array(a), bins=bins, range=range)
+    if a.dtype.kind not in "iuf" or len(a.shape) != 1 or a.partition_axis != 0:
+        raise ValueError("Histogram requires a row-partitioned numerical vector.")
+    if isinstance(bins, (int, np.integer)) and not isinstance(bins, bool):
+        if bins < 1:
+            raise ValueError("Histogram bin count must be positive.")
+        # Bound allocation before constructing edges; worker checks apply too.
+        if (int(bins) + 1) * 8 > a.runtime.settings.max_tensor_bytes:
+            raise ValueError("Histogram edges exceed the tensor memory limit.")
+        if range is None:
+            range = (float(min(a)), float(max(a)))
+        edges = np.histogram_bin_edges(
+            np.array([], dtype=float), bins=int(bins), range=range
+        )
+    elif isinstance(bins, np.ndarray):
+        edges = bins
+    else:
+        raise TypeError("Histogram bins must be an integer or a NumPy edge array.")
+    return a._histogram(edges), edges

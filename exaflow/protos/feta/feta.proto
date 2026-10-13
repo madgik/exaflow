@@ -101,6 +101,7 @@ enum OperationType {
   EXP = 18;
   LOG = 19;
   WHERE = 20;
+  HISTOGRAM = 21;
 }
 message LocalOperation {
   OperationType type = 1;
