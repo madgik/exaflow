@@ -1,4 +1,5 @@
 import logging
+import threading
 from typing import Any
 
 import grpc
@@ -68,10 +69,23 @@ class WorkerClient:
 class WorkerClientFactory(metaclass=Singleton):
     def __init__(self):
         self._clients: dict[str, WorkerClient] = {}
+        self._lock = threading.Lock()
 
     def get_client(self, socket_addr: str) -> WorkerClient:
-        if socket_addr in self._clients:
+        with self._lock:
+            if socket_addr not in self._clients:
+                self._clients[socket_addr] = WorkerClient(socket_addr)
             return self._clients[socket_addr]
 
-        self._clients[socket_addr] = WorkerClient(socket_addr)
-        return self._clients[socket_addr]
+    def retain_only(self, socket_addrs: set[str]) -> None:
+        """
+        Drop cached clients for addresses that are no longer in the federation.
+        Channels are not closed explicitly, so in-flight calls on a dropped client
+        can finish; gRPC releases the channel when the client is garbage collected.
+        """
+        with self._lock:
+            self._clients = {
+                addr: client
+                for addr, client in self._clients.items()
+                if addr in socket_addrs
+            }
