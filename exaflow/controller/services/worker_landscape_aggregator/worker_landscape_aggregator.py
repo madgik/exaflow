@@ -26,6 +26,7 @@ from exaflow.controller.services.worker_landscape_aggregator.worker_info_tasks_h
     WorkerInfoTasksHandler,
 )
 from exaflow.controller.worker_client.app import WorkerClientConnectionError
+from exaflow.controller.worker_client.app import WorkerClientFactory
 from exaflow.controller.worker_client.app import WorkerClientTimeoutException
 from exaflow.controller.workers_addresses import WorkersAddressesFactory
 from exaflow.utils import AttrDict
@@ -592,6 +593,10 @@ class WorkerLandscapeAggregator:
             .socket_addresses
         )
         workers_info = self._get_workers_info(workers_addresses)
+        WorkerClientFactory().retain_only(
+            set(workers_addresses)
+            | {_get_worker_socket_addr(worker_info) for worker_info in workers_info}
+        )
         cached_datasets = self._ensure_workers_data_loaded(workers_info)
         data_models_metadata_per_worker = self._get_data_models_metadata_per_worker(
             workers_info, cached_datasets

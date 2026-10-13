@@ -107,6 +107,12 @@ jobs:
           cat "$TIME_LOG"
           exit $TEST_EXIT_CODE
 
+      # Services run under `uv run`, which holds the uv cache lock; stop them so
+      # the setup-uv post step can prune the cache.
+      - name: Stop services
+        if: always()
+        run: uv run --no-sync inv kill-controller kill-aggregation-server kill-worker --all
+
   run_tests_in_five_nodes:
     runs-on: ubuntu-latest
     steps:
@@ -185,6 +191,12 @@ jobs:
           python3 .github/scripts/report_time_stats.py "$TIME_LOG" "${REPORT_ARGS[@]}"
           cat "$TIME_LOG"
           exit $TEST_EXIT_CODE
+
+      # Services run under `uv run`, which holds the uv cache lock; stop them so
+      # the setup-uv post step can prune the cache.
+      - name: Stop services
+        if: always()
+        run: uv run --no-sync inv kill-controller kill-aggregation-server kill-worker --all
 
       # Flower tests disabled pending MIP-1203.
 #      - name: Run Flower algorithm validation tests (with resource summary)
