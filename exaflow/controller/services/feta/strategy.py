@@ -51,11 +51,17 @@ class FetaStrategy(AlgorithmExecutionStrategyI):
         if request.flags and any(request.flags.values()):
             raise BadUserInput("FETA does not support optional execution flags.")
         algorithm_class = feta_algorithm_classes[request.algorithm.name]
-        x_names, y_names = algorithm_class.resolve_inputs(
-            request.algorithm.x, request.algorithm.y
-        )
+        specification = algorithm_class.get_specification()
+        columns = {
+            name: list(getattr(request.algorithm, name))
+            for name in ("x", "y")
+            if getattr(specification, name) is not None
+            and getattr(request.algorithm, name)
+        }
         algorithm = algorithm_class(
-            parameters=request.algorithm.parameters, x_names=x_names, y_names=y_names
+            parameters=request.algorithm.parameters,
+            x_names=columns.get("x", []),
+            y_names=columns.get("y", []),
         )
         inputdata = Inputdata(**request.inputdata.model_dump())
         landscape = get_worker_landscape_aggregator()
@@ -83,7 +89,7 @@ class FetaStrategy(AlgorithmExecutionStrategyI):
             self.runtime = runtime
             if self.cancelled.is_set():
                 raise ContextClosedError("FETA execution was cancelled.")
-            x, y = runtime.initialize(inputdata, x_names, y_names)
-            result = algorithm.run(x, y)
+            tensors = runtime.initialize(inputdata, columns)
+            result = algorithm.run(**tensors)
             runtime.check_active()
             return result.model_dump_json()

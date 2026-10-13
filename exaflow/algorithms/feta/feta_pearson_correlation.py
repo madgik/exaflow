@@ -34,11 +34,9 @@ class FetaPearsonCorrelation(Algorithm):
             }
         )
 
-    @classmethod
-    def resolve_inputs(cls, x, y):
-        return list(x or y or []), list(y or [])
-
-    def run(self, x: FedTensor, y: FedTensor):
+    def run(self, y: FedTensor, x: FedTensor | None = None):
+        if x is None:
+            x = y
         n = float(len(x))
         sx = fnp.sum(x, axis=0)
         sy = fnp.sum(y, axis=0)
@@ -76,7 +74,7 @@ class FetaPearsonCorrelation(Algorithm):
             "ci_lo": ci_lo.tolist(),
         }
         corr, p, hi, lo = _format_result_matrices(
-            result, row_names=self.x_names, column_names=self.y_names
+            result, row_names=self.x_names or self.y_names, column_names=self.y_names
         )
         return PearsonResult(
             title="Pearson Correlation Coefficient",

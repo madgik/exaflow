@@ -38,15 +38,17 @@ def test_pearson_parity_with_mocked_aggregation(sizes, omitted_x):
         frame.iloc[start:end] for start, end in zip(boundaries[:-1], boundaries[1:])
     ]
     runtime, workers, aggregation = federation(parts)
-    x_names, y_names = FetaPearsonCorrelation.resolve_inputs(
-        None if omitted_x else ["x2", "x0", "x1"], ["y1", "y0"]
-    )
+    x_names = [] if omitted_x else ["x2", "x0", "x1"]
+    y_names = ["y1", "y0"]
     model = FetaPearsonCorrelation(
         parameters={"alpha": 0.05}, x_names=x_names, y_names=y_names
     )
     with runtime:
-        x, y = runtime.initialize(inputs(frame), x_names, y_names)
-        result = model.run(x, y)
+        columns = {"y": y_names}
+        if x_names:
+            columns["x"] = x_names
+        tensors = runtime.initialize(inputs(frame), columns)
+        result = model.run(**tensors)
         assert result.n_obs == len(frame)
         assert runtime.step == 6
         for step in range(1, 7):
@@ -55,10 +57,10 @@ def test_pearson_parity_with_mocked_aggregation(sizes, omitted_x):
             ]
             assert events == ["prepare", *("submit" for _ in workers), "fetch"]
     reference = FederatedPearsonCorrelation(IdentityAggregation()).corrcoef(
-        data=frame, x_vars=x_names, y_vars=y_names, alpha=0.05
+        data=frame, x_vars=x_names or y_names, y_vars=y_names, alpha=0.05
     )
     matrices = _format_result_matrices(
-        vars(reference), row_names=x_names, column_names=y_names
+        vars(reference), row_names=x_names or y_names, column_names=y_names
     )
     for field, expected in zip(
         ("correlations", "p_values", "ci_hi", "ci_lo"), matrices
@@ -77,7 +79,11 @@ def test_local_reductions_broadcasting_and_matmul_orientation():
     frame = data()
     runtime, workers, aggregation = federation([frame.iloc[:17], frame.iloc[17:]])
     with runtime:
-        x, y = runtime.initialize(inputs(frame), ["x0", "x1", "x2"], ["y0", "y1"])
+        tensors = runtime.initialize(
+            inputs(frame), {"x": ["x0", "x1", "x2"], "y": ["y0", "y1"]}
+        )
+        x = tensors["x"]
+        y = tensors["y"]
         local_sums = x.sum(axis=1)
         assert isinstance(local_sums, FedTensor)
         assert runtime.step == 0
@@ -113,7 +119,9 @@ def test_observation_edges_and_constant_features(n):
     frame = pd.DataFrame({"x": np.ones(n), "y": np.arange(n, dtype=float)})
     runtime, workers, _ = federation([frame])
     with runtime:
-        x, y = runtime.initialize(inputs(frame), ["x"], ["y"])
+        tensors = runtime.initialize(inputs(frame), {"x": ["x"], "y": ["y"]})
+        x = tensors["x"]
+        y = tensors["y"]
         model = FetaPearsonCorrelation(
             parameters={"alpha": 0.05}, x_names=["x"], y_names=["y"]
         )
@@ -121,9 +129,9 @@ def test_observation_edges_and_constant_features(n):
             with pytest.raises(
                 BadUserInput, match="empty data|Not enough observations"
             ):
-                model.run(x, y)
+                model.run(x=x, y=y)
         else:
-            result = model.run(x, y)
+            result = model.run(x=x, y=y)
             assert result.correlations["y"] == [0.0]
     assert not workers[0].service.store.contexts
 
@@ -134,14 +142,16 @@ def test_skip_insufficient_workers_before_first_aggregation():
         [frame.iloc[:7], frame.iloc[7:]], minimum_rows=10
     )
     with runtime:
-        x, y = runtime.initialize(inputs(frame), ["x0"], ["y0"])
+        tensors = runtime.initialize(inputs(frame), {"x": ["x0"], "y": ["y0"]})
+        x = tensors["x"]
+        y = tensors["y"]
         assert len(x) == 20
         assert set(runtime.workers) == {"worker-1"}
         assert not workers[0].service.store.contexts
     runtime, workers, _ = federation([frame.iloc[:7]], minimum_rows=10)
     with pytest.raises(Exception, match="No workers had sufficient"):
         with runtime:
-            runtime.initialize(inputs(frame), ["x0"], ["y0"])
+            runtime.initialize(inputs(frame), {"x": ["x0"], "y": ["y0"]})
 
 
 def test_missing_values_fail_and_clean_all_workers():
@@ -150,7 +160,7 @@ def test_missing_values_fail_and_clean_all_workers():
     runtime, workers, _ = federation([frame.iloc[:20], frame.iloc[20:]])
     with pytest.raises(ValueError, match="missing input values"):
         with runtime:
-            runtime.initialize(inputs(frame), ["x0"], ["y0"])
+            runtime.initialize(inputs(frame), {"x": ["x0"], "y": ["y0"]})
     assert all(not worker.service.store.contexts for worker in workers)
 
 
@@ -172,7 +182,9 @@ def test_arithmetic_operators_against_numpy_across_uneven_workers(
         [frame.iloc[:7], frame.iloc[7:20], frame.iloc[20:]]
     )
     with runtime:
-        x, _ = runtime.initialize(inputs(frame), columns, ["y0"])
+        tensors = runtime.initialize(inputs(frame), {"x": columns, "y": ["y0"]})
+        x = tensors["x"]
+        _ = tensors["y"]
         np.testing.assert_allclose(
             expression(x).sum(axis=0), reference(frame[columns].to_numpy()).sum(axis=0)
         )
@@ -185,7 +197,9 @@ def test_literal_matrix_products_and_transposed_reductions():
     array = frame[columns].to_numpy()
     runtime, _, _ = federation([frame.iloc[:17], frame.iloc[17:]])
     with runtime:
-        x, _ = runtime.initialize(inputs(frame), columns, ["y0"])
+        tensors = runtime.initialize(inputs(frame), {"x": columns, "y": ["y0"]})
+        x = tensors["x"]
+        _ = tensors["y"]
         right = np.arange(6.0, dtype=float).reshape(3, 2)
         left = np.arange(6.0, dtype=float).reshape(2, 3)
         product = x @ right
@@ -205,11 +219,16 @@ def test_algorithm_inputs_implement_public_typed_tensor_interface():
     from exaflow.feta.tensor import RuntimeFedTensor
 
     assert issubclass(RuntimeFedTensor, FedTensor)
-    assert signature(FetaPearsonCorrelation.run).parameters["x"].annotation is FedTensor
+    assert (
+        signature(FetaPearsonCorrelation.run).parameters["x"].annotation
+        == FedTensor | None
+    )
     assert signature(FetaPearsonCorrelation.run).parameters["y"].annotation is FedTensor
     runtime, _, _ = federation([data(20)])
     with runtime:
-        x, y = runtime.initialize(inputs(data(20)), ["x0"], ["y0"])
+        tensors = runtime.initialize(inputs(data(20)), {"x": ["x0"], "y": ["y0"]})
+        x = tensors["x"]
+        y = tensors["y"]
         assert isinstance(x, FedTensor) and isinstance(y, FedTensor)
         assert isinstance(x.T, FedTensor)
         assert x.shape == (20, 1) and x.T.shape == (1, 20)

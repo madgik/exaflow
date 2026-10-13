@@ -97,7 +97,9 @@ def test_worker_rejects_cross_context_refs_bad_axes_and_raw_export():
     frame = data(20)
     runtime, workers, _ = federation([frame])
     with runtime:
-        x, y = runtime.initialize(inputs(frame), ["x0"], ["y0"])
+        tensors = runtime.initialize(inputs(frame), {"x": ["x0"], "y": ["y0"]})
+        x = tensors["x"]
+        y = tensors["y"]
         service = workers[0].service
         ref = LocalTensorRef(x.descriptors["worker-0"].tensor_id)
         with pytest.raises(ValueError, match="Unknown tensor"):
@@ -233,7 +235,7 @@ def test_resource_limits_before_allocation_and_context_creation():
     runtime, workers, _ = federation([frame], settings=settings)
     with pytest.raises(ResourceLimitError):
         with runtime:
-            runtime.initialize(inputs(frame), ["x0"], ["y0"])
+            runtime.initialize(inputs(frame), {"x": ["x0"], "y": ["y0"]})
     assert not workers[0].service.store.contexts
 
 
@@ -251,7 +253,9 @@ def test_cleanup_during_initial_load_prevents_late_publication():
 
     service.loader = loader
     with ThreadPoolExecutor(max_workers=1) as pool:
-        future = pool.submit(runtime.initialize, inputs(frame), ["x0"], ["y0"])
+        future = pool.submit(
+            runtime.initialize, inputs(frame), {"x": ["x0"], "y": ["y0"]}
+        )
         assert loading.wait(1)
         service.store.cleanup(runtime.context_id)
         finish.set()
@@ -272,7 +276,9 @@ def test_failed_operation_is_not_retried_and_contexts_are_cleaned():
 
     with pytest.raises(RuntimeError, match="worker failed"):
         with runtime:
-            x, y = runtime.initialize(inputs(frame), ["x0"], ["y0"])
+            tensors = runtime.initialize(inputs(frame), {"x": ["x0"], "y": ["y0"]})
+            x = tensors["x"]
+            y = tensors["y"]
             workers[1].execute = failure
             x.sum(axis=0)
     assert count[0] == 1
@@ -301,7 +307,9 @@ def test_tensor_inputs_are_reused_but_not_returned_as_local_data():
     frame = data(20)
     runtime, workers, _ = federation([frame])
     with runtime:
-        x, y = runtime.initialize(inputs(frame), ["x0"], ["x0"])
+        tensors = runtime.initialize(inputs(frame), {"x": ["x0"], "y": ["x0"]})
+        x = tensors["x"]
+        y = tensors["y"]
         assert (
             x.descriptors["worker-0"].tensor_id == y.descriptors["worker-0"].tensor_id
         )
@@ -321,8 +329,12 @@ def test_distinct_contexts_cannot_be_combined():
     first, _, _ = federation([frame])
     second, _, _ = federation([frame])
     with first, second:
-        x, y = first.initialize(inputs(frame), ["x0"], ["y0"])
-        other_x, _ = second.initialize(inputs(frame), ["x0"], ["y0"])
+        tensors = first.initialize(inputs(frame), {"x": ["x0"], "y": ["y0"]})
+        x = tensors["x"]
+        y = tensors["y"]
+        tensors = second.initialize(inputs(frame), {"x": ["x0"], "y": ["y0"]})
+        other_x = tensors["x"]
+        _ = tensors["y"]
         with pytest.raises(ValueError, match="different contexts"):
             x + other_x
 
@@ -337,7 +349,9 @@ def test_controller_fetch_begins_while_worker_computation_is_running():
         return original(request)
 
     with runtime:
-        x, _ = runtime.initialize(inputs(frame), ["x0"], ["y0"])
+        tensors = runtime.initialize(inputs(frame), {"x": ["x0"], "y": ["y0"]})
+        x = tensors["x"]
+        _ = tensors["y"]
         workers[0].execute = execute
         np.testing.assert_allclose(x.sum(axis=0), frame[["x0"]].to_numpy().sum(axis=0))
 
@@ -346,7 +360,9 @@ def test_expired_controller_context_rejects_new_operations():
     frame = data(20)
     runtime, workers, aggregation = federation([frame])
     with runtime:
-        x, _ = runtime.initialize(inputs(frame), ["x0"], ["y0"])
+        tensors = runtime.initialize(inputs(frame), {"x": ["x0"], "y": ["y0"]})
+        x = tensors["x"]
+        _ = tensors["y"]
         runtime.deadline = 0
         with pytest.raises(ContextClosedError, match="expired"):
             x.sum(axis=0)
@@ -410,7 +426,9 @@ def test_cancellation_after_computation_prevents_storing_result(monkeypatch):
 
     monkeypatch.setattr(module, "evaluate", evaluate)
     with runtime:
-        x, _ = runtime.initialize(inputs(frame), ["x0"], ["y0"])
+        tensors = runtime.initialize(inputs(frame), {"x": ["x0"], "y": ["y0"]})
+        x = tensors["x"]
+        _ = tensors["y"]
         service = workers[0].service
         ctx = service.store.contexts[runtime.context_id]
         count = len(ctx.values)

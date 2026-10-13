@@ -55,6 +55,9 @@ flowchart TD
 FETA algorithms use the public `FedTensor` interface and `federated_numpy`
 function package under `exaflow.algorithms.feta`; sum and transpose functions
 reuse the same execution path as tensor methods, while arithmetic uses operators.
+The controller prepares only input groups selected under the specification
+and calls each algorithm with named tensors. Algorithm-specific defaults such
+as Pearson's omitted x are ordinary Python aliases inside `run`.
 FETA has a separate controller strategy and worker operation service. Its
 algorithms live in `exaflow/algorithms/feta` and shared contracts/utilities in
 `exaflow/feta`. The controller prepares aggregation steps, workers submit

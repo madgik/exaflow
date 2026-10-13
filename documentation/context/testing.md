@@ -141,3 +141,13 @@ uv run pytest -q tests/prod_env_tests/test_feta_pearson_correlation.py
 This compares FETA and existing Pearson on identical complete-case selections,
 including omitted `x`. Structure and counts are exact; numerical values allow
 only summation-order differences (`rtol=1e-10`, `atol=1e-12`).
+
+One-sample t-test deployment parity, after development federation readiness:
+
+```bash
+uv run pytest -q tests/prod_env_tests/test_feta_ttest_onesample.py
+```
+
+The test selects complete cases identically for both algorithms, retains the
+normal algorithm's required missing-value handler, and sends no preprocessing
+to FETA. It compares every response field, including one-sided infinity markers.

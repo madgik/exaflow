@@ -39,6 +39,7 @@ from tests.standalone_tests.feta.test_feta_pearson_correlation import (
     IdentityAggregation,
 )
 from tests.standalone_tests.feta.test_feta_pearson_correlation import data
+from tests.standalone_tests.feta.test_feta_ttest_onesample import assert_reference
 
 
 @pytest.fixture
@@ -191,6 +192,43 @@ def request_body(omitted_x=False):
             "parameters": {"alpha": 0.05},
         },
     }
+
+
+@pytest.mark.parametrize("alternative", ["two-sided", "greater", "less"])
+def test_one_sample_ttest_through_real_analysis_route(running_package, alternative):
+    package = running_package
+    parameters = {"mu": 0.25, "alpha": 0.05, "alt_hypothesis": alternative}
+    body = {
+        "inputdata": {
+            "data_model": "test:1.0",
+            "datasets": ["a", "b"],
+            "variables": ["y0"],
+        },
+        "algorithm": {
+            "name": "feta_ttest_onesample",
+            "y": ["y0"],
+            "parameters": parameters,
+        },
+    }
+
+    async def run():
+        client = package.app.test_client()
+        metadata = await client.get("/specifications/algorithms")
+        specifications = json.loads(await metadata.get_data())
+        specification = next(
+            spec for spec in specifications if spec["name"] == "feta_ttest_onesample"
+        )
+        assert specification["type"] == "feta"
+        assert specification["required_preprocessing"] == []
+        response = await client.post("/analysis", json=body)
+        payload = await response.get_data()
+        assert response.status_code == 200, payload.decode()
+        return json.loads(payload)
+
+    result = asyncio.run(run())
+    assert_reference(result, package.frame.y0.to_numpy(), parameters)
+    assert not package.aggregation.sessions
+    assert all(not worker.store.contexts for worker in package.workers)
 
 
 @pytest.mark.parametrize("omitted_x", [False, True])

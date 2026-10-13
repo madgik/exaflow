@@ -72,8 +72,8 @@ class FetaWorkerService(rpc.FetaWorkerServicer):
         data = request.data
         if not re.fullmatch(r"[A-Za-z0-9_.:-]+", data.data_model):
             raise ValueError("Invalid FETA data-model identifier.")
-        if not data.datasets or not request.x or not request.y:
-            raise ValueError("FETA requires datasets and prepared x/y column groups.")
+        if not data.datasets or not (request.x or request.y):
+            raise ValueError("FETA requires datasets and a selected input group.")
         variables = list(dict.fromkeys([*request.x, *request.y]))
         if not set(variables).issubset(data.variables):
             raise ValueError("FETA input columns are outside the selected variables.")
@@ -108,12 +108,13 @@ class FetaWorkerService(rpc.FetaWorkerServicer):
             )
         if getattr(table, "nbytes", 0) > self.store.settings.max_context_bytes:
             raise ResourceLimitError("FETA input exceeds the context memory limit.")
-        groups = (
-            [request.x]
-            if list(request.x) == list(request.y)
-            else [request.x, request.y]
-        )
-        group_sizes = [nrows * len(columns) * 8 for columns in groups]
+        groups = {
+            name: tuple(columns)
+            for name, columns in (("x", request.x), ("y", request.y))
+            if columns
+        }
+        selections = set(groups.values())
+        group_sizes = [nrows * len(columns) * 8 for columns in selections]
         if any(size > self.store.settings.max_tensor_bytes for size in group_sizes):
             raise ResourceLimitError("FETA input exceeds the tensor memory limit.")
         if sum(group_sizes) > self.store.settings.max_context_bytes:
@@ -123,7 +124,7 @@ class FetaWorkerService(rpc.FetaWorkerServicer):
         if frame[variables].isna().any().any():
             raise ValueError("FETA does not yet support missing input values.")
         tensors = {}
-        for name, columns in (("x", request.x), ("y", request.y)):
+        for columns in selections:
             try:
                 array = frame[list(columns)].to_numpy(dtype=np.float64)
             except (TypeError, ValueError) as exc:
@@ -131,26 +132,22 @@ class FetaWorkerService(rpc.FetaWorkerServicer):
                     "Selected FETA columns must contain numerical values."
                 ) from exc
             validate_array(array, self.store.settings.max_tensor_bytes)
-            tensors[name] = (
+            tensors[columns] = (
                 array,
                 TensorMetadata(array.shape, "float64", 0, request.context_id),
             )
-        identical = list(request.x) == list(request.y)
-        if identical:
-            tensors.pop("y")
         if not active():
             raise ContextClosedError("FETA initialization was cancelled.")
         refs = {
-            name: self.store.put(request.context_id, ctx, array, metadata)
-            for name, (array, metadata) in tensors.items()
+            columns: self.store.put(request.context_id, ctx, array, metadata)
+            for columns, (array, metadata) in tensors.items()
         }
-        return pb.InitializeResponse(
-            worker_id=self.worker_id,
-            x=tensors["x"][1].descriptor(refs["x"]),
-            y=(tensors["x"] if identical else tensors["y"])[1].descriptor(
-                refs["x"] if identical else refs["y"]
-            ),
-        )
+        response = pb.InitializeResponse(worker_id=self.worker_id)
+        for name, columns in groups.items():
+            getattr(response, name).CopyFrom(
+                tensors[columns][1].descriptor(refs[columns])
+            )
+        return response
 
     def execute(self, request, active=lambda: True):
         if not active():

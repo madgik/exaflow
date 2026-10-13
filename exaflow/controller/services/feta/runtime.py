@@ -37,11 +37,19 @@ class FetaRuntime:
         self.execution_lock = RLock()
         self.state_lock = Lock()
 
-    def initialize(self, inputdata, x_columns, y_columns):
+    def initialize(
+        self, inputdata, columns: dict[str, list[str]]
+    ) -> dict[str, FedTensor]:
         if self.closed or self.workers:
             raise RuntimeError(
                 "FETA runtime cannot be initialized twice or after cleanup."
             )
+        if (
+            not columns
+            or set(columns) - {"x", "y"}
+            or any(not group for group in columns.values())
+        ):
+            raise ValueError("FETA initialization requires selected x or y groups.")
         selection = pb.DataSelection(
             data_model=inputdata.data_model,
             datasets=inputdata.datasets,
@@ -50,7 +58,7 @@ class FetaRuntime:
         if inputdata.filters:
             ParseDict(inputdata.filters, selection.filters)
         request = pb.InitializeRequest(
-            context_id=self.context_id, data=selection, x=x_columns, y=y_columns
+            context_id=self.context_id, data=selection, **columns
         )
         responses = self._parallel(
             {w.worker_id: (w, request) for w in self.all_workers}, "initialize", True
@@ -63,16 +71,33 @@ class FetaRuntime:
         for worker_id, response in responses.items():
             if response.worker_id != worker_id:
                 raise ValueError("FETA initialization worker identity mismatch.")
-            for descriptor in (response.x, response.y):
+            returned_groups = {name for name in ("x", "y") if response.HasField(name)}
+            if returned_groups != set(columns):
+                raise ValueError(
+                    "FETA initialization returned unexpected input groups."
+                )
+            row_counts = set()
+            for name, selected in columns.items():
+                descriptor = getattr(response, name)
                 if (
                     descriptor.row_layout != self.context_id
                     or descriptor.partition_axis != 0
+                    or not descriptor.tensor_id
+                    or descriptor.dtype != "float64"
+                    or len(descriptor.shape) != 2
+                    or descriptor.shape[0] < 0
+                    or descriptor.shape[1] != len(selected)
                 ):
                     raise ValueError("Invalid FETA input partition metadata.")
-        return (
-            RuntimeFedTensor(self, {key: value.x for key, value in responses.items()}),
-            RuntimeFedTensor(self, {key: value.y for key, value in responses.items()}),
-        )
+                row_counts.add(descriptor.shape[0])
+            if len(row_counts) != 1:
+                raise ValueError("FETA input groups have unaligned row counts.")
+        return {
+            name: RuntimeFedTensor(
+                self, {key: getattr(value, name) for key, value in responses.items()}
+            )
+            for name in columns
+        }
 
     def _parallel(self, calls, method, skip_insufficient=False):
         if not calls:

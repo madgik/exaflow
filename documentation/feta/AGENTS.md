@@ -57,10 +57,14 @@ proposal to a confirmed decision.
 
 ### Context Initialization and Algorithm Inputs
 
-- The runtime prepares the initial `x` and `y` tensors before invoking the
-  algorithm and passes them directly to `run(self, x, y)`. They are already
+- The runtime prepares only the selected input groups declared in the
+  specification and passes them to `run` by name. They are already
   `FedTensor` objects; the algorithm does not cast them or select input columns
   through a `self.tensor(...)` call.
+
+- Each algorithm declares its typed named inputs, for example `run(self, y: FedTensor)` or `run(self, y: FedTensor, x: FedTensor | None = None)`. There is
+  no `resolve_inputs` hook. Omitted optional groups are not loaded or passed;
+  ordinary Python defaults inside `run` define algorithm-specific behavior.
 
 - The prepared tensors must preserve the requested variable order and refer to
   aligned local rows on the same participating workers, so expressions such as
@@ -85,14 +89,15 @@ proposal to a confirmed decision.
   computation. This does not change the integer return type of `len(x)` or
   settle the complete set of supported literal operand dtypes.
 
-- For `feta_pearson_correlation`, resolve omitted `x` to the ordered `y`
-  columns, preserving existing Pearson behavior. When the ordered selections
-  are identical, both inputs may reference the same stored tensor. This is a
-  Pearson input rule, not a universal fallback for future algorithms.
+- For `feta_pearson_correlation`, omitted `x` is handled inside `run` by aliasing
+  the supplied `y` tensor. No second group is loaded and output labels use `y`
+  for both dimensions. Explicit identical selections share a stored tensor.
+  This is a Pearson input rule, not a universal fallback for future algorithms.
 
 Initialization proceeds as follows:
 
-1. The controller resolves ordered input columns and candidate workers.
+1. The controller selects input groups from the specification and validated
+   request, preserving column order, and determines candidate workers.
 1. It sends an `InitializeContext` lifecycle request with the context ID,
    validated data selection, and input column groups.
 1. Each worker loads the required columns once, in one DuckDB query applying
@@ -100,12 +105,12 @@ Initialization proceeds as follows:
    [Exareme3 data loader](../../exaflow/worker/exareme3/udf/udf_db.py) in place;
    do not extract it into another module.
 1. The worker checks the privacy threshold and the temporary missing-value
-   policy, then constructs `x` and `y` from the same loaded rows, restoring
+   policy, then constructs the selected groups from the same loaded rows, restoring
    each group's requested column order.
 1. The worker stores the prepared arrays and returns references and metadata;
    workers with insufficient data are skipped under the agreed policy.
-1. The controller creates `FedTensor` objects for the eligible worker set and
-   invokes `run(x, y)`.
+1. The controller creates a dictionary of named `FedTensor` inputs for eligible
+   workers and invokes `run(**tensors)`. A y-only algorithm receives only `y`.
 
 The initialization flow and protobuf schemas are implemented in `feta.proto`.
 
@@ -350,6 +355,28 @@ arrays. Context IDs provide namespacing, not caller authorization.
 - Preserve the existing Pearson calculation quirks described below during
   migration. Correcting them is separate work.
 
+### Statistics Migration
+
+- Migrate every computation module under `algorithms/federated/statistics` into
+  FETA, using distinct `feta_` algorithm names where there is a runtime algorithm.
+- Add required NumPy-equivalent operations to `federated_numpy`. Ask the user
+  how to proceed when a required computation has no NumPy equivalent or requires
+  a new contract beyond the agreed tensor language.
+- After implementing and validating each algorithm, ask the user to continue
+  before beginning the next. Keep the full migration objective active.
+- Completed runtime algorithms: `feta_pearson_correlation` and
+  `feta_ttest_onesample`. Remaining statistics modules are tracked in the
+  [computation catalogue](LOCAL_COMPUTATIONS.md); they are not implicitly migrated.
+- One-sample t-test prepares only the required sample `y` and its `run(self, y)`
+  receives one stored tensor. It uses three global sums
+  (length, sample sum, squared sum), with inference on the controller.
+- Preserve its existing `mean_diff` field as the sample mean and its confidence
+  intervals as intervals for that mean. One-sided infinity markers, constant
+  sample behavior and the insufficient-observation error remain unchanged.
+- Its public parameters, numeric input contract and response model reuse the
+  existing one-sample specification/model in place, with FETA routing and no
+  preprocessing. Missing inputs remain rejected under the current FETA policy.
+
 The missing-value rejection is an explicit initial FETA limitation: there is no
 FETA preprocessing path to reproduce Exareme3's selected preprocessing behavior.
 
@@ -419,6 +446,12 @@ returns worker identity and input descriptors; execution returns a descriptor,
 never local array data. Each descriptor includes tensor ID, shape, dtype,
 numeric partition axis, and row-layout identity. The row layout originates at
 initialization and is propagated by approved operations.
+Requests may select either or both of the existing x/y groups. Responses include
+only the selected descriptor fields; omitted groups have no protobuf message
+presence and no stored array. The controller validates exact group presence,
+float64 matrix shapes, selected column counts and aligned row counts. The wire
+schema is unchanged, but controllers sending y-only requests require workers
+with the updated initialization semantics; deploy those services together.
 
 Aggregation RPCs are `Prepare`, `Submit`, `Fetch`, and `Cleanup`. Preparation
 specifies the exact worker set, output shape/dtype, context, and step. Submission

@@ -17,6 +17,12 @@ FETA algorithms import `FedTensor` and the `federated_numpy` package from
 `exaflow.algorithms.feta`. Keep arithmetic and matrix operators as tensor
 expressions; use the typed NumPy-style functions for supported non-arithmetic
 operations. The initial package exposes `sum` and `transpose`.
+FETA input preparation follows the specification and validated request. Algorithm
+`run` methods declare typed named inputs; the controller passes only selected
+groups as keyword arguments. Do not add algorithm input-resolution hooks.
+For the statistics migration, validate one algorithm at a time and ask the user
+to continue before starting the next. Add NumPy-equivalent operations as needed;
+ask how to proceed for computations that require a different contract.
 
 ## Project Overview
 

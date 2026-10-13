@@ -18,7 +18,9 @@ def test_reductions_and_transpose_preserve_federation_semantics(function_syntax)
     array = frame[columns].to_numpy()
 
     with runtime:
-        x, y = runtime.initialize(inputs(frame), columns, ["y1", "y0"])
+        tensors = runtime.initialize(inputs(frame), {"x": columns, "y": ["y1", "y0"]})
+        x = tensors["x"]
+        y = tensors["y"]
         yt = transpose(y)
         assert isinstance(yt, FedTensor)
         assert yt.partition_axis == 1 and yt.shape == (2, 39)

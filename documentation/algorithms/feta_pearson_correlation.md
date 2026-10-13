@@ -11,8 +11,9 @@ algorithm's output contract and statistical formulas.
 
 Select a data model, datasets, source variables, and optional filters through
 the standard analysis request. `y` is the required primary variable group;
-`x` is an optional secondary group. Omitted `x` resolves to `y`. Both groups
-preserve the requested variable order and use the same selected rows.
+`x` is an optional secondary group. When omitted, only `y` is loaded and the
+algorithm aliases it as `x` inside `run`. Supplied groups preserve the requested
+variable order and use the same selected rows.
 
 `alpha` is required by the public specification and defaults to `0.95` in its
 metadata. The existing implementation labels it a confidence level but uses it
@@ -80,7 +81,8 @@ The numerical cross-product is `fnp.transpose(y) @ x`, equivalent to `y.T @ x`
 and equivalent in orientation to the
 original `np.einsum("ji,jk->ki", x, y)`. The runtime determines aggregation
 from partitioning, rather than requiring an explicit global-sum call.
-Column selection and row alignment happen before `run(x, y)` receives tensors.
+Column selection and row alignment happen before named tensors are passed to
+`run(y=y, x=x)` or, when x is omitted, `run(y=y)`.
 Any participating-worker failure aborts execution; operations are not retried.
 
 See [FETA architecture](../feta/AGENTS.md) for operation validation, storage,

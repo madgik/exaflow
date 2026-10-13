@@ -109,3 +109,76 @@ and output structure match exactly; numerical results meet `rtol=1e-10`,
 
 Corrected validation requests to include `value: null` in `is_not_null` filters,
 as required by the shared API filter validator. No runtime changes were needed.
+
+## Statistics migration: one-sample t-test
+
+The active objective is to migrate all computation modules under
+`algorithms/federated/statistics` to FETA, add NumPy-equivalent operations where
+needed, consult the user for different operation contracts, and request
+continuation after every completed algorithm. This milestone completes
+`feta_ttest_onesample`; the broader migration remains active.
+
+The new algorithm reuses the existing specification/response model in place,
+registers independently with `AlgorithmType.FETA`, rejects preprocessing and
+missing inputs, and computes count/sum/squared sum with existing tensor algebra.
+The controller derives reference-centered moments and inference. The prepared
+y group contains the selected sample; no x group is constructed. No new worker/protobuf operations
+or deployment configuration were needed.
+
+Validation:
+
+```bash
+uv run pytest -q tests/standalone_tests/feta tests/standalone_tests/federated_algorithms/statistics/test_ttest_onesample.py tests/standalone_tests/test_import_algorithm_modules_idempotent.py --disable-warnings --tb=short
+uv run inv deploy --no-install-dep --no-structure-data
+uv run pytest -q tests/prod_env_tests/test_feta_ttest_onesample.py --disable-warnings --tb=short
+```
+
+Results: **139 focused tests passed** and **5 live development-deployment parity
+tests passed**. The latter used the existing prepared datasets, waited for worker
+landscape readiness and algorithm discovery, and compared all response fields
+against the existing runtime algorithm on identical complete-case selections.
+Numerical tolerance is `rtol=1e-10`, `atol=1e-12`.
+
+Preserved quirks: `mean_diff` is the sample mean, intervals are centered on that
+mean, and constant-sample NaN/infinity behavior is retained. Registering the
+additional algorithm is additive; existing algorithms and transport are unchanged.
+Rollback consists of removing its FETA module and associated discovery entry
+(which is automatic), tests and documentation; no stored-data migration is involved.
+
+Next proposed algorithm is `feta_ttest_paired`, pending the user's continuation
+decision. All other statistics modules remain to be migrated.
+
+## Specification-driven named inputs
+
+Removed `resolve_inputs` from the base and both existing algorithms. The
+controller selects declared groups from the specification and validated request,
+initializes only those groups, and invokes `run(**tensors)`. One-sample t-test
+declares `run(self, y: FedTensor)`. Pearson declares required y and optional x,
+aliasing y inside the algorithm and using y labels when x is omitted.
+
+`FetaRuntime.initialize(inputdata, columns)` now accepts a dictionary of selected
+column groups and returns a dictionary of named tensors. This replaces its old
+three-argument/tuple API; callers have been updated without a compatibility shim.
+Worker responses omit unselected descriptor fields, and controller validation
+checks exact group presence, float64 matrix shapes, selected column widths and
+aligned row counts. Explicit identical groups still share one stored array.
+
+The protobuf field layout and HTTP request/response shapes are unchanged. Older
+workers reject single-group initialization, so deploy the updated controller and
+workers together. Rollback must restore both initialization implementations and
+algorithm signatures together. Privacy thresholds, cleanup and aggregation
+semantics remain preserved.
+
+Focused validation: **182 tests passed**, covering FETA, controller services and
+algorithm discovery, including named y-only API calls, omitted-x Pearson,
+unselected missing columns, mismatched descriptor presence/shape, shared storage
+and cleanup races.
+
+Live validation after `uv run inv deploy --no-install-dep --no-structure-data`:
+
+```bash
+uv run pytest -q tests/prod_env_tests/test_feta_pearson_correlation.py tests/prod_env_tests/test_feta_ttest_onesample.py --disable-warnings --tb=short
+```
+
+Result: **15 passed in 3.46 seconds**, covering explicit/omitted Pearson x and
+the one-sample algorithm against their normal runtime counterparts.

@@ -13,6 +13,15 @@ The proposed library has three layers: small array primitives, compositions of
 those primitives, and controlled dataset-summary operations. Mathematical
 postprocessing of completed global results belongs in the controller.
 
+## Migration Status
+
+Runtime counterparts implemented and validated so far are
+`feta_pearson_correlation` and `feta_ttest_onesample`. The latter uses the existing
+length, multiply and sum operations; no new `federated_numpy` operator was needed.
+The catalogue below describes requirements, not completion of the remaining
+algorithms. Migration proceeds one algorithm at a time with a user continuation
+decision after each validated implementation.
+
 ## Existing FETA foundation
 
 The current worker allowlist is `ADD`, `SUBTRACT`, `MULTIPLY`, `DIVIDE`, `POWER`,
