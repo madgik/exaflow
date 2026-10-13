@@ -76,16 +76,17 @@ class FederatedTTestPaired:
         df = total_n_obs - 1
 
         mean_diff = total_diff_sum / total_n_obs
-        ci_lower, ci_upper = st.t.interval(1 - alpha, df, loc=mean_diff, scale=sed)
-
         if alternative == "greater":
             p_value = 1.0 - st.t.cdf(t_stat, df)
+            ci_lower = mean_diff - st.t.ppf(1 - alpha, df) * sed
             ci_upper = "Infinity"
         elif alternative == "less":
             p_value = 1.0 - st.t.cdf(-t_stat, df)
             ci_lower = "-Infinity"
+            ci_upper = mean_diff + st.t.ppf(1 - alpha, df) * sed
         else:
             p_value = (1.0 - st.t.cdf(abs(t_stat), df)) * 2.0
+            ci_lower, ci_upper = st.t.interval(1 - alpha, df, loc=mean_diff, scale=sed)
 
         cohens_d = mean_diff / sd_diff
 

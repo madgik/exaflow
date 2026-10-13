@@ -97,16 +97,17 @@ class FederatedTTestIndependent:
         df = n_a_total + n_b_total - 2
         diff_mean = mean_a - mean_b
 
-        ci_lower, ci_upper = st.t.interval(1 - alpha, df, loc=diff_mean, scale=sed)
-
         if alternative == "greater":
             p_value = 1.0 - st.t.cdf(t_stat, df)
+            ci_lower = diff_mean - st.t.ppf(1 - alpha, df) * sed
             ci_upper = "Infinity"
         elif alternative == "less":
             p_value = 1.0 - st.t.cdf(-t_stat, df)
             ci_lower = "-Infinity"
+            ci_upper = diff_mean + st.t.ppf(1 - alpha, df) * sed
         else:
             p_value = (1.0 - st.t.cdf(abs(t_stat), df)) * 2.0
+            ci_lower, ci_upper = st.t.interval(1 - alpha, df, loc=diff_mean, scale=sed)
 
         cohens_d = diff_mean / np.sqrt(pooled_var)
 
