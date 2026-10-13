@@ -52,17 +52,17 @@ The p-value is computed from the usual correlation t statistic with
 ## Federated computation
 
 The correlation matrix is computed without sharing row-level data. Each site
-contributes sums, sums of squares, and cross-products for the requested variable
-pairs.
+contributes sums in a first round and centered sums of squares and
+cross-products in a second round.
 
 ### Aggregated quantities
 
 | Quantity | Purpose |
 |---|---|
 | Number of observations | Compute degrees of freedom and confidence interval standard error. |
-| `sum(x)` and `sum(y)` | Compute centered cross-products. |
-| `sum(x^2)` and `sum(y^2)` | Compute variances. |
-| `sum(x*y)` | Compute covariances for each variable pair. |
+| `sum(x)` and `sum(y)` | Compute global means. |
+| `sum((x - mean_x)^2)` and `sum((y - mean_y)^2)` | Compute variances. |
+| `sum((x - mean_x) * (y - mean_y))` | Compute covariances for each variable pair. |
 
 ### Federated flow
 
@@ -76,14 +76,13 @@ Step 1:
     Select X = Y when no secondary variables are provided.
 
 Step 2:
-    At each site, compute:
-        n
-        sums for X and Y
-        sums of squares for X and Y
-        cross-products X'Y
+    At each site, compute n and sums for X and Y.
+    Aggregate them and compute the global means.
 
 Step 3:
-    Aggregate all sufficient statistics.
+    At each site, compute centered sums of squares for X and Y and centered
+    cross-products X'Y.
+    Aggregate them.
 
 Step 4:
     Compute Pearson correlations for each pair.
@@ -98,6 +97,9 @@ Output:
 ## Technical decisions
 
 - Correlations are clipped to `[-1, 1]` after computation.
+- Variances use a second aggregation round of squared deviations from the
+  global mean instead of raw moments, so they stay accurate when the mean is
+  large relative to the spread.
 - P-values use the beta-function form equivalent to the standard Pearson test.
 - Perfect correlations receive p-value `0`.
 - Zero-variance denominators produce correlation `0`.

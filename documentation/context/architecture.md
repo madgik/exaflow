@@ -100,7 +100,7 @@ The Quart API exposes:
 - `GET /cdes_metadata`
 - `GET /data_models_attributes`
 - `POST /wla`
-- `GET /healthcheck`
+- `GET /healthcheck` (calls every worker; not used by the controller probes)
 - Flower routes: `GET /flower/input`, `POST /flower/result`
 
 `documentation/api-specification.md` is the human-facing API contract. The

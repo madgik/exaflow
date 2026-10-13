@@ -73,16 +73,20 @@ spec:
         - name: SMPC_GET_RESULT_MAX_RETRIES
           value: {{ quote .Values.smpc.get_result_max_retries }}
         {{- end }}
+        # Probe a route served from the controller's in-memory registry.
+        # /healthcheck calls every worker, so probing it would restart the
+        # controller whenever a single worker is down; the controller already
+        # serves a partial federation and drops unreachable workers.
         startupProbe:
           httpGet:
-            path: /healthcheck
+            path: /datasets
             port: 5000
           initialDelaySeconds: 60
           periodSeconds: 30
           timeoutSeconds: {{ .Values.controller.worker_tasks_timeout }}
         livenessProbe:
           httpGet:
-            path: /healthcheck
+            path: /datasets
             port: 5000
           periodSeconds: 30
           timeoutSeconds: {{ .Values.controller.worker_tasks_timeout }}

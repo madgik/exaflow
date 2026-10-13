@@ -199,6 +199,24 @@ def _create_primary_data_table(
     conn.execute(f'CREATE TABLE "{table_name}" AS {query}', params)
 
 
+def _dataset_variables(
+    conn: duckdb.DuckDBPyConnection, table_prefix: str
+) -> dict[str, list[str]]:
+    """Map each dataset to the columns holding at least one non-null value in it."""
+    table_name = f"{table_prefix}__primary_data"
+    columns = [row[0] for row in conn.execute(f'DESCRIBE "{table_name}"').fetchall()]
+    counts = ", ".join(
+        'COUNT("{}")'.format(column.replace('"', '""')) for column in columns
+    )
+    rows = conn.execute(
+        f'SELECT "{DATASET_COL}", {counts} FROM "{table_name}" GROUP BY "{DATASET_COL}"'
+    ).fetchall()
+    return {
+        row[0]: [column for column, count in zip(columns, row[1:]) if count]
+        for row in rows
+    }
+
+
 def _read_csv_columns(csv_path: Path) -> list[str]:
     # Use DuckDB's sniffer to automatically detect delimiters (e.g. semicolon)
     # limit=0 reads only the header/schema without scanning the whole file
@@ -341,8 +359,17 @@ def load_all_csvs_from_data_folder(request_id: str) -> str:
 
             dataset_csv_map = _datasets_from_csv_files(csv_paths)
             assigned_datasets = sorted(dataset_csv_map.keys())
+            dataset_variables = (
+                _dataset_variables(conn, table_prefix) if assigned_datasets else {}
+            )
 
             for dataset_code in assigned_datasets:
+                dataset_properties = {
+                    "tags": [],
+                    "properties": {
+                        "variables": dataset_variables.get(dataset_code, [])
+                    },
+                }
                 dataset_id += 1
                 conn.execute(
                     "INSERT INTO datasets VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -353,7 +380,7 @@ def load_all_csvs_from_data_folder(request_id: str) -> str:
                         dataset_code,
                         "ENABLED",
                         str(dataset_csv_map.get(dataset_code, csv_paths[0])),
-                        None,
+                        json.dumps(dataset_properties),
                     ],
                 )
     finally:

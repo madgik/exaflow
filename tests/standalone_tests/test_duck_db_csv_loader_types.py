@@ -7,6 +7,7 @@ import pytest
 
 from exaflow.worker.utils.duck_db_csv_loader import _build_column_types
 from exaflow.worker.utils.duck_db_csv_loader import _create_primary_data_table
+from exaflow.worker.utils.duck_db_csv_loader import _dataset_variables
 
 
 @pytest.fixture()
@@ -112,3 +113,21 @@ def test_create_primary_data_table_without_types_still_works(tmp_csv):
 
         count = conn.execute('SELECT COUNT(*) FROM "test__primary_data"').fetchone()[0]
         assert count == 3
+
+
+def test_dataset_variables_lists_non_null_columns_per_dataset(tmp_path):
+    csv_path = tmp_path / "data.csv"
+    with csv_path.open("w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["dataset", "category", "age", "score"])
+        writer.writerow(["ds1", "0", "25", None])
+        writer.writerow(["ds1", None, "30", None])
+        writer.writerow(["ds2", "1", None, "2.0"])
+
+    with duckdb.connect(":memory:") as conn:
+        _create_primary_data_table(conn, "test", [csv_path], METADATA)
+
+        assert _dataset_variables(conn, "test") == {
+            "ds1": ["dataset", "category", "age"],
+            "ds2": ["dataset", "category", "score"],
+        }

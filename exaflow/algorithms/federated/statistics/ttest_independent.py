@@ -56,19 +56,9 @@ class FederatedTTestIndependent:
                 dtype=float,
             )
         )
-        sq_sums_arr = self.agg_client.sum(
-            np.array(
-                [
-                    float(np.dot(sample_a, sample_a)),
-                    float(np.dot(sample_b, sample_b)),
-                ],
-                dtype=float,
-            )
-        )
         n_a_total, n_b_total, sum_a_total, sum_b_total = np.asarray(
             totals_arr, dtype=float
         ).reshape(-1)
-        sq_sum_a, sq_sum_b = np.asarray(sq_sums_arr, dtype=float).reshape(-1)
 
         if n_a_total < 1:
             raise BadInputError("Group A has no data.")
@@ -80,18 +70,20 @@ class FederatedTTestIndependent:
         mean_a = sum_a_total / n_a_total
         mean_b = sum_b_total / n_b_total
 
-        sd_a = np.sqrt(
-            (sq_sum_a - 2 * mean_a * sum_a_total + (mean_a**2) * n_a_total)
-            / (n_a_total - 1)
+        centered_a = sample_a - mean_a
+        centered_b = sample_b - mean_b
+        ssd_arr = self.agg_client.sum(
+            np.array(
+                [
+                    float(np.dot(centered_a, centered_a)),
+                    float(np.dot(centered_b, centered_b)),
+                ],
+                dtype=float,
+            )
         )
-        sd_b = np.sqrt(
-            (sq_sum_b - 2 * mean_b * sum_b_total + (mean_b**2) * n_b_total)
-            / (n_b_total - 1)
-        )
+        ssd_a, ssd_b = np.asarray(ssd_arr, dtype=float).reshape(-1)
 
-        pooled_var = ((n_a_total - 1) * sd_a**2 + (n_b_total - 1) * sd_b**2) / (
-            n_a_total + n_b_total - 2
-        )
+        pooled_var = (ssd_a + ssd_b) / (n_a_total + n_b_total - 2)
         sed = np.sqrt(pooled_var * (1 / n_a_total + 1 / n_b_total))
         t_stat = (mean_a - mean_b) / sed
         df = n_a_total + n_b_total - 2

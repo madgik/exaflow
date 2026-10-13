@@ -24,58 +24,28 @@ class FederatedTTestPaired:
         if sample_x.shape != sample_y.shape:
             raise BadInputError("Paired samples must have the same length.")
 
-        n_obs = sample_x.size
         diff = sample_x - sample_y
 
-        sum_x = sample_x.sum()
-        sum_y = sample_y.sum()
-        diff_sum = diff.sum()
-        diff_sq_sum = np.dot(diff, diff)
-        x_sq_sum = np.dot(sample_x, sample_x)
-        y_sq_sum = np.dot(sample_y, sample_y)
-
         totals_arr = self.agg_client.sum(
-            np.array(
-                [
-                    float(n_obs),
-                    float(sum_x),
-                    float(sum_y),
-                    float(diff_sum),
-                    float(diff_sq_sum),
-                ],
-                dtype=float,
-            )
+            np.array([float(diff.size), float(diff.sum())], dtype=float)
         )
-        total_x_sq_arr = self.agg_client.sum(np.array([float(x_sq_sum)], dtype=float))
-        total_y_sq_arr = self.agg_client.sum(np.array([float(y_sq_sum)], dtype=float))
-        total_n_obs, total_sum_x, total_sum_y, total_diff_sum, total_diff_sq_sum = (
-            np.asarray(totals_arr, dtype=float).reshape(-1)
-        )
-        total_x_sq = float(np.asarray(total_x_sq_arr).reshape(-1)[0])
-        total_y_sq = float(np.asarray(total_y_sq_arr).reshape(-1)[0])
+        total_n_obs, total_diff_sum = np.asarray(totals_arr, dtype=float).reshape(-1)
 
         if total_n_obs <= 1:
             raise BadInputError("Not enough observations for paired t-test.")
 
-        mean_x = total_sum_x / total_n_obs
-        mean_y = total_sum_y / total_n_obs
+        mean_diff = total_diff_sum / total_n_obs
+        centered = diff - mean_diff
+        total_ssd_arr = self.agg_client.sum(
+            np.array([float(np.dot(centered, centered))], dtype=float)
+        )
+        total_ssd = float(np.asarray(total_ssd_arr).reshape(-1)[0])
 
-        sd_x = np.sqrt(
-            (total_x_sq - 2 * mean_x * total_sum_x + (mean_x**2) * total_n_obs)
-            / (total_n_obs - 1)
-        )
-        sd_y = np.sqrt(
-            (total_y_sq - 2 * mean_y * total_sum_y + (mean_y**2) * total_n_obs)
-            / (total_n_obs - 1)
-        )
-        sd_diff = np.sqrt(
-            (total_diff_sq_sum - (total_diff_sum**2 / total_n_obs)) / (total_n_obs - 1)
-        )
+        sd_diff = np.sqrt(total_ssd / (total_n_obs - 1))
         sed = sd_diff / np.sqrt(total_n_obs)
-        t_stat = (mean_x - mean_y) / sed
+        t_stat = mean_diff / sed
         df = total_n_obs - 1
 
-        mean_diff = total_diff_sum / total_n_obs
         ci_lower, ci_upper = st.t.interval(1 - alpha, df, loc=mean_diff, scale=sed)
 
         if alternative == "greater":

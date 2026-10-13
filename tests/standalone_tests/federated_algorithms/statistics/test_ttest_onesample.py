@@ -83,6 +83,7 @@ class TestFederatedTTestOneSample(FederatedAlgorithmTest):
         stats = DescrStatsW(sample)
         t_stat, p_value, df = stats.ttest_mean(value=mu, alternative="two-sided")
         ci_lower, ci_upper = stats.tconfint_mean(alpha=alpha, alternative="two-sided")
+        ci_lower, ci_upper = ci_lower - mu, ci_upper - mu
 
         mean_val = float(stats.mean)
         sd = float(np.std(sample, ddof=1))
@@ -93,7 +94,7 @@ class TestFederatedTTestOneSample(FederatedAlgorithmTest):
             "t_stat": float(t_stat),
             "p_value": float(p_value),
             "df": float(df),
-            "mean_diff": mean_val,
+            "mean_diff": mean_val - mu,
             "se_diff": se,
             "ci_lower": float(ci_lower),
             "ci_upper": float(ci_upper),

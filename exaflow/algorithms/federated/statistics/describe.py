@@ -37,7 +37,8 @@ class FederatedDescribe:
     - Per-dataset quantiles (q1/q2/q3) are exact (pandas). The global summary
       carries federated ``q1``/``q2``/``q3`` and ``median`` (= ``q2``) estimated
       across all datasets via a histogram-based percentile.
-    - Means and variances come from aggregated sufficient statistics (sx, sxx).
+    - Means come from aggregated sums (sx). Variances come from a second
+      aggregation round of sums of squares centered on the global mean.
     - Nominal counts flow through the aggregation client and zero-count levels are
       dropped in the global result per our contract.
     - NA handling remains pairwise complete per variable.
@@ -185,7 +186,6 @@ class FederatedDescribe:
         numerical_recs = []
         if numerical_vars:
             sx = df[numerical_vars].sum().to_dict()
-            sxx = (df[numerical_vars] ** 2).sum().to_dict()
             q1 = descr_numerical.loc["25%"].to_dict()
             q2 = descr_numerical.loc["50%"].to_dict()
             q3 = descr_numerical.loc["75%"].to_dict()
@@ -210,7 +210,6 @@ class FederatedDescribe:
                             num_na=int(num_na[var]),
                             num_total=num_total,
                             sx=float(sx[var]),
-                            sxx=float(sxx[var]),
                             q1=float(q1[var]),
                             q2=float(q2[var]),
                             q3=float(q3[var]),
@@ -261,7 +260,6 @@ class FederatedDescribe:
                 "num_na": 0.0,
                 "num_total": 0.0,
                 "sx": 0.0,
-                "sxx": 0.0,
                 "min": np.inf,
                 "max": -np.inf,
             }
@@ -281,7 +279,6 @@ class FederatedDescribe:
                 stats["num_na"] += data["num_na"]
                 stats["num_total"] += data["num_total"]
                 stats["sx"] += data["sx"]
-                stats["sxx"] += data["sxx"]
                 stats["min"] = min(stats["min"], data["min"])
                 stats["max"] = max(stats["max"], data["max"])
             elif var in cat_stats:
@@ -301,7 +298,6 @@ class FederatedDescribe:
             [num_stats[v]["num_total"] for v in numerical_vars], dtype=float
         )
         sx_arr = np.array([num_stats[v]["sx"] for v in numerical_vars], dtype=float)
-        sxx_arr = np.array([num_stats[v]["sxx"] for v in numerical_vars], dtype=float)
         min_arr = np.array([num_stats[v]["min"] for v in numerical_vars], dtype=float)
         max_arr = np.array([num_stats[v]["max"] for v in numerical_vars], dtype=float)
 
@@ -309,9 +305,29 @@ class FederatedDescribe:
         num_na_arr = np.asarray(self.agg_client.sum(num_na_arr), dtype=float)
         num_total_arr = np.asarray(self.agg_client.sum(num_total_arr), dtype=float)
         sx_arr = np.asarray(self.agg_client.sum(sx_arr), dtype=float)
-        sxx_arr = np.asarray(self.agg_client.sum(sxx_arr), dtype=float)
         min_arr = np.asarray(self.agg_client.min(min_arr), dtype=float)
         max_arr = np.asarray(self.agg_client.max(max_arr), dtype=float)
+
+        # Sum of squared deviations from the global mean. Each dataset adds its
+        # exact local sum, (n - 1) * std^2, plus n * (mean - global_mean)^2.
+        global_mean_arr = np.divide(
+            sx_arr,
+            num_dtps_arr,
+            out=np.zeros_like(sx_arr),
+            where=num_dtps_arr > 0,
+        )
+        var_index = {var: idx for idx, var in enumerate(numerical_vars)}
+        ssd_arr = np.zeros(len(numerical_vars), dtype=float)
+        for rec in valid:
+            idx = var_index.get(rec["variable"])
+            if idx is None:
+                continue
+            data = rec["data"]
+            ssd_arr[idx] += (data["num_dtps"] - 1) * (data["std"] or 0.0) ** 2
+            ssd_arr[idx] += (
+                data["num_dtps"] * (data["mean"] - global_mean_arr[idx]) ** 2
+            )
+        ssd_arr = np.asarray(self.agg_client.sum(ssd_arr), dtype=float)
 
         cat_num_dtps = np.array(
             [cat_stats[v]["num_dtps"] for v in nominal_vars], dtype=float
@@ -335,12 +351,11 @@ class FederatedDescribe:
                     dict(variable=var, dataset=dataset_label, data=None)
                 )
                 continue
-            mean = float(sx_arr[idx]) / num_dtps
+            mean = float(global_mean_arr[idx])
             if num_dtps <= 1:
                 std = None
             else:
-                variance = (float(sxx_arr[idx]) - num_dtps * (mean**2)) / (num_dtps - 1)
-                std = float(np.sqrt(max(variance, 0.0)))
+                std = float(np.sqrt(ssd_arr[idx] / (num_dtps - 1)))
             global_records.append(
                 dict(
                     variable=var,

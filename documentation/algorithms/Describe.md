@@ -57,7 +57,8 @@ category counts.
 | Non-missing counts | Report valid observations and compute means. |
 | Missing counts | Report missingness. |
 | Total row counts | Report denominator per variable and dataset. |
-| Numerical sums and sums of squares | Compute combined means and sample standard deviations. |
+| Numerical sums | Compute combined means. |
+| Numerical sums of squared deviations from the combined mean | Compute combined sample standard deviations. |
 | Numerical minima and maxima | Compute combined ranges. |
 | Numerical federated histogram | Estimate the combined median across all datasets. |
 | Nominal category counts | Compute combined category frequencies. |
@@ -78,7 +79,7 @@ Step 2:
     For numerical variables:
         compute local count, missing count, total count
         compute mean, sample standard deviation, min, quartiles, median, max
-        store sum and sum of squares for aggregation
+        store sum for aggregation
 
 Step 3:
     For nominal variables:
@@ -86,7 +87,11 @@ Step 3:
         compute category counts
 
 Step 4:
-    Aggregate sufficient statistics and category counts for the combined summary.
+    Aggregate counts, sums, minima, maxima, and category counts for the
+    combined summary. Compute the combined mean per numerical variable.
+    Aggregate, per numerical variable, each dataset's
+    (n - 1) * std^2 + n * (mean - combined_mean)^2 to obtain the combined
+    sum of squared deviations.
     Estimate the combined median per numerical variable from a federated
     histogram across all datasets.
 
@@ -105,8 +110,10 @@ Output:
 - Per-dataset numerical quartiles (`q1`/`q2`/`q3`) are exact (pandas). The
   combined summary carries federated `q1`/`q2`/`q3` and `median` (= `q2`)
   estimated across all datasets from a histogram-based percentile.
-- Combined numerical standard deviations use aggregated sums and sums of
-  squares with sample-variance denominator `n - 1`.
+- Combined numerical standard deviations use the aggregated sum of squared
+  deviations from the combined mean with sample-variance denominator `n - 1`.
+  Raw moments are avoided so the result stays accurate when the mean is large
+  relative to the spread.
 - Nominal combined summaries use metadata-defined category levels and omit
   zero-count levels.
 - Missing values are handled independently for each variable.
