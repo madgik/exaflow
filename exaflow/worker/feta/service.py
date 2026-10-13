@@ -2,6 +2,7 @@ import numbers
 import re
 
 import numpy as np
+import pyarrow as pa
 from google.protobuf.json_format import MessageToDict
 
 from exaflow.aggregation_serialization import ndarray_to_bytes
@@ -13,6 +14,7 @@ from exaflow.feta.lifecycle import ContextStore
 from exaflow.feta.lifecycle import ResourceLimitError
 from exaflow.feta.operations import LocalOperation
 from exaflow.feta.operations import LocalTensorRef
+from exaflow.feta.operations import OperationType
 from exaflow.feta.operations import TensorMetadata
 from exaflow.feta.operations import evaluate
 from exaflow.feta.operations import infer_operation
@@ -114,28 +116,61 @@ class FetaWorkerService(rpc.FetaWorkerServicer):
             if columns
         }
         selections = set(groups.values())
-        group_sizes = [nrows * len(columns) * 8 for columns in selections]
-        if any(size > self.store.settings.max_tensor_bytes for size in group_sizes):
-            raise ResourceLimitError("FETA input exceeds the tensor memory limit.")
-        if sum(group_sizes) > self.store.settings.max_context_bytes:
-            raise ResourceLimitError("FETA input exceeds the context memory limit.")
         frame = table.to_pandas()
         # TODO: replace temporary missing-value rejection when preprocessing is designed.
         if frame[variables].isna().any().any():
             raise ValueError("FETA does not yet support missing input values.")
         tensors = {}
         for columns in selections:
-            try:
-                array = frame[list(columns)].to_numpy(dtype=np.float64)
-            except (TypeError, ValueError) as exc:
+            selected = frame[list(columns)]
+            text_columns = [
+                pa.types.is_string(table.schema.field(c).type)
+                or pa.types.is_large_string(table.schema.field(c).type)
+                or (
+                    pa.types.is_null(table.schema.field(c).type)
+                    and selected[c].dtype.kind == "O"
+                )
+                for c in columns
+            ]
+            if any(text_columns) and not all(text_columns):
                 raise ValueError(
-                    "Selected FETA columns must contain numerical values."
-                ) from exc
+                    "FETA input groups cannot mix text and numerical columns."
+                )
+            remaining = self.store.settings.max_context_bytes - sum(
+                a.nbytes for a, _ in tensors.values()
+            )
+            if all(text_columns):
+                # Fixed-width Unicode avoids arbitrary Python objects in the store.
+                width = max(
+                    1, max((len(v) for c in columns for v in selected[c]), default=1)
+                )
+                predicted_bytes = nrows * len(columns) * width * 4
+                if predicted_bytes > min(
+                    self.store.settings.max_tensor_bytes, remaining
+                ):
+                    raise ResourceLimitError(
+                        "FETA input exceeds the tensor memory limit."
+                    )
+                array = selected.to_numpy(dtype=f"U{width}")
+            else:
+                predicted_bytes = nrows * len(columns) * 8
+                if predicted_bytes > min(
+                    self.store.settings.max_tensor_bytes, remaining
+                ):
+                    raise ResourceLimitError(
+                        "FETA input exceeds the tensor memory limit."
+                    )
+                array = selected.to_numpy(dtype=np.float64)
             validate_array(array, self.store.settings.max_tensor_bytes)
             tensors[columns] = (
                 array,
-                TensorMetadata(array.shape, "float64", 0, request.context_id),
+                TensorMetadata(array.shape, str(array.dtype), 0, request.context_id),
             )
+        if (
+            sum(array.nbytes for array, _ in tensors.values())
+            > self.store.settings.max_context_bytes
+        ):
+            raise ResourceLimitError("FETA input exceeds the context memory limit.")
         if not active():
             raise ContextClosedError("FETA initialization was cancelled.")
         refs = {
@@ -176,6 +211,10 @@ class FetaWorkerService(rpc.FetaWorkerServicer):
                 "Aggregation instruction differs from operation placement."
             )
         result = evaluate(operation, inputs, result_meta)
+        if operation.type == OperationType.FILTER:
+            result_meta = TensorMetadata(
+                result.shape, result_meta.dtype, 0, result_meta.row_layout
+            )
         if not active():
             raise ContextClosedError("FETA operation was cancelled.")
         tensor_id = self.store.put(request.context_id, ctx, result, result_meta)

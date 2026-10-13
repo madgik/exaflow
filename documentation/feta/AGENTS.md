@@ -365,7 +365,7 @@ arrays. Context IDs provide namespacing, not caller authorization.
 - After implementing and validating each algorithm, ask the user to continue
   before beginning the next. Keep the full migration objective active.
 - Completed runtime algorithms: `feta_pearson_correlation`,
-  `feta_ttest_onesample` and `feta_ttest_paired`. Remaining statistics modules are tracked in the
+  `feta_ttest_onesample`, `feta_ttest_paired` and `feta_ttest_independent`. Remaining statistics modules are tracked in the
   [computation catalogue](LOCAL_COMPUTATIONS.md); they are not implicitly migrated.
 - One-sample t-test prepares only the required sample `y` and its `run(self, y)`
   receives one stored tensor. It uses three global sums
@@ -486,10 +486,39 @@ uv run python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. exaflo
 ### Operations and Limits
 
 The initial allowlist is `ADD`, `SUBTRACT`, `MULTIPLY`, `DIVIDE`, `POWER`,
-`TRANSPOSE`, `SUM`, `MATMUL`, and `LENGTH`. Literals are Python numeric scalars or
-NumPy arrays with integer dtypes up to 64 bits or `float32`/`float64`. Boolean,
-object, string, complex, non-native-endian, and higher-rank tensors are rejected. Inputs loaded
-from DuckDB are always `float64`.
+`TRANSPOSE`, `SUM`, `MATMUL`, `LENGTH`, `EQUAL`, `COLUMN`, and `FILTER`. Literals are Python numeric scalars or
+NumPy arrays with integer dtypes up to 64 bits, `float32`/`float64`, or booleans.
+String and boolean scalar literals are also supported. Numerical inputs loaded
+from DuckDB remain `float64`; text groups use fixed-width NumPy Unicode arrays.
+Object, complex, non-native-endian and higher-rank arrays remain rejected.
+String-array literals are unsupported because the current Arrow tensor operand
+encoding is numerical. Input groups cannot mix text and numerical columns.
+Unicode allocation uses actual maximum label width and is bounded before array
+construction; empty text partitions retain string dtype. Initial descriptor
+validation accepts float64 or Unicode rather than assuming all inputs numeric.
+
+Equality (`==` or `fnp.equal`) returns distributed boolean tensors. Numerical
+reductions on booleans count true values; strings cannot be summed or used in
+arithmetic/matrix products. `x[:, column]` selects one column from a
+row-partitioned matrix, returning a one-dimensional tensor. `y[mask]` accepts an
+aligned one-dimensional boolean FedTensor and returns a row-partitioned result.
+Other indexing forms are unsupported. Tensor truth-value conversion is rejected.
+
+The controller assigns selection lineage per mask object and sends it in the
+FILTER request. Applying the same mask to multiple aligned tensors gives their
+results the same lineage. Independently created masks conservatively produce
+different lineage. Filter result row counts are data-dependent: workers report
+actual shapes and the controller checks bounds, remaining dimensions, dtype,
+partition and lineage. Workers with empty subsets remain participants.
+
+These protocol extensions add string/boolean operand fields, explicit array
+literal dtype, three operation values and selection lineage. Arrow stores boolean
+tensor literals as uint8; workers validate 0/1 values and restore their logical
+boolean dtype using the declared dtype. Deploy FETA controller and workers together.
+Existing Exareme3 RPCs, routes, configuration and numerical aggregation schemas
+are unchanged. Raw labels/masks are not released to the controller. The operation
+allowlist does not establish privacy for every possible composition; existing
+trust and authorization limitations continue to apply.
 
 Supported tensors have rank at most two. Elementwise broadcasting cannot
 broadcast over a distributed record dimension or align different record
@@ -607,12 +636,12 @@ changes.
 
 Algorithm authors import the function package with
 `from exaflow.algorithms.feta import federated_numpy as fnp`; the alias is optional.
-Keep arithmetic, comparisons as they become supported, and matrix multiplication
+Keep arithmetic, equality comparisons, and matrix multiplication
 in operator syntax. Do not add duplicate arithmetic function wrappers solely to
-mirror NumPy. Current public functions are `fnp.sum(a, axis=None)` and
-`fnp.transpose(a)`, which delegate distributed inputs to the existing tensor
+mirror NumPy. Current public functions are `fnp.sum(a, axis=None)`,
+`fnp.transpose(a)` and `fnp.equal(a, b)`, which delegate distributed inputs to the existing tensor
 methods without adding worker requests or changing aggregation semantics.
-Existing `.sum()`, `.T` and `len(x)` remain available. Concrete real numerical
+Existing `.sum()`, `.T`, `==`, indexing and `len(x)` remain available. Concrete
 NumPy arrays use the corresponding local NumPy computation; unsupported input
 types raise TypeError without attempting to convert distributed arrays.
 
@@ -621,7 +650,7 @@ axis-dependent return types. Transpose returns `FedTensor` for a distributed
 input and a NumPy array for a concrete input. Only the existing parameter subset
 is public: axis for sum and default axis reversal for transpose. Custom transpose
 axes and sum dtype/out/keepdims are not supported. Functions such as exp, log,
-sqrt, clip, masks and concatenation require separate operation implementations;
+sqrt, clip, logical mask combinations and concatenation require separate operation implementations;
 they are not enabled merely because NumPy provides them.
 
 Pearson uses `fnp.sum` for feature and squared sums, and `fnp.transpose(y) @ x`
@@ -630,7 +659,8 @@ NumPy/SciPy postprocessing are unchanged. This interface addition does not chang
 RPC schemas, worker operations, deployment settings or privacy boundaries.
 
 Algorithm authors import `FedTensor` from `exaflow.algorithms.feta`. Its abstract
-interface declares arithmetic, matrix multiplication, transpose, sum and length
+interface declares arithmetic, equality, indexing, matrix multiplication,
+transpose, sum and length
 with typed operands and results. Prepared runtime tensors inherit that interface;
 algorithm `run` parameters are annotated with it. Elementwise arithmetic and
 transpose return `FedTensor`; length returns `int`. Overloads specify that
@@ -645,3 +675,13 @@ missing-value handler (a no-op after filtering); FETA uses no preprocessing.
 Output structure,
 labels and observation counts must match exactly; numerical outputs use
 `rtol=1e-10`, `atol=1e-12` to allow summation-order rounding differences.
+
+### Independent t-test Migration
+
+`feta_ttest_independent` receives typed required x/y tensors. Text x retains its
+labels, and y remains numerical. Column selection, equality and boolean indexing
+prepare two stored local samples; six immediate reductions compute both counts,
+sums and squared sums. Controller NumPy/SciPy preserves the existing pooled
+variance formulas, output fields, errors and nonfinite edge behavior. No
+preprocessing or automatic reduction batching is added. See the
+[algorithm documentation](../algorithms/feta_ttest_independent.md).

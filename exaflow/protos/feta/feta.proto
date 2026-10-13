@@ -51,11 +51,15 @@ message TensorDescriptor {
 }
 message TensorValue { bytes arrow = 1; }
 message Operand {
+  // Required for array literals; Arrow represents NumPy bool tensors as uint8.
+  string array_dtype = 7;
   oneof value {
     string tensor_id = 1;
     double real = 2;
     sint64 integer = 3;
     TensorValue array = 4;
+    string text = 5;
+    bool boolean = 6;
   }
 }
 enum OperationType {
@@ -69,11 +73,16 @@ enum OperationType {
   SUM = 7;
   MATMUL = 8;
   LENGTH = 9;
+  EQUAL = 10;
+  COLUMN = 11;
+  FILTER = 12;
 }
 message LocalOperation {
   OperationType type = 1;
   repeated Operand inputs = 2;
   optional int32 axis = 3;
+  // Shared lineage for results selected with the same distributed mask.
+  string selection_layout = 4;
 }
 message ExecuteRequest {
   string context_id = 1;

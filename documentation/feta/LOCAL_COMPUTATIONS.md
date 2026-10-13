@@ -16,9 +16,9 @@ postprocessing of completed global results belongs in the controller.
 ## Migration Status
 
 Runtime counterparts implemented and validated so far are
-`feta_pearson_correlation`, `feta_ttest_onesample` and `feta_ttest_paired`. The
-t-tests use existing arithmetic, length and sum operations; no new
-`federated_numpy` operator was needed.
+`feta_pearson_correlation`, `feta_ttest_onesample`, `feta_ttest_paired` and `feta_ttest_independent`.
+Independent t-test adds string-label inputs, equality, column selection and
+boolean row indexing. Its inference uses existing numerical reductions.
 The catalogue below describes requirements, not completion of the remaining
 algorithms. Migration proceeds one algorithm at a time with a user continuation
 decision after each validated implementation.
@@ -26,10 +26,11 @@ decision after each validated implementation.
 ## Existing FETA foundation
 
 The current worker allowlist is `ADD`, `SUBTRACT`, `MULTIPLY`, `DIVIDE`, `POWER`,
-`TRANSPOSE`, `SUM`, `MATMUL`, and `LENGTH`. Operands are context-scoped references,
-numeric Python values, or supported numerical NumPy arrays. Numeric tensors have
-rank at most two; booleans, strings and object arrays are currently rejected.
-Initial inputs are float64 and missing values are rejected.
+`TRANSPOSE`, `SUM`, `MATMUL`, `LENGTH`, `EQUAL`, `COLUMN` and `FILTER`. Operands are context-scoped references,
+numeric/string/boolean Python values, or supported numerical/boolean NumPy arrays.
+Tensors have rank at most two and support numerical, boolean and Unicode dtypes;
+object arrays remain rejected. Initial numerical inputs are float64, text inputs
+retain labels, and missing values remain rejected.
 
 Arithmetic and transpose preserve a distributed tensor. Reducing its partitioned
 axis or contracting aligned distributed matrix dimensions automatically sums
@@ -38,7 +39,7 @@ The shared legacy aggregation service's other operations do not automatically
 make them available through FETA.
 
 The public `exaflow.algorithms.feta.federated_numpy` package exposes the existing
-sum and transpose operations as `fnp.sum(a, axis=None)` and `fnp.transpose(a)`.
+sum, transpose and equality operations, including `fnp.sum(a, axis=None)` and `fnp.transpose(a)`.
 Import it with `from exaflow.algorithms.feta import federated_numpy as fnp`.
 Arithmetic and matrix products continue to use operators. Tensor methods remain
 available, so the equivalent method expressions in this catalogue are valid.
@@ -65,14 +66,14 @@ readability, not as operation subclasses or batches.
 | Transpose and matrix product | `transpose(x)`, `matmul(x, y)`; 2-D products, aligned partitions | Pearson, two-way ANOVA through OLS | Implemented |
 | Sum and row length | `sum(x, axis)`, `length(x)` | All numeric moment calculations | Implemented for ordinary sums and axis-zero distributed length |
 | Absolute value | `absolute(x) -> Array` | Mean absolute deviation, MAD outliers, OLS absolute residuals | Add |
-| Column selection | `take_columns(x, indices) -> Array`; ordered, bounded numeric indices | Multivariable summaries, design matrices | Add; current initial column selection happens during loading |
+| Column selection | `take_columns(x, indices) -> Array`; ordered, bounded numeric indices | Multivariable summaries, design matrices | Implemented for a single column using [:, index]; multiple-column indexing remains open |
 | Shape utilities | `reshape/squeeze(x, shape) -> Array`; initially vector ↔ single-column matrix only | Scalar-sample algorithms, OLS response vectors | Add only restricted transforms preserving record alignment |
 | Concatenation and constants | `concatenate(arrays, axis)`, `ones_like_rows(x)` | ANOVA intercept/design assembly; pooled Mann–Whitney bounds | Add; column assembly needed, row concatenation can be avoided for pooled bounds |
-| Comparisons | `equal/not_equal/less/less_equal/greater/greater_equal(x, value) -> bool Array` | Group selection, percentile intervals, outlier tails | Add with a typed boolean result |
+| Comparisons | `equal/not_equal/less/less_equal/greater/greater_equal(x, value) -> bool Array` | Group selection, percentile intervals, outlier tails | Equality implemented with boolean results; other comparisons remain proposals |
 | Boolean logic | `logical_and/or/not(mask) -> bool Array` | Interval membership, missing-value and finite masks | Add; masks must carry row lineage |
 | Missing and finite masks | `is_missing(x)`, `is_finite(x)` | Describe, categorical tables, histogram, binned Mann–Whitney | Add; missing differs from non-finite |
 | Conditional replacement | `where(mask, x, replacement) -> Array` | Missing-aware sums/extrema and derived moments | Add with shape/dtype validation |
-| Row selection | `filter_rows(x, mask) -> Array` | Independent t-test, grouped summaries, percentile refinement | Add; same mask must be applied to paired inputs |
+| Row selection | `filter_rows(x, mask) -> Array` | Independent t-test, grouped summaries, percentile refinement | Implemented using x[mask]; same mask object preserves paired alignment |
 | Count reductions | `count_nonzero(mask, axis)`, `count_valid(x, axis)` | Category counts, outliers, percentile CDF, missing-aware moments | Add, or compose boolean cast plus sum; row length is not valid-value count |
 | Minimum and maximum | `minimum/maximum(x, axis, missing_policy)` | Range, one-way ANOVA, describe, numeric histogram, percentile, binned Mann–Whitney | Add local kernels and global min/max |
 | Missing-aware sum | `sum_valid(x, axis)` plus valid counts | Primitive statistics, SMD, describe | Add or compose masks, replacement and ordinary sum; retain all-missing information |
@@ -192,12 +193,10 @@ that behavior during migration rather than quietly changing it.
 ## Semantics that need decisions before implementation
 
 1. **Missing inputs and typed categories.** Current FETA rejects missing inputs,
-   loads numeric float64 tensors and does not accept strings or boolean masks.
-   Supporting every reviewed algorithm requires a documented extension to
-   initialization and tensor/operand encoding. Worker-side dictionary encoding
-   can keep numeric tensor storage but still needs agreed categorical vocabularies
-   and missing codes. Dataset membership is required in addition to initial x/y.
-1. **Row alignment after filtering.** A mask must belong to the same context and
+   loads numerical float64 or string-label tensors and supports boolean masks.
+   String-label initialization and scalar operand transport are implemented;
+   dictionary encoding and missing-category policies remain open. Dataset membership is required in addition to initial x/y.
+1. **Row alignment after filtering.** Implemented masks must belong to the same context and
    source rows. Applying the same mask to paired tensors must produce compatible
    lineage; independently filtered tensors cannot be multiplied just because
    their shapes match. Retain workers with empty filtered subsets as neutral

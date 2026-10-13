@@ -20,6 +20,9 @@ class OperationType(IntEnum):
     SUM = pb.SUM
     MATMUL = pb.MATMUL
     LENGTH = pb.LENGTH
+    EQUAL = pb.EQUAL
+    COLUMN = pb.COLUMN
+    FILTER = pb.FILTER
 
 
 @dataclass(frozen=True)
@@ -55,9 +58,11 @@ class TensorMetadata:
 
 def validate_array(array, max_bytes):
     array = np.asarray(array)
-    if array.ndim > 2 or array.dtype.kind not in "iuf":
-        raise ValueError("FETA supports numerical tensors of rank at most two.")
-    if array.dtype.itemsize > 8 or (
+    if array.ndim > 2 or array.dtype.kind not in "iufbU":
+        raise ValueError(
+            "FETA supports numeric, boolean and Unicode tensors of rank at most two."
+        )
+    if (array.dtype.kind in "iuf" and array.dtype.itemsize > 8) or (
         array.dtype.kind == "f" and array.dtype.itemsize < 4
     ):
         raise ValueError("Unsupported FETA numerical dtype.")
@@ -84,20 +89,32 @@ class LocalOperation:
     type: OperationType
     inputs: tuple
     axis: int | None = None
+    selection_layout: str = ""
 
     def to_proto(self):
-        message = pb.LocalOperation(type=int(self.type))
+        message = pb.LocalOperation(
+            type=int(self.type), selection_layout=self.selection_layout
+        )
         if self.axis is not None:
             message.axis = self.axis
         for value in self.inputs:
             operand = message.inputs.add()
             if isinstance(value, LocalTensorRef):
                 operand.tensor_id = value.tensor_id
+            elif isinstance(value, (str, np.str_)):
+                operand.text = str(value)
+            elif isinstance(value, (bool, np.bool_)):
+                operand.boolean = bool(value)
             elif isinstance(value, (int, np.integer)) and not isinstance(value, bool):
                 operand.integer = int(value)
             elif isinstance(value, (float, np.floating)):
                 operand.real = float(value)
             elif isinstance(value, np.ndarray):
+                if value.dtype.kind == "U":
+                    raise ValueError(
+                        "String array literals are not yet supported; use string scalars."
+                    )
+                operand.array_dtype = str(value.dtype)
                 operand.array.arrow = ndarray_to_bytes(value)
             else:
                 raise ValueError("Unsupported FETA operand type.")
@@ -110,27 +127,48 @@ class LocalOperation:
         except ValueError as exc:
             raise ValueError("Unsupported FETA operation type.") from exc
         expected_inputs = (
-            2 if op_type in BINARY or op_type == OperationType.MATMUL else 1
+            2
+            if op_type in BINARY
+            or op_type
+            in (OperationType.MATMUL, OperationType.EQUAL, OperationType.FILTER)
+            else 1
         )
         if len(message.inputs) != expected_inputs:
             raise ValueError("Incorrect number of FETA operation inputs.")
-        if message.HasField("axis") and op_type != OperationType.SUM:
-            raise ValueError("Only SUM accepts an axis.")
+        if message.HasField("axis") and op_type not in (
+            OperationType.SUM,
+            OperationType.COLUMN,
+        ):
+            raise ValueError("Only SUM and COLUMN accept an axis.")
         inputs = []
         for operand in message.inputs:
             kind = operand.WhichOneof("value")
+            if operand.array_dtype and kind != "array":
+                raise ValueError("Only array operands accept a dtype.")
             if kind == "tensor_id":
                 if not operand.tensor_id or len(operand.tensor_id) > 128:
                     raise ValueError("Invalid FETA tensor reference.")
                 inputs.append(LocalTensorRef(operand.tensor_id))
             elif kind == "array":
-                inputs.append(decode_array(operand.array.arrow, max_bytes))
-            elif kind in ("real", "integer"):
+                array = decode_array(operand.array.arrow, max_bytes)
+                dtype = np.dtype(operand.array_dtype)
+                if dtype == np.dtype("bool"):
+                    if array.dtype != np.dtype("uint8") or np.any(array > 1):
+                        raise ValueError("Invalid boolean array encoding.")
+                    array = array.view(np.bool_)
+                elif str(array.dtype) != operand.array_dtype:
+                    raise ValueError("Array operand dtype differs from its encoding.")
+                inputs.append(array)
+            elif kind in ("real", "integer", "text", "boolean"):
+                if kind == "text" and len(operand.text) * 4 > max_bytes:
+                    raise ResourceLimitError(
+                        "FETA string literal exceeds the tensor limit."
+                    )
                 inputs.append(getattr(operand, kind))
             else:
                 raise ValueError("Missing FETA operand value.")
         axis = message.axis if message.HasField("axis") else None
-        return cls(op_type, tuple(inputs), axis)
+        return cls(op_type, tuple(inputs), axis, message.selection_layout)
 
 
 BINARY = {
@@ -145,11 +183,19 @@ BINARY = {
 def infer_operation(operation, metadata, max_bytes):
     """Validate placement and predict allocation before evaluating NumPy."""
     op = operation.type
-    expected = 2 if op in BINARY or op == OperationType.MATMUL else 1
+    expected = (
+        2
+        if op in BINARY
+        or op in (OperationType.MATMUL, OperationType.EQUAL, OperationType.FILTER)
+        else 1
+    )
     if len(metadata) != expected:
         raise ValueError("Incorrect number of FETA operation inputs.")
-    if operation.axis is not None and op != OperationType.SUM:
-        raise ValueError("Only SUM accepts an axis.")
+    if operation.axis is not None and op not in (
+        OperationType.SUM,
+        OperationType.COLUMN,
+    ):
+        raise ValueError("Only SUM and COLUMN accept an axis.")
     distributed = [m for m in metadata if m.partition_axis >= 0]
     if not distributed:
         raise ValueError("A local operation requires a distributed tensor input.")
@@ -157,7 +203,19 @@ def infer_operation(operation, metadata, max_bytes):
         raise ValueError("FETA operands have unaligned row partitions.")
     layout = distributed[0].row_layout
     dtype = np.result_type(*[np.dtype(m.dtype) for m in metadata])
-    if op in BINARY:
+    if operation.selection_layout and op != OperationType.FILTER:
+        raise ValueError("Only FILTER accepts selection lineage.")
+    if op in BINARY or op in (OperationType.SUM, OperationType.MATMUL):
+        if any(np.dtype(m.dtype).kind not in "iufb" for m in metadata):
+            raise ValueError("Arithmetic and reductions require numerical tensors.")
+    if op in BINARY or op == OperationType.EQUAL:
+        if (
+            op == OperationType.EQUAL
+            and len({np.dtype(m.dtype).kind == "U" for m in metadata}) != 1
+        ):
+            raise ValueError(
+                "Equality operands must both be strings or both numerical."
+            )
         shape = np.broadcast_shapes(*[m.shape for m in metadata])
         axes = [m.partition_axis + len(shape) - len(m.shape) for m in distributed]
         if len(set(axes)) != 1:
@@ -171,8 +229,33 @@ def infer_operation(operation, metadata, max_bytes):
                 padded = (1,) * (len(shape) - len(m.shape)) + m.shape
                 if padded[partition] != 1:
                     raise ValueError("Literal operands must broadcast over records.")
+        if op == OperationType.EQUAL:
+            dtype = np.dtype("bool")
         if op == OperationType.DIVIDE:
             dtype = np.result_type(dtype, np.float64)
+    elif op == OperationType.COLUMN:
+        m = metadata[0]
+        if len(m.shape) != 2 or m.partition_axis != 0 or operation.axis is None:
+            raise ValueError("Column indexing requires a row-partitioned matrix.")
+        column = operation.axis
+        if not -m.shape[1] <= column < m.shape[1]:
+            raise ValueError("FETA column index out of bounds.")
+        shape, partition = (m.shape[0],), 0
+    elif op == OperationType.FILTER:
+        data, mask = metadata
+        if (
+            data.partition_axis != 0
+            or mask.partition_axis != 0
+            or mask.shape != (data.shape[0],)
+            or np.dtype(mask.dtype).kind != "b"
+        ):
+            raise ValueError(
+                "Filtering requires an aligned one-dimensional boolean mask."
+            )
+        if not operation.selection_layout or len(operation.selection_layout) > 128:
+            raise ValueError("Filtering requires valid selection lineage.")
+        shape, partition, dtype = data.shape, 0, np.dtype(data.dtype)
+        layout = operation.selection_layout
     elif op == OperationType.TRANSPOSE:
         m = metadata[0]
         shape = m.shape[::-1]
@@ -220,6 +303,12 @@ def evaluate(operation, inputs, expected):
     op = operation.type
     if op in BINARY:
         result = BINARY[op](*inputs)
+    elif op == OperationType.EQUAL:
+        result = np.equal(*inputs)
+    elif op == OperationType.COLUMN:
+        result = inputs[0][:, operation.axis]
+    elif op == OperationType.FILTER:
+        result = inputs[0][inputs[1]]
     elif op == OperationType.TRANSPOSE:
         result = inputs[0].T
     elif op == OperationType.SUM:

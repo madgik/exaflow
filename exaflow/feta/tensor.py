@@ -31,7 +31,7 @@ class RuntimeFedTensor(FedTensor):
 
     @property
     def dtype(self) -> np.dtype:
-        return np.dtype(next(iter(self.descriptors.values())).dtype)
+        return np.result_type(*[np.dtype(d.dtype) for d in self.descriptors.values()])
 
     @property
     def partition_axis(self) -> int:
@@ -40,6 +40,23 @@ class RuntimeFedTensor(FedTensor):
     def _binary(self, operation, other, reverse=False):
         inputs = (other, self) if reverse else (self, other)
         return self.runtime.apply(operation, inputs)
+
+    def __eq__(self, other: FedTensor | str | int | float | bool) -> FedTensor:
+        return self._binary(OperationType.EQUAL, other)
+
+    def __getitem__(self, key: FedTensor | tuple[slice, int]) -> FedTensor:
+        if isinstance(key, FedTensor):
+            return self.runtime.apply(OperationType.FILTER, (self, key))
+        if (
+            isinstance(key, tuple)
+            and len(key) == 2
+            and isinstance(key[0], slice)
+            and key[0] == slice(None)
+            and isinstance(key[1], int)
+            and not isinstance(key[1], bool)
+        ):
+            return self.runtime.apply(OperationType.COLUMN, (self,), key[1])
+        raise TypeError("FETA indexing supports boolean row masks and [:, column].")
 
     def __add__(self, other: TensorOperand) -> FedTensor:
         return self._binary(OperationType.ADD, other)
@@ -101,6 +118,7 @@ class RuntimeFedTensor(FedTensor):
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         supported = {
+            np.equal: OperationType.EQUAL,
             np.add: OperationType.ADD,
             np.subtract: OperationType.SUBTRACT,
             np.multiply: OperationType.MULTIPLY,

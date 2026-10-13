@@ -48,9 +48,9 @@ def test_reductions_and_transpose_preserve_federation_semantics(function_syntax)
     assert all(not worker.service.store.contexts for worker in workers)
 
 
-@pytest.mark.parametrize("dtype", [np.int64, np.float32, np.float64])
+@pytest.mark.parametrize("dtype", [np.int64, np.float32, np.float64, np.bool_])
 def test_concrete_arrays_use_numpy_results(dtype):
-    array = np.arange(12, dtype=dtype).reshape(4, 3)
+    array = np.arange(12).astype(dtype).reshape(4, 3)
     for axis in (None, 0, 1):
         actual = fnp.sum(array, axis=axis)
         expected = np.sum(array, axis=axis)
@@ -60,7 +60,7 @@ def test_concrete_arrays_use_numpy_results(dtype):
     np.testing.assert_array_equal(fnp.transpose(array), np.transpose(array))
 
 
-@pytest.mark.parametrize("value", [[1, 2], np.array(["a"]), np.array([True])])
+@pytest.mark.parametrize("value", [[1, 2]])
 def test_unsupported_inputs_are_rejected(value):
     for function in (fnp.sum, fnp.transpose):
         with pytest.raises(TypeError, match="numerical NumPy array"):
@@ -78,3 +78,12 @@ def test_unsupported_sum_parameters_are_rejected(kwargs):
 def test_custom_transpose_axes_are_rejected():
     with pytest.raises(TypeError, match="unexpected keyword argument"):
         fnp.transpose(np.ones((2, 3)), axes=(1, 0))
+
+
+def test_string_arrays_and_boolean_numpy_semantics():
+    labels = np.array([["a", "long"], ["λ", "a"]])
+    np.testing.assert_array_equal(fnp.transpose(labels), labels.T)
+    np.testing.assert_array_equal(fnp.equal(labels, "a"), labels == "a")
+    assert fnp.sum(fnp.equal(labels, "a")) == 2
+    with pytest.raises(TypeError):
+        fnp.sum(labels)

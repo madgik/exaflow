@@ -21,6 +21,17 @@ class FedTensor(ABC):
     """
 
     @abstractmethod
+    def __eq__(self, other: FedTensor | str | int | float | bool) -> FedTensor:
+        """Compare aligned local values, returning a boolean tensor."""
+
+    @abstractmethod
+    def __getitem__(self, key: FedTensor | tuple[slice, int]) -> FedTensor:
+        """Select rows with a boolean tensor, or a column with [:, index]."""
+
+    def __bool__(self) -> bool:
+        raise TypeError("The truth value of a FedTensor is ambiguous.")
+
+    @abstractmethod
     def __add__(self, other: TensorOperand) -> FedTensor:
         """Apply the supported numerical operation with a tensor or literal."""
 

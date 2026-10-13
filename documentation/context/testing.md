@@ -161,3 +161,11 @@ uv run pytest -q tests/prod_env_tests/test_feta_ttest_paired.py
 Both implementations receive identical complete-case filters on x and y.
 Every output field is compared, retaining x-minus-y direction and one-sided
 infinity markers. FETA requests contain no preprocessing.
+
+Independent t-test FETA parity is covered by
+`tests/standalone_tests/feta/test_feta_ttest_independent.py` and real package tests
+in `tests/standalone_tests/feta/test_package_integration.py`. After development
+`inv deploy` and dataset discovery, run
+`uv run pytest -q tests/prod_env_tests/test_feta_ttest_independent.py` to compare
+all original fixture cases against normal independent t-test through `/analysis`.
+Both requests use identical complete-case filters; FETA has no preprocessing.

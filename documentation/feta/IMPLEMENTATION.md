@@ -210,5 +210,55 @@ This registration is additive. Existing algorithms and worker protocol are
 unchanged. Rollback removes the new module, its tests and documentation; no data
 or configuration migration is involved.
 
-The full statistics goal remains active. Next proposed algorithm is
-`feta_ttest_independent`, pending the user's requested continuation checkpoint.
+The independent t-test migration follows below; the full statistics goal remains
+active, with a continuation checkpoint after each algorithm.
+
+## Independent t-test and String Tensor Support
+
+Implemented `feta_ttest_independent`, retaining the existing specification and
+response model in place. Workers preserve text labels as fixed-width Unicode
+arrays and numerical inputs as float64. Equality, single-column indexing and
+boolean row filtering are allowlisted operations; `federated_numpy.equal` is
+also available. Filtered tensors remain local and acquire shared selection
+lineage when the same mask object is reused. No raw-array retrieval is added.
+
+Six immediate sums supply group counts, sums and squared sums. NumPy/SciPy
+controller inference preserves the existing pooled variance formulas, errors,
+nonfinite edge behavior and one-sided infinity markers. Workers with empty
+filtered groups remain participants.
+
+Protocol source and generated bindings include string/boolean scalar operands,
+array literal dtype, operation enum extensions and filtering lineage. Array dtype
+is explicitly checked, including restoration of Arrow-encoded boolean literals.
+Controller and workers must be deployed together; existing Exareme3 protocol,
+configuration and datasets are unchanged. Rollback restores the prior FETA code
+and bindings and removes the new registration; no data migration is needed.
+
+Validation uses focused federation simulations, real Quart/DuckDB/gRPC package
+integration and live development-tool deployment (no Docker/Kubernetes). Five
+live cases compare every response field with normal `ttest_independent`, using
+the same complete-case filters and `rtol=1e-10`, `atol=1e-12`. String validation
+covers Unicode, empty partitions, different local string widths, mixed-group
+rejection, memory limits, alignment and failure cleanup. Missing-value rejection
+and initial privacy thresholds remain unchanged; no per-group privacy threshold
+is introduced.
+
+```bash
+uv run pytest -q tests/standalone_tests/feta tests/standalone_tests/federated_algorithms/statistics/test_ttest_independent.py tests/standalone_tests/test_import_algorithm_modules_idempotent.py --disable-warnings --tb=short
+uv run inv deploy --no-install-dep --no-structure-data
+uv run pytest -q tests/prod_env_tests/test_feta_ttest_independent.py --disable-warnings --tb=short
+```
+
+In the restricted workspace, focused tests use `.venv/bin/python -m pytest` and
+local gRPC tests require socket access. Development deployment sets
+`UV_CACHE_DIR=/tmp/exaflow-uv-cache`, then waits for dataset discovery before the
+parity tests. Ruff and formatters were not run.
+
+Results: **256 focused regression/package tests passed**, followed by **58
+focused checks passed** after final literal-size/index guards. **5 live
+development-deployment parity tests passed** against the final protocol.
+Changed Python syntax, local Markdown links, protobuf regeneration equivalence
+and `git diff --check` passed.
+
+The next proposed migration is `feta_anova_oneway`, pending the user's
+continuation checkpoint. The full statistics migration remains unfinished.

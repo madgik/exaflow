@@ -387,7 +387,7 @@ def test_duplicate_pending_fetch_is_rejected_without_poisoning_first_fetch():
         np.testing.assert_array_equal(first.result(timeout=1), [4, 6])
 
 
-@pytest.mark.parametrize("dtype", ["bool", "object", "complex128", "float16", ">f8"])
+@pytest.mark.parametrize("dtype", ["object", "complex128", "float16", ">f8"])
 def test_unsupported_literal_and_aggregation_dtypes_are_rejected(dtype):
     with pytest.raises(ValueError):
         validate_array(np.zeros(2, dtype=dtype), 1024)

@@ -13,6 +13,7 @@ from exaflow.algorithms.feta.tensor import FedTensor
 from exaflow.feta.lifecycle import ContextClosedError
 from exaflow.feta.operations import LocalOperation
 from exaflow.feta.operations import LocalTensorRef
+from exaflow.feta.operations import OperationType
 from exaflow.feta.operations import TensorMetadata
 from exaflow.feta.operations import infer_operation
 from exaflow.feta.operations import validate_array
@@ -83,7 +84,10 @@ class FetaRuntime:
                     descriptor.row_layout != self.context_id
                     or descriptor.partition_axis != 0
                     or not descriptor.tensor_id
-                    or descriptor.dtype != "float64"
+                    or (
+                        descriptor.dtype != "float64"
+                        and np.dtype(descriptor.dtype).kind != "U"
+                    )
                     or len(descriptor.shape) != 2
                     or descriptor.shape[0] < 0
                     or descriptor.shape[1] != len(selected)
@@ -146,14 +150,33 @@ class FetaRuntime:
                     else:
                         array = validate_array(value, self.settings.max_tensor_bytes)
                         if not isinstance(
-                            value, (np.ndarray, int, float, np.integer, np.floating)
+                            value,
+                            (
+                                np.ndarray,
+                                int,
+                                float,
+                                str,
+                                bool,
+                                np.integer,
+                                np.floating,
+                                np.str_,
+                                np.bool_,
+                            ),
                         ):
                             raise ValueError("Unsupported FETA literal operand.")
                         operands.append(value)
                         metadata.append(
                             TensorMetadata(array.shape, str(array.dtype), -1, "")
                         )
-                operation = LocalOperation(op_type, tuple(operands), axis)
+                selection_layout = ""
+                if op_type == OperationType.FILTER:
+                    mask = inputs[1]
+                    if not hasattr(mask, "selection_layout"):
+                        mask.selection_layout = uuid4().hex
+                    selection_layout = mask.selection_layout
+                operation = LocalOperation(
+                    op_type, tuple(operands), axis, selection_layout
+                )
                 predicted = infer_operation(
                     operation, metadata, self.settings.max_tensor_bytes
                 )
@@ -190,7 +213,19 @@ class FetaRuntime:
                 return result.item() if result.ndim == 0 else result
             responses = self._parallel(calls, "execute")
             for worker_id, descriptor in responses.items():
-                if TensorMetadata.from_descriptor(descriptor) != predictions[worker_id]:
+                actual = TensorMetadata.from_descriptor(descriptor)
+                predicted = predictions[worker_id]
+                if op_type == OperationType.FILTER:
+                    if (
+                        len(actual.shape) != len(predicted.shape)
+                        or actual.shape[1:] != predicted.shape[1:]
+                        or not 0 <= actual.shape[0] <= predicted.shape[0]
+                    ):
+                        raise ValueError("Worker returned invalid filtered shape.")
+                    predicted = TensorMetadata(
+                        actual.shape, predicted.dtype, 0, predicted.row_layout
+                    )
+                if actual != predicted:
                     raise ValueError("Worker returned inconsistent FETA metadata.")
             return RuntimeFedTensor(self, responses)
 

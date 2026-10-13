@@ -10,11 +10,11 @@ from numpy.typing import NDArray
 from exaflow.algorithms.feta.tensor import FedTensor
 from exaflow.algorithms.feta.tensor import TensorResult
 
-__all__ = ["sum", "transpose"]
+__all__ = ["sum", "transpose", "equal"]
 
 
 def _numerical_array(a: NDArray) -> NDArray:
-    if not isinstance(a, np.ndarray) or a.dtype.kind not in "iuf":
+    if not isinstance(a, np.ndarray) or a.dtype.kind not in "iufb":
         raise TypeError("Expected a FedTensor or a real numerical NumPy array.")
     return a
 
@@ -60,4 +60,25 @@ def transpose(a: FedTensor | NDArray) -> FedTensor | NDArray:
     """
     if isinstance(a, FedTensor):
         return a.T
-    return np.transpose(_numerical_array(a))
+    if not isinstance(a, np.ndarray) or a.dtype.kind not in "iufbU":
+        raise TypeError(
+            "Expected a FedTensor or a numerical NumPy array or Unicode array."
+        )
+    return np.transpose(a)
+
+
+@overload
+def equal(a: FedTensor, b: FedTensor | str | int | float | bool) -> FedTensor: ...
+
+
+@overload
+def equal(a: NDArray, b: NDArray | str | int | float | bool) -> NDArray: ...
+
+
+def equal(a, b):
+    """Elementwise equality, retaining the distributed row layout."""
+    if isinstance(a, FedTensor):
+        return a == b
+    if isinstance(b, FedTensor):
+        return b == a
+    return np.equal(a, b)

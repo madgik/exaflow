@@ -16,7 +16,8 @@ and workers. Exareme3-specific scaffolding does not define FETA's workflow.
 FETA algorithms import `FedTensor` and the `federated_numpy` package from
 `exaflow.algorithms.feta`. Keep arithmetic and matrix operators as tensor
 expressions; use the typed NumPy-style functions for supported non-arithmetic
-operations. The initial package exposes `sum` and `transpose`.
+operations. The package exposes `sum`, `transpose` and `equal`; tensors also support
+column selection and boolean row indexing.
 FETA input preparation follows the specification and validated request. Algorithm
 `run` methods declare typed named inputs; the controller passes only selected
 groups as keyword arguments. Do not add algorithm input-resolution hooks.

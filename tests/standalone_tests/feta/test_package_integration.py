@@ -48,6 +48,7 @@ from tests.standalone_tests.feta.test_feta_ttest_paired import (
 @pytest.fixture
 def running_package(tmp_path, monkeypatch):
     frame = data(52)
+    frame["group"] = np.resize(["control", "treated", "other"], len(frame))
     frame["dataset"] = ["a"] * 25 + ["b"] * 27
     database = tmp_path / "worker.duckdb"
     connection = duckdb.connect(str(database))
@@ -125,8 +126,17 @@ def running_package(tmp_path, monkeypatch):
                     code=column, label=column, sql_type="real", is_categorical=False
                 )
                 for column in frame
-                if column != "dataset"
+                if column not in ("dataset", "group")
             }
+            cdes["group"] = CommonDataElement(
+                code="group",
+                label="Group",
+                sql_type="text",
+                is_categorical=True,
+                enumerations={
+                    label: label for label in ("control", "treated", "other")
+                },
+            )
             cdes["dataset"] = CommonDataElement(
                 code="dataset",
                 label="Dataset",
@@ -505,3 +515,41 @@ def test_package_skips_filtered_worker_before_aggregation(running_package, monke
     assert prepared_workers == [["worker-1"]] * 6
     assert all(not worker.store.contexts for worker in package.workers)
     assert not package.aggregation.sessions
+
+
+@pytest.mark.parametrize("alternative", ["two-sided", "less", "greater"])
+def test_independent_ttest_through_real_analysis_route(running_package, alternative):
+    from tests.standalone_tests.feta.test_feta_ttest_independent import assert_reference
+
+    package = running_package
+    parameters = dict(
+        groupA="control", groupB="treated", alpha=0.05, alt_hypothesis=alternative
+    )
+    body = {
+        "inputdata": {
+            "data_model": "test:1.0",
+            "datasets": ["a", "b"],
+            "variables": ["group", "y0"],
+        },
+        "algorithm": {
+            "name": "feta_ttest_independent",
+            "x": ["group"],
+            "y": ["y0"],
+            "parameters": parameters,
+        },
+    }
+
+    async def run():
+        response = await package.app.test_client().post("/analysis", json=body)
+        payload = await response.get_data()
+        assert response.status_code == 200, payload.decode()
+        return json.loads(payload)
+
+    from exaflow.algorithms.exareme3.statistics.ttest_independent import (
+        TTestIndependentResult,
+    )
+
+    result = TTestIndependentResult(**asyncio.run(run()))
+    assert_reference(result, package.frame.rename(columns={"y0": "value"}), parameters)
+    assert not package.aggregation.sessions
+    assert all(not worker.store.contexts for worker in package.workers)
