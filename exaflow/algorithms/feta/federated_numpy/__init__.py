@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Sequence
 from typing import overload
 
 import numpy as np
@@ -10,7 +11,16 @@ from numpy.typing import NDArray
 from exaflow.algorithms.feta.tensor import FedTensor
 from exaflow.algorithms.feta.tensor import TensorResult
 
-__all__ = ["sum", "transpose", "equal", "min", "max", "unique"]
+__all__ = [
+    "sum",
+    "transpose",
+    "equal",
+    "min",
+    "max",
+    "unique",
+    "ones_like",
+    "column_stack",
+]
 
 
 def _numerical_array(a: NDArray) -> NDArray:
@@ -142,3 +152,44 @@ def unique(a: FedTensor | NDArray) -> NDArray:
     if not isinstance(a, np.ndarray) or a.dtype.kind not in "iufU":
         raise TypeError("Expected a numerical or Unicode array.")
     return np.unique(a)
+
+
+@overload
+def ones_like(a: FedTensor) -> FedTensor: ...
+
+
+@overload
+def ones_like(a: NDArray) -> NDArray: ...
+
+
+def ones_like(a: FedTensor | NDArray) -> FedTensor | NDArray:
+    """Create ones with the same shape/dtype, retaining distributed placement."""
+    if isinstance(a, FedTensor):
+        return a._ones_like()
+    return np.ones_like(_numerical_array(a))
+
+
+@overload
+def column_stack(tup: Sequence[FedTensor]) -> FedTensor: ...
+
+
+@overload
+def column_stack(tup: Sequence[NDArray]) -> NDArray: ...
+
+
+def column_stack(tup: Sequence[FedTensor] | Sequence[NDArray]) -> FedTensor | NDArray:
+    """Stack aligned vectors/matrices as columns, retaining row partitioning.
+
+    Distributed inputs must all be FedTensors; mixed local/distributed inputs
+    and column-partitioned inputs are unsupported.
+    """
+    tensors = tuple(tup)
+    if not tensors:
+        raise ValueError("column_stack requires at least one input.")
+    if all(isinstance(a, FedTensor) for a in tensors):
+        return tensors[0]._column_stack(tensors)
+    if any(isinstance(a, FedTensor) for a in tensors):
+        raise TypeError("column_stack cannot mix local and distributed inputs.")
+    if not all(isinstance(a, np.ndarray) for a in tensors):
+        raise TypeError("column_stack requires NumPy arrays or FedTensors.")
+    return np.column_stack(tensors)

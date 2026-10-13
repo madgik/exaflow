@@ -22,6 +22,14 @@ class FedTensor(ABC):
     """
 
     @abstractmethod
+    def _ones_like(self) -> FedTensor:
+        """Create local ones with this tensor's shape, dtype and partitioning."""
+
+    @abstractmethod
+    def _column_stack(self, tensors: tuple[FedTensor, ...]) -> FedTensor:
+        """Assemble columns from aligned distributed vectors or matrices."""
+
+    @abstractmethod
     def _reduce(
         self, operation: Literal["min", "max"], axis: int | None = None
     ) -> TensorResult:

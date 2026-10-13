@@ -374,7 +374,7 @@ arrays. Context IDs provide namespacing, not caller authorization.
 - After implementing and validating each algorithm, ask the user to continue
   before beginning the next. Keep the full migration objective active.
 - Completed runtime algorithms: `feta_pearson_correlation`,
-  `feta_ttest_onesample`, `feta_ttest_paired`, `feta_ttest_independent` and `feta_anova_oneway`. Remaining statistics modules are tracked in the
+  `feta_ttest_onesample`, `feta_ttest_paired`, `feta_ttest_independent`, `feta_anova_oneway` and `feta_anova_twoway`. Remaining statistics modules are tracked in the
   [computation catalogue](LOCAL_COMPUTATIONS.md); they are not implicitly migrated.
 - One-sample t-test prepares only the required sample `y` and its `run(self, y)`
   receives one stored tensor. It uses three global sums
@@ -498,7 +498,7 @@ uv run python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. exaflo
 ### Operations and Limits
 
 The initial allowlist is `ADD`, `SUBTRACT`, `MULTIPLY`, `DIVIDE`, `POWER`,
-`TRANSPOSE`, `SUM`, `MATMUL`, `LENGTH`, `EQUAL`, `COLUMN`, `FILTER`, `MIN`, `MAX` and `UNIQUE`. Literals are Python numeric scalars or
+`TRANSPOSE`, `SUM`, `MATMUL`, `LENGTH`, `EQUAL`, `COLUMN`, `FILTER`, `MIN`, `MAX`, `UNIQUE`, `ONES_LIKE` and `COLUMN_STACK`. Literals are Python numeric scalars or
 NumPy arrays with integer dtypes up to 64 bits, `float32`/`float64`, or booleans.
 String and boolean scalar literals are also supported. Numerical inputs loaded
 from DuckDB remain `float64`; text groups use fixed-width NumPy Unicode arrays.
@@ -652,7 +652,8 @@ Keep arithmetic, equality comparisons, and matrix multiplication
 in operator syntax. Do not add duplicate arithmetic function wrappers solely to
 mirror NumPy. Current public functions are `fnp.sum(a, axis=None)`,
 `fnp.transpose(a)`, `fnp.equal(a, b)`, `fnp.min(a, axis=None)`,
-`fnp.max(a, axis=None)` and `fnp.unique(a)`, which delegate distributed inputs to the existing tensor
+`fnp.max(a, axis=None)`, `fnp.unique(a)`, `fnp.ones_like(a)` and
+`fnp.column_stack(tup)`, which delegate distributed inputs to the existing tensor
 methods. The extrema and unique functions use their approved aggregation kinds.
 Existing `.sum()`, `.T`, `==`, indexing and `len(x)` remain available. Concrete
 NumPy arrays use the corresponding local NumPy computation; unsupported input
@@ -770,3 +771,41 @@ within each paradigm. Keep cross-paradigm parity tests as reference checks,
 without creating production dependencies between them. This ownership change
 preserves HTTP results, protobuf schemas, configuration, privacy and cleanup;
 rollback restores only FETA implementations and imports, requiring no data migration.
+
+### Two-way ANOVA / Design Assembly
+
+`feta_anova_twoway` is implemented independently within FETA. Its owned
+specification/result model and copied table inference do not import or change
+Exareme3 or shared algorithm libraries. Selected x contains two text factors and
+y one numerical outcome. Global observed levels use existing category union.
+
+NumPy-equivalent `ones_like` and `column_stack` are added as approved local
+operations. `ones_like` retains numerical/boolean dtype, shape and partitioning;
+no dtype/shape override is exposed. `column_stack` accepts aligned row-partitioned
+vectors/matrices, turns vectors into columns and returns a FedTensor. All
+distributed inputs must be FedTensors in the same context/row layout. Empty input
+lists, mismatched local row counts, column-partitioned inputs and mixed local/
+distributed inputs fail. Mixed text/numerical columns are rejected to avoid
+converting observations into labels for global unique. Allocation is bounded
+before the NumPy kernel. Concrete NumPy arrays execute these functions locally.
+
+Treatment indicators use equality times 1.0; interactions use multiplication.
+Five designs are assembled explicitly. Preserve the reference's duplicate
+intercept columns. Each model aggregates its Gram matrix and response
+cross-product; controller NumPy pinv and matrix_rank compute coefficients/rank.
+Local predictions use matrix multiplication by those coefficients, and squared
+residuals are summed globally. Two label unions, one count and three sums per
+model produce 18 immediate aggregation steps. Unused OLS metrics are omitted.
+
+Preserve Type I factor ordering, Type II marginal differences, rank-based degrees
+of freedom, nonnegative clipping and null/error behavior for degenerate tests.
+See the [algorithm documentation](../algorithms/feta_anova_twoway.md).
+The default sstype specification value retains the existing string "2" quirk;
+request values remain validated as integers. Correcting the default is separate
+from this migration.
+
+The protobuf operation enum adds ONES_LIKE and COLUMN_STACK. Deploy FETA
+controller and workers together; aggregation messages/kinds and existing
+Exareme3 protocols are unchanged. No config/data migration or privacy-threshold
+change is needed. Rollback removes the registration and design-operation
+extensions and restores the prior FETA code/bindings. Legacy code is unchanged.

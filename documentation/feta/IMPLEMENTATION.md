@@ -333,3 +333,42 @@ The copied implementations must be maintained independently. No data migration
 is needed. Rollback can restore only the FETA modules/imports; no legacy source
 change is required or retained. The statistics migration checkpoint remains
 `feta_anova_twoway`, which has not been started.
+
+## Two-way ANOVA and Design Operations
+
+Implemented `feta_anova_twoway` with owned specification, response model, copied
+Type I/II table inference and controller-authored tensor expressions. No legacy
+or shared algorithm source is modified or imported by production FETA code.
+Observed factor levels use category unions, treatment masks become numerical
+columns, and products form interactions. Five OLS designs preserve the normal
+implementation's duplicate intercept, Gram pseudoinverse and rank conventions.
+The controller computes coefficients/ranks from completed global matrix products;
+workers calculate predictions and residuals. Eighteen aggregation steps supply
+two unions, count and three summaries per model. Unused OLS metrics are omitted.
+
+Added NumPy-equivalent `ones_like` and `column_stack` to `federated_numpy` and the
+fixed worker allowlist. Distributed column stacking requires aligned vectors or
+matrices partitioned on axis zero, rejects mixed numerical/text inputs and local/
+distributed mixtures, and checks result allocation before execution. Ordinary
+NumPy arrays execute locally. ONES_LIKE/COLUMN_STACK extend the protobuf operation
+enum; controller and workers must update together. Aggregation schemas, config,
+privacy thresholds and data storage are unchanged. Rollback removes the new
+registration and restores FETA operation code/bindings; no data migration occurs.
+
+```bash
+uv run pytest -q tests/standalone_tests/feta tests/standalone_tests/federated_algorithms/statistics/test_anova_twoway.py tests/standalone_tests/test_import_algorithm_modules_idempotent.py --disable-warnings --tb=short
+uv run inv deploy --no-install-dep --no-structure-data
+uv run pytest -q tests/prod_env_tests/test_feta_anova_twoway.py tests/prod_env_tests/test_feta_anova_oneway.py --disable-warnings --tb=short
+```
+
+Results: **317 regression and package tests passed**, followed by **23 focused
+checks passed** after factor-order and mixed-dtype guard coverage. **10 live
+development-deployment cases passed**, comprising all five two-way ANOVA cases
+and five one-way ANOVA regression cases. Full responses use `rtol=1e-10`,
+`atol=1e-12`; simulations independently compare full-rank results with statsmodels
+for both types. Other tests cover privacy skips, Unicode, empty partitions,
+missing cells, saturated models, insufficient levels, alignment, memory bounds,
+factor ordering and cleanup. No Ruff, formatters or Docker/Kubernetes were used.
+
+The next proposed migration is `feta_chi_squared`, pending the user's
+continuation checkpoint. The full statistics migration remains unfinished.

@@ -42,6 +42,12 @@ class RuntimeFedTensor(FedTensor):
         inputs = (other, self) if reverse else (self, other)
         return self.runtime.apply(operation, inputs)
 
+    def _ones_like(self) -> FedTensor:
+        return self.runtime.apply(OperationType.ONES_LIKE, (self,))
+
+    def _column_stack(self, tensors: tuple[FedTensor, ...]) -> FedTensor:
+        return self.runtime.apply(OperationType.COLUMN_STACK, tensors)
+
     def _reduce(
         self, operation: Literal["min", "max"], axis: int | None = None
     ) -> TensorResult:

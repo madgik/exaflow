@@ -589,3 +589,40 @@ def test_anova_through_real_analysis_route(running_package):
     assert_nested(asyncio.run(run()), expected)
     assert not package.aggregation.sessions
     assert all(not worker.store.contexts for worker in package.workers)
+
+
+@pytest.mark.parametrize("sstype", [1, 2])
+def test_twoway_anova_through_real_analysis_route(running_package, sstype):
+    from tests.standalone_tests.feta.test_feta_anova_oneway import assert_nested
+    from tests.standalone_tests.feta.test_feta_anova_twoway import reference
+
+    package = running_package
+    body = {
+        "inputdata": {
+            "data_model": "test:1.0",
+            "datasets": ["a", "b"],
+            "variables": ["group", "dataset", "y0"],
+        },
+        "algorithm": {
+            "name": "feta_anova_twoway",
+            "x": ["group", "dataset"],
+            "y": ["y0"],
+            "parameters": {"sstype": sstype},
+        },
+    }
+
+    async def run():
+        client = package.app.test_client()
+        response = await client.post("/analysis", json=body)
+        payload = await response.get_data()
+        assert response.status_code == 200, payload.decode()
+        return json.loads(payload)
+
+    expected = reference(
+        package.frame.rename(columns={"group": "a", "dataset": "b", "y0": "value"}),
+        sstype,
+    )
+    expected["terms"] = ["group", "dataset", "group:dataset", "Residuals"]
+    assert_nested(asyncio.run(run()), expected)
+    assert not package.aggregation.sessions
+    assert all(not worker.store.contexts for worker in package.workers)

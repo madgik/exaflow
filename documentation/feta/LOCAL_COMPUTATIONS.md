@@ -16,7 +16,7 @@ postprocessing of completed global results belongs in the controller.
 ## Migration Status
 
 Runtime counterparts implemented and validated so far are
-`feta_pearson_correlation`, `feta_ttest_onesample`, `feta_ttest_paired`, `feta_ttest_independent` and `feta_anova_oneway`.
+`feta_pearson_correlation`, `feta_ttest_onesample`, `feta_ttest_paired`, `feta_ttest_independent`, `feta_anova_oneway` and `feta_anova_twoway`.
 Independent t-test adds string-label inputs, equality, column selection and
 boolean row indexing. Its inference uses existing numerical reductions.
 The catalogue below describes requirements, not completion of the remaining
@@ -26,7 +26,7 @@ decision after each validated implementation.
 ## Existing FETA foundation
 
 The current worker allowlist is `ADD`, `SUBTRACT`, `MULTIPLY`, `DIVIDE`, `POWER`,
-`TRANSPOSE`, `SUM`, `MATMUL`, `LENGTH`, `EQUAL`, `COLUMN`, `FILTER`, `MIN`, `MAX` and `UNIQUE`. Operands are context-scoped references,
+`TRANSPOSE`, `SUM`, `MATMUL`, `LENGTH`, `EQUAL`, `COLUMN`, `FILTER`, `MIN`, `MAX`, `UNIQUE`, `ONES_LIKE` and `COLUMN_STACK`. Operands are context-scoped references,
 numeric/string/boolean Python values, or supported numerical/boolean NumPy arrays.
 Tensors have rank at most two and support numerical, boolean and Unicode dtypes;
 object arrays remain rejected. Initial numerical inputs are float64, text inputs
@@ -39,7 +39,7 @@ The shared legacy aggregation service's other operations do not automatically
 make them available through FETA.
 
 The public `exaflow.algorithms.feta.federated_numpy` package exposes the existing
-sum, transpose, equality, min, max and unique operations, including `fnp.sum(a, axis=None)` and `fnp.transpose(a)`.
+sum, transpose, equality, min, max, unique, ones_like and column_stack operations, including `fnp.sum(a, axis=None)` and `fnp.transpose(a)`.
 Import it with `from exaflow.algorithms.feta import federated_numpy as fnp`.
 Arithmetic and matrix products continue to use operators. Tensor methods remain
 available, so the equivalent method expressions in this catalogue are valid.
@@ -68,7 +68,7 @@ readability, not as operation subclasses or batches.
 | Absolute value | `absolute(x) -> Array` | Mean absolute deviation, MAD outliers, OLS absolute residuals | Add |
 | Column selection | `take_columns(x, indices) -> Array`; ordered, bounded numeric indices | Multivariable summaries, design matrices | Implemented for a single column using [:, index]; multiple-column indexing remains open |
 | Shape utilities | `reshape/squeeze(x, shape) -> Array`; initially vector ↔ single-column matrix only | Scalar-sample algorithms, OLS response vectors | Add only restricted transforms preserving record alignment |
-| Concatenation and constants | `concatenate(arrays, axis)`, `ones_like_rows(x)` | ANOVA intercept/design assembly; pooled Mann–Whitney bounds | Add; column assembly needed, row concatenation can be avoided for pooled bounds |
+| Concatenation and constants | `concatenate(arrays, axis)`, `ones_like_rows(x)` | ANOVA intercept/design assembly; pooled Mann–Whitney bounds | Implemented column_stack/ones_like for aligned designs; general concatenate and row concatenation remain open |
 | Comparisons | `equal/not_equal/less/less_equal/greater/greater_equal(x, value) -> bool Array` | Group selection, percentile intervals, outlier tails | Equality implemented with boolean results; other comparisons remain proposals |
 | Boolean logic | `logical_and/or/not(mask) -> bool Array` | Interval membership, missing-value and finite masks | Add; masks must carry row lineage |
 | Missing and finite masks | `is_missing(x)`, `is_finite(x)` | Describe, categorical tables, histogram, binned Mann–Whitney | Add; missing differs from non-finite |

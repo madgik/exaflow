@@ -26,6 +26,8 @@ class OperationType(IntEnum):
     MIN = pb.MIN
     MAX = pb.MAX
     UNIQUE = pb.UNIQUE
+    ONES_LIKE = pb.ONES_LIKE
+    COLUMN_STACK = pb.COLUMN_STACK
 
 
 @dataclass(frozen=True)
@@ -175,7 +177,9 @@ class LocalOperation:
             in (OperationType.MATMUL, OperationType.EQUAL, OperationType.FILTER)
             else 1
         )
-        if len(message.inputs) != expected_inputs:
+        if op_type == OperationType.COLUMN_STACK:
+            expected_inputs = len(message.inputs)
+        if not message.inputs or len(message.inputs) != expected_inputs:
             raise ValueError("Incorrect number of FETA operation inputs.")
         if message.HasField("axis") and op_type not in (
             OperationType.SUM,
@@ -233,7 +237,9 @@ def infer_operation(operation, metadata, max_bytes):
         or op in (OperationType.MATMUL, OperationType.EQUAL, OperationType.FILTER)
         else 1
     )
-    if len(metadata) != expected:
+    if op == OperationType.COLUMN_STACK:
+        expected = len(metadata)
+    if not metadata or len(metadata) != expected:
         raise ValueError("Incorrect number of FETA operation inputs.")
     if operation.axis is not None and op not in (
         OperationType.SUM,
@@ -279,6 +285,25 @@ def infer_operation(operation, metadata, max_bytes):
             dtype = np.dtype("bool")
         if op == OperationType.DIVIDE:
             dtype = np.result_type(dtype, np.float64)
+    elif op == OperationType.ONES_LIKE:
+        m = metadata[0]
+        if dtype.kind not in "iufb":
+            raise ValueError("ONES_LIKE requires numerical tensors.")
+        shape, partition = m.shape, m.partition_axis
+    elif op == OperationType.COLUMN_STACK:
+        if len({np.dtype(m.dtype).kind == "U" for m in metadata}) != 1:
+            raise ValueError("COLUMN_STACK cannot mix text and numerical columns.")
+        if any(m.partition_axis != 0 or len(m.shape) not in (1, 2) for m in metadata):
+            raise ValueError(
+                "COLUMN_STACK requires row-partitioned vectors or matrices."
+            )
+        if len({m.shape[0] for m in metadata}) != 1:
+            raise ValueError("COLUMN_STACK requires matching local row counts.")
+        shape = (
+            metadata[0].shape[0],
+            sum(1 if len(m.shape) == 1 else m.shape[1] for m in metadata),
+        )
+        partition = 0
     elif op == OperationType.COLUMN:
         m = metadata[0]
         if len(m.shape) != 2 or m.partition_axis != 0 or operation.axis is None:
@@ -362,6 +387,10 @@ def evaluate(operation, inputs, expected):
         result = BINARY[op](*inputs)
     elif op == OperationType.EQUAL:
         result = np.equal(*inputs)
+    elif op == OperationType.ONES_LIKE:
+        result = np.ones_like(inputs[0])
+    elif op == OperationType.COLUMN_STACK:
+        result = np.column_stack(inputs)
     elif op == OperationType.COLUMN:
         result = inputs[0][:, operation.axis]
     elif op == OperationType.FILTER:

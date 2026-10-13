@@ -22,7 +22,8 @@ Reference implementations may be imported in parity tests only.
 FETA algorithms import `FedTensor` and the `federated_numpy` package from
 `exaflow.algorithms.feta`. Keep arithmetic and matrix operators as tensor
 expressions; use the typed NumPy-style functions for supported non-arithmetic
-operations. The package exposes `sum`, `transpose`, `equal`, `min`, `max` and `unique`; tensors also support
+operations. The package exposes `sum`, `transpose`, `equal`, `min`, `max`, `unique`,
+`ones_like` and `column_stack`; tensors also support
 column selection and boolean row indexing.
 FETA input preparation follows the specification and validated request. Algorithm
 `run` methods declare typed named inputs; the controller passes only selected

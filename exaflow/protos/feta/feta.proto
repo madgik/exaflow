@@ -88,6 +88,8 @@ enum OperationType {
   MIN = 13;
   MAX = 14;
   UNIQUE = 15;
+  ONES_LIKE = 16;
+  COLUMN_STACK = 17;
 }
 message LocalOperation {
   OperationType type = 1;

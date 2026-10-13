@@ -182,3 +182,10 @@ ownership: no Exareme3, shared federated-algorithm, data-helper/filter or numeri
 serialization implementation imports. Named public platform contracts are allowed;
 legacy algorithm imports are confined to test reference paths. Package integration
 uses FETA's owned data loader, and live parity checks cover all five algorithms.
+
+Two-way ANOVA FETA coverage is in
+`tests/standalone_tests/feta/test_feta_anova_twoway.py` and `test_design_operations.py`,
+plus real `/analysis` package tests for both sums-of-squares types. Development
+parity uses `uv run pytest -q tests/prod_env_tests/test_feta_anova_twoway.py` after
+`inv deploy` and dataset discovery. Tests compare the complete normal response
+on identical complete-case selections; full-rank simulations also use statsmodels.
