@@ -310,9 +310,11 @@ all flows:
   implements `ExaflowUDFAggregationClientI`. This client exposes `sum/min/max`
   helpers that automatically perform secure aggregation across workers.
 - `enable_lazy_aggregation` can override the default batching behavior. By
-  default it matches `with_aggregation_server` and wraps the function with
-  `library.lazy_aggregation.lazy_agg`, which buffers small payloads to reduce
-  network chatter.
+  default it matches `with_aggregation_server` and the worker runs the UDF
+  through `exaflow.worker.exareme3.lazy_aggregation.lazy_agg`, which sends
+  independent aggregation calls (also those made in helper functions and
+  methods) in one round-trip. Algorithms can call `agg_client` one value at a
+  time; see `exaflow/worker/exareme3/lazy_aggregation/README.md`.
 
 ```python
 import numpy as np

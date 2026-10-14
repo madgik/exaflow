@@ -1,674 +1,974 @@
+"""
+Lazy aggregation: fewer aggregation-server round-trips for unchanged UDF code.
+
+`lazy_agg` runs a rewritten copy of a UDF, and of every project function it
+calls, in which each aggregation call (`<client>.sum|min|max|union(values)`) is
+split into a submission and a force at its original site:
+
+    x = np.asarray(agg_client.sum(a), dtype=float)
+    y = np.asarray(agg_client.sum(b), dtype=float)
+
+becomes
+
+    _lazy_tmp0 = _lazy_submit(agg_client, "sum", a)
+    _lazy_tmp1 = _lazy_submit(agg_client, "sum", b)       # hoisted
+    x = np.asarray(_lazy_force(_lazy_tmp0), dtype=float)  # one round-trip: [a, b]
+    y = np.asarray(_lazy_force(_lazy_tmp1), dtype=float)
+
+Calls to project functions are split the same way (`_lazy_defer` / `_lazy_settle`).
+A function whose body ends with a pure tail computed only from aggregation
+results (for example `return np.where(result == 0, np.nan, result)`) also gets a
+deferred variant that runs everything up to the tail and returns the tail as a
+`_LazyTail`, so consecutive helper calls share round-trips too:
+
+    lo = float(aggregator.global_min(x))   # both submissions go out
+    hi = float(aggregator.global_max(x))   # in one round-trip
+
+See `_FunctionRewriter` for the rules that keep the rewrite equivalent to the
+original code: every worker sends exactly the aggregation operations of the
+eager code, in the same order, only grouped into fewer batches.
+"""
+
 import ast
-import datetime
+import builtins
+import copy
 import inspect
-import os
+import sysconfig
 import textwrap
-from collections import defaultdict
-from enum import Enum
+import weakref
+from functools import lru_cache
 from functools import wraps
-from typing import Dict
-from typing import List
-from typing import Set
-from typing import Tuple
+from types import FunctionType
+from types import MethodType
+
+import numpy as np
+
+from exaflow.aggregation_clients import AggregationType
+
+AGGREGATION_OPS = {
+    "sum": AggregationType.SUM,
+    "min": AggregationType.MIN,
+    "max": AggregationType.MAX,
+    "union": AggregationType.UNION,
+}
 
 
-class LazyAggregationExecutor:
+class _Pending:
+    __slots__ = ("client", "value", "done")
+
+    def __init__(self, client, value=None, done=False):
+        self.client = client
+        self.value = value
+        self.done = done
+
+
+class _LazyTail:
+    """The pure tail of a function call, run when its result is first needed."""
+
+    __slots__ = ("fn", "handles", "value", "done")
+
+    def __init__(self, fn, handles):
+        self.fn = fn
+        self.handles = handles
+        self.value = None
+        self.done = False
+
+
+class LazyAggregationClient:
     """
-    Small helper that batches global aggregations when possible.
-
-    - Tries to use agg_client.aggregate_batch with AggregationType when available.
-    - Falls back to issuing individual sum/min/max calls to preserve behaviour.
-    """
-
-    def __init__(self, agg_client):
-        self.agg_client = agg_client
-
-    def execute(self, batch: List[Tuple[str, object]]):
-        if not batch:
-            return []
-
-        # Prefer a batch call if the client supports it
-        aggregate_batch = getattr(self.agg_client, "aggregate_batch", None)
-        if aggregate_batch:
-            try:
-
-                class AggregationType(Enum):
-                    SUM = "SUM"
-                    MIN = "MIN"
-                    MAX = "MAX"
-
-                    def __str__(self):
-                        return self.name
-
-                mapped = [
-                    (getattr(AggregationType, op.upper()), value) for op, value in batch
-                ]
-                return list(aggregate_batch(mapped))
-            except Exception:
-                # Fallback to eager execution
-                pass
-
-        results = []
-        for op, value in batch:
-            if op == "sum":
-                results.append(self.agg_client.sum(value))
-            elif op == "min":
-                results.append(self.agg_client.min(value))
-            elif op == "max":
-                results.append(self.agg_client.max(value))
-            else:
-                raise ValueError(f"Unsupported aggregation op '{op}'.")
-        return results
-
-
-class _NameCollector(ast.NodeVisitor):
-    def __init__(self):
-        self.names = set()
-
-    def visit_Name(self, node):
-        if isinstance(node.ctx, ast.Load):
-            self.names.add(node.id)
-        self.generic_visit(node)
-
-
-def _used_names(node) -> set:
-    collector = _NameCollector()
-    collector.visit(node)
-    return collector.names
-
-
-def _rewrite_log_path() -> str:
-    """
-    Resolve the path where rewritten UDFs are logged.
-
-    Override via LAZY_AGG_REWRITE_LOG if you want a custom location.
-    """
-    default_path = os.path.join(os.path.dirname(__file__), "lazy_agg_rewrites.log")
-    return os.environ.get("LAZY_AGG_REWRITE_LOG", default_path)
-
-
-class LazyAggregationRewriter:
-    """
-    Prototype AST rewriter that:
-      - Finds assignments to agg_client.sum/min/max (treated as global ops)
-      - Reorders consecutive independent globals into a batch
-      - Inserts a LazyAggregationExecutor that performs the batch
+    Aggregation client proxy that queues submitted operations and sends every
+    queued operation in one `aggregate_batch` call when any result is needed.
+    Direct `sum/min/max/union` calls are sent immediately, together with the queue.
     """
 
-    def _log_rewritten(self, func_def: ast.FunctionDef, filename: str):
-        """
-        Persist the rewritten function source to a log file for inspection.
-        """
-        log_path = _rewrite_log_path()
-        try:
-            rewritten_source = (
-                ast.unparse(func_def)
-                if hasattr(ast, "unparse")
-                else ast.dump(func_def, include_attributes=False)
+    def __init__(self, client):
+        self._client = client
+        self._pending = []
+
+    def submit(self, op: str, values) -> _Pending:
+        pending = _Pending(self)
+        # Copied: the caller may mutate `values` before the batch is sent.
+        self._pending.append((op, copy.deepcopy(values), pending))
+        return pending
+
+    def discard(self, pending: _Pending) -> None:
+        self._pending = [item for item in self._pending if item[2] is not pending]
+
+    def flush(self) -> None:
+        if not self._pending:
+            return
+        batch, self._pending = self._pending, []
+        aggregate_batch = getattr(self._client, "aggregate_batch", None)
+        if aggregate_batch is None:
+            results = [getattr(self._client, op)(values) for op, values, _ in batch]
+        else:
+            results = aggregate_batch(
+                [(AGGREGATION_OPS[op], values) for op, values, _ in batch]
             )
-            timestamp = datetime.datetime.utcnow().isoformat() + "Z"
-            header = f"# --- lazy_agg rewrite: {func_def.name} ({filename}) at {timestamp} ---"
-            with open(log_path, "a", encoding="utf-8") as log_file:
-                log_file.write(f"{header}\n{rewritten_source}\n\n")
-        except Exception:
-            # Logging must never interfere with the rewrite process.
-            pass
+        for (_, _, pending), result in zip(batch, results, strict=True):
+            pending.value = result
+            pending.done = True
 
-    def rewrite(self, func, agg_client_name: str = "agg_client"):
-        try:
-            source_lines, start_line = inspect.getsourcelines(func)
-            source = textwrap.dedent("".join(source_lines))
-        except OSError:
-            # If we can't retrieve source (e.g., already rewritten), bail out.
+    def _aggregate_now(self, op: str, values):
+        pending = self.submit(op, values)
+        self.flush()
+        return pending.value
+
+    def sum(self, values):
+        return self._aggregate_now("sum", values)
+
+    def min(self, values):
+        return self._aggregate_now("min", values)
+
+    def max(self, values):
+        return self._aggregate_now("max", values)
+
+    def union(self, values):
+        return self._aggregate_now("union", values)
+
+    def __getattr__(self, name):
+        if name.startswith("__") or name in ("_client", "_pending"):
+            raise AttributeError(name)
+        self.flush()
+        return getattr(self._client, name)
+
+
+# --- helpers called by rewritten code ----------------------------------------- #
+
+
+def _lazy_submit(receiver, op, values):
+    if isinstance(receiver, LazyAggregationClient):
+        return receiver.submit(op, values)
+    # Not an aggregation client (e.g. `array.sum(0)`): run it now.
+    return _Pending(None, getattr(receiver, op)(values), True)
+
+
+def _lazy_force(handle: _Pending):
+    if not handle.done:
+        handle.client.flush()
+    return handle.value
+
+
+def _lazy_settle(result):
+    if isinstance(result, _LazyTail):
+        if not result.done:
+            result.value = result.fn()
+            result.done = True
+        return result.value
+    return result
+
+
+def _lazy_discard(*handles):
+    """Drops queued submissions whose original site was never reached."""
+    for handle in handles:
+        if isinstance(handle, _Pending) and not handle.done:
+            handle.client.discard(handle)
+        elif isinstance(handle, _LazyTail) and not handle.done:
+            _lazy_discard(*handle.handles)
+
+
+def _lazy_call(func):
+    """The rewritten version of project functions, `func` otherwise."""
+    return _rewritten(func, deferred=False)
+
+
+def _lazy_defer(func):
+    """Like `_lazy_call`, preferring the variant that returns a `_LazyTail`."""
+    return _rewritten(func, deferred=True)
+
+
+def _rewritten(func, *, deferred: bool):
+    if type(func) is MethodType:
+        rewritten = _rewritten_function(func.__func__, deferred)
+        if rewritten is func.__func__:
             return func
+        return MethodType(rewritten, func.__self__)
+    if type(func) is FunctionType:
+        return _rewritten_function(func, deferred)
+    return func
 
+
+_HELPERS = {
+    "_lazy_submit": _lazy_submit,
+    "_lazy_force": _lazy_force,
+    "_lazy_settle": _lazy_settle,
+    "_lazy_discard": _lazy_discard,
+    "_lazy_call": _lazy_call,
+    "_lazy_defer": _lazy_defer,
+    "_LazyTail": _LazyTail,
+}
+_PURE_HELPERS = {"_lazy_force", "_lazy_settle"}
+_TMP_PREFIX = "_lazy_tmp"
+
+# --- rewriting ---------------------------------------------------------------- #
+
+_PURE_BUILTINS = {
+    id(getattr(builtins, name))
+    for name in """
+        abs all any bool complex dict divmod enumerate float format frozenset
+        hasattr hash int isinstance issubclass len list max min pow range repr
+        reversed round set slice sorted str sum tuple type zip
+    """.split()
+}
+_PURE_LIBRARIES = {"numpy", "scipy", "pandas", "math"}
+_IMPURE_LIBRARY_NAMES = set(
+    """
+    apply_along_axis apply_over_axes copyto fill_diagonal fromfunction frompyfunc
+    piecewise place put putmask save savetxt savez seterr vectorize
+    """.split()
+)
+# Methods that return new values without mutating their receiver or arguments.
+_PURE_METHODS = set(
+    """
+    all any argmax argmin argsort astype copy count cumprod cumsum diagonal
+    difference dot dropna endswith fillna flatten format get intersection isin isna
+    isnull issubset item items join keys lower max mean median min nonzero notna
+    notnull nunique prod ravel replace reshape round sort_values split squeeze
+    startswith std strip sum to_list to_numpy tolist transpose union unique upper
+    value_counts values var
+    """.split()
+)
+_MUTATING_KEYWORDS = {"out", "inplace"}
+_LIBRARY_PATHS = tuple(
+    {sysconfig.get_paths()[key] for key in ("stdlib", "platstdlib", "purelib")}
+)
+_SCOPE_BOUNDARIES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)
+_REWRITTEN_CODES = set()
+_REWRITES = weakref.WeakKeyDictionary()
+_MISSING = object()
+
+
+@lru_cache(maxsize=None)
+def _is_project_file(filename: str) -> bool:
+    return not filename.startswith(("<", *_LIBRARY_PATHS))
+
+
+def _rewritten_function(func: FunctionType, deferred: bool) -> FunctionType:
+    if func.__code__ in _REWRITTEN_CODES:
+        return func
+    variants = _REWRITES.get(func)
+    if variants is None:
+        variants = _rewrite(func) or (func, func)
+        _REWRITES[func] = variants
+    return variants[deferred]
+
+
+def _rewrite(func: FunctionType):
+    """Returns (rewritten, deferred variant) or None when `func` stays as is."""
+    code = func.__code__
+    if (
+        func.__closure__ is not None
+        or not code.co_names
+        or not _is_project_file(code.co_filename)
+    ):
+        return None
+    try:
+        source_lines, first_line = inspect.getsourcelines(func)
+    except (OSError, TypeError):
+        return None
+    module = ast.parse(textwrap.dedent("".join(source_lines)))
+    fdef = module.body[0]
+    if not isinstance(fdef, ast.FunctionDef) or fdef.name != func.__name__:
+        return None
+    if any(
+        _is_mangled(node.id if isinstance(node, ast.Name) else node.attr)
+        for node in ast.walk(fdef)
+        if isinstance(node, (ast.Name, ast.Attribute))
+    ):
+        return None
+    ast.increment_lineno(module, first_line - 1)
+
+    tmp_names, deferred_body = _FunctionRewriter(func.__globals__).function(fdef)
+    fdef.decorator_list = []
+    fdef.returns = None
+    fdef.args.defaults = []
+    fdef.args.kw_defaults = [None] * len(fdef.args.kwonlyargs)
+    for arg in ast.walk(fdef.args):
+        if isinstance(arg, ast.arg):
+            arg.annotation = None
+
+    rewritten = _compile(_with_body(fdef, fdef.body, tmp_names), func)
+    if deferred_body is None:
+        return rewritten, rewritten
+    return rewritten, _compile(_with_body(fdef, deferred_body, tmp_names), func)
+
+
+def _compile(fdef, func: FunctionType) -> FunctionType:
+    # The factory closes over the helpers, so module globals are never touched.
+    factory = ast.FunctionDef(
+        name="_lazy_factory",
+        args=ast.arguments(
+            posonlyargs=[],
+            args=[ast.arg(name) for name in _HELPERS],
+            kwonlyargs=[],
+            kw_defaults=[],
+            defaults=[],
+        ),
+        body=[fdef, ast.Return(ast.Name(fdef.name, ast.Load()))],
+        decorator_list=[],
+    )
+    module = ast.Module(body=[ast.copy_location(factory, fdef)], type_ignores=[])
+    ast.fix_missing_locations(module)
+    namespace = {}
+    exec(
+        compile(module, func.__code__.co_filename, "exec", dont_inherit=True),
+        func.__globals__,
+        namespace,
+    )
+    rewritten = namespace["_lazy_factory"](*_HELPERS.values())
+    rewritten.__defaults__ = func.__defaults__
+    rewritten.__kwdefaults__ = func.__kwdefaults__
+    rewritten.__doc__ = func.__doc__
+    rewritten.__qualname__ = func.__qualname__
+    rewritten.__annotations__ = func.__annotations__
+    rewritten.__dict__.update(func.__dict__)
+    _register_codes(rewritten.__code__)
+    return rewritten
+
+
+def _with_body(fdef, body, tmp_names):
+    definition = copy.deepcopy(fdef)
+    definition.body = _discard_on_exception(copy.deepcopy(body), tmp_names)
+    return definition
+
+
+def _deferred_body(body, tail_start: int):
+    """Runs the head and returns the pure tail as a `_LazyTail`."""
+    head, tail = body[:tail_start], body[tail_start:]
+    tail_fn = ast.FunctionDef(
+        name="_lazy_tail",
+        args=ast.arguments(
+            posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[]
+        ),
+        body=tail,
+        decorator_list=[],
+    )
+    handles = sorted(
+        name
+        for name in _load_names(ast.Module(tail, []))
+        if name.startswith(_TMP_PREFIX)
+    )
+    result = ast.Return(
+        ast.Call(
+            ast.Name("_LazyTail", ast.Load()),
+            [
+                ast.Name("_lazy_tail", ast.Load()),
+                ast.Tuple([ast.Name(name, ast.Load()) for name in handles], ast.Load()),
+            ],
+            [],
+        )
+    )
+    for node in (tail_fn, result):
+        ast.copy_location(node, tail[0])
+    return [*head, tail_fn, result]
+
+
+def _discard_on_exception(body, tmp_names):
+    if not tmp_names:
+        return body
+    location = body[0]
+    init = ast.Assign(
+        targets=[ast.Name(name, ast.Store()) for name in tmp_names],
+        value=ast.Constant(None),
+    )
+    handler = ast.ExceptHandler(
+        type=ast.Name("BaseException", ast.Load()),
+        name=None,
+        body=[
+            ast.Expr(
+                ast.Call(
+                    ast.Name("_lazy_discard", ast.Load()),
+                    [ast.Name(name, ast.Load()) for name in tmp_names],
+                    [],
+                )
+            ),
+            ast.Raise(),
+        ],
+    )
+    wrapper = ast.Try(body=[init, *body], handlers=[handler], orelse=[], finalbody=[])
+    for node in [*ast.walk(handler), init, wrapper]:
+        ast.copy_location(node, location)
+    return [wrapper]
+
+
+def _register_codes(code) -> None:
+    _REWRITTEN_CODES.add(code)
+    for const in code.co_consts:
+        if inspect.iscode(const):
+            _register_codes(const)
+
+
+def _is_mangled(name: str) -> bool:
+    return name.startswith("__") and not name.endswith("__")
+
+
+def _load_names(node) -> frozenset:
+    return frozenset(
+        child.id
+        for child in ast.walk(node)
+        if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Load)
+    )
+
+
+def _store_names(node) -> set:
+    return {
+        child.id
+        for child in ast.walk(node)
+        if isinstance(child, ast.Name) and isinstance(child.ctx, (ast.Store, ast.Del))
+    }
+
+
+def _walk_scope(node):
+    """ast.walk that does not enter nested functions, lambdas or classes."""
+    yield node
+    for child in ast.iter_child_nodes(node):
+        if not isinstance(child, _SCOPE_BOUNDARIES):
+            yield from _walk_scope(child)
+
+
+def _local_names(fdef) -> set:
+    args = fdef.args
+    names = {
+        arg.arg
+        for arg in [
+            *args.posonlyargs,
+            *args.args,
+            *args.kwonlyargs,
+            *(arg for arg in (args.vararg, args.kwarg) if arg is not None),
+        ]
+    }
+    for node in ast.walk(fdef):
+        if node is fdef:
+            continue
+        if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
+            names.add(node.id)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names.add(node.name)
+        elif isinstance(node, ast.arg):
+            names.add(node.arg)
+        elif isinstance(node, ast.alias):
+            names.add((node.asname or node.name).split(".")[0])
+        elif isinstance(node, (ast.Global, ast.Nonlocal)):
+            names.update(node.names)
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            names.add(node.name)
+    return names
+
+
+class _ExtractState:
+    __slots__ = ("blocked", "unsafe", "statements")
+
+    def __init__(self):
+        self.blocked = False  # an impure expression was evaluated
+        self.unsafe = False  # a local value was read
+        self.statements = []
+
+
+class _FunctionRewriter:
+    """
+    Rewrites one function definition (and the functions nested in it).
+
+    Extraction. In `x = expr`, `return expr`, `if expr:` ... statements:
+      - an aggregation call with pure receiver and argument becomes
+        `_lazy_tmpN = _lazy_submit(receiver, op, argument)` (a submission) placed
+        before the statement, and `_lazy_force(_lazy_tmpN)` at the call site;
+      - another (intercepted) call with pure arguments becomes
+        `_lazy_tmpN = _lazy_defer(func)(arguments)` (a deferral) and
+        `_lazy_settle(_lazy_tmpN)` at the call site, when nothing evaluated
+        before it in the statement reads a local value.
+      Only always-evaluated parts are extracted (not the right side of
+      `and`/`or`, the branches of `a if c else b`, chained comparisons,
+      comprehensions or lambdas), and nothing after an impure part.
+
+    Scheduling. Outside `try` bodies, each run of consecutive movable statements
+    (submissions, deferrals, pure assignments and `if`/`for`/`while` statements
+    made of those) is reordered: submissions and deferrals as early as their
+    data dependencies allow, statements that force results as late as possible.
+    Pure statements have no side effects, so only name dependencies order them.
+    A deferral runs arbitrary code, so it keeps its order with every statement
+    that reads a local value. Calls, stores into objects and other side effects
+    are never crossed, and each result is still forced at its original site.
+
+    Interception. Remaining calls go through `_lazy_call`, so the project
+    functions they reach run rewritten too.
+
+    Deferred variant. When the function ends with pure assignments and a
+    `return` that read only aggregation results (in every branch of a final
+    `if`, possibly), `_lazy_defer` callers get a variant returning that tail as a
+    `_LazyTail`.
+    """
+
+    def __init__(self, globals_: dict):
+        self._globals = globals_
+        self._scopes = []
         self._tmp_counter = 0
-        module_ast = ast.parse(source)
-        func_def = next(
-            (node for node in module_ast.body if isinstance(node, ast.FunctionDef)),
-            None,
+
+    # --- function / blocks ------------------------------------------------- #
+
+    def function(self, fdef):
+        """
+        Rewrites `fdef` in place (the body is not wrapped by
+        `_discard_on_exception`); returns its temporaries and the body of its
+        deferred variant (None when there is none).
+        """
+        self._scopes.append(_local_names(fdef))
+        first_tmp = self._tmp_counter
+        fdef.decorator_list = [
+            decorator
+            for decorator in fdef.decorator_list
+            if "lazy_agg" not in _load_names(decorator)
+        ]
+        fdef.body = self._block(fdef.body, hoist=True)
+        for stmt in fdef.body:
+            self._intercept(stmt)
+        is_generator = any(
+            isinstance(node, (ast.Yield, ast.YieldFrom, ast.Await))
+            for stmt in fdef.body
+            for node in _walk_scope(stmt)
         )
-        if func_def is None:
-            raise ValueError("Expected a single function definition to rewrite.")
+        deferred_body = None if is_generator else self._deferred_block(fdef.body)
+        self._scopes.pop()
+        tmp_names = [
+            f"{_TMP_PREFIX}{idx}" for idx in range(first_tmp, self._tmp_counter)
+        ]
+        return tmp_names, deferred_body
 
-        # Strip decorators to avoid re-entering lazy_agg inside the rewritten body.
-        func_def.decorator_list = []
+    def _block(self, stmts, *, hoist: bool):
+        out = []
+        segment = []
+        for stmt in stmts:
+            self._children(stmt, hoist=hoist)
+            for new_stmt in self._extract(stmt):
+                if hoist and self._movable(new_stmt):
+                    segment.append(new_stmt)
+                else:
+                    out += self._schedule(segment)
+                    segment = []
+                    out.append(new_stmt)
+        return out + self._schedule(segment)
 
-        new_body, has_lazy = self._rewrite_body(func_def.body, agg_client_name)
-        if not has_lazy:
-            return func  # Nothing to rewrite
-        func_def.body = new_body
+    def _children(self, stmt, *, hoist: bool) -> None:
+        if isinstance(stmt, (ast.If, ast.For, ast.While)):
+            stmt.body = self._block(stmt.body, hoist=hoist)
+            stmt.orelse = self._block(stmt.orelse, hoist=hoist)
+        elif isinstance(stmt, ast.With):
+            # A context manager may swallow exceptions, unless it is a known pure
+            # one such as numpy.errstate.
+            pure_context = all(self._pure(item.context_expr) for item in stmt.items)
+            stmt.body = self._block(stmt.body, hoist=hoist and pure_context)
+        elif isinstance(stmt, ast.Try):
+            stmt.body = self._block(stmt.body, hoist=False)
+            for handler in stmt.handlers:
+                handler.body = self._block(handler.body, hoist=hoist)
+            stmt.orelse = self._block(stmt.orelse, hoist=hoist)
+            stmt.finalbody = self._block(stmt.finalbody, hoist=hoist)
+        elif isinstance(stmt, ast.FunctionDef):
+            tmp_names, _ = self.function(stmt)
+            stmt.body = _discard_on_exception(stmt.body, tmp_names)
 
-        ast.fix_missing_locations(module_ast)
-        ast.increment_lineno(module_ast, start_line - 1)
+    # --- scheduling --------------------------------------------------------- #
 
-        filename = inspect.getsourcefile(func) or getattr(
-            getattr(func, "__code__", None), "co_filename", ""
+    def _movable(self, stmt, *, in_loop: bool = False) -> bool:
+        if hasattr(stmt, "_lazy_reads") or isinstance(stmt, ast.Pass):
+            return True
+        if isinstance(stmt, (ast.Break, ast.Continue)):
+            return in_loop
+        if isinstance(stmt, ast.Expr):
+            return not isinstance(stmt.value, ast.Constant) and self._pure(stmt.value)
+        if isinstance(stmt, (ast.Assign, ast.AnnAssign)):
+            return _binds_names_only(stmt) and (
+                stmt.value is None or self._pure(stmt.value)
+            )
+        if isinstance(stmt, ast.If):
+            header, nested_loop = stmt.test, in_loop
+        elif isinstance(stmt, ast.While):
+            header, nested_loop = stmt.test, True
+        elif isinstance(stmt, ast.For) and _binds_names_only(stmt):
+            header, nested_loop = stmt.iter, True
+        else:
+            return False
+        # Deferrals run arbitrary code: inside a moved compound statement they would
+        # be reordered with everything around it.
+        return self._pure(header) and all(
+            self._movable(child, in_loop=nested_loop) and not _has_deferral(child)
+            for child in [*stmt.body, *stmt.orelse]
         )
-        if not filename:
-            filename = f"<lazy-{func.__name__}>"
-        # Uncomment for debugging
-        # self._log_rewritten(func_def, filename)
 
-        code_obj = compile(module_ast, filename=filename, mode="exec")
-        env = func.__globals__
-        env["LazyAggregationExecutor"] = LazyAggregationExecutor
-        original_binding = env.get(func.__name__)
-        exec(code_obj, env)
-        rewritten = env[func.__name__]
-        if original_binding is not None:
-            env[func.__name__] = original_binding
-        return rewritten
+    def _schedule(self, segment):
+        """Orders `segment` putting submissions first and forces last."""
+        reads = [_load_names(stmt) for stmt in segment]
+        binds = [_store_names(stmt) for stmt in segment]
+        defers = [getattr(stmt, "_lazy_defer", False) for stmt in segment]
+        # Whether a deferral (arbitrary code) may run before/after the statement:
+        # it must read no value that code could mutate. A submission's receiver is
+        # the aggregation client, so only its argument counts.
+        inert = [
+            all(
+                self._inert(name)
+                for name in (
+                    _load_names(stmt.value.args[2])
+                    if hasattr(stmt, "_lazy_reads") and not stmt._lazy_defer
+                    else reads[idx]
+                )
+            )
+            for idx, stmt in enumerate(segment)
+        ]
+        priority = [
+            0
+            if hasattr(stmt, "_lazy_reads")
+            else 2
+            if any(_is_helper_call(node, _PURE_HELPERS) for node in ast.walk(stmt))
+            else 1
+            for stmt in segment
+        ]
+        before = [
+            {
+                i
+                for i in range(j)
+                if binds[i] & (reads[j] | binds[j])
+                or reads[i] & binds[j]
+                or (defers[i] and (defers[j] or not inert[j]))
+                or (defers[j] and not inert[i])
+            }
+            for j in range(len(segment))
+        ]
+        order = []
+        while len(order) < len(segment):
+            done = set(order)
+            order.append(
+                min(
+                    (
+                        j
+                        for j in range(len(segment))
+                        if j not in done and before[j] <= done
+                    ),
+                    key=lambda j: (priority[j], j),
+                )
+            )
+        return [segment[j] for j in order]
 
-    def _get_assign_target(self, stmt):
-        if isinstance(stmt, ast.Assign):
-            if len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name):
-                return stmt.targets[0].id
+    # --- deferred variant --------------------------------------------------- #
+
+    def _deferred_block(self, body):
+        """`body` with its final pure tails returned as `_LazyTail`s, or None."""
+        if not body:
             return None
-        if isinstance(stmt, ast.AnnAssign):
-            if isinstance(stmt.target, ast.Name):
-                return stmt.target.id
+        last = body[-1]
+        if isinstance(last, ast.If):
+            then_body = self._deferred_block(last.body)
+            else_body = self._deferred_block(last.orelse)
+            if then_body is None and else_body is None:
+                return None
+            deferred_if = copy.copy(last)
+            deferred_if.body = then_body or last.body
+            deferred_if.orelse = else_body or last.orelse
+            return [*body[:-1], deferred_if]
+        if not isinstance(last, ast.Return) or last.value is None:
             return None
+        for start in range(len(body)):
+            if self._valid_tail(body[start:]):
+                return _deferred_body(body, start)
         return None
 
-    def _is_global_call_assign(self, stmt, agg_client_name: str):
-        target_name = self._get_assign_target(stmt)
-        if target_name is None:
-            return False
-        call = stmt.value
-        if not isinstance(call, ast.Call):
-            return False
-        if not isinstance(call.func, ast.Attribute):
-            return False
-        if not isinstance(call.func.value, ast.Name):
-            return False
-        if call.func.value.id != agg_client_name:
-            return False
-        if call.func.attr not in {"sum", "min", "max"}:
-            return False
+    def _valid_tail(self, tail) -> bool:
+        """Pure statements reading only aggregation results, ending in a return."""
+        bound = set()
+        has_result = False
+        for stmt in tail:
+            if isinstance(stmt, (ast.Assign, ast.AnnAssign)):
+                if hasattr(stmt, "_lazy_reads") or not _binds_names_only(stmt):
+                    return False
+            elif not isinstance(stmt, ast.Return):
+                return False
+            if stmt.value is None or not self._pure(stmt.value):
+                return False
+            if any(
+                self._is_local(name) and name not in bound
+                for name in _load_names(stmt.value)
+            ):
+                return False
+            has_result = has_result or any(
+                _is_helper_call(node, _PURE_HELPERS) for node in ast.walk(stmt.value)
+            )
+            bound |= _store_names(stmt)
+        return has_result
+
+    # --- extraction --------------------------------------------------------- #
+
+    def _extract(self, stmt):
+        state = _ExtractState()
+        if isinstance(stmt, (ast.Assign, ast.AnnAssign, ast.Expr, ast.Return)):
+            if stmt.value is not None:
+                stmt.value = self._x(stmt.value, state)
+        elif isinstance(stmt, ast.AugAssign) and isinstance(stmt.target, ast.Name):
+            state.unsafe = True  # the target is read first
+            stmt.value = self._x(stmt.value, state)
+        elif isinstance(stmt, ast.If):
+            stmt.test = self._x(stmt.test, state)
+        elif isinstance(stmt, ast.For):
+            stmt.iter = self._x(stmt.iter, state)
+        return [*state.statements, stmt]
+
+    def _is_candidate(self, node) -> bool:
+        return (
+            isinstance(node.func, ast.Attribute)
+            and node.func.attr in AGGREGATION_OPS
+            and len(node.args) == 1
+            and not isinstance(node.args[0], ast.Starred)
+            and not node.keywords
+            and self._resolve(node.func.value) is _MISSING
+        )
+
+    def _x(self, node, state: _ExtractState):
+        """Extracts calls from `node`, visiting it in evaluation order."""
+        if state.blocked:
+            return node
+        if isinstance(node, ast.Call):
+            return self._x_call(node, state)
+        if isinstance(node, ast.Name):
+            if self._is_local(node.id):
+                state.unsafe = True
+        elif isinstance(node, (ast.Attribute, ast.Starred)):
+            node.value = self._x(node.value, state)
+        elif isinstance(node, ast.Subscript):
+            node.value = self._x(node.value, state)
+            node.slice = self._x(node.slice, state)
+        elif isinstance(node, ast.Slice):
+            for field in ("lower", "upper", "step"):
+                if getattr(node, field) is not None:
+                    setattr(node, field, self._x(getattr(node, field), state))
+        elif isinstance(node, ast.BinOp):
+            node.left = self._x(node.left, state)
+            node.right = self._x(node.right, state)
+        elif isinstance(node, ast.UnaryOp):
+            node.operand = self._x(node.operand, state)
+        elif isinstance(node, (ast.Tuple, ast.List, ast.Set)):
+            node.elts = [self._x(elt, state) for elt in node.elts]
+        elif isinstance(node, ast.Dict):
+            for idx, (key, value) in enumerate(zip(node.keys, node.values)):
+                if key is not None:
+                    node.keys[idx] = self._x(key, state)
+                node.values[idx] = self._x(value, state)
+        elif isinstance(node, ast.JoinedStr):
+            node.values = [self._x(value, state) for value in node.values]
+        elif isinstance(node, ast.FormattedValue):
+            node.value = self._x(node.value, state)
+        elif isinstance(node, ast.BoolOp):
+            node.values[0] = self._x(node.values[0], state)
+            self._conditional(node.values[1:], state)
+        elif isinstance(node, ast.Compare):
+            node.left = self._x(node.left, state)
+            node.comparators[0] = self._x(node.comparators[0], state)
+            self._conditional(node.comparators[1:], state)
+        elif isinstance(node, ast.IfExp):
+            node.test = self._x(node.test, state)
+            self._conditional([node.body, node.orelse], state)
+        else:
+            self._conditional([node], state)
+        return node
+
+    def _conditional(self, nodes, state: _ExtractState) -> None:
+        """Parts that are not extracted: they only taint the state."""
+        if not all(self._pure(node) for node in nodes):
+            state.blocked = True
+        if any(self._is_local(name) for node in nodes for name in _load_names(node)):
+            state.unsafe = True
+
+    def _x_call(self, node, state: _ExtractState):
+        unsafe_before = state.unsafe
+        if (
+            self._is_candidate(node)
+            and self._pure(node.func.value)
+            and self._pure(node.args[0])
+        ):
+            receiver = self._x(node.func.value, state)
+            values = self._x(node.args[0], state)
+            state.unsafe = unsafe_before
+            return self._lift(
+                node,
+                ast.Call(
+                    ast.Name("_lazy_submit", ast.Load()),
+                    [receiver, ast.Constant(node.func.attr), values],
+                    [],
+                ),
+                "_lazy_force",
+                state,
+                defer=False,
+            )
+        node.func = self._x(node.func, state)
+        node.args = [self._x(arg, state) for arg in node.args]
+        for keyword in node.keywords:
+            keyword.value = self._x(keyword.value, state)
+        if state.blocked or self._pure_call(node):
+            return node
+        if (
+            not unsafe_before
+            and not self._skip_interception(node.func)
+            and self._pure(node.func)
+            and all(self._pure(arg) for arg in node.args)
+            and all(self._pure(keyword.value) for keyword in node.keywords)
+        ):
+            state.unsafe = unsafe_before
+            node.func = ast.Call(ast.Name("_lazy_defer", ast.Load()), [node.func], [])
+            return self._lift(node, node, "_lazy_settle", state, defer=True)
+        state.blocked = True
+        return node
+
+    def _lift(self, call, value, resolver: str, state: _ExtractState, *, defer: bool):
+        tmp = f"{_TMP_PREFIX}{self._tmp_counter}"
+        self._tmp_counter += 1
+        stmt = ast.Assign(targets=[ast.Name(tmp, ast.Store())], value=value)
+        stmt._lazy_reads = _load_names(value)
+        stmt._lazy_defer = defer
+        state.statements.append(ast.copy_location(stmt, call))
+        result = ast.Call(
+            ast.Name(resolver, ast.Load()), [ast.Name(tmp, ast.Load())], []
+        )
+        return ast.copy_location(result, call)
+
+    # --- purity ------------------------------------------------------------- #
+
+    def _is_local(self, name: str) -> bool:
+        return not name.startswith(_TMP_PREFIX) and any(
+            name in scope for scope in self._scopes
+        )
+
+    def _inert(self, name: str) -> bool:
+        """Lazy temporaries, helpers and global modules, functions and classes."""
+        if name.startswith(_TMP_PREFIX) or name in _HELPERS:
+            return True
+        value = self._resolve(ast.Name(name, ast.Load()))
+        return value is not _MISSING and (inspect.ismodule(value) or callable(value))
+
+    def _resolve(self, node):
+        """Statically resolves a global (non-local) name or module attribute."""
+        if isinstance(node, ast.Name):
+            if node.id in _HELPERS or self._is_local(node.id):
+                return _MISSING
+            value = self._globals.get(node.id, _MISSING)
+            if value is _MISSING:
+                value = getattr(builtins, node.id, _MISSING)
+            return value
+        if isinstance(node, ast.Attribute):
+            value = self._resolve(node.value)
+            if value is _MISSING or not inspect.ismodule(value):
+                return _MISSING
+            return getattr(value, node.attr, _MISSING)
+        return _MISSING
+
+    def _pure_callee(self, func) -> bool:
+        if isinstance(func, ast.Name) and func.id in _PURE_HELPERS:
+            return True
+        value = self._resolve(func)
+        if value is not _MISSING:
+            if id(value) in _PURE_BUILTINS or isinstance(value, np.ufunc):
+                return True
+            module = getattr(value, "__module__", None) or ""
+            return (
+                module.split(".")[0] in _PURE_LIBRARIES
+                and not module.startswith("numpy.random")
+                and getattr(value, "__name__", "") not in _IMPURE_LIBRARY_NAMES
+            )
+        return (
+            isinstance(func, ast.Attribute)
+            and func.attr in _PURE_METHODS
+            and self._pure(func.value)
+        )
+
+    def _pure_call(self, node) -> bool:
+        return self._pure_callee(node.func) and not any(
+            keyword.arg in _MUTATING_KEYWORDS
+            or (keyword.arg == "key" and not isinstance(keyword.value, ast.Lambda))
+            for keyword in node.keywords
+        )
+
+    def _pure(self, node) -> bool:
+        """True when evaluating `node` cannot mutate state (calls are whitelisted)."""
+        for child in ast.walk(node):
+            if isinstance(child, ast.Call):
+                if not self._pure_call(child):
+                    return False
+            elif isinstance(
+                child, (ast.NamedExpr, ast.Await, ast.Yield, ast.YieldFrom)
+            ):
+                return False
         return True
 
-    def _next_tmp(self):
-        name = f"_lazy_tmp{self._tmp_counter}"
-        self._tmp_counter += 1
-        return name
+    # --- interception ------------------------------------------------------- #
 
-    def _hoist_globals_in_expr(self, expr, agg_client_name: str):
-        """
-        Returns (prefix_statements, new_expr) where prefix_statements are Assign nodes
-        hoisting any agg_client.{sum|min|max} calls found in the expression.
-        """
+    def _intercept(self, stmt) -> None:
+        rewriter = self
 
-        def combine(parts):
-            prefixes = []
-            new_parts = []
-            for pre, val in parts:
-                prefixes.extend(pre)
-                new_parts.append(val)
-            return prefixes, new_parts
+        class _Interceptor(ast.NodeTransformer):
+            def visit_FunctionDef(self, node):
+                # Nested functions intercepted their own bodies.
+                node.decorator_list = [self.visit(d) for d in node.decorator_list]
+                return node
 
-        if isinstance(expr, ast.Call):
-            is_global_call = (
-                isinstance(expr.func, ast.Attribute)
-                and isinstance(expr.func.value, ast.Name)
-                and expr.func.value.id == agg_client_name
-                and expr.func.attr in {"sum", "min", "max"}
-            )
-            contains_comp = any(
-                isinstance(
-                    expr_arg,
-                    (ast.ListComp, ast.DictComp, ast.SetComp, ast.GeneratorExp),
+            def visit_ClassDef(self, node):
+                return node
+
+            def visit_Call(self, node):
+                self.generic_visit(node)
+                if rewriter._skip_interception(node.func) or rewriter._pure_call(node):
+                    return node
+                node.func = ast.copy_location(
+                    ast.Call(ast.Name("_lazy_call", ast.Load()), [node.func], []),
+                    node.func,
                 )
-                for expr_arg in (*expr.args, *(kw.value for kw in expr.keywords))
-            )
-            if is_global_call and not contains_comp:
-                tmp_name = self._next_tmp()
-                tmp_assign = ast.Assign(
-                    targets=[ast.Name(tmp_name, ctx=ast.Store())],
-                    value=expr,
-                )
-                tmp_assign = ast.copy_location(tmp_assign, expr)
-                return [tmp_assign], ast.copy_location(
-                    ast.Name(tmp_name, ctx=ast.Load()), expr
-                )
+                return node
 
-            func_prefixes, new_func = self._hoist_globals_in_expr(
-                expr.func, agg_client_name
-            )
-            arg_results = [
-                self._hoist_globals_in_expr(arg, agg_client_name) for arg in expr.args
-            ]
-            kw_results = [
-                self._hoist_globals_in_expr(kw.value, agg_client_name)
-                for kw in expr.keywords
-            ]
-            arg_prefixes, new_args = combine(arg_results)
-            kw_prefixes, new_kw_vals = combine(kw_results)
-            new_keywords = []
-            for kw, new_val in zip(expr.keywords, new_kw_vals):
-                new_kw = ast.keyword(arg=kw.arg, value=new_val)
-                new_kw = ast.copy_location(new_kw, kw)
-                new_keywords.append(new_kw)
-            expr.func = new_func
-            expr.args = new_args
-            expr.keywords = new_keywords
-            return [*func_prefixes, *arg_prefixes, *kw_prefixes], expr
+        _Interceptor().visit(stmt)
 
-        if isinstance(expr, ast.BoolOp):
-            parts = [
-                self._hoist_globals_in_expr(v, agg_client_name) for v in expr.values
-            ]
-            prefixes, new_vals = combine(parts)
-            expr.values = new_vals
-            return prefixes, expr
+    def _skip_interception(self, func) -> bool:
+        if isinstance(func, ast.Call):
+            return _is_helper_call(func, {"_lazy_defer", "_lazy_call"})
+        if isinstance(func, ast.Name) and (func.id in _HELPERS or func.id == "super"):
+            return True
+        value = self._resolve(func)
+        return value is not _MISSING and not isinstance(value, FunctionType)
 
-        if isinstance(expr, ast.BinOp):
-            left_p, new_left = self._hoist_globals_in_expr(expr.left, agg_client_name)
-            right_p, new_right = self._hoist_globals_in_expr(
-                expr.right, agg_client_name
-            )
-            expr.left = new_left
-            expr.right = new_right
-            return [*left_p, *right_p], expr
 
-        if isinstance(expr, ast.UnaryOp):
-            pre, operand = self._hoist_globals_in_expr(expr.operand, agg_client_name)
-            expr.operand = operand
-            return pre, expr
+def _binds_names_only(stmt) -> bool:
+    """True for Assign/AnnAssign/For targets without attribute or item stores."""
+    targets = stmt.targets if isinstance(stmt, ast.Assign) else [stmt.target]
+    return all(
+        isinstance(node, (ast.Name, ast.Tuple, ast.List, ast.Starred))
+        for target in targets
+        for node in ast.walk(target)
+        if not isinstance(node, ast.expr_context)
+    )
 
-        if isinstance(expr, ast.Compare):
-            left_p, new_left = self._hoist_globals_in_expr(expr.left, agg_client_name)
-            right_parts = [
-                self._hoist_globals_in_expr(c, agg_client_name)
-                for c in expr.comparators
-            ]
-            right_p, new_right = combine(right_parts)
-            expr.left = new_left
-            expr.comparators = new_right
-            return [*left_p, *right_p], expr
 
-        if isinstance(expr, ast.IfExp):
-            test_p, new_test = self._hoist_globals_in_expr(expr.test, agg_client_name)
-            body_p, new_body = self._hoist_globals_in_expr(expr.body, agg_client_name)
-            orelse_p, new_orelse = self._hoist_globals_in_expr(
-                expr.orelse, agg_client_name
-            )
-            expr.test = new_test
-            expr.body = new_body
-            expr.orelse = new_orelse
-            return [*test_p, *body_p, *orelse_p], expr
+def _has_deferral(stmt) -> bool:
+    return any(getattr(node, "_lazy_defer", False) for node in ast.walk(stmt))
 
-        if isinstance(expr, ast.Subscript):
-            val_p, new_val = self._hoist_globals_in_expr(expr.value, agg_client_name)
-            slice_p, new_slice = self._hoist_globals_in_expr(
-                expr.slice, agg_client_name
-            )
-            expr.value = new_val
-            expr.slice = new_slice
-            return [*val_p, *slice_p], expr
 
-        if isinstance(expr, ast.Attribute):
-            pre, new_val = self._hoist_globals_in_expr(expr.value, agg_client_name)
-            expr.value = new_val
-            return pre, expr
-
-        if isinstance(expr, ast.Tuple):
-            parts = [
-                self._hoist_globals_in_expr(elt, agg_client_name) for elt in expr.elts
-            ]
-            prefixes, new_elts = combine(parts)
-            expr.elts = new_elts
-            return prefixes, expr
-
-        if isinstance(expr, ast.List):
-            parts = [
-                self._hoist_globals_in_expr(elt, agg_client_name) for elt in expr.elts
-            ]
-            prefixes, new_elts = combine(parts)
-            expr.elts = new_elts
-            return prefixes, expr
-
-        if isinstance(expr, ast.Dict):
-            key_parts = [
-                (
-                    self._hoist_globals_in_expr(k, agg_client_name)
-                    if k is not None
-                    else ([], None)
-                )
-                for k in expr.keys
-            ]
-            val_parts = [
-                self._hoist_globals_in_expr(v, agg_client_name) for v in expr.values
-            ]
-            key_prefixes, new_keys = combine(key_parts)
-            val_prefixes, new_vals = combine(val_parts)
-            expr.keys = new_keys
-            expr.values = new_vals
-            return [*key_prefixes, *val_prefixes], expr
-
-        return [], expr
-
-    def _hoist_globals_in_stmt(self, stmt, agg_client_name: str):
-        """
-        Returns a list of statements including hoisted global-call assignments
-        needed by this statement, with the original statement last.
-        """
-        new_stmts = []
-        if isinstance(
-            stmt, (ast.Assign, ast.AnnAssign)
-        ) and self._is_global_call_assign(stmt, agg_client_name):
-            return [stmt]
-        if isinstance(stmt, ast.Assign):
-            pre, new_value = self._hoist_globals_in_expr(stmt.value, agg_client_name)
-            stmt.value = new_value
-            new_stmts.extend(pre)
-            new_stmts.append(stmt)
-            return new_stmts
-        if isinstance(stmt, ast.AnnAssign):
-            if stmt.value is not None:
-                pre, new_value = self._hoist_globals_in_expr(
-                    stmt.value, agg_client_name
-                )
-                stmt.value = new_value
-                new_stmts.extend(pre)
-            new_stmts.append(stmt)
-            return new_stmts
-        if isinstance(stmt, ast.Expr):
-            pre, new_value = self._hoist_globals_in_expr(stmt.value, agg_client_name)
-            stmt.value = new_value
-            new_stmts.extend(pre)
-            new_stmts.append(stmt)
-            return new_stmts
-        if isinstance(stmt, ast.Return):
-            if stmt.value is not None:
-                pre, new_value = self._hoist_globals_in_expr(
-                    stmt.value, agg_client_name
-                )
-                stmt.value = new_value
-                new_stmts.extend(pre)
-            new_stmts.append(stmt)
-            return new_stmts
-        if isinstance(stmt, ast.If):
-            pre, new_test = self._hoist_globals_in_expr(stmt.test, agg_client_name)
-            stmt.test = new_test
-            new_stmts.extend(pre)
-            new_stmts.append(stmt)
-            return new_stmts
-        if isinstance(stmt, ast.While):
-            pre, new_test = self._hoist_globals_in_expr(stmt.test, agg_client_name)
-            stmt.test = new_test
-            new_stmts.extend(pre)
-            new_stmts.append(stmt)
-            return new_stmts
-        if isinstance(stmt, (ast.For, ast.AsyncFor)):
-            pre, new_iter = self._hoist_globals_in_expr(stmt.iter, agg_client_name)
-            stmt.iter = new_iter
-            new_stmts.extend(pre)
-            new_stmts.append(stmt)
-            return new_stmts
-        if isinstance(stmt, (ast.With, ast.AsyncWith)):
-            for item in stmt.items:
-                pre, new_ctx = self._hoist_globals_in_expr(
-                    item.context_expr, agg_client_name
-                )
-                new_stmts.extend(pre)
-                item.context_expr = new_ctx
-            new_stmts.append(stmt)
-            return new_stmts
-        if isinstance(stmt, ast.Assert):
-            pre, new_test = self._hoist_globals_in_expr(stmt.test, agg_client_name)
-            stmt.test = new_test
-            new_stmts.extend(pre)
-            new_stmts.append(stmt)
-            return new_stmts
-        return [stmt]
-
-    def _flush_batch(self, batch, output_order, location):
-        if not batch:
-            return []
-
-        def _locate(node):
-            return ast.copy_location(node, location) if location is not None else node
-
-        batch_assign = ast.Assign(
-            targets=[ast.Name("_lazy_batch", ctx=ast.Store())],
-            value=ast.List(
-                elts=[
-                    ast.Tuple(
-                        elts=[
-                            ast.Constant(op),
-                            expr,
-                        ],
-                        ctx=ast.Load(),
-                    )
-                    for op, expr in batch
-                ],
-                ctx=ast.Load(),
-            ),
-        )
-        batch_assign = _locate(batch_assign)
-        execute_call = ast.Assign(
-            targets=[ast.Name("_lazy_results", ctx=ast.Store())],
-            value=ast.Call(
-                func=ast.Attribute(
-                    value=ast.Name("_lazy_exec", ctx=ast.Load()),
-                    attr="execute",
-                    ctx=ast.Load(),
-                ),
-                args=[ast.Name("_lazy_batch", ctx=ast.Load())],
-                keywords=[],
-            ),
-        )
-        execute_call = _locate(execute_call)
-
-        assigns = []
-        for idx, target_name in enumerate(output_order):
-            assign_stmt = ast.Assign(
-                targets=[ast.Name(target_name, ctx=ast.Store())],
-                value=ast.Subscript(
-                    value=ast.Name("_lazy_results", ctx=ast.Load()),
-                    slice=ast.Index(ast.Constant(idx)),
-                    ctx=ast.Load(),
-                ),
-            )
-            assigns.append(_locate(assign_stmt))
-
-        return [batch_assign, execute_call, *assigns]
-
-    def _rewrite_body(self, body, agg_client_name: str, insert_exec: bool = True):
-        new_body = []
-        has_lazy = False
-
-        if (
-            body
-            and isinstance(body[0], ast.Expr)
-            and isinstance(body[0].value, ast.Constant)
-        ):
-            new_body.append(body[0])
-            body = body[1:]
-
-        expanded_body = []
-        for stmt in body:
-            expanded_body.extend(self._hoist_globals_in_stmt(stmt, agg_client_name))
-        body = expanded_body
-
-        new_body = []
-        pending_batch: List[Tuple[str, ast.AST]] = []
-        pending_targets: List[str] = []
-        pending_location = None
-        has_lazy = False
-
-        exec_assign = (
-            ast.Assign(
-                targets=[ast.Name("_lazy_exec", ctx=ast.Store())],
-                value=ast.Call(
-                    func=ast.Name("LazyAggregationExecutor", ctx=ast.Load()),
-                    args=[ast.Name(agg_client_name, ctx=ast.Load())],
-                    keywords=[],
-                ),
-            )
-            if insert_exec
-            else None
-        )
-        inserted_exec = not insert_exec
-
-        def flush():
-            nonlocal \
-                pending_batch, \
-                pending_targets, \
-                inserted_exec, \
-                has_lazy, \
-                pending_location
-            if pending_batch:
-                new_body.extend(
-                    self._flush_batch(pending_batch, pending_targets, pending_location)
-                )
-                if insert_exec and not inserted_exec:
-                    new_body.insert(1 if new_body else 0, exec_assign)
-                    inserted_exec = True
-                has_lazy = True
-            pending_batch = []
-            pending_targets = []
-            pending_location = None
-
-        i = 0
-        while i < len(body):
-            stmt = body[i]
-
-            if self._is_global_call_assign(stmt, agg_client_name):
-                target = self._get_assign_target(stmt)
-                # If this global depends on earlier pending outputs, flush first
-                call_used = _used_names(stmt.value)
-                if call_used.intersection(set(pending_targets)):
-                    flush()
-                pending_batch.append((stmt.value.func.attr, stmt.value.args[0]))
-                pending_targets.append(target)
-                pending_location = pending_location or stmt
-                i += 1
-                continue
-
-            used = _used_names(stmt)
-            defined = (
-                {t.id for t in stmt.targets if isinstance(t, ast.Name)}
-                if isinstance(stmt, ast.Assign)
-                else (
-                    {stmt.target.id}
-                    if isinstance(stmt, ast.AnnAssign)
-                    and isinstance(stmt.target, ast.Name)
-                    else set()
-                )
-            )
-            allow_hoist = isinstance(stmt, (ast.Assign, ast.AnnAssign))
-
-            if pending_targets and not allow_hoist:
-                flush()
-
-            # Non-global statement: optionally hoist following independent globals
-            j = i + 1
-            if allow_hoist:
-                while j < len(body) and self._is_global_call_assign(
-                    body[j], agg_client_name
-                ):
-                    call_used = _used_names(body[j].value)
-                    call_used_no_client = {
-                        name for name in call_used if name != agg_client_name
-                    }
-                    used_no_client = {name for name in used if name != agg_client_name}
-                    if call_used_no_client.intersection(
-                        used_no_client
-                    ) or call_used_no_client.intersection(defined):
-                        break
-                    target = self._get_assign_target(body[j])
-                    pending_batch.append(
-                        (body[j].value.func.attr, body[j].value.args[0])
-                    )
-                    pending_targets.append(target)
-                    pending_location = pending_location or body[j]
-                    j += 1
-
-                if pending_targets and used.intersection(set(pending_targets)):
-                    flush()
-
-            rewritten_stmt, child_has_lazy = self._rewrite_children(
-                stmt, agg_client_name
-            )
-            has_lazy = has_lazy or child_has_lazy
-            new_body.append(rewritten_stmt)
-            i = j
-
-        flush()
-        if insert_exec and has_lazy and not inserted_exec:
-            new_body.insert(1 if new_body else 0, exec_assign)
-            inserted_exec = True
-        return new_body, has_lazy
-
-    def _rewrite_children(self, stmt, agg_client_name: str):
-        # Recursively rewrite statements that contain bodies.
-        child_has_lazy = False
-        if isinstance(stmt, (ast.If, ast.For, ast.While, ast.With, ast.AsyncWith)):
-            stmt.body, body_lazy = self._rewrite_body(
-                stmt.body, agg_client_name, insert_exec=False
-            )
-            stmt.orelse, orelse_lazy = self._rewrite_body(
-                stmt.orelse, agg_client_name, insert_exec=False
-            )
-            child_has_lazy = body_lazy or orelse_lazy
-        elif isinstance(stmt, ast.Try):
-            stmt.body, body_lazy = self._rewrite_body(
-                stmt.body, agg_client_name, insert_exec=False
-            )
-            stmt.orelse, orelse_lazy = self._rewrite_body(
-                stmt.orelse, agg_client_name, insert_exec=False
-            )
-            stmt.finalbody, final_lazy = self._rewrite_body(
-                stmt.finalbody, agg_client_name, insert_exec=False
-            )
-            new_handlers = []
-            handlers_lazy = False
-            for handler in stmt.handlers:
-                rewritten_handler, handler_lazy = self._rewrite_exc_handler(
-                    handler, agg_client_name
-                )
-                new_handlers.append(rewritten_handler)
-                handlers_lazy = handlers_lazy or handler_lazy
-            stmt.handlers = new_handlers
-            child_has_lazy = body_lazy or orelse_lazy or final_lazy or handlers_lazy
-        elif isinstance(stmt, ast.FunctionDef):
-            inner_agg_name = (
-                stmt.args.args[0].arg if stmt.args.args else agg_client_name
-            )
-            # Avoid double-decoration; the parent rewrite will handle batching.
-            stmt.decorator_list = []
-            stmt.body, child_has_lazy = self._rewrite_body(
-                stmt.body, inner_agg_name, insert_exec=True
-            )
-        return stmt, child_has_lazy
-
-    def _rewrite_exc_handler(self, handler, agg_client_name: str):
-        handler.body, handler_lazy = self._rewrite_body(
-            handler.body, agg_client_name, insert_exec=False
-        )
-        return handler, handler_lazy
+def _is_helper_call(node, names) -> bool:
+    return (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id in names
+    )
 
 
 def lazy_agg(func=None, *, agg_client_name: str = "agg_client"):
     """
-    Decorator to apply LazyAggregationRewriter to a function.
+    Runs `func` with lazy aggregation: the `agg_client_name` argument is wrapped in
+    a `LazyAggregationClient` and `func` (plus every project function it calls)
+    runs rewritten so independent aggregation calls share round-trips.
     """
 
     def decorator(fn):
-        rewritten_func = None
+        signature = inspect.signature(fn)
 
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            nonlocal rewritten_func
-            if rewritten_func is None:
-                rewriter = LazyAggregationRewriter()
-                try:
-                    rewritten_func = rewriter.rewrite(fn, agg_client_name)
-                except Exception:
-                    rewritten_func = fn
-            return rewritten_func(*args, **kwargs)
+            bound = signature.bind(*args, **kwargs)
+            client = bound.arguments.get(agg_client_name)
+            if client is not None and not isinstance(client, LazyAggregationClient):
+                bound.arguments[agg_client_name] = LazyAggregationClient(client)
+            return _lazy_call(fn)(*bound.args, **bound.kwargs)
 
         return wrapper
 
@@ -677,10 +977,9 @@ def lazy_agg(func=None, *, agg_client_name: str = "agg_client"):
     return decorator
 
 
-import numpy as np
-
-
 class RecordingAggClient:
+    """Test double that records calls and returns its inputs."""
+
     def __init__(self):
         self.calls = []
 
@@ -700,172 +999,6 @@ class RecordingAggClient:
         self.calls.append(("max", np.asarray(value).size))
         return value
 
-
-class DependencyGraphBuilder(ast.NodeVisitor):
-    """
-    Lightweight dependency graph builder for Python function bodies.
-
-    Useful for visualizing how values flow through a function before/after
-    applying lazy aggregation rewrites.
-    """
-
-    def __init__(self):
-        self.nodes: List[Dict[str, object]] = []
-        self.edges: List[Dict[str, object]] = []
-        self.var_definitions: Dict[str, int] = {}
-        self.var_uses = defaultdict(list)
-        self.node_counter = 0
-        self.current_scope = []
-
-    def add_node(self, node_type: str, details: str = "") -> int:
-        """Add a node to the graph and return its index."""
-        node_id = self.node_counter
-        self.nodes.append({"id": node_id, "type": node_type, "details": details})
-        self.node_counter += 1
-        return node_id
-
-    def add_edge(self, source_id: int, target_id: int, var_name: str):
-        """Add an edge representing data dependency."""
-        if source_id != target_id:
-            self.edges.append(
-                {"source": source_id, "target": target_id, "variable": var_name}
-            )
-
-    def get_names_from_expr(self, node) -> Set[str]:
-        """Extract all variable names used in an expression."""
-        names: Set[str] = set()
-        for child in ast.walk(node):
-            if isinstance(child, ast.Name):
-                names.add(child.id)
-        return names
-
-    def visit_Assign(self, node):
-        """Handle assignment: target = value."""
-        targets_str = ", ".join(self.get_target_names(node.targets))
-
-        value_node_id = self.visit_expr(node.value)
-        node_id = self.add_node("Assign", f"{targets_str} = ...")
-
-        if value_node_id is not None:
-            self.add_edge(value_node_id, node_id, "result")
-
-        for target in node.targets:
-            for name in self.get_target_names([target]):
-                self.var_definitions[name] = node_id
-
-    def visit_expr(self, node) -> int:
-        """Visit an expression and return the node id that produces it."""
-        if isinstance(node, ast.BinOp):
-            left_id = self.visit_expr(node.left)
-            right_id = self.visit_expr(node.right)
-            op_name = node.op.__class__.__name__
-            node_id = self.add_node("BinOp", op_name)
-            if left_id is not None:
-                self.add_edge(left_id, node_id, "left")
-            if right_id is not None:
-                self.add_edge(right_id, node_id, "right")
-            return node_id
-
-        if isinstance(node, ast.Call):
-            func_name = self._get_func_name(node.func)
-            node_id = self.add_node("Call", func_name)
-            for i, arg in enumerate(node.args):
-                arg_id = self.visit_expr(arg)
-                if arg_id is not None:
-                    self.add_edge(arg_id, node_id, f"arg{i}")
-            return node_id
-
-        if isinstance(node, ast.Name):
-            if node.id in self.var_definitions:
-                return self.var_definitions[node.id]
-            return None
-
-        if isinstance(node, ast.Constant):
-            return self.add_node("Constant", repr(node.value))
-
-        return None
-
-    def _get_func_name(self, node) -> str:
-        """Extract function name from a Call node."""
-        if isinstance(node, ast.Name):
-            return node.id
-        if isinstance(node, ast.Attribute):
-            obj = self._get_func_name(node.value)
-            return f"{obj}.{node.attr}"
-        return "?"
-
-    def visit_AugAssign(self, node):
-        """Handle augmented assignment: x += 1."""
-        target_name = node.target.id if isinstance(node.target, ast.Name) else "?"
-        op_str = node.op.__class__.__name__
-
-        target_id = (
-            self.var_definitions.get(target_name)
-            if isinstance(node.target, ast.Name)
-            else None
-        )
-        value_id = self.visit_expr(node.value)
-
-        binop_id = self.add_node("BinOp", op_str)
-        if target_id is not None:
-            self.add_edge(target_id, binop_id, target_name)
-        if value_id is not None:
-            self.add_edge(value_id, binop_id, "rhs")
-
-        node_id = self.add_node("Assign", f"{target_name} {op_str}=")
-        self.add_edge(binop_id, node_id, "result")
-
-        if isinstance(node.target, ast.Name):
-            self.var_definitions[node.target.id] = node_id
-
-    def visit_For(self, node):
-        """Handle for loops."""
-        loop_var = node.target.id if isinstance(node.target, ast.Name) else "?"
-        iter_id = self.visit_expr(node.iter)
-        node_id = self.add_node("For", f"for {loop_var}")
-        if iter_id is not None:
-            self.add_edge(iter_id, node_id, "iterator")
-
-        if isinstance(node.target, ast.Name):
-            self.var_definitions[node.target.id] = node_id
-
-        for child in node.body:
-            self.visit(child)
-
-    def visit_If(self, node):
-        """Handle if statements."""
-        test_id = self.visit_expr(node.test)
-        node_id = self.add_node("If", "if")
-        if test_id is not None:
-            self.add_edge(test_id, node_id, "condition")
-
-        for child in node.body + node.orelse:
-            self.visit(child)
-
-    def get_target_names(self, targets) -> List[str]:
-        """Extract variable names from assignment targets."""
-        names: List[str] = []
-        for target in targets:
-            if isinstance(target, ast.Name):
-                names.append(target.id)
-            elif isinstance(target, (ast.Tuple, ast.List)):
-                for elt in target.elts:
-                    names.extend(self.get_target_names([elt]))
-        return names
-
-    def _get_expr_repr(self, node) -> str:
-        """Get a string representation of an expression."""
-        if isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Name):
-                args = ", ".join(self._get_expr_repr(arg) for arg in node.args)
-                return f"{node.func.id}({args})"
-        elif isinstance(node, ast.Name):
-            return node.id
-        elif isinstance(node, ast.Constant):
-            return repr(node.value)
-        elif isinstance(node, ast.BinOp):
-            left = self._get_expr_repr(node.left)
-            right = self._get_expr_repr(node.right)
-            op = node.op.__class__.__name__
-            return f"{left} {op} {right}"
-        return "..."
+    def union(self, value):
+        self.calls.append(("union", np.asarray(value).size))
+        return value

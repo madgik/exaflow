@@ -23,6 +23,8 @@ jobs:
         with:
           version: "0.11.0"
           enable-cache: true
+          # Deployed services keep the uv cache locked; pruning would time out.
+          prune-cache: false
 
       - name: Install dependencies
         run: uv sync --locked --all-groups --no-install-project
@@ -123,6 +125,8 @@ jobs:
         with:
           version: "0.11.0"
           enable-cache: true
+          # Deployed services keep the uv cache locked; pruning would time out.
+          prune-cache: false
 
       - name: Install dependencies
         run: uv sync --locked --all-groups --no-install-project
