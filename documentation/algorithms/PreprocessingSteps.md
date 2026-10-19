@@ -59,6 +59,8 @@ visit identifiers so records can be matched across visits.
 | Outlier Winsorizer | `folds` | Per-variable clipping threshold. |
 | Longitudinal Transformer | `visit1`, `visit2` | Visit identifiers to align. |
 | Longitudinal Transformer | `strategies` | Per-variable strategy: `first`, `second`, or `diff`. |
+| Column creators | `new_column_names` | Ordered names for the created columns. |
+| KMeans Column Creator | `k`, `enumeration_prefix` | Fitted category count and prefix, populated from the reusable model. |
 | KMeans Column Creator | `reusable_preprocessing` | Complete replay payload returned by a fitted K-means analysis. |
 
 ## Preprocessing method
@@ -172,6 +174,30 @@ Output:
   executes steps in the submitted order.
 
 ## Outputs
+
+Column creators declare an `outputs` object containing `new_column_names_param`
+and ordered `columns`. The referenced request parameter is a required list of
+names with exactly one name per output specification. Both existing creators
+produce one column and accept `new_column_names: ["chosen_name"]`.
+
+Each column has a physical `type` and statistical `stattype`. Numerical columns
+have no enumeration configuration. Nominal columns require a source rule:
+`dict_keys` uses `source_parameter_name` and can include an
+`additional_value_parameter_name`; `prefixed_range` additionally requires
+`prefix_parameter_name` and generates one-based categories from the count.
+The categorical creator uses the keys of `rules` and any `default_enumeration`.
+K-means uses its fitted count and prefix. See the
+[API output contract](../api-specification.md#preprocessingoutputsspecificationdto)
+for the complete schema and a two-column numerical example.
+
+The controller and worker transformation hooks validate declared names, types,
+and metadata consistently. Existing metadata fields are preserved. The fixed
+output list determines the number and order of new columns; it is not a
+request-dependent template. Existing steps that modify columns without creating
+new ones do not declare this output container.
+
+This replaces scalar `code` requests and the former `output` metadata. Consumers
+must migrate together; no legacy aliases are provided.
 
 | Field | Description |
 |---|---|

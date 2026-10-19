@@ -44,6 +44,7 @@ nearest center by squared Euclidean distance.
 |---|---|---|
 | `k_selection` | `manual` uses `k`; `elbow` evaluates `k_min..k_max` and selects a value from the inertia curve. | `manual` |
 | `k` | Number of clusters when `k_selection=manual`. | `4` |
+| `enumeration_prefix` | Prefix for cluster identifiers, numbered from 1 through the fitted count. | `cluster_` |
 | `k_min` | Minimum number of clusters evaluated when `k_selection=elbow`. | `2` |
 | `k_max` | Maximum number of clusters evaluated when `k_selection=elbow`. | `8` |
 | `maxiter` | Maximum number of Lloyd iterations. | `100` |
@@ -88,8 +89,8 @@ characteristics and the goal is exploratory grouping. Example variables:
 
 Example interpretation:
 
-- `cluster_0`: younger patients with lower `crp` and lower `systolic_bp`.
-- `cluster_1`: older patients with higher `crp` and higher `systolic_bp`.
+- `cluster_1`: younger patients with lower `crp` and lower `systolic_bp`.
+- `cluster_2`: older patients with higher `crp` and higher `systolic_bp`.
 
 These clusters are not diagnoses. They are statistical summaries of selected
 baseline variables. A clinician or domain expert must decide whether the
@@ -155,6 +156,7 @@ The UI should expose these controls:
 |---|---|---|
 | K selection | `manual`, `elbow` | Manual shows `k`; elbow shows `k_min` and `k_max`. |
 | Number of clusters | integer `k` | Used only in manual mode. |
+| Cluster category prefix | text `enumeration_prefix` | Defaults to `cluster_`. |
 | Minimum K / Maximum K | integers `k_min`, `k_max` | Used only in elbow mode. |
 | Maximum iterations | integer `maxiter` | Upper bound for Lloyd iterations. |
 | Tolerance | real `tol` | Convergence threshold. |
@@ -212,21 +214,46 @@ The result does not include per-observation cluster labels.
 The `kmeans_cluster_creator` preprocessing step replays a fitted K-means model
 and creates a new categorical variable for downstream algorithms.
 
-Output modes:
+The only supported output mode is `full`, creating one categorical column with
+one category per fitted cluster. With the default prefix, identifiers are
+`cluster_1`, `cluster_2`, ..., `cluster_k`. A custom `enumeration_prefix` changes
+these identifiers consistently in the report, stored centers, and created column.
+Internal cluster indices remain zero-based.
 
-| Mode | Output | Use case |
-|---|---|---|
-| `full` | `cluster_0`, `cluster_1`, ..., `cluster_k-1` | Use the complete cluster assignment as one categorical covariate. |
-The only supported mode is `full`, which creates `cluster_0`, `cluster_1`, ...,
-one category for every fitted cluster.
+The reusable preprocessing contract retains the
+cluster variables, exact fitted centers, source data context, available outputs,
+and cluster choices, and includes `enumeration_prefix`. It contains neither
+row-level assignments nor random seeds.
 
-The K-means report also includes a reusable preprocessing contract. It records
-the cluster variables, exact fitted centers, source data context, and the full
-categorical output. Pass `reusable_preprocessing` unchanged as the
-`kmeans_cluster_creator` initializer, together with the requested output column
-code. The creator requires the same data model, datasets, filters, and cluster
-variables as the K-means analysis. The reusable contract does not contain
-row-level cluster assignments or random seeds.
+Use `build_kmeans_preprocessing_parameters(reusable, new_column_names=["group"])`
+to populate the creator request. This supplies the complete
+`reusable_preprocessing` payload plus `k` (the actual fitted center count) and
+`enumeration_prefix`. Users choose only the new column name; the count and prefix
+are copied from the fitted model. In elbow mode, the actual count corresponds to
+`selected_k`, not the original manual `k` setting.
+
+The creator's output enumeration specification is:
+
+```json
+{
+  "source_parameter_name": "k",
+  "source_type": "prefixed_range",
+  "prefix_parameter_name": "enumeration_prefix"
+}
+```
+
+Clients generate categories by concatenating the prefix with numbers 1 through
+`k`, without inspecting nested centers. The creator validates that these
+identifiers exactly match its replay model. It also requires the original data
+model, datasets, filters, and clustering features. Assignment uses generated
+numeric order, including for more than nine clusters or prefixes containing
+underscores.
+
+Compatibility: this intentionally replaces zero-based identifiers and scalar
+`code` creator requests. Replay payloads must satisfy the current model directly;
+there is no schema-version field, migration, or legacy payload support. Update
+clients and service together; rollback requires restoring both the old service
+and its matching consumers/model payloads.
 
 ## Validation against state-of-the-art implementation
 

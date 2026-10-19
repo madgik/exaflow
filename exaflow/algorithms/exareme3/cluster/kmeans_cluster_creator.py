@@ -13,6 +13,7 @@ from exaflow.algorithms.exareme3.cluster.kmeans import make_kmeans_input_fingerp
 from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
 from exaflow.algorithms.federated.cluster.kmeans import assign_clusters
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
+from exaflow.algorithms.utils.output_specifications import resolve_output_metadata
 from exaflow.worker_communication import BadUserInput
 
 
@@ -21,7 +22,9 @@ class KMeansClusterCreator(PreprocessingStep):
 
     def __init__(self, *, params: Dict[str, object]):
         super().__init__(params=params)
-        self._code = str(self._params.get("code", ""))
+        declared = resolve_output_metadata(self.get_specification(), self._params, {})
+        self._code = next(iter(declared))
+        self._cluster_ids = list(declared[self._code]["enumerations"])
         try:
             self._reusable_preprocessing = KMeansReusablePreprocessing.model_validate(
                 self._params.get("reusable_preprocessing")
@@ -33,6 +36,14 @@ class KMeansClusterCreator(PreprocessingStep):
             ) from exc
         self._cluster_variables = self._reusable_preprocessing.cluster_variables
         self._centers = self._reusable_preprocessing.centers
+        if (
+            set(self._cluster_ids) != set(self._centers)
+            or self._params.get("enumeration_prefix", "cluster_")
+            != self._reusable_preprocessing.enumeration_prefix
+        ):
+            raise BadUserInput(
+                "K-means enumeration count or prefix does not match the replay model."
+            )
 
     @classmethod
     def get_specification(cls) -> specs.PreprocessingStepSpecification:
@@ -48,17 +59,36 @@ class KMeansClusterCreator(PreprocessingStep):
                 "K-means result. Its data model, datasets, filters, and cluster "
                 "variables must match the analysis that creates the column. "
                 "Every center must contain all clustering features; incomplete "
-                "centers are rejected during input validation."
+                "centers are rejected during input validation. Supply one name in "
+                "new_column_names. The replay parameter builder copies the fitted "
+                "k and enumeration_prefix alongside the complete model payload; "
+                "both must agree with its one-based category identifiers."
             ),
             label="KMeans Column Creator",
             enabled=True,
             parameters={
-                "code": specs.ParameterSpecification(
-                    label="New column code",
-                    desc="Code/name of the new categorical cluster column.",
+                "new_column_names": specs.ParameterSpecification(
+                    label="New column names",
+                    desc="Names assigned to the cluster columns.",
+                    types=[specs.ParameterType.TEXT],
+                    required=True,
+                    multiple=True,
+                ),
+                "k": specs.ParameterSpecification(
+                    label="Number of clusters",
+                    desc="Number of clusters in the fitted model.",
+                    types=[specs.ParameterType.INT],
+                    required=True,
+                    multiple=False,
+                    min=1,
+                ),
+                "enumeration_prefix": specs.ParameterSpecification(
+                    label="Cluster category prefix",
+                    desc="Prefix used to name the fitted cluster categories.",
                     types=[specs.ParameterType.TEXT],
                     required=True,
                     multiple=False,
+                    default="cluster_",
                 ),
                 "reusable_preprocessing": specs.ParameterSpecification(
                     label="K-means result",
@@ -68,9 +98,19 @@ class KMeansClusterCreator(PreprocessingStep):
                     multiple=False,
                 ),
             },
-            output=specs.PreprocessingOutputSpecification(
-                type=specs.PreprocessingOutputType.NEW_CATEGORICAL_COLUMN,
-                code_parameter="code",
+            outputs=specs.PreprocessingOutputsSpecification(
+                new_column_names_param="new_column_names",
+                columns=[
+                    specs.PreprocessingOutputColumnSpecification(
+                        type=specs.InputDataType.TEXT,
+                        stattype=specs.InputDataStatType.NOMINAL,
+                        enumerations=specs.PreprocessingOutputEnumerationsSpecification(
+                            source_parameter_name="k",
+                            source_type=specs.PreprocessingOutputEnumerationSource.PREFIXED_RANGE,
+                            prefix_parameter_name="enumeration_prefix",
+                        ),
+                    )
+                ],
             ),
             type=specs.PreprocessingStepType.EXAREME3_PREPROCESSING_STEP,
         )
@@ -116,36 +156,24 @@ class KMeansClusterCreator(PreprocessingStep):
 
     def transform_metadata(self, *, metadata: Dict[str, dict]) -> Dict[str, dict]:
         transformed = deepcopy(metadata)
-        transformed[self._code] = {
-            "code": self._code,
-            "label": self._code,
-            "sql_type": "text",
-            "is_categorical": True,
-            "enumerations": {cluster_id: cluster_id for cluster_id in self._centers},
-        }
+        transformed.update(
+            resolve_output_metadata(self.get_specification(), self._params, metadata)
+        )
         return transformed
 
     def transform_data(self, *, data: pd.DataFrame) -> pd.DataFrame:
         centers = [
-            [float(center[variable]) for variable in self._cluster_variables]
-            for _, center in sorted(self._centers.items(), key=_cluster_sort_key)
+            [
+                float(self._centers[cluster_id][variable])
+                for variable in self._cluster_variables
+            ]
+            for cluster_id in self._cluster_ids
         ]
         labels = assign_clusters(data.loc[:, self._cluster_variables], centers)
-        cluster_ids = [
-            cluster_id
-            for cluster_id, _ in sorted(self._centers.items(), key=_cluster_sort_key)
-        ]
+        cluster_ids = self._cluster_ids
         data[self._code] = pd.Series(
             [cluster_ids[int(label)] for label in labels],
             index=data.index,
             dtype=object,
         )
         return data
-
-
-def _cluster_sort_key(item):
-    cluster_id, _ = item
-    try:
-        return int(cluster_id.split("_", 1)[1])
-    except (AttributeError, IndexError, ValueError):
-        return cluster_id

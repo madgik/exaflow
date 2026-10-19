@@ -52,9 +52,11 @@ def creator_parameters():
     reusable = KMeansReusablePreprocessing.model_validate(
         json.loads(json.dumps(report["reusable_preprocessing"]))
     )
-    assert list(reusable.centers) == ["cluster_0", "cluster_1", "cluster_2"]
+    assert list(reusable.centers) == ["cluster_1", "cluster_2", "cluster_3"]
     assert [output.output_mode for output in reusable.available_outputs] == ["full"]
-    return build_kmeans_preprocessing_parameters(reusable, code=GENERATED_CODE)
+    return build_kmeans_preprocessing_parameters(
+        reusable, new_column_names=[GENERATED_CODE]
+    )
 
 
 def test_saved_centers_replay_into_logistic_regression(creator_parameters):

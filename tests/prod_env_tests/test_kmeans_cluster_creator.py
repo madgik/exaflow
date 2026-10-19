@@ -1,3 +1,7 @@
+from exaflow.algorithms.exareme3.cluster.kmeans import KMeansReusablePreprocessing
+from exaflow.algorithms.exareme3.cluster.kmeans import (
+    build_kmeans_preprocessing_parameters,
+)
 from tests.algorithm_validation_tests.exareme3.conftest import analysis_request
 from tests.algorithm_validation_tests.exareme3.conftest import parse_response
 
@@ -35,7 +39,9 @@ def test_kmeans_cluster_creator_full_output_feeds_chi_squared():
         },
     }
     report = parse_response(analysis_request("kmeans", report_payload, drop_na=False))
-    reusable = report["reusable_preprocessing"]
+    reusable = KMeansReusablePreprocessing.model_validate(
+        report["reusable_preprocessing"]
+    )
 
     payload = {
         "inputdata": _inputdata(),
@@ -50,10 +56,9 @@ def test_kmeans_cluster_creator_full_output_feeds_chi_squared():
             },
             {
                 "name": "kmeans_cluster_creator",
-                "parameters": {
-                    "code": "kmeans_cluster",
-                    "reusable_preprocessing": reusable,
-                },
+                "parameters": build_kmeans_preprocessing_parameters(
+                    reusable, new_column_names=["kmeans_cluster"]
+                ),
             },
         ],
         "algorithm": {

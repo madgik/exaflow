@@ -12,12 +12,12 @@ from exaflow.worker_communication import BadUserInput
 
 def _params(**replay_overrides):
     replay_payload = {
-        "schema_version": "1",
+        "enumeration_prefix": "cluster_",
         "preprocessing_name": "kmeans_cluster_creator",
         "cluster_variables": ["x", "y"],
         "centers": {
-            "cluster_0": {"x": 0.0, "y": 0.0},
-            "cluster_1": {"x": 10.0, "y": 10.0},
+            "cluster_1": {"x": 0.0, "y": 0.0},
+            "cluster_2": {"x": 10.0, "y": 10.0},
         },
         "source_context": {
             "data_model": "dm:0.1",
@@ -41,13 +41,15 @@ def _params(**replay_overrides):
             }
         ],
         "cluster_choices": [
-            {"cluster_id": "cluster_0", "label": "Cluster 0"},
             {"cluster_id": "cluster_1", "label": "Cluster 1"},
+            {"cluster_id": "cluster_2", "label": "Cluster 2"},
         ],
     }
     replay_payload.update(replay_overrides)
     return {
-        "code": "cluster",
+        "new_column_names": ["cluster"],
+        "k": 2,
+        "enumeration_prefix": "cluster_",
         "reusable_preprocessing": replay_payload,
     }
 
@@ -56,7 +58,12 @@ def test_specification_exposes_only_full_replay_inputs():
     spec = KMeansClusterCreator.get_specification()
 
     assert spec.label == "KMeans Column Creator"
-    assert set(spec.parameters) == {"code", "reusable_preprocessing"}
+    assert set(spec.parameters) == {
+        "new_column_names",
+        "k",
+        "enumeration_prefix",
+        "reusable_preprocessing",
+    }
     assert spec.components == []
 
 
@@ -66,7 +73,7 @@ def test_creator_assigns_rows_to_supplied_centers_without_aggregation():
 
     transformed = creator.transform_data(data=data)
 
-    assert transformed["cluster"].tolist() == ["cluster_0", "cluster_1", "cluster_0"]
+    assert transformed["cluster"].tolist() == ["cluster_1", "cluster_2", "cluster_1"]
 
 
 @pytest.mark.parametrize(
@@ -156,9 +163,9 @@ def test_creator_rejects_replay_when_clustering_features_are_not_requested():
 
 def test_creator_rejects_center_missing_a_clustering_feature():
     params = _params()
-    del params["reusable_preprocessing"]["centers"]["cluster_1"]["y"]
+    del params["reusable_preprocessing"]["centers"]["cluster_2"]["y"]
 
-    with pytest.raises(BadUserInput, match="Center 'cluster_1'.*features:.*'y'"):
+    with pytest.raises(BadUserInput, match="Center 'cluster_2'.*features:.*'y'"):
         KMeansClusterCreator(params=params)
 
 
@@ -169,8 +176,8 @@ def test_creator_metadata_contains_all_fitted_clusters():
 
     assert metadata["cluster"]["is_categorical"]
     assert metadata["cluster"]["enumerations"] == {
-        "cluster_0": "cluster_0",
         "cluster_1": "cluster_1",
+        "cluster_2": "cluster_2",
     }
 
 
@@ -179,3 +186,47 @@ def test_creator_rejects_non_finite_data():
 
     with pytest.raises(ValueError, match="finite numerical values"):
         creator.transform_data(data=pd.DataFrame({"x": [np.nan], "y": [0.0]}))
+
+
+@pytest.mark.parametrize(
+    "key,value", [("k", 1), ("k", 3), ("enumeration_prefix", "other_")]
+)
+def test_creator_rejects_summary_that_disagrees_with_replay(key, value):
+    params = _params()
+    params[key] = value
+    with pytest.raises(BadUserInput, match="count or prefix"):
+        KMeansClusterCreator(params=params)
+
+
+def test_creator_uses_numeric_order_for_custom_prefix_and_twelve_clusters():
+    prefix = "group__9_"
+    ids = [f"{prefix}{i}" for i in range(1, 13)]
+    params = _params(
+        enumeration_prefix=prefix,
+        centers={
+            name: {"x": float(i), "y": float(i)}
+            for i, name in reversed(list(enumerate(ids, 1)))
+        },
+        cluster_choices=[{"cluster_id": name, "label": name} for name in ids],
+    )
+    params.update(k=12, enumeration_prefix=prefix)
+    creator = KMeansClusterCreator(params=params)
+    transformed, metadata = creator.transform_data_and_metadata(
+        data=pd.DataFrame({"x": [1.0, 2.0, 10.0, 12.0], "y": [1.0, 2.0, 10.0, 12.0]}),
+        metadata={},
+    )
+    assert transformed["cluster"].tolist() == [ids[0], ids[1], ids[9], ids[11]]
+    assert list(metadata["cluster"]["enumerations"]) == ids
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"centers": {}},
+        {"enumeration_prefix": "other_"},
+        {"cluster_choices": []},
+    ],
+)
+def test_creator_rejects_invalid_replay_schema(override):
+    with pytest.raises(BadUserInput, match="replay payload"):
+        KMeansClusterCreator(params=_params(**override))

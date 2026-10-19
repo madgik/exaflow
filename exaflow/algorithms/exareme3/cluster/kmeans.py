@@ -63,7 +63,7 @@ class KMeansClusterChoice(BaseModel):
 
 
 class KMeansReusablePreprocessing(BaseModel):
-    schema_version: str
+    enumeration_prefix: str
     preprocessing_name: str
     cluster_variables: List[str]
     centers: Dict[str, Dict[str, float]]
@@ -73,6 +73,20 @@ class KMeansReusablePreprocessing(BaseModel):
 
     @model_validator(mode="after")
     def validate_center_features(self):
+        if not self.centers:
+            raise ValueError("K-means replay must contain at least one center.")
+        expected_ids = [
+            f"{self.enumeration_prefix}{index}"
+            for index in range(1, len(self.centers) + 1)
+        ]
+        if set(self.centers) != set(expected_ids):
+            raise ValueError(
+                "Replay center identifiers do not match the enumeration prefix."
+            )
+        if [choice.cluster_id for choice in self.cluster_choices] != expected_ids:
+            raise ValueError(
+                "Replay cluster choices do not match the center identifiers."
+            )
         required_features = set(self.cluster_variables)
         for cluster_id, center in self.centers.items():
             missing_features = sorted(required_features - set(center))
@@ -87,10 +101,12 @@ class KMeansReusablePreprocessing(BaseModel):
 def build_kmeans_preprocessing_parameters(
     reusable_preprocessing: KMeansReusablePreprocessing,
     *,
-    code: str,
+    new_column_names: List[str],
 ):
     return {
-        "code": code,
+        "new_column_names": new_column_names,
+        "k": len(reusable_preprocessing.centers),
+        "enumeration_prefix": reusable_preprocessing.enumeration_prefix,
         "reusable_preprocessing": reusable_preprocessing.model_dump(),
     }
 
@@ -136,7 +152,9 @@ class KMeans(Algorithm):
                 "n_init > 1 to fit multiple random-range initializations and keep "
                 "the lowest-inertia result.\n\n"
                 "The report always includes named cluster centers. Cluster sizes "
-                "are returned as privacy-safe intervals, not exact counts.\n\n"
+                "are returned as privacy-safe intervals, not exact counts. "
+                "Cluster identifiers use enumeration_prefix (default cluster_) "
+                "followed by numbers from 1 through the fitted cluster count.\n\n"
                 "K-means can support exploratory subgroup discovery and baseline "
                 "phenotype grouping. It is not a diagnostic model, a causal "
                 "subgroup discovery method, or a validated clinical risk model "
@@ -153,6 +171,14 @@ class KMeans(Algorithm):
                 required=True,
             ),
             parameters={
+                "enumeration_prefix": specs.ParameterSpecification(
+                    label="Cluster category prefix",
+                    desc="Prefix used to name the cluster categories.",
+                    types=[specs.ParameterType.TEXT],
+                    required=False,
+                    multiple=False,
+                    default="cluster_",
+                ),
                 "k_selection": specs.ParameterSpecification(
                     label="K selection",
                     desc="How to choose the number of clusters.",
@@ -261,6 +287,7 @@ class KMeans(Algorithm):
         )
 
     def run(self):
+        enumeration_prefix = self.get_parameter("enumeration_prefix", "cluster_")
         k_selection = str(self.get_parameter("k_selection", K_SELECTION_MANUAL))
         k = int(self.get_parameter("k", 4))
         k_min = int(self.get_parameter("k_min", 2))
@@ -274,6 +301,7 @@ class KMeans(Algorithm):
         result = self.run_local_udf(
             func=local_step,
             kw_args={
+                "enumeration_prefix": enumeration_prefix,
                 "variables": self.y,
                 "k_selection": k_selection,
                 "n_clusters": k,
@@ -291,6 +319,7 @@ class KMeans(Algorithm):
         result_model = KMeansResult(**result)
         result_model.reusable_preprocessing = _build_reusable_preprocessing(
             result=result_model,
+            enumeration_prefix=enumeration_prefix,
             cluster_variables=self.y,
             inputdata=self.inputdata,
         )
@@ -311,6 +340,7 @@ def local_step(
     init_method=INIT_RANDOM_RANGE,
     n_init=5,
     random_state=123,
+    enumeration_prefix="cluster_",
 ):
     from exaflow.worker import config as worker_config
 
@@ -355,6 +385,7 @@ def local_step(
 
     return _build_report(
         model=model,
+        enumeration_prefix=enumeration_prefix,
         variables=variables,
         k_selection=k_selection,
         global_mean=global_mean,
@@ -381,11 +412,14 @@ def _compute_global_mean(*, agg_client, data):
 def _build_reusable_preprocessing(
     *,
     result: KMeansResult,
+    enumeration_prefix,
     cluster_variables,
     inputdata,
 ):
     selected_k = int(result.selected_k)
     centers = {cluster.cluster_id: cluster.center for cluster in result.clusters}
+    if selected_k != len(centers):
+        raise ValueError("Selected K does not match the fitted center count.")
     available_outputs = [
         KMeansReusableOutput(
             output_mode="full",
@@ -399,7 +433,7 @@ def _build_reusable_preprocessing(
     ]
 
     return KMeansReusablePreprocessing(
-        schema_version="1",
+        enumeration_prefix=enumeration_prefix,
         preprocessing_name="kmeans_cluster_creator",
         cluster_variables=list(cluster_variables),
         centers=centers,
@@ -440,6 +474,7 @@ def _build_report(
     global_mean,
     minimum_row_count,
     elbow,
+    enumeration_prefix="cluster_",
 ):
     size_intervals = [
         _count_interval(count, minimum_row_count=minimum_row_count)
@@ -464,14 +499,14 @@ def _build_report(
         )
         quality = KMeansClusterQuality(compactness=compactness.get(cluster_idx))
         interpretation = _cluster_interpretation(
-            cluster_id=f"cluster_{cluster_idx}",
+            cluster_id=f"{enumeration_prefix}{cluster_idx + 1}",
             profile=profile,
             compactness=quality.compactness,
         )
         clusters.append(
             KMeansClusterReport(
-                cluster_id=f"cluster_{cluster_idx}",
-                label=f"Cluster {cluster_idx}",
+                cluster_id=f"{enumeration_prefix}{cluster_idx + 1}",
+                label=f"Cluster {cluster_idx + 1}",
                 size_interval=size_interval,
                 center=center,
                 profile=profile,
@@ -485,7 +520,9 @@ def _build_report(
     if model.empty_clusters_:
         warnings.append(
             "Empty clusters were produced: "
-            + ", ".join(f"cluster_{idx}" for idx in model.empty_clusters_)
+            + ", ".join(
+                f"{enumeration_prefix}{idx + 1}" for idx in model.empty_clusters_
+            )
             + "."
         )
 

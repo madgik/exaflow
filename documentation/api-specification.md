@@ -210,14 +210,84 @@ Enum types:
 | `documentation` | `string` | Longer preprocessing explanation. | Use in details/help views. |
 | `label` | `string` | Human-readable preprocessing name. | Use as display label. |
 | `parameters` | `object \| null` | Map of step parameter name to `ParameterSpecificationDTO`. | Validate like algorithm parameters. |
-| `output` | `PreprocessingOutputSpecificationDTO \| null` | Description of variables created by the step. | For `new_categorical_column`, the created CDE code is read from the named parameter. |
+| `outputs` | `PreprocessingOutputsSpecificationDTO \| null` | Ordered definitions of new columns. | Names come from the parameter referenced by `new_column_names_param`. |
 
-### `PreprocessingOutputSpecificationDTO`
+### `PreprocessingOutputsSpecificationDTO`
 
-| Field | Type | Meaning | Validation / UI Notes |
-| --- | --- | --- | --- |
-| `type` | `string` | Output kind. Currently `new_categorical_column`. | Clients can use this to make created variables selectable by later steps or algorithm inputs. |
-| `code_parameter` | `string \| null` | Parameter containing the created variable code. | For `categorical_column_creator`, this is `code`. |
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `new_column_names_param` | `string` | Name of a required text-list parameter containing new column names. |
+| `columns` | `array` | Nonempty ordered list of column specifications. |
+
+Each column declares `type` (`text`, `int`, or `real`) and `stattype`
+(`nominal` or `numerical`). Nominal outputs support text/integer types and require
+`enumerations`; numerical outputs support integer/real types and omit it.
+Names match columns by position. Supply exactly one nonblank, unique name per
+column; names cannot collide with existing or earlier generated columns.
+
+Enumeration configuration is declarative and can be resolved by clients before
+running the transformation:
+
+| Field | Meaning |
+| --- | --- |
+| `source_parameter_name` | Request parameter supplying category keys or a category count. |
+| `source_type` | `dict_keys` or `prefixed_range`. |
+| `additional_value_parameter_name` | Optional extra category parameter, supported only by `dict_keys`. |
+| `prefix_parameter_name` | Required text prefix parameter for `prefixed_range`; not supported by `dict_keys`. |
+
+`dict_keys` reads all keys from a required nonempty dictionary parameter. Include
+a supplied non-null additional value once; category labels equal their values.
+Category values must be nonblank strings, including string encodings of integer
+categories. `prefixed_range` reads a positive integer count and produces
+`prefix + "1"` through `prefix + str(count)`. Both source rules operate on request
+parameters, without inspecting observed data. There is no nested-path mechanism.
+
+For example, the output-related portion of a two-component numerical projection
+specification is:
+
+```json
+{
+  "parameters": {
+    "new_column_names": {
+      "label": "New column names",
+      "desc": "Names assigned to the component columns.",
+      "types": ["text"],
+      "required": true,
+      "multiple": true
+    }
+  },
+  "outputs": {
+    "new_column_names_param": "new_column_names",
+    "columns": [
+      {"type": "real", "stattype": "numerical"},
+      {"type": "real", "stattype": "numerical"}
+    ]
+  }
+}
+```
+
+For request names `["pca_1", "pca_2"]`, these entries describe the first and
+second components respectively. This illustrates the contract; it does not add
+a PCA preprocessing step.
+
+A rule-based nominal column declares:
+
+```json
+{
+  "type": "text",
+  "stattype": "nominal",
+  "enumerations": {
+    "source_parameter_name": "rules",
+    "source_type": "dict_keys",
+    "additional_value_parameter_name": "default_enumeration"
+  }
+}
+```
+
+Compatibility: `outputs` replaces `output`; `new_column_names` replaces the
+creators' scalar `code` parameter. Update clients together with the service.
+Legacy specification fields and creator parameters are not supported. Roll back
+service and consumer changes together if reverting this contract.
 
 Preprocessing behavior:
 
@@ -273,7 +343,7 @@ Example:
     {
       "name": "categorical_column_creator",
       "parameters": {
-        "code": "risk_group",
+        "new_column_names": ["risk_group"],
         "strategy": "filter_rules",
         "rules": {
           "high": {

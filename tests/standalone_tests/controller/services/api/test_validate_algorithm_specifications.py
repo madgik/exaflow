@@ -10,12 +10,7 @@ from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterEnumType
 from exaflow.algorithms.specifications import ParameterSpecification
 from exaflow.algorithms.specifications import ParameterType
-from exaflow.algorithms.specifications import PreprocessingOutputSpecification
-from exaflow.algorithms.specifications import PreprocessingOutputType
 from exaflow.algorithms.specifications import PreprocessingStepSpecification
-from exaflow.controller.services.api.algorithm_spec_dtos import (
-    PreprocessingOutputTypeDTO,
-)
 from exaflow.controller.services.api.algorithm_spec_dtos import (
     _convert_algorithm_specification_to_dto,
 )
@@ -97,18 +92,30 @@ def test_inputdata_specification_dto_exposes_source_variables_and_filters():
     assert not hasattr(spec, "filter")
 
 
-def test_preprocessing_spec_dto_exposes_enum_output_type():
-    preprocessing_spec = _sample_preprocessing_spec(
-        output=PreprocessingOutputSpecification(
-            type=PreprocessingOutputType.NEW_CATEGORICAL_COLUMN,
-            code_parameter="code",
-        )
+def test_preprocessing_spec_dto_exposes_output_columns():
+    from exaflow.algorithms.exareme3.feature_engineering.categorical_column_creator import (
+        CategoricalColumnCreator,
     )
 
-    dto = _convert_transformer_specification_to_dto(preprocessing_spec)
-
-    assert dto.output.type == PreprocessingOutputTypeDTO.NEW_CATEGORICAL_COLUMN
-    assert dto.output.code_parameter == "code"
+    dto = _convert_transformer_specification_to_dto(
+        CategoricalColumnCreator.get_specification()
+    )
+    serialized = dto.model_dump(mode="json", exclude_none=True)
+    assert serialized["outputs"] == {
+        "new_column_names_param": "new_column_names",
+        "columns": [
+            {
+                "type": "text",
+                "stattype": "nominal",
+                "enumerations": {
+                    "source_parameter_name": "rules",
+                    "source_type": "dict_keys",
+                    "additional_value_parameter_name": "default_enumeration",
+                },
+            }
+        ],
+    }
+    assert "output" not in serialized
 
 
 def test_parameter_dict_value_type_supports_filter():

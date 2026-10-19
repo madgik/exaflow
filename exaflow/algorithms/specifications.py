@@ -8,6 +8,7 @@ from typing import Optional
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
+from pydantic import model_serializer
 from pydantic import model_validator
 
 
@@ -55,8 +56,9 @@ class ParameterDictValueType(str, Enum):
 
 
 @unique
-class PreprocessingOutputType(str, Enum):
-    NEW_CATEGORICAL_COLUMN = "new_categorical_column"
+class PreprocessingOutputEnumerationSource(str, Enum):
+    DICT_KEYS = "dict_keys"
+    PREFIXED_RANGE = "prefixed_range"
 
 
 @unique
@@ -173,9 +175,68 @@ class ParameterSpecification(ImmutableBaseModel):
     max: Optional[float] = None
 
 
-class PreprocessingOutputSpecification(ImmutableBaseModel):
-    type: PreprocessingOutputType
-    code_parameter: Optional[str] = None
+class PreprocessingOutputEnumerationsSpecification(ImmutableBaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    source_parameter_name: str = Field(min_length=1)
+    source_type: PreprocessingOutputEnumerationSource
+    additional_value_parameter_name: Optional[str] = Field(default=None, min_length=1)
+    prefix_parameter_name: Optional[str] = Field(default=None, min_length=1)
+
+    @model_serializer(mode="wrap")
+    def serialize_source(self, handler):
+        return {key: value for key, value in handler(self).items() if value is not None}
+
+    @model_validator(mode="after")
+    def validate_source_fields(self):
+        if self.source_type == PreprocessingOutputEnumerationSource.DICT_KEYS:
+            if self.prefix_parameter_name is not None:
+                raise ValueError("dict_keys does not support prefix_parameter_name.")
+        elif (
+            not self.prefix_parameter_name
+            or self.additional_value_parameter_name is not None
+        ):
+            raise ValueError(
+                "prefixed_range requires prefix_parameter_name and does not support "
+                "additional_value_parameter_name."
+            )
+        return self
+
+
+class PreprocessingOutputColumnSpecification(ImmutableBaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    type: InputDataType
+    stattype: InputDataStatType
+    enumerations: Optional[PreprocessingOutputEnumerationsSpecification] = None
+
+    @model_serializer(mode="wrap")
+    def serialize_column(self, handler):
+        serialized = handler(self)
+        if self.enumerations is None:
+            serialized.pop("enumerations", None)
+        return serialized
+
+    @model_validator(mode="after")
+    def validate_column_type(self):
+        nominal = self.stattype == InputDataStatType.NOMINAL
+        allowed = (
+            (InputDataType.TEXT, InputDataType.INT)
+            if nominal
+            else (InputDataType.INT, InputDataType.REAL)
+        )
+        if self.type not in allowed:
+            raise ValueError("Unsupported output type and stattype combination.")
+        if nominal != (self.enumerations is not None):
+            raise ValueError("Only nominal outputs require enumerations.")
+        return self
+
+
+class PreprocessingOutputsSpecification(ImmutableBaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    new_column_names_param: str = Field(min_length=1)
+    columns: List[PreprocessingOutputColumnSpecification] = Field(min_length=1)
 
 
 class WorkflowStepSpecification(ImmutableBaseModel):
@@ -213,8 +274,49 @@ class AlgorithmSpecification(WorkflowStepSpecification):
 
 
 class PreprocessingStepSpecification(WorkflowStepSpecification):
-    output: Optional[PreprocessingOutputSpecification] = None
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    outputs: Optional[PreprocessingOutputsSpecification] = None
     type: PreprocessingStepType = PreprocessingStepType.EXAREME3_PREPROCESSING_STEP
+
+    @model_validator(mode="after")
+    def validate_output_parameters(self):
+        if self.outputs is None:
+            return self
+
+        def require_parameter(name, expected_type, *, multiple=False, required=True):
+            parameter = (self.parameters or {}).get(name)
+            if (
+                parameter is None
+                or parameter.types != [expected_type]
+                or parameter.multiple != multiple
+                or (required and not parameter.required)
+            ):
+                raise ValueError(f"Invalid output parameter specification: '{name}'.")
+
+        require_parameter(
+            self.outputs.new_column_names_param, ParameterType.TEXT, multiple=True
+        )
+        for column in self.outputs.columns:
+            enums = column.enumerations
+            if enums is None:
+                continue
+            dictionary = (
+                enums.source_type == PreprocessingOutputEnumerationSource.DICT_KEYS
+            )
+            require_parameter(
+                enums.source_parameter_name,
+                ParameterType.DICT if dictionary else ParameterType.INT,
+            )
+            if enums.prefix_parameter_name is not None:
+                require_parameter(enums.prefix_parameter_name, ParameterType.TEXT)
+            if enums.additional_value_parameter_name is not None:
+                require_parameter(
+                    enums.additional_value_parameter_name,
+                    ParameterType.TEXT,
+                    required=False,
+                )
+        return self
 
 
 def _validate_parameter_with_enums_type_fixed_var_CDE_enums(param_value, cls_values):
