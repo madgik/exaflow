@@ -136,8 +136,8 @@ difference.
 - Missing values are handled before fitting.
 - The result returns components, not transformed scores for each observation.
 
-## Related page
+## Compatibility
 
-See [PCA with transformations](PCAWithTransformation.md) for the variant that
-applies log, exponential, centering, or standardization transformations before
-PCA.
+The separate PCA variant with per-variable transformations has been removed.
+Standard `pca` remains available with its existing behavior and does not accept
+a `data_transformation` parameter.

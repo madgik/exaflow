@@ -25,7 +25,7 @@ ALGORITHM_ID_RE = re.compile(r"[a-z][a-z0-9_]*")
 
 STANDALONE_FOLDER_RULES = {
     "cluster": {"kmeans"},
-    "decomposition": {"pca", "pca_with_transformation"},
+    "decomposition": {"pca"},
     "linear_model": {
         "linear_regression",
         "linear_regression_cv",
