@@ -1,6 +1,4 @@
 from abc import ABC
-from enum import Enum
-from enum import unique
 from typing import Any
 from typing import Dict
 from typing import List
@@ -20,8 +18,8 @@ from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterEnumType
 from exaflow.algorithms.specifications import ParameterSpecification
 from exaflow.algorithms.specifications import ParameterType
-from exaflow.algorithms.specifications import PreprocessingOutputSpecification
-from exaflow.algorithms.specifications import PreprocessingOutputType
+from exaflow.algorithms.specifications import PreprocessingOutputColumnSpecification
+from exaflow.algorithms.specifications import PreprocessingOutputsSpecification
 from exaflow.algorithms.specifications import PreprocessingStepSpecification
 from exaflow.controller.services.api.analysis_request_dtos import (
     AnalysisRequestSystemFlags,
@@ -71,14 +69,9 @@ class ParameterSpecificationDTO(ImmutableBaseModel):
     max: Optional[float] = None
 
 
-@unique
-class PreprocessingOutputTypeDTO(str, Enum):
-    NEW_CATEGORICAL_COLUMN = PreprocessingOutputType.NEW_CATEGORICAL_COLUMN.value
-
-
-class PreprocessingOutputSpecificationDTO(ImmutableBaseModel):
-    type: PreprocessingOutputTypeDTO
-    code_parameter: Optional[str] = None
+class PreprocessingOutputsSpecificationDTO(ImmutableBaseModel):
+    new_column_names_param: str
+    columns: List[PreprocessingOutputColumnSpecification]
 
 
 class PreprocessingStepSpecificationDTO(ImmutableBaseModel):
@@ -87,7 +80,7 @@ class PreprocessingStepSpecificationDTO(ImmutableBaseModel):
     documentation: str
     label: str
     parameters: Optional[Dict[str, ParameterSpecificationDTO]] = None
-    output: Optional[PreprocessingOutputSpecificationDTO] = None
+    outputs: Optional[PreprocessingOutputsSpecificationDTO] = None
 
 
 class AlgorithmSpecificationDTO(ImmutableBaseModel):
@@ -240,12 +233,12 @@ def _convert_parameter_specification_to_dto(spec: ParameterSpecification):
     )
 
 
-def _convert_preprocessing_output_specification_to_dto(
-    spec: PreprocessingOutputSpecification,
+def _convert_preprocessing_outputs_specification_to_dto(
+    spec: PreprocessingOutputsSpecification,
 ):
-    return PreprocessingOutputSpecificationDTO(
-        type=PreprocessingOutputTypeDTO(spec.type.value),
-        code_parameter=spec.code_parameter,
+    return PreprocessingOutputsSpecificationDTO(
+        new_column_names_param=spec.new_column_names_param,
+        columns=spec.columns,
     )
 
 
@@ -263,9 +256,9 @@ def _convert_transformer_specification_to_dto(spec: PreprocessingStepSpecificati
             if spec.parameters
             else None
         ),
-        output=(
-            _convert_preprocessing_output_specification_to_dto(spec.output)
-            if spec.output
+        outputs=(
+            _convert_preprocessing_outputs_specification_to_dto(spec.outputs)
+            if spec.outputs
             else None
         ),
     )

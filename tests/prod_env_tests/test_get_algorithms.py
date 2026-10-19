@@ -53,4 +53,23 @@ def test_preprocessing_specifications_include_kmeans_cluster_creator():
     )
     parameter_names = set(kmeans_spec["parameters"])
 
-    assert parameter_names == {"code", "reusable_preprocessing"}
+    assert parameter_names == {
+        "new_column_names",
+        "k",
+        "enumeration_prefix",
+        "reusable_preprocessing",
+    }
+    assert kmeans_spec["outputs"] == {
+        "new_column_names_param": "new_column_names",
+        "columns": [
+            {
+                "type": "text",
+                "stattype": "nominal",
+                "enumerations": {
+                    "source_parameter_name": "k",
+                    "source_type": "prefixed_range",
+                    "prefix_parameter_name": "enumeration_prefix",
+                },
+            }
+        ],
+    }

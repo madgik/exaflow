@@ -139,7 +139,7 @@ def _risk_group_step(rules=None):
     return AnalysisPreprocessingStepDTO(
         name="categorical_column_creator",
         parameters={
-            "code": "risk_group",
+            "new_column_names": ["risk_group"],
             "strategy": "filter_rules",
             "rules": rules
             or {

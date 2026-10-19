@@ -10,6 +10,7 @@ import pandas as pd
 from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
+from exaflow.algorithms.utils.output_specifications import resolve_output_metadata
 from exaflow.worker_communication import BadUserInput
 
 FILTER_RULES_STRATEGY = "filter_rules"
@@ -22,7 +23,9 @@ class CategoricalColumnCreator(PreprocessingStep):
         params: Dict[str, object],
     ):
         super().__init__(params=params)
-        self._code = str(self._params.get("code", ""))
+        self._code = next(
+            iter(resolve_output_metadata(self.get_specification(), self._params, {}))
+        )
         self._strategy = str(self._params.get("strategy", ""))
         rules = self._params.get("rules", {})
         self._rules: Dict[str, dict] = dict(rules) if isinstance(rules, dict) else {}
@@ -42,17 +45,17 @@ class CategoricalColumnCreator(PreprocessingStep):
                 "an enumeration. Rows matching exactly one rule receive that "
                 "enumeration; rows matching none receive the default enumeration "
                 "when provided, otherwise null. Rows matching multiple rules are "
-                "rejected."
+                "rejected. Supply one name in new_column_names for the created column."
             ),
             label="Categorical Column Creator",
             enabled=True,
             parameters={
-                "code": specs.ParameterSpecification(
-                    label="New column code",
-                    desc="Code/name of the new categorical column.",
+                "new_column_names": specs.ParameterSpecification(
+                    label="New column names",
+                    desc="Names assigned to the new categorical columns.",
                     types=[specs.ParameterType.TEXT],
                     required=True,
-                    multiple=False,
+                    multiple=True,
                 ),
                 "strategy": specs.ParameterSpecification(
                     label="Creation strategy",
@@ -82,9 +85,19 @@ class CategoricalColumnCreator(PreprocessingStep):
                     multiple=False,
                 ),
             },
-            output=specs.PreprocessingOutputSpecification(
-                type=specs.PreprocessingOutputType.NEW_CATEGORICAL_COLUMN,
-                code_parameter="code",
+            outputs=specs.PreprocessingOutputsSpecification(
+                new_column_names_param="new_column_names",
+                columns=[
+                    specs.PreprocessingOutputColumnSpecification(
+                        type=specs.InputDataType.TEXT,
+                        stattype=specs.InputDataStatType.NOMINAL,
+                        enumerations=specs.PreprocessingOutputEnumerationsSpecification(
+                            source_parameter_name="rules",
+                            source_type=specs.PreprocessingOutputEnumerationSource.DICT_KEYS,
+                            additional_value_parameter_name="default_enumeration",
+                        ),
+                    )
+                ],
             ),
             type=specs.PreprocessingStepType.EXAREME3_PREPROCESSING_STEP,
             components=[],
@@ -96,8 +109,6 @@ class CategoricalColumnCreator(PreprocessingStep):
         inputdata: Inputdata,
         metadata: Dict[str, dict],
     ) -> None:
-        if not self._code.strip():
-            raise BadUserInput("'code' parameter should not be blank.")
         if self._code in metadata:
             raise BadUserInput(
                 f"Preprocessing step 'categorical_column_creator' cannot create CDE '{self._code}' because it already exists."
@@ -129,10 +140,8 @@ class CategoricalColumnCreator(PreprocessingStep):
         metadata: Dict[str, dict],
     ) -> Dict[str, dict]:
         transformed_metadata = deepcopy(metadata)
-        transformed_metadata[self._code] = _new_categorical_metadata(
-            code=self._code,
-            rules=self._rules,
-            default_enumeration=self._default_enumeration,
+        transformed_metadata.update(
+            resolve_output_metadata(self.get_specification(), self._params, metadata)
         )
         return transformed_metadata
 
@@ -160,24 +169,6 @@ class CategoricalColumnCreator(PreprocessingStep):
 
         data[self._code] = output
         return data
-
-
-def _new_categorical_metadata(
-    *,
-    code: str,
-    rules: Dict[str, dict],
-    default_enumeration: str | None,
-) -> dict:
-    enumerations = {key: key for key in rules.keys()}
-    if default_enumeration:
-        enumerations[default_enumeration] = default_enumeration
-    return {
-        "code": code,
-        "label": code,
-        "sql_type": "text",
-        "is_categorical": True,
-        "enumerations": enumerations,
-    }
 
 
 def _evaluate_filter(data: pd.DataFrame, filter_: dict) -> pd.Series:

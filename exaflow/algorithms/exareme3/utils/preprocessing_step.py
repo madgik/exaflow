@@ -10,6 +10,8 @@ from exaflow.algorithms.exareme3.utils.registry import AGGREGATION_CLIENT_PARAME
 from exaflow.algorithms.specifications import ComponentType
 from exaflow.algorithms.specifications import PreprocessingStepSpecification
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
+from exaflow.algorithms.utils.output_specifications import resolve_output_metadata
+from exaflow.algorithms.utils.output_specifications import validate_output_metadata
 
 
 class PreprocessingStep(ABC):
@@ -87,10 +89,16 @@ class PreprocessingStep(ABC):
         receive the aggregation client by using this base method and explicitly
         adding the configured aggregation client parameter to transform_data.
         """
+        declared_outputs = resolve_output_metadata(
+            self.get_specification(), self._params, metadata
+        )
         transform_data_kwargs = {"data": data}
         transform_data_signature = inspect.signature(self.transform_data)
         if AGGREGATION_CLIENT_PARAMETER_NAME in transform_data_signature.parameters:
             transform_data_kwargs[AGGREGATION_CLIENT_PARAMETER_NAME] = agg_client
-        return self.transform_data(**transform_data_kwargs), self.transform_metadata(
-            metadata=metadata
+        transformed_data = self.transform_data(**transform_data_kwargs)
+        transformed_metadata = self.transform_metadata(metadata=metadata)
+        validate_output_metadata(
+            declared_outputs, transformed_metadata, list(transformed_data.columns)
         )
+        return transformed_data, transformed_metadata

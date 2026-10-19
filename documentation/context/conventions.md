@@ -128,3 +128,29 @@
 - Do not add production dependencies without explicit justification.
 - Keep root and `exadata-validator` dependency changes separate.
 - Update lockfiles intentionally when dependency manifests change.
+
+## Declared preprocessing outputs
+
+Preprocessing creators use an optional `outputs` container with
+`new_column_names_param` and a fixed ordered `columns` list. Names are supplied
+as a required text-list parameter and match outputs positionally. Each column
+has `type`/`stattype`; nominal columns require enumeration instructions.
+`DICT_KEYS` reads a required dictionary parameter and optionally a default
+category parameter. `PREFIXED_RANGE` reads a positive count and required prefix
+parameter and generates categories starting at 1. There is no nested source path.
+Shared resolution and validation live in
+`exaflow/algorithms/utils/output_specifications.py` and are used by controller
+validation and worker preprocessing hooks. Protobuf Struct represents numeric
+parameters as doubles, so range-count resolution accepts exact integer-valued
+floats on the worker as well as integers. Fractional, nonfinite, boolean, and
+nonpositive counts remain invalid; public request parameter validation still
+requires the declared integer type. The former single-column output enum
+and scalar `code` creator requests are removed. See the API specification for
+consumer migration details.
+
+K-means replay carries its fitted prefix; the parameter builder supplies
+actual fitted `k` and that prefix alongside the complete replay payload. Cluster
+identifiers are one-based, use `enumeration_prefix` (default `cluster_`), and must
+agree across reports, replay centers, and created columns. Replay validates the
+current model directly, without a schema-version field or compatibility paths.
+Service and consumer rollback must be coordinated.

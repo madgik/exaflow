@@ -12,12 +12,12 @@ from exaflow.algorithms.exareme3.cluster.kmeans_cluster_creator import (
 def test_full_kmeans_column_can_be_consumed_as_categorical_covariate():
     reusable = KMeansReusablePreprocessing.model_validate(
         {
-            "schema_version": "1",
+            "enumeration_prefix": "cluster_",
             "preprocessing_name": "kmeans_cluster_creator",
             "cluster_variables": ["x", "y"],
             "centers": {
-                "cluster_0": {"x": 0.0, "y": 0.0},
-                "cluster_1": {"x": 10.0, "y": 10.0},
+                "cluster_1": {"x": 0.0, "y": 0.0},
+                "cluster_2": {"x": 10.0, "y": 10.0},
             },
             "source_context": {
                 "data_model": "dm:0.1",
@@ -36,17 +36,19 @@ def test_full_kmeans_column_can_be_consumed_as_categorical_covariate():
                 }
             ],
             "cluster_choices": [
-                {"cluster_id": "cluster_0", "label": "Cluster 0"},
                 {"cluster_id": "cluster_1", "label": "Cluster 1"},
+                {"cluster_id": "cluster_2", "label": "Cluster 2"},
             ],
         }
     )
     creator = KMeansClusterCreator(
-        params=build_kmeans_preprocessing_parameters(reusable, code="cluster")
+        params=build_kmeans_preprocessing_parameters(
+            reusable, new_column_names=["cluster"]
+        )
     )
 
     transformed = creator.transform_data(
         data=pd.DataFrame({"x": [0.0, 9.0], "y": [1.0, 10.0]})
     )
 
-    assert transformed["cluster"].tolist() == ["cluster_0", "cluster_1"]
+    assert transformed["cluster"].tolist() == ["cluster_1", "cluster_2"]

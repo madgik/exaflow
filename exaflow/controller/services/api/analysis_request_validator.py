@@ -12,9 +12,10 @@ from exaflow.algorithms.specifications import InputDataType
 from exaflow.algorithms.specifications import ParameterDictValueType
 from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterSpecification
-from exaflow.algorithms.specifications import PreprocessingOutputType
 from exaflow.algorithms.specifications import PreprocessingStepSpecification
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
+from exaflow.algorithms.utils.output_specifications import resolve_output_metadata
+from exaflow.algorithms.utils.output_specifications import validate_output_metadata
 from exaflow.controller.services.api.algorithm_spec_dtos import ParameterEnumType
 from exaflow.controller.services.api.algorithm_spec_dtos import ParameterType
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisInputDataDTO
@@ -219,10 +220,10 @@ def _validate_and_apply_preprocessing(
             inputdata=transformed_inputdata,
             data_model_cdes=step_data_model_cdes,
         )
-        _validate_preprocessing_output_name(
-            preprocessing_step_spec=preprocessing_step_spec,
-            params=params,
-            data_model_cdes={**data_model_cdes, **transformed_data_model_cdes},
+        declared_outputs = resolve_output_metadata(
+            preprocessing_step_spec,
+            params,
+            {**data_model_cdes, **transformed_data_model_cdes},
         )
 
         if not preprocessing_step_cls:
@@ -244,10 +245,8 @@ def _validate_and_apply_preprocessing(
         transformed_metadata = preprocessing_step.transform_metadata(
             metadata=transformed_metadata,
         )
-        _derive_preprocessing_output_metadata(
-            preprocessing_step_spec=preprocessing_step_spec,
-            params=params,
-            metadata=transformed_metadata,
+        validate_output_metadata(
+            declared_outputs, transformed_metadata, transformed_variables
         )
         transformed_data_model_cdes = _convert_metadata_to_data_model_cdes(
             transformed_metadata
@@ -295,59 +294,6 @@ def _select_available_cdes(
     data_model_cdes: Dict[str, CommonDataElement],
 ) -> Dict[str, CommonDataElement]:
     return {variable: data_model_cdes[variable] for variable in variables}
-
-
-def _validate_preprocessing_output_name(
-    *,
-    preprocessing_step_spec: PreprocessingStepSpecification,
-    params: Dict[str, Any],
-    data_model_cdes: Dict[str, CommonDataElement],
-) -> None:
-    output = preprocessing_step_spec.output
-    if (
-        not output
-        or output.type != PreprocessingOutputType.NEW_CATEGORICAL_COLUMN
-        or not output.code_parameter
-    ):
-        return
-
-    code = params.get(output.code_parameter)
-    if code in data_model_cdes:
-        raise BadUserInput(
-            f"Preprocessing step '{preprocessing_step_spec.name}' cannot create CDE '{code}' because it already exists."
-        )
-
-
-def _derive_preprocessing_output_metadata(
-    *,
-    preprocessing_step_spec: PreprocessingStepSpecification,
-    params: Dict[str, Any],
-    metadata: Dict[str, dict],
-) -> None:
-    output = preprocessing_step_spec.output
-    if (
-        not output
-        or output.type != PreprocessingOutputType.NEW_CATEGORICAL_COLUMN
-        or not output.code_parameter
-    ):
-        return
-
-    code = params[output.code_parameter]
-    if code in metadata:
-        return
-
-    rules = params["rules"]
-    default_enumeration = params.get("default_enumeration")
-    enumerations = {key: key for key in rules.keys()}
-    if default_enumeration:
-        enumerations[default_enumeration] = default_enumeration
-    metadata[code] = {
-        "code": code,
-        "label": code,
-        "sql_type": "text",
-        "is_categorical": True,
-        "enumerations": enumerations,
-    }
 
 
 def _convert_data_model_cdes_to_metadata(

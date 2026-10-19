@@ -2,9 +2,17 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import numpy as np
+import pandas as pd
+import pytest
 
 from exaflow.algorithms.exareme3.cluster.kmeans import KMeans
 from exaflow.algorithms.exareme3.cluster.kmeans import _build_report
+from exaflow.algorithms.exareme3.cluster.kmeans import (
+    build_kmeans_preprocessing_parameters,
+)
+from exaflow.algorithms.exareme3.cluster.kmeans_cluster_creator import (
+    KMeansClusterCreator,
+)
 from exaflow.algorithms.federated.cluster.kmeans import FederatedKMeans
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from tests.standalone_tests.federated_algorithms.utils.simulated_agg_client import (
@@ -104,3 +112,77 @@ def test_kmeans_report_preserves_all_count_interval_categories():
         "10-19",
     ]
     assert all(cluster["center"] for cluster in report["clusters"])
+
+
+@pytest.mark.parametrize("selection", ["manual", "elbow"])
+def test_fitted_count_and_custom_prefix_survive_replay(monkeypatch, selection):
+    report = _build_report(
+        model=_fit_model(),
+        variables=["age", "crp"],
+        k_selection=selection,
+        global_mean=np.array([2.55, 2.5]),
+        minimum_row_count=1,
+        enumeration_prefix="group__9_",
+        elbow=None
+        if selection == "manual"
+        else {
+            "k_min": 1,
+            "k_max": 4,
+            "selected_k": 2,
+            "inertia_by_k": {2: 0.1},
+        },
+    )
+    algorithm = KMeans(
+        engine=SimpleNamespace(),
+        logger=Mock(),
+        inputdata=Inputdata(
+            data_model="dm:0.1", datasets=["dataset"], variables=["age", "crp"]
+        ),
+        y=["age", "crp"],
+        parameters={
+            "k_selection": selection,
+            "k": 4,
+            "enumeration_prefix": "group__9_",
+        },
+    )
+    calls = []
+
+    def fitted_report(**kwargs):
+        calls.append(kwargs)
+        return report
+
+    monkeypatch.setattr(algorithm, "run_local_udf", fitted_report)
+
+    result = algorithm.run()
+    parameters = build_kmeans_preprocessing_parameters(
+        result.reusable_preprocessing,
+        new_column_names=["group"],
+    )
+    assert calls[0]["kw_args"]["enumeration_prefix"] == "group__9_"
+    assert parameters["k"] == result.selected_k == 2
+    assert parameters["enumeration_prefix"] == "group__9_"
+    assert [cluster.cluster_id for cluster in result.clusters] == [
+        "group__9_1",
+        "group__9_2",
+    ]
+    transformed = KMeansClusterCreator(params=parameters).transform_data(
+        data=pd.DataFrame({"age": [0.0, 5.0], "crp": [0.0, 5.0]}),
+    )
+    assert set(transformed["group"]) == {"group__9_1", "group__9_2"}
+
+
+def test_custom_prefix_and_one_based_ids_in_empty_cluster_warnings():
+    model = _fit_model()
+    model.empty_clusters_ = [0]
+    report = _build_report(
+        model=model,
+        variables=["age", "crp"],
+        k_selection="manual",
+        global_mean=np.array([2.55, 2.5]),
+        minimum_row_count=1,
+        elbow=None,
+        enumeration_prefix="segment_",
+    )
+    assert "Empty clusters were produced: segment_1." in report["warnings"]
+    assert report["clusters"][0]["label"] == "Cluster 1"
+    assert "segment_1" in report["clusters"][0]["interpretation"]
