@@ -25,6 +25,24 @@ Date:
 
 ## Accepted Decisions
 
+### Decision: Remove the Transformation-Specific PCA Variant
+
+Status: Accepted
+
+Decision: Remove the separate PCA algorithm accepting per-variable
+transformations, its enum entry, integration-tool mappings, validation suite,
+fixture, testcase generator, and documentation page. Standard `pca` and its
+shared federated core retain their existing behavior.
+
+Consequences: Requests for the removed algorithm are no longer supported and it
+is absent from discovery and specifications. No alias or automatic migration is
+provided. Standard PCA does not accept the removed transformation parameter.
+Deploy controller and workers from the same revision. Rollback requires
+restoring the removed variant and deploying that revision to both services.
+Privacy thresholds, datasets, dependencies, and deployment settings are unchanged.
+
+Date: 2026-10-19
+
 ### Decision: Correct Linear Regression CV Metrics and Name RMSE Explicitly
 
 Status: Accepted

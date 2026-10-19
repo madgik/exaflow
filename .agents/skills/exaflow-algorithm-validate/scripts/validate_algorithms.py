@@ -44,7 +44,6 @@ PREFERRED_DOC_PATHS = {
     "naive_bayes_gaussian": "documentation/algorithms/NaiveBayesGaussian.md",
     "naive_bayes_gaussian_cv": "documentation/algorithms/NaiveBayesGaussianCV.md",
     "pca": "documentation/algorithms/PCA.md",
-    "pca_with_transformation": "documentation/algorithms/PCAWithTransformation.md",
     "pearson_correlation": "documentation/algorithms/Pearson.md",
     "linear_svm": "documentation/algorithms/SVM.md",
     "ttest_independent": "documentation/algorithms/TtestIndependent.md",
