@@ -2,10 +2,10 @@ import pytest
 from pydantic import ValidationError
 
 import exaflow.controller.services.api.analysis_request_validator as analysis_request_validator
-from exaflow.algorithms.exareme3.preprocessing.categorical_column_creator import (
+from exaflow.algorithms.exareme3.feature_engineering.categorical_column_creator import (
     CategoricalColumnCreator,
 )
-from exaflow.algorithms.exareme3.preprocessing.longitudinal_transformer import (
+from exaflow.algorithms.exareme3.longitudinal.longitudinal_transformer import (
     LongitudinalTransformer,
 )
 from exaflow.algorithms.specifications import AlgorithmSpecification

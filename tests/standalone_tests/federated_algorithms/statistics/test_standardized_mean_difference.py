@@ -4,7 +4,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from exaflow.algorithms.exareme3.standardized_mean_difference import local_step
+from exaflow.algorithms.exareme3.statistics.standardized_mean_difference import (
+    local_step,
+)
 from exaflow.algorithms.federated.statistics.standardized_mean_difference import (
     RESULT_COLUMNS,
 )

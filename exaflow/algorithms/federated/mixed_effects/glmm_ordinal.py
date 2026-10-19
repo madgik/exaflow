@@ -5,7 +5,9 @@ from dataclasses import dataclass
 import numpy as np
 from scipy import stats
 
-from exaflow.algorithms.federated.mixed_effects.common import validate_inputs
+from exaflow.algorithms.federated.mixed_effects.mixed_effects_utils import (
+    validate_inputs,
+)
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator

@@ -1,5 +1,9 @@
 # Gaussian Naive Bayes K-fold Cross-validation
 
+Runtime wrapper: [naive_bayes/naive_bayes_gaussian_cv.py](../../exaflow/algorithms/exareme3/naive_bayes/naive_bayes_gaussian_cv.py).
+
+CV variants stay beside their models in the same runtime domain.
+
 ## Table of contents
 
 - [Overview](#overview)

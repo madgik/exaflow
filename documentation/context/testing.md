@@ -40,6 +40,38 @@ For algorithm core changes:
 uv run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py
 ```
 
+## Algorithm Integration Tooling
+
+Runtime wrapper tests follow domain folders under
+`tests/standalone_tests/exareme3`; federated core tests retain their family
+folders. Test recursive discovery and import idempotence when moving wrappers
+or preprocessing steps. Scaffold and validator tools resolve nested wrappers and
+reject duplicate filenames; runtime domain and federated family may differ.
+
+```bash
+uv run pytest -q tests/standalone_tests/test_algorithm_integration_driver.py tests/standalone_tests/test_import_algorithm_modules_idempotent.py
+```
+
+Integration and fast validation run focused tests without Ruff or formatters;
+formatting and import-order checks belong to commit hooks and CI.
+
+Federated domain tests follow `outliers`, `feature_engineering`, and `compose`.
+Mixed-effects tests remain in `mixed_effects`, exercising the renamed
+`mixed_effects_utils.py` through their model imports. During an uncommitted
+package move, the algorithm validator can flag a deliberately deleted package
+initializer as a missing touched registration file. Check the replacement
+package exports and imports directly; do not restore the obsolete package just
+to satisfy that check.
+
+The existing-algorithm validator still enforces canonical artifact names. Known
+gaps as of the domain refactor: K-means has input-based prod tests without a
+`kmeans_expected.json` fixture; regression CV prod tests use
+`test_linearregression_cv.py` and `test_logisticregression_cv.py`; logistic CV
+standalone coverage lives in `test_classification_cv.py`. These produce four
+artifact-layout failures when validating K-means and both regression CV IDs,
+despite passing focused tests and runtime import/specification checks. This
+refactor does not rename those core tests or manufacture expected fixtures.
+
 ## Full Local Standalone Tests
 
 CI runs:

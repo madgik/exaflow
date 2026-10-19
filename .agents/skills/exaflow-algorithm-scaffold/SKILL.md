@@ -12,7 +12,7 @@ Human-facing setup guide: `documentation/new-algorithm-setup.md`.
 ## Default Execution Policy
 
 1. Scaffold missing files for the target algorithm.
-1. Implement algorithm logic in `exaflow/algorithms/exareme3/<algorithm>.py`.
+1. Implement algorithm logic in `exaflow/algorithms/exareme3/<domain>/<algorithm>.py`.
 1. Implement federated core in `exaflow/algorithms/federated/<family>/<algorithm>.py`.
 1. Implement standalone test coverage in `tests/standalone_tests/federated_algorithms/<family>/test_<algorithm>.py`.
 1. Implement prod validation test and expected fixture in `tests/prod_env_tests`.
@@ -106,12 +106,23 @@ uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorit
 
 ## CLI Contract
 
+Runtime wrappers, related reports, preprocessing steps, and model CV variants
+are grouped by domain. Steps inherit `PreprocessingStep` and remain visible in
+the preprocessing registry and specification endpoint, regardless of folder.
+The shared `.agents/skills/algorithm_layout.py` resolves existing nested modules
+and rejects duplicates. For new wrappers, `--runtime-domain` overrides the known
+domain mapping or family default. For example, `outlier_report` uses `outliers`
+for both its runtime domain and federated family. `--subfolder` controls only
+standalone core-test placement. Keep package initializers for canonical imports.
+Formatting and import-order checks belong to commit hooks and CI; integration
+gates run validation and focused tests without invoking Ruff.
+
 - Target selection:
   - `--algorithms` for explicit target names.
   - `--all` for runtime-catalog targets.
   - One of the above is required.
 - New options:
-  - `--family`, `--subfolder`.
+  - `--family`, `--runtime-domain`, `--subfolder`.
   - `--with-federated-core/--no-with-federated-core`.
   - `--with-registration/--no-with-registration`.
   - `--with-doc-index/--no-with-doc-index`.
@@ -125,7 +136,7 @@ uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorit
 ## Mandatory New Federated Algorithm Checklist
 
 1. Run scaffold with `--algorithms <name>` and `--family <family>`.
-1. Implement Exareme3 wrapper logic in `exaflow/algorithms/exareme3/<name>.py`.
+1. Implement Exareme3 wrapper logic in `exaflow/algorithms/exareme3/<domain>/<name>.py`.
 1. Prefer one clear current request/response contract; do not add backwards
    compatibility behavior unless explicitly requested.
 1. Write `get_specification()` text for the UI: use compact standard labels,
@@ -174,7 +185,7 @@ uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorit
 ## Troubleshooting
 
 - Import failure in generated module:
-  - Verify `exaflow/algorithms/exareme3/<algorithm>.py` imports and class names.
+  - Verify `exaflow/algorithms/exareme3/<domain>/<algorithm>.py` imports and class names.
 - Subfolder fallback warning:
   - Re-run with explicit `--family` or `--subfolder`.
 - Registration missing symbol:

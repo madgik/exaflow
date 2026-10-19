@@ -1,5 +1,10 @@
 # Linear Regression Cross-validation
 
+Runtime wrapper: [linear_model/linear_regression_cv.py](../../exaflow/algorithms/exareme3/linear_model/linear_regression_cv.py).
+
+The CV wrapper lives beside the regression model. Shared federated
+cross-validation utilities retain their `model_selection` location.
+
 ## Overview
 
 `linear_regression_cv` fits an ordinary least squares model on each training

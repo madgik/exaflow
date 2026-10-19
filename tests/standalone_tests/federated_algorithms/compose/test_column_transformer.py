@@ -5,8 +5,8 @@ from exaflow.algorithms.federated.compose.column_transformer import (
     FederatedColumnTransformer,
 )
 from exaflow.algorithms.federated.compose.column_transformer import make_column_selector
-from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
-from exaflow.algorithms.federated.preprocessing import FederatedPassthrough
+from exaflow.algorithms.federated.compose.passthrough import FederatedPassthrough
+from exaflow.algorithms.federated.feature_engineering import FederatedOneHotEncoder
 
 
 class DummyAggClient:

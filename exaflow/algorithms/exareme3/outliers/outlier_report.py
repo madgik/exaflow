@@ -7,17 +7,13 @@ from typing import Optional
 from pydantic import BaseModel
 
 from exaflow.algorithms import specifications as specs
-from exaflow.algorithms.exareme3.preprocessing.outlier_winsorizer import (
-    OutlierWinsorizer,
-)
+from exaflow.algorithms.exareme3.outliers.outlier_winsorizer import OutlierWinsorizer
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.statistics.outlier_report import (
-    FederatedOutlierReport,
-)
-from exaflow.algorithms.federated.statistics.outlier_report import OutlierStrategy
-from exaflow.algorithms.federated.statistics.outlier_report import OutlierTail
-from exaflow.algorithms.federated.statistics.outlier_report import WinsorizationHelper
+from exaflow.algorithms.federated.outliers.outlier_report import FederatedOutlierReport
+from exaflow.algorithms.federated.outliers.outlier_report import OutlierStrategy
+from exaflow.algorithms.federated.outliers.outlier_report import OutlierTail
+from exaflow.algorithms.federated.outliers.outlier_report import WinsorizationHelper
 from exaflow.worker_communication import BadUserInput
 
 

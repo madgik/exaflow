@@ -8,7 +8,12 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from typing import Iterable
+
+from algorithm_layout import FEDERATED_FAMILIES
+from algorithm_layout import runtime_module_path
 
 REPORT_FIELDS = (
     "algorithm",
@@ -268,6 +273,10 @@ def parse_args() -> argparse.Namespace:
         help="Comma-separated algorithm names. If set, overrides --all.",
     )
     parser.add_argument(
+        "--runtime-domain",
+        help="Runtime domain folder; defaults to the existing location or family.",
+    )
+    parser.add_argument(
         "--family",
         help="Optional federated family (for example: statistics, linear_model).",
     )
@@ -405,6 +414,8 @@ def federated_symbol_for_algorithm(algorithm: str) -> str:
 
 
 def infer_family_from_algorithm(algorithm: str) -> str | None:
+    if algorithm in FEDERATED_FAMILIES:
+        return FEDERATED_FAMILIES[algorithm]
     for family, algorithms in STANDALONE_FOLDER_RULES.items():
         if algorithm in algorithms:
             return family
@@ -956,6 +967,7 @@ def run_for_algorithm(
     with_doc_index: bool,
     with_sample_fixture: bool,
     runtime_catalog_set: set[str],
+    runtime_domain: str | None = None,
 ) -> None:
     family, standalone_subfolder, resolution_source = resolve_family_and_subfolder(
         algorithm,
@@ -1009,7 +1021,9 @@ def run_for_algorithm(
             next_action="Provide --family to generate federated core artifacts.",
         )
 
-    module_path = repo_root / "exaflow" / "algorithms" / "exareme3" / f"{algorithm}.py"
+    module_path = runtime_module_path(
+        repo_root, algorithm, family=family, domain=runtime_domain
+    )
     standalone_test = (
         repo_root
         / "tests"
@@ -1028,6 +1042,15 @@ def run_for_algorithm(
     )
     doc_path = repo_root / "documentation" / "algorithms" / f"{algorithm}.md"
 
+    write_placeholder(
+        report,
+        algorithm=algorithm,
+        check="runtime_package",
+        path=module_path.parent / "__init__.py",
+        content="",
+        dry_run=dry_run,
+        repo_root=repo_root,
+    )
     write_placeholder(
         report,
         algorithm=algorithm,
@@ -1354,6 +1377,7 @@ def main() -> int:
                 with_doc_index=args.with_doc_index,
                 with_sample_fixture=args.with_sample_fixture,
                 runtime_catalog_set=runtime_catalog_set,
+                runtime_domain=args.runtime_domain,
             )
         except Exception as exc:  # pylint: disable=broad-except
             register(

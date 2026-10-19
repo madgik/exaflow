@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from exaflow.algorithms.exareme3.cluster.kmeans import make_kmeans_input_fingerprint
-from exaflow.algorithms.exareme3.preprocessing.kmeans_cluster_creator import (
+from exaflow.algorithms.exareme3.cluster.kmeans_cluster_creator import (
     KMeansClusterCreator,
 )
 from exaflow.algorithms.utils.inputdata_utils import Inputdata

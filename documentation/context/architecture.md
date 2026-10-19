@@ -60,9 +60,15 @@ flowchart TD
 - Worker data loading, UDF execution, and DuckDB handling should stay in
   `exaflow/worker`.
 - Runtime algorithm wrappers, preprocessing specs, and UDF registration should
-  stay in `exaflow/algorithms/exareme3`.
+  stay in domain folders under `exaflow/algorithms/exareme3`. Related reports and
+  steps live together; CV variants stay beside their models. Base classes and
+  recursive discovery determine runtime roles independently of folder names.
+  See the [runtime author guide](../../exaflow/algorithms/exareme3/README.md#domain-layout)
+  for the complete preprocessing module index.
 - Testable algorithm math and reusable federated primitives should stay in
-  `exaflow/algorithms/federated`.
+  domain folders under `exaflow/algorithms/federated`: outlier methods in
+  `outliers`, encoders in `feature_engineering`, and passthrough in `compose`.
+  Cross-validation infrastructure remains in `model_selection/cross_validation`.
 - Deployment manifests should stay in `kubernetes` and Dockerfiles.
 - Data-model folder validation should stay inside `exadata-validator`.
 

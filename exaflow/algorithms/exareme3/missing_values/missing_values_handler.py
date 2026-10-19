@@ -10,9 +10,7 @@ import pandas as pd
 from sklearn.impute import SimpleImputer
 
 from exaflow.algorithms import specifications as specs
-from exaflow.algorithms.exareme3.preprocessing.metadata import (
-    promote_int_variables_to_real,
-)
+from exaflow.algorithms.exareme3.utils.metadata import promote_int_variables_to_real
 from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.worker_communication import BadUserInput

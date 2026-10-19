@@ -1,10 +1,10 @@
 import pandas as pd
 import pytest
 
-from exaflow.algorithms.exareme3.preprocessing.missing_values_handler import (
+from exaflow.algorithms.exareme3.missing_values.missing_values_handler import (
     MissingValuesHandler,
 )
-from exaflow.algorithms.exareme3.preprocessing.missing_values_handler import (
+from exaflow.algorithms.exareme3.missing_values.missing_values_handler import (
     MissingValueStrategy,
 )
 from exaflow.algorithms.utils.inputdata_utils import Inputdata

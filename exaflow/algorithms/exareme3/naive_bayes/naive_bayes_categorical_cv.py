@@ -10,6 +10,7 @@ from exaflow.algorithms.exareme3.naive_bayes.naive_bayes_common import (
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.metadata_enums import get_enum_codes
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
+from exaflow.algorithms.federated.feature_engineering import FederatedOrdinalEncoder
 from exaflow.algorithms.federated.model_selection.cross_validation import (
     FederatedCrossValidator,
 )
@@ -27,7 +28,6 @@ from exaflow.algorithms.federated.model_selection.cross_validation.scorer_multic
 )
 from exaflow.algorithms.federated.naive_bayes import FederatedCategoricalNB
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
-from exaflow.algorithms.federated.preprocessing import FederatedOrdinalEncoder
 from exaflow.algorithms.federated.utils import BadInputError
 
 

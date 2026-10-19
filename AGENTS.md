@@ -143,6 +143,15 @@ ownership. Non-negotiable boundaries:
 - Worker data loading and UDF execution in `exaflow/worker`.
 - Runtime wrappers and specs in `exaflow/algorithms/exareme3`; testable federated
   core in `exaflow/algorithms/federated`.
+- Organize Exareme3 runtime modules by domain. Keep reports, preprocessing steps,
+  and model CV variants beside their related algorithms; do not introduce a
+  generic preprocessing folder. `PreprocessingStep` inheritance and the registry
+  identify steps independently of their location. Runtime domains may differ
+  from federated core families when needed; use `--runtime-domain` explicitly.
+- Organize federated implementations by domain too: outlier reporting and its
+  clipping helpers in `outliers`, encoders in `feature_engineering`, and
+  passthrough in `compose`. Keep shared cross-validation machinery in
+  `model_selection/cross_validation`; it serves multiple model families.
 - Proto, deployment, and `exadata-validator` package boundaries unchanged without
   documented compatibility impact.
 
@@ -252,7 +261,8 @@ work, the canonical path is:
 1. Pick a lower snake_case `<algorithm_id>` and a federated `<family>`. Common
    families include `statistics`, `linear_model`, `decomposition`,
    `naive_bayes`, `mixed_effects`, `cluster`, `model_selection`, and
-   `preprocessing`. See `tests/standalone_tests/federated_algorithms/` for the
+   `feature_engineering`, `outliers`, and `compose`. See
+   `tests/standalone_tests/federated_algorithms/` for the
    full set of existing families.
 
 1. Run the integration driver once to scaffold and expose the first failing
@@ -264,7 +274,7 @@ work, the canonical path is:
 
 1. Implement the generated files:
 
-   - `exaflow/algorithms/exareme3/<algorithm_id>.py`
+   - `exaflow/algorithms/exareme3/<domain>/<algorithm_id>.py`
    - `exaflow/algorithms/federated/<family>/<algorithm_id>.py`
    - `tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py`
    - `tests/prod_env_tests/test_<algorithm_id>_validation.py`
@@ -281,6 +291,12 @@ work, the canonical path is:
 
 1. Use `--strict` only when the prod environment is available and prod
    validation is required.
+
+Runtime placement defaults to the existing module location, then the known
+domain mapping or federated family. Pass `--runtime-domain <domain>` to scaffold
+and integration commands when a new runtime domain differs from `<family>`.
+Keep `--subfolder` for standalone core-test placement. Runtime package
+initializers are generated; duplicate wrapper filenames are rejected.
 
 Do not leave scaffold placeholders in new algorithms. `TODO`,
 `NotImplementedError`, `__REPLACE_ME_*__` fixture values, missing docs, missing

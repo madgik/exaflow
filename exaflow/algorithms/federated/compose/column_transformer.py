@@ -12,7 +12,7 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 
-from exaflow.algorithms.federated.preprocessing import FederatedPassthrough
+from exaflow.algorithms.federated.compose.passthrough import FederatedPassthrough
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedTransformer
 

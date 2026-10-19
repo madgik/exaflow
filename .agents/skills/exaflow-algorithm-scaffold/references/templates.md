@@ -1,5 +1,14 @@
 # Scaffold Templates and Placement Rules
 
+## Runtime Domain Placement
+
+Keep related algorithms, reports, preprocessing steps, and model CV wrappers in
+one runtime domain package. Resolve an existing nested module first; reject
+duplicates. For new wrappers, use `--runtime-domain`, then the known domain
+mapping, then the federated family. The scaffold creates `__init__.py` for the
+runtime package. Runtime placement is independent of core/test placement:
+`outlier_report` uses `outliers` for both its runtime domain and federated family.
+
 ## Standalone Subfolder Inference
 
 Priority order:
@@ -13,7 +22,7 @@ Priority order:
 
 ### Exareme3 algorithm module
 
-- Path: `exaflow/algorithms/exareme3/<algorithm>.py`
+- Path: `exaflow/algorithms/exareme3/<domain>/<algorithm>.py`
 - Contains:
   - `Algorithm` subclass
   - `get_specification()` with matching `name`

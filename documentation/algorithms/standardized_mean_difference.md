@@ -1,5 +1,9 @@
 # Standardized Mean Difference
 
+Runtime wrapper: [statistics/standardized_mean_difference.py](../../exaflow/algorithms/exareme3/statistics/standardized_mean_difference.py).
+
+Its federated core remains in the `statistics` family.
+
 ## Overview
 
 Standardized Mean Difference computes Cohen's d for every unique pair of categories in one grouping variable. It reports the size and direction of each difference relative to the groups' pooled within-group variability.

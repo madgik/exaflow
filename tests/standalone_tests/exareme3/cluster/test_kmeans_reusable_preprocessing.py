@@ -4,7 +4,7 @@ from exaflow.algorithms.exareme3.cluster.kmeans import KMeansReusablePreprocessi
 from exaflow.algorithms.exareme3.cluster.kmeans import (
     build_kmeans_preprocessing_parameters,
 )
-from exaflow.algorithms.exareme3.preprocessing.kmeans_cluster_creator import (
+from exaflow.algorithms.exareme3.cluster.kmeans_cluster_creator import (
     KMeansClusterCreator,
 )
 

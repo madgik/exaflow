@@ -4,7 +4,6 @@ from .binned_mann_whitney_u_test import FederatedBinnedMannWhitneyUTest
 from .describe import FederatedDescribe
 from .descriptive_stats import FederatedDescriptiveStatistics
 from .histogram import FederatedGroupedHistogram
-from .outlier_report import FederatedOutlierReport
 from .pearson_correlation import FederatedPearsonCorrelation
 from .percentile import Percentile
 from .standardized_mean_difference import FederatedStandardizedMeanDifference
@@ -24,6 +23,5 @@ __all__ = [
     "FederatedTTestIndependent",
     "FederatedTTestOneSample",
     "FederatedTTestPaired",
-    "FederatedOutlierReport",
     "FederatedBinnedMannWhitneyUTest",
 ]

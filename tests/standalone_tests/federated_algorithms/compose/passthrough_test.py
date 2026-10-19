@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from exaflow.algorithms.federated.preprocessing import FederatedPassthrough
+from exaflow.algorithms.federated.compose.passthrough import FederatedPassthrough
 
 
 class DummyAggClient:

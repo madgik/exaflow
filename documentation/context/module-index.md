@@ -57,7 +57,7 @@ Notes: `UNION` returns JSON-encoded bytes in the tensor field.
 Purpose: Runtime algorithm wrappers, preprocessing steps, in-code
 specifications, and UDF registrations.
 
-Key files: family folders, `utils/algorithm.py`,
+Key files: domain folders, `utils/algorithm.py`,
 `utils/preprocessing_step.py`, `utils/registry.py`.
 
 Used by: Dynamic discovery in `exaflow/__init__.py`, controller strategies, and
@@ -69,13 +69,17 @@ with `@exareme3_udf`.
 Tests: Standalone algorithm tests, prod validation tests, integration skill
 validators.
 
-Notes: Discovery is controlled by `EXAREME3_ALGORITHM_FOLDERS`.
+Notes: Recursive discovery is controlled by `EXAREME3_ALGORITHM_FOLDERS`.
+Reports, preprocessing steps, and model CV wrappers live in their owning domain.
+The [runtime author guide](../../exaflow/algorithms/exareme3/README.md#domain-layout)
+lists all preprocessing modules. Runtime domains need not match federated core
+families; outlier reporting uses `outliers` for both runtime and core.
 
 ## `exaflow/algorithms/federated`
 
 Purpose: Testable federated/statistical core logic and implementation docs.
 
-Key files: family folders such as `statistics`, `linear_model`,
+Key files: domain folders such as `statistics`, `linear_model`,
 `decomposition`, `naive_bayes`, `mixed_effects`, plus `docs/`.
 
 Used by: Exareme3 wrappers and standalone parity tests.
@@ -86,6 +90,11 @@ possible.
 Tests: `tests/standalone_tests/federated_algorithms`.
 
 Notes: Prefer extending existing family utilities over duplicating math.
+
+Domain placement: `outliers/outlier_report.py` owns reporting and winsorization
+helpers; encoders live in `feature_engineering`; passthrough lives in `compose`.
+Mixed-effects numerical helpers are in `mixed_effects/mixed_effects_utils.py`.
+Shared cross-validation infrastructure stays in `model_selection/cross_validation`.
 
 ## `exaflow/protos`
 
