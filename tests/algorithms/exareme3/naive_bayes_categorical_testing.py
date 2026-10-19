@@ -7,10 +7,10 @@ from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.metadata_enums import get_enum_codes
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.naive_bayes import FederatedCategoricalNB
-from exaflow.algorithms.federated.preprocessing.ordinal_encoder import (
+from exaflow.algorithms.federated.feature_engineering.ordinal_encoder import (
     FederatedOrdinalEncoder,
 )
+from exaflow.algorithms.federated.naive_bayes import FederatedCategoricalNB
 from exaflow.worker_communication import BadUserInput
 
 ALGNAME_PRED = "test_nb_categorical_predict"

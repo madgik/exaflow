@@ -3,10 +3,10 @@ import pandas as pd
 import pandas.testing as pdt
 import pytest
 
-from exaflow.algorithms.exareme3.preprocessing.longitudinal_transformer import (
+from exaflow.algorithms.exareme3.longitudinal.longitudinal_transformer import (
     LongitudinalStrategy,
 )
-from exaflow.algorithms.exareme3.preprocessing.longitudinal_transformer import (
+from exaflow.algorithms.exareme3.longitudinal.longitudinal_transformer import (
     LongitudinalTransformer,
 )
 from exaflow.algorithms.utils.inputdata_utils import Inputdata

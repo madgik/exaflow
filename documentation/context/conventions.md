@@ -39,7 +39,19 @@
 
 - Runtime Exareme3 algorithm wrappers live under
   `exaflow/algorithms/exareme3`.
-- Federated algorithm core logic lives under `exaflow/algorithms/federated`.
+- Group runtime reports, preprocessing steps, and model CV variants by domain.
+  Do not create a generic preprocessing folder. Base classes and recursive
+  discovery determine registry membership. Keep validation and result contracts
+  in the module that owns the behavior; related modules may import them directly.
+  Extract a helper module only for a demonstrated need. Keep shared metadata
+  transforms in `utils/metadata.py`.
+  Runtime domain and federated family are separate tooling inputs:
+  `--runtime-domain` controls wrappers, `--family` controls core placement.
+- Federated algorithm core logic lives under `exaflow/algorithms/federated`,
+  grouped by domain: `outliers`, `feature_engineering`, and `compose` own outlier
+  methods, encoders, and passthrough respectively. Keep shared cross-validation
+  infrastructure in `model_selection/cross_validation`. Existing mixed-effects
+  numerical helpers live in `mixed_effects/mixed_effects_utils.py`.
 - Algorithm specifications are code-defined through `get_specification()`.
 - Specification metadata should be UI-ready: compact standard `label`,
   one-sentence method-level `desc`, and detailed parent `documentation` for

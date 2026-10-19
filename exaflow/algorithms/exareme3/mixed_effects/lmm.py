@@ -12,8 +12,8 @@ from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.compose.column_transformer import (
     FederatedColumnTransformer,
 )
+from exaflow.algorithms.federated.feature_engineering import FederatedOneHotEncoder
 from exaflow.algorithms.federated.mixed_effects import FederatedLMM
-from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
 
 
 class LMMResult(BaseModel):

@@ -1,5 +1,10 @@
 # Outlier Winsorizer
 
+Runtime wrapper: [outliers/outlier_winsorizer.py](../../exaflow/algorithms/exareme3/outliers/outlier_winsorizer.py).
+
+This step owns `validate_outlier_configuration()`, which the adjacent outlier
+report also uses to validate the same winsorization rules.
+
 ## Table of contents
 
 - [Overview](#overview)

@@ -21,14 +21,24 @@ Preprocessing steps transform selected variables before an algorithm is fitted o
 evaluated. They are configured per request and run before the main statistical or
 machine-learning method.
 
-Implemented preprocessing steps include:
+Steps are organized by domain and identified by `PreprocessingStep` inheritance.
+Recursive discovery exposes the complete set through the preprocessing registry
+and `GET /specifications/preprocessing`; folder location does not affect their
+availability.
 
-| Step | Purpose |
-|---|---|
-| Missing Values Handler | Drop or impute missing values per variable. |
-| Outlier Winsorizer | Clip numerical outliers using configured bounds. |
-| Longitudinal Transformer | Convert two-visit longitudinal records into first, second, or difference variables. |
-| KMeans Column Creator | Create a categorical cluster covariate from numerical baseline variables. |
+| Step | Purpose | Runtime module |
+| --- | --- | --- |
+| Missing Values Handler | Drop or impute missing values per variable. | [missing_values/missing_values_handler.py](../../exaflow/algorithms/exareme3/missing_values/missing_values_handler.py) |
+| Outlier Winsorizer | Clip numerical outliers using configured bounds. | [outliers/outlier_winsorizer.py](../../exaflow/algorithms/exareme3/outliers/outlier_winsorizer.py) |
+| Categorical Column Creator | Create a categorical column from filter rules. | [feature_engineering/categorical_column_creator.py](../../exaflow/algorithms/exareme3/feature_engineering/categorical_column_creator.py) |
+| Longitudinal Transformer | Convert two-visit records into first, second, or difference variables. | [longitudinal/longitudinal_transformer.py](../../exaflow/algorithms/exareme3/longitudinal/longitudinal_transformer.py) |
+| KMeans Column Creator | Assign a categorical cluster using stored fitted centers. | [cluster/kmeans_cluster_creator.py](../../exaflow/algorithms/exareme3/cluster/kmeans_cluster_creator.py) |
+
+Related reports and transformations share their domain: the outlier report
+sits beside winsorization, and K-means sits beside its cluster column creator.
+The report imports validation from the winsorizer that owns the clipping rules.
+The cluster column creator imports replay models and fingerprint helpers from
+K-means, which owns the fitted result contract.
 
 ## Inputs
 
@@ -80,21 +90,17 @@ but the original variable code is preserved.
 
 ### KMeans cluster creation
 
-KMeans cluster creation fits federated K-means on selected numerical variables
-and creates a new categorical column. It is intended for downstream algorithms
-that accept categorical covariates, such as linear regression, logistic
-regression, and Cox regression.
+KMeans cluster creation replays the centers from a previous K-means analysis;
+it does not fit a new model. It creates one categorical column with one category
+per fitted cluster for downstream algorithms that accept categorical covariates.
+The replay payload must match the data model, datasets, filters, and clustering
+variables of the current analysis.
 
-The initialization method can be `random_range` or
-`multi_start_random_range`. Multi-start fits several random-range
-initializations and keeps the one with the lowest global inertia before creating
-the derived categorical column.
+### Categorical column creation
 
-Output modes:
-
-| Mode | Categories | Meaning |
-|---|---|---|
-| `full` | `cluster_0`, `cluster_1`, ..., `cluster_k-1` | Every fitted cluster is exposed as a category. |
+Filter rules define categories for a new nominal text column. Each row must
+match at most one rule; unmatched rows receive the configured default category
+or null. Overlapping matches are rejected.
 
 ## Federated computation
 

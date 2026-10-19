@@ -1,5 +1,11 @@
 # K-means
 
+Runtime wrapper: [cluster/kmeans.py](../../exaflow/algorithms/exareme3/cluster/kmeans.py).
+
+K-means owns its replay models, parameter builder, and fingerprint helpers in
+`cluster/kmeans.py`. The adjacent cluster column creator imports the fitted
+result contract from that module.
+
 ## Table of contents
 
 - [Overview](#overview)

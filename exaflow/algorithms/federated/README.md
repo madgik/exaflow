@@ -1,5 +1,11 @@
 # Federated Algorithms
 
+Implementations are grouped by domain. Encoders live in `feature_engineering`,
+column composition and passthrough in `compose`, and outlier reporting with its
+winsorization helpers in `outliers`. Cross-validation machinery remains under
+`model_selection/cross_validation` because it serves multiple model families.
+Mixed-effects numerical helpers live in `mixed_effects/mixed_effects_utils.py`.
+
 ## cluster
 
 - [KMEANS](docs/kmeans.md)
@@ -8,6 +14,7 @@
 
 - [COLUMN_TRANSFORMER](docs/column_transformer.md)
 - [MAKE_COLUMN_SELECTOR](docs/make_column_selector.md)
+- [PASSTHROUGH](docs/passthrough.md)
 
 ## decomposition
 
@@ -37,11 +44,14 @@
 - [GAUSSIAN_NAIVE_BAYES](docs/gaussian_naive_bayes.md)
 - [CATEGORICAL_NAIVE_BAYES](docs/categorical_naive_bayes.md)
 
-## preprocessing
+## feature_engineering
 
 - [ONE_HOT_ENCODER](docs/one_hot_encoder.md)
 - [ORDINAL_ENCODER](docs/ordinal_encoder.md)
-- [PASSTHROUGH](docs/passthrough.md)
+
+## outliers
+
+- [OUTLIER_REPORT](docs/outlier_report.md)
 
 ## statistics
 
@@ -54,6 +64,5 @@
 - [ANOVA_ONE_WAY](docs/anova_one_way.md)
 - [ANOVA_TWO_WAY](docs/anova_two_way.md)
 - [HISTOGRAM](docs/histogram.md)
-- [OUTLIER_REPORT](docs/outlier_report.md)
 - [BINNED_MANN_WHITNEY_U_TEST](docs/binned_mann_whitney_u_test.md)
 - [STANDARDIZED_MEAN_DIFFERENCE](docs/standardized_mean_difference.md)

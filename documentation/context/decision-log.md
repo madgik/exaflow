@@ -25,6 +25,27 @@ Date:
 
 ## Accepted Decisions
 
+### Decision: Organize Federated Implementations by Domain
+
+Status: Accepted
+
+Decision: Move outlier reporting and its existing winsorization helpers intact
+into `outliers`. Move one-hot and ordinal encoders into `feature_engineering`,
+and passthrough into `compose`. Rename mixed-effects `common.py` to
+`mixed_effects_utils.py`. Mirror domain placement in tests and update imports,
+exports, documentation, and the outlier family mapping in integration tooling.
+Shared cross-validation machinery stays in `model_selection/cross_validation`.
+This supersedes the earlier choice to retain all federated family locations.
+
+Consequences: Python module paths and family exports change without legacy
+aliases. Function and class names, implementations, algorithm IDs,
+request/response contracts, numerical behavior, and privacy checks are unchanged.
+No dependency, protobuf, Helm-value, or data migration is needed. Deploy
+controller and workers from the same revision. Roll back by reverting these
+moves and import changes and deploying the previous revision to both services.
+
+Date: 2026-10-19
+
 ### Decision: Remove the Transformation-Specific PCA Variant
 
 Status: Accepted
@@ -40,6 +61,36 @@ provided. Standard PCA does not accept the removed transformation parameter.
 Deploy controller and workers from the same revision. Rollback requires
 restoring the removed variant and deploying that revision to both services.
 Privacy thresholds, datasets, dependencies, and deployment settings are unchanged.
+
+Date: 2026-10-19
+
+### Decision: Organize Exareme3 Runtime Modules by Domain
+
+Status: Accepted
+
+Context: A preprocessing folder separated related reports and transformations,
+while CV variants were split between model families and model selection.
+
+Decision: Group runtime modules by domain and keep CV wrappers beside their
+models. Identify preprocessing by `PreprocessingStep` inheritance, registry
+membership, and the specification endpoint. Preserve federated core families.
+Keep winsorization validation on `OutlierWinsorizer`, reused by the adjacent
+report. Keep K-means replay models and helpers in `kmeans.py`, imported by its
+column creator. Direct imports between related runtime modules are appropriate;
+sharing alone does not justify extracting another module.
+Resolve nested wrappers in integration tools; use `--runtime-domain` when a
+runtime domain differs from its federated family. Reject duplicate filenames.
+
+Consequences: Python import paths change without compatibility aliases. UDF
+registry keys remain unchanged: they use the module basename and callable name,
+which this refactor preserves. Controller and workers should deploy the same
+revision. Algorithm/preprocessing IDs, specifications, request/response
+shapes, numerical behavior, and privacy checks are unchanged. Rollback requires
+reverting the refactor and deploying the previous revision to both services.
+No dependency, protobuf, Helm-value, or data migration is involved.
+
+Files affected: Runtime domains and tests, algorithm integration tools and their
+skills, setup/author guides, preprocessing and affected algorithm documentation.
 
 Date: 2026-10-19
 

@@ -70,6 +70,15 @@ uv run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorit
 
 ## Validation Contract
 
+Runtime modules live under domain folders, independently of federated core
+families. Resolve nested modules through `.agents/skills/algorithm_layout.py`;
+reject duplicate wrapper filenames. Import the resolved dotted module path,
+including its domain. For example, outlier reporting uses `outliers` for its
+runtime wrapper, core, and parity tests. Changed-file selection
+supports nested wrappers and excludes shared helpers and package initializers.
+Formatting and import-order checks belong to hooks and CI; fast validation runs
+focused quiet tests without invoking Ruff.
+
 Static checks (always):
 
 - Runtime catalog membership.

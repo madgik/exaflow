@@ -58,3 +58,60 @@ def test_import_algorithm_modules_recursively_discovers_nested_modules(tmp_path)
 
     mods = import_algorithm_modules(str(tmp_path))
     assert "statistics.histogram" in mods
+
+
+def test_domain_preprocessing_discovery_preserves_registries_and_udfs():
+    import exaflow
+    from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
+    from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
+    from exaflow.algorithms.exareme3.utils.registry import exareme3_registry
+
+    def runtime_classes(base):
+        # Filter before reading specifications: test-only subclasses may use
+        # the default JSON loader without having a specification file.
+        return {
+            cls.get_specification().name: cls
+            for cls in base.__subclasses__()
+            if cls.__module__.startswith("exaflow.algorithms.exareme3.")
+        }
+
+    expected = {
+        "outlier_winsorizer": "outliers",
+        "missing_values_handler": "missing_values",
+        "categorical_column_creator": "feature_engineering",
+        "longitudinal_transformer": "longitudinal",
+        "kmeans_cluster_creator": "cluster",
+    }
+    steps = runtime_classes(PreprocessingStep)
+    assert set(expected) <= set(steps)
+    for name, domain in expected.items():
+        assert steps[name].__module__ == (
+            f"exaflow.algorithms.exareme3.{domain}.{name}"
+        )
+
+    for name, domain in {
+        "outlier_report": "outliers",
+        "standardized_mean_difference": "statistics",
+        "binned_mann_whitney_u_test": "statistics",
+        "linear_regression_cv": "linear_model",
+        "logistic_regression_cv": "linear_model",
+    }.items():
+        assert exaflow.exareme3_algorithm_classes[name].__module__ == (
+            f"exaflow.algorithms.exareme3.{domain}.{name}"
+        )
+
+    specs_before = {
+        name: cls.get_specification().model_dump(mode="json")
+        for name, cls in runtime_classes(Algorithm).items()
+    }
+    registry_before = dict(exareme3_registry._registry)
+    first = exaflow.import_algorithm_modules(exaflow.EXAREME3_ALGORITHM_FOLDERS)
+    second = exaflow.import_algorithm_modules(exaflow.EXAREME3_ALGORITHM_FOLDERS)
+    assert first.keys() == second.keys()
+    assert all(first[key] is second[key] for key in first)
+    assert exareme3_registry._registry == registry_before
+    assert runtime_classes(PreprocessingStep) == steps
+    assert {
+        name: cls.get_specification().model_dump(mode="json")
+        for name, cls in runtime_classes(Algorithm).items()
+    } == specs_before

@@ -7,16 +7,14 @@ from typing import Optional
 import pandas as pd
 
 from exaflow.algorithms import specifications as specs
-from exaflow.algorithms.exareme3.preprocessing.metadata import (
-    promote_int_variables_to_real,
-)
+from exaflow.algorithms.exareme3.utils.metadata import promote_int_variables_to_real
 from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
-from exaflow.algorithms.federated.statistics.outlier_report import DEFAULT_FOLDS
-from exaflow.algorithms.federated.statistics.outlier_report import OutlierBounds
-from exaflow.algorithms.federated.statistics.outlier_report import OutlierRule
-from exaflow.algorithms.federated.statistics.outlier_report import OutlierStrategy
-from exaflow.algorithms.federated.statistics.outlier_report import OutlierTail
-from exaflow.algorithms.federated.statistics.outlier_report import WinsorizationHelper
+from exaflow.algorithms.federated.outliers.outlier_report import DEFAULT_FOLDS
+from exaflow.algorithms.federated.outliers.outlier_report import OutlierBounds
+from exaflow.algorithms.federated.outliers.outlier_report import OutlierRule
+from exaflow.algorithms.federated.outliers.outlier_report import OutlierStrategy
+from exaflow.algorithms.federated.outliers.outlier_report import OutlierTail
+from exaflow.algorithms.federated.outliers.outlier_report import WinsorizationHelper
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import InsufficientDataError

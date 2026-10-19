@@ -5,9 +5,13 @@ import argparse
 import json
 import re
 import subprocess
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from algorithm_layout import runtime_module_path
 
 ALGORITHM_ID_RE = re.compile(r"[a-z][a-z0-9_]*")
 
@@ -52,6 +56,9 @@ def parse_args() -> argparse.Namespace:
         description="Run the mechanical gates for a new Exaflow algorithm integration."
     )
     parser.add_argument("--algorithm", required=True, help="New algorithm identifier.")
+    parser.add_argument(
+        "--runtime-domain", help="Runtime domain, separate from federated family."
+    )
     parser.add_argument(
         "--family",
         required=True,
@@ -106,14 +113,16 @@ def validate_identifier(value: str, *, label: str) -> str:
 
 
 def expected_paths(
-    repo_root: Path, algorithm: str, family: str, subfolder: str
+    repo_root: Path,
+    algorithm: str,
+    family: str,
+    subfolder: str,
+    runtime_domain: str | None = None,
 ) -> dict:
     return {
-        "algorithm_module": repo_root
-        / "exaflow"
-        / "algorithms"
-        / "exareme3"
-        / f"{algorithm}.py",
+        "algorithm_module": runtime_module_path(
+            repo_root, algorithm, family=family, domain=runtime_domain
+        ),
         "federated_core": repo_root
         / "exaflow"
         / "algorithms"
@@ -135,20 +144,6 @@ def expected_paths(
     }
 
 
-def rel_existing_python_files(paths: dict, repo_root: Path) -> list[str]:
-    candidates = [
-        paths["algorithm_module"],
-        paths["federated_core"],
-        paths["standalone_test"],
-        paths["prod_test"],
-    ]
-    return sorted(
-        str(path.relative_to(repo_root))
-        for path in candidates
-        if path.exists() and path.suffix == ".py"
-    )
-
-
 def build_gate_plan(
     *,
     algorithm: str,
@@ -157,9 +152,9 @@ def build_gate_plan(
     repo_root: Path,
     strict: bool,
     skip_scaffold: bool,
+    runtime_domain: str | None = None,
 ) -> list[GatePlan]:
-    paths = expected_paths(repo_root, algorithm, family, subfolder)
-    lint_files = rel_existing_python_files(paths, repo_root)
+    paths = expected_paths(repo_root, algorithm, family, subfolder, runtime_domain)
     standalone_rel = str(paths["standalone_test"].relative_to(repo_root))
 
     gates: list[GatePlan] = []
@@ -180,6 +175,8 @@ def build_gate_plan(
                     family,
                     "--subfolder",
                     subfolder,
+                    "--runtime-domain",
+                    paths["algorithm_module"].parent.name,
                 ],
                 next_action="Fix scaffold errors before editing generated files.",
             )
@@ -204,38 +201,6 @@ def build_gate_plan(
             next_action="Resolve every failed or warning row in validator JSON.",
         )
     )
-
-    if lint_files:
-        gates.append(
-            GatePlan(
-                name="ruff_import_order",
-                command=[
-                    "uv",
-                    "run",
-                    "ruff",
-                    "check",
-                    "--select",
-                    "I",
-                    *lint_files,
-                ],
-                next_action="Run ruff with --fix or sort imports manually.",
-            )
-        )
-        gates.append(
-            GatePlan(
-                name="ruff_format",
-                command=["uv", "run", "ruff", "format", "--check", *lint_files],
-                next_action="Run uv run ruff format on the listed files.",
-            )
-        )
-    else:
-        gates.append(
-            GatePlan(
-                name="ruff_checks",
-                command=None,
-                next_action="Run scaffold or create implementation/test files first.",
-            )
-        )
 
     gates.append(
         GatePlan(
@@ -395,6 +360,7 @@ def main() -> int:
         repo_root=repo_root,
         strict=args.strict,
         skip_scaffold=args.skip_scaffold,
+        runtime_domain=args.runtime_domain,
     )
 
     if args.dry_run:

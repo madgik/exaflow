@@ -103,7 +103,7 @@ entry as something to fix before the integration is complete.
 
 | File | Purpose |
 | --- | --- |
-| `exaflow/algorithms/exareme3/<algorithm_id>.py` | Exareme3 wrapper, specification, request parsing, worker UDF orchestration, response model. |
+| `exaflow/algorithms/exareme3/<domain>/<algorithm_id>.py` | Exareme3 wrapper, specification, request parsing, worker UDF orchestration, response model. |
 | `exaflow/algorithms/federated/<family>/<algorithm_id>.py` | Federated/statistical core logic that can be tested without the full runtime. |
 | `tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py` | Fast parity tests for the federated core and edge cases. |
 | `tests/prod_env_tests/test_<algorithm_id>.py` | Prod validation test wired to Exaflow request fixtures. |
@@ -120,6 +120,28 @@ The scaffold also patches common integration touchpoints when enabled:
 
 If the validator reports a missing symbol in one of those files, either rerun
 the scaffold with registration enabled or patch the reported file manually.
+
+## Runtime Domains
+
+Place wrappers, related reports, preprocessing steps, and model CV variants in
+their domain folder. A step inherits `PreprocessingStep`; recursive discovery
+adds it to the preprocessing registry and `/specifications/preprocessing`
+regardless of location. There is no generic preprocessing directory.
+
+Runtime domains and federated families are independent inputs. Outlier reporting
+uses `outliers` for its runtime wrapper, federated core, and parity tests.
+Encoders use core family `feature_engineering`, and passthrough uses `compose`.
+Existing nested wrappers are reused, and ambiguous duplicate filenames fail.
+New wrappers default to their known domain mapping or federated family. Override
+this with `--runtime-domain <domain>` on both scaffold and integration commands:
+
+```bash
+uv run python .agents/skills/exaflow-algorithm-scaffold/scripts/scaffold_algorithms.py --repo-root . --algorithms my_outlier_method --family outliers --runtime-domain outliers --dry-run
+```
+
+The scaffold creates the domain package initializer. `--subfolder` affects only
+standalone core tests, not runtime placement. Federated cores retain their
+domain layout.
 
 ## Family Defaults
 
@@ -153,12 +175,9 @@ Focused standalone test:
 uv run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py
 ```
 
-Focused formatting gates:
-
-```bash
-uv run ruff check --select I exaflow/algorithms/exareme3/<algorithm_id>.py exaflow/algorithms/federated/<family>/<algorithm_id>.py tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py tests/prod_env_tests/test_<algorithm_id>.py
-uv run ruff format --check exaflow/algorithms/exareme3/<algorithm_id>.py exaflow/algorithms/federated/<family>/<algorithm_id>.py tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py tests/prod_env_tests/test_<algorithm_id>.py
-```
+Formatting and import-order checks are owned by commit hooks and CI. Agents
+do not run Ruff or formatters; the integration and validation tools run focused
+tests without invoking them.
 
 ## Definition Of Done
 
@@ -182,5 +201,5 @@ uv run ruff format --check exaflow/algorithms/exareme3/<algorithm_id>.py exaflow
 | Runtime catalog membership failure | Check `get_specification().name`, `AlgorithmName`, and module discovery under `exaflow/algorithms/exareme3`. |
 | Registration symbol missing | Patch the reported `__init__.py` or rerun scaffold with `--with-registration`. |
 | Placeholder check failed | Replace generated `TODO`, `NotImplementedError`, and `__REPLACE_ME_*__` values. |
-| Ruff import or format failure | Run `uv run ruff check --select I --fix <files>` and `uv run ruff format <files>`. |
+| Import or format failure in CI | Resolve through the normal commit-hook/CI workflow; agents do not run Ruff manually. |
 | Strict prod test failure | Confirm the prod environment is running and expected fixture values match available datasets. |

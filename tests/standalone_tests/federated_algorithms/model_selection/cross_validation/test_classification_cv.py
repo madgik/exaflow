@@ -5,9 +5,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import KFold
 
-from exaflow.algorithms.exareme3.model_selection.cross_validation.logistic_regression_cv import (
-    local_step,
-)
+from exaflow.algorithms.exareme3.linear_model.logistic_regression_cv import local_step
 from tests.standalone_tests.federated_algorithms.utils.federated_algorithm_test import (
     _simulate_federated_execution,
 )

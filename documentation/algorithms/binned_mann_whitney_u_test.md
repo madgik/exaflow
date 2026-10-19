@@ -1,5 +1,9 @@
 # Binned Mann-Whitney U Test
 
+Runtime wrapper: [statistics/binned_mann_whitney_u_test.py](../../exaflow/algorithms/exareme3/statistics/binned_mann_whitney_u_test.py).
+
+Its federated core remains in the `statistics` family.
+
 ## Table of contents
 
 - [Overview](#overview)

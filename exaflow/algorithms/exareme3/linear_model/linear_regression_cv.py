@@ -11,6 +11,7 @@ from exaflow.algorithms.federated import FederatedOLS
 from exaflow.algorithms.federated.compose.column_transformer import (
     FederatedColumnTransformer,
 )
+from exaflow.algorithms.federated.feature_engineering import FederatedOneHotEncoder
 from exaflow.algorithms.federated.model_selection.cross_validation.cross_validator import (
     FederatedCrossValidator,
 )
@@ -21,7 +22,6 @@ from exaflow.algorithms.federated.model_selection.cross_validation.splitter_kfol
     FederatedKFoldSplitter,
 )
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
-from exaflow.algorithms.federated.preprocessing import FederatedOneHotEncoder
 
 ALPHA = 0.05
 

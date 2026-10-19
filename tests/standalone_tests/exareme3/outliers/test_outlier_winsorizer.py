@@ -2,12 +2,10 @@ import pandas as pd
 import pytest
 
 from exaflow import exareme3_preprocessing_step_classes
-from exaflow.algorithms.exareme3.preprocessing.outlier_winsorizer import (
-    OutlierWinsorizer,
-)
-from exaflow.algorithms.federated.statistics.outlier_report import OutlierRule
-from exaflow.algorithms.federated.statistics.outlier_report import OutlierStrategy
-from exaflow.algorithms.federated.statistics.outlier_report import OutlierTail
+from exaflow.algorithms.exareme3.outliers.outlier_winsorizer import OutlierWinsorizer
+from exaflow.algorithms.federated.outliers.outlier_report import OutlierRule
+from exaflow.algorithms.federated.outliers.outlier_report import OutlierStrategy
+from exaflow.algorithms.federated.outliers.outlier_report import OutlierTail
 from exaflow.algorithms.specifications import ParameterDictValueType
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.worker_communication import BadUserInput

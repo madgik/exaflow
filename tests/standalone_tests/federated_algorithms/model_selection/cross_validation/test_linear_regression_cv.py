@@ -10,12 +10,10 @@ from sklearn.metrics import mean_squared_error
 from sklearn.metrics import r2_score
 from sklearn.model_selection import KFold
 
-from exaflow.algorithms.exareme3.model_selection.cross_validation.linear_regression_cv import (
+from exaflow.algorithms.exareme3.linear_model.linear_regression_cv import (
     LinearRegressionCV,
 )
-from exaflow.algorithms.exareme3.model_selection.cross_validation.linear_regression_cv import (
-    local_step,
-)
+from exaflow.algorithms.exareme3.linear_model.linear_regression_cv import local_step
 from exaflow.algorithms.federated import FederatedOLS
 from exaflow.algorithms.federated.model_selection import FederatedCrossValidator
 from exaflow.algorithms.federated.model_selection import FederatedKFoldSplitter

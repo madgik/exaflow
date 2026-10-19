@@ -9,7 +9,12 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from typing import Iterable
+
+from algorithm_layout import runtime_import_path
+from algorithm_layout import runtime_module_path
 
 REPORT_FIELDS = (
     "algorithm",
@@ -259,7 +264,9 @@ def map_changed_files_to_algorithms(changed_files: Iterable[str]) -> set[str]:
     reverse_docs = _reverse_path_map(PREFERRED_DOC_PATHS)
 
     patterns = [
-        re.compile(r"^exaflow/algorithms/exareme3/([a-z][a-z0-9_]*)\.py$"),
+        re.compile(
+            r"^exaflow/algorithms/exareme3/(?:[a-z][a-z0-9_]*/)*([a-z][a-z0-9_]*)\.py$"
+        ),
         re.compile(r"^exaflow/algorithms/federated/[a-z0-9_]+/([a-z][a-z0-9_]*)\.py$"),
         re.compile(r"^tests/prod_env_tests/test_([a-z0-9_]+)\.py$"),
         re.compile(r"^tests/prod_env_tests/expected/([a-z0-9_]+)_expected\.json$"),
@@ -270,6 +277,9 @@ def map_changed_files_to_algorithms(changed_files: Iterable[str]) -> set[str]:
     ]
 
     for changed in changed_files:
+        if changed.startswith("exaflow/algorithms/exareme3/"):
+            if Path(changed).stem in {"__init__", "metadata"} or "/utils/" in changed:
+                continue
         if changed in reverse_docs:
             algorithms.add(reverse_docs[changed])
             continue
@@ -327,7 +337,21 @@ def check_import_and_spec(
     repo_root: Path,
     runtime_catalog_set: set[str],
 ) -> None:
-    module_path = repo_root / "exaflow" / "algorithms" / "exareme3" / f"{algorithm}.py"
+    try:
+        module_path = runtime_module_path(repo_root, algorithm)
+    except ValueError as exc:
+        register(
+            report,
+            algorithm=algorithm,
+            phase="static",
+            check="algorithm_module_resolution",
+            status="failed",
+            severity="failed",
+            message=str(exc),
+            path=None,
+            repo_root=repo_root,
+        )
+        return
 
     if algorithm in runtime_catalog_set:
         register(
@@ -399,7 +423,7 @@ def check_import_and_spec(
             (
                 "import importlib, inspect, json, sys;"
                 "sys.path.insert(0, '.');"
-                f"module = importlib.import_module('exaflow.algorithms.exareme3.{algorithm}');"
+                f"module = importlib.import_module({runtime_import_path(module_path, repo_root)!r});"
                 "from exaflow.algorithms.exareme3.utils.algorithm import Algorithm;"
                 "classes = ["
                 "cls for _, cls in inspect.getmembers(module, inspect.isclass) "
@@ -1027,98 +1051,12 @@ def run_command(
     return proc.returncode, proc.stdout.strip(), proc.stderr.strip()
 
 
-def _collect_candidate_lint_files(
-    repo_root: Path,
-    changed_files: list[str],
-    algorithms: list[str],
-) -> list[str]:
-    lint_files = [
-        f for f in changed_files if f.endswith(".py") and (repo_root / f).exists()
-    ]
-
-    if lint_files:
-        return sorted(set(lint_files))
-
-    generated = []
-    for algorithm in algorithms:
-        module = f"exaflow/algorithms/exareme3/{algorithm}.py"
-        if (repo_root / module).exists():
-            generated.append(module)
-
-        standalone_paths = discover_standalone_paths(repo_root, algorithm)
-        generated.extend(to_rel(path, repo_root) for path in standalone_paths if path)
-
-        prod_test = f"tests/prod_env_tests/test_{algorithm}.py"
-        if (repo_root / prod_test).exists():
-            generated.append(prod_test)
-
-    return sorted(set(path for path in generated if path))
-
-
 def run_fast_tier(
     report: list[ReportEntry],
     *,
     algorithms: list[str],
     repo_root: Path,
-    changed_files: list[str],
 ) -> None:
-    lint_files = _collect_candidate_lint_files(repo_root, changed_files, algorithms)
-
-    if lint_files:
-        rc, _, stderr = run_command(
-            ["uv", "run", "ruff", "check", "--select", "I", *lint_files],
-            cwd=repo_root,
-        )
-        register(
-            report,
-            algorithm="*",
-            phase="runtime",
-            check="ruff_check_select_I",
-            status="pass" if rc == 0 else "failed",
-            severity="pass" if rc == 0 else "failed",
-            message="ruff check --select I passed."
-            if rc == 0
-            else (stderr or "ruff check failed."),
-            path=None,
-            repo_root=repo_root,
-            next_action=(
-                "Run: uv run ruff check --select I <files> and fix import-order issues."
-            )
-            if rc != 0
-            else None,
-        )
-
-        rc, _, stderr = run_command(
-            ["uv", "run", "ruff", "format", "--check", *lint_files],
-            cwd=repo_root,
-        )
-        register(
-            report,
-            algorithm="*",
-            phase="runtime",
-            check="ruff_format_check",
-            status="pass" if rc == 0 else "failed",
-            severity="pass" if rc == 0 else "failed",
-            message="ruff format --check passed."
-            if rc == 0
-            else (stderr or "ruff format check failed."),
-            path=None,
-            repo_root=repo_root,
-            next_action="Run: uv run ruff format <files>" if rc != 0 else None,
-        )
-    else:
-        register(
-            report,
-            algorithm="*",
-            phase="runtime",
-            check="ruff_checks",
-            status="pass",
-            severity="pass",
-            message="No Python files selected for lint checks.",
-            path=None,
-            repo_root=repo_root,
-        )
-
     standalone_files: list[str] = []
     for algorithm in algorithms:
         for path in discover_standalone_paths(repo_root, algorithm):
@@ -1127,7 +1065,7 @@ def run_fast_tier(
 
     if standalone_files:
         rc, _, stderr = run_command(
-            ["uv", "run", "pytest", "--verbosity=2", *standalone_files],
+            ["uv", "run", "pytest", "-q", *standalone_files],
             cwd=repo_root,
         )
         register(
@@ -1470,9 +1408,11 @@ def main() -> int:
             enforce_canonical=is_new_mode,
         )
 
-        module_path = (
-            repo_root / "exaflow" / "algorithms" / "exareme3" / f"{algorithm}.py"
-        )
+        try:
+            module_path = runtime_module_path(repo_root, algorithm)
+        except ValueError:
+            # Resolution errors are already recorded by check_import_and_spec.
+            module_path = None
         check_placeholder_file(
             algorithm,
             report,
@@ -1554,7 +1494,6 @@ def main() -> int:
         report,
         algorithms=target_algorithms,
         repo_root=repo_root,
-        changed_files=changed_files,
     )
 
     if args.strict:

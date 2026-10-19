@@ -1,5 +1,33 @@
 # Exareme3 Algorithms- Author Guide
 
+## Domain layout
+
+Runtime modules are grouped by domain, not base class. Reports and transformations
+that concern the same domain live together; CV wrappers stay beside their models.
+`PreprocessingStep` inheritance identifies steps, and recursive discovery exposes
+all of them through `exaflow.exareme3_preprocessing_step_classes` and
+`GET /specifications/preprocessing`.
+
+| Preprocessing step | Module |
+| --- | --- |
+| Missing values handler | [missing_values/missing_values_handler.py](missing_values/missing_values_handler.py) |
+| Outlier winsorizer | [outliers/outlier_winsorizer.py](outliers/outlier_winsorizer.py) |
+| Categorical column creator | [feature_engineering/categorical_column_creator.py](feature_engineering/categorical_column_creator.py) |
+| Longitudinal transformer | [longitudinal/longitudinal_transformer.py](longitudinal/longitudinal_transformer.py) |
+| K-means cluster creator | [cluster/kmeans_cluster_creator.py](cluster/kmeans_cluster_creator.py) |
+
+Outlier reporting reuses `OutlierWinsorizer.validate_outlier_configuration()`
+from `outliers/outlier_winsorizer.py`. K-means owns its replay models and
+fingerprint helpers in `cluster/kmeans.py`; the cluster column creator imports
+them there. Related modules can depend directly on the module that owns the
+behavior. Shared metadata transformations live in `utils/metadata.py`; base
+contracts remain in `utils/`. Statistical computations stay in the federated
+core families.
+
+Scaffolding defaults new runtime placement to the federated family, unless a
+known domain mapping or `--runtime-domain` specifies otherwise. Existing wrappers
+are resolved recursively; duplicate filenames are rejected.
+
 ## Core contracts (what every algorithm relies on)
 
 - Base class: `exaflow/algorithms/exareme3/utils/algorithm.py` -> `Algorithm`

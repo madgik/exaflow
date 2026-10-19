@@ -5,12 +5,10 @@ import pandas as pd
 import pytest
 
 from exaflow.algorithms import specifications as specs
-from exaflow.algorithms.exareme3.statistics.outlier_report import OutlierReport
-from exaflow.algorithms.federated.statistics.outlier_report import (
-    FederatedOutlierReport,
-)
-from exaflow.algorithms.federated.statistics.outlier_report import OutlierRule
-from exaflow.algorithms.federated.statistics.outlier_report import WinsorizationHelper
+from exaflow.algorithms.exareme3.outliers.outlier_report import OutlierReport
+from exaflow.algorithms.federated.outliers.outlier_report import FederatedOutlierReport
+from exaflow.algorithms.federated.outliers.outlier_report import OutlierRule
+from exaflow.algorithms.federated.outliers.outlier_report import WinsorizationHelper
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import InsufficientDataError

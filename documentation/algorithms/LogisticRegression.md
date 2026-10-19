@@ -1,5 +1,10 @@
 # Logistic Regression
 
+Runtime wrapper: [linear_model/logistic_regression.py](../../exaflow/algorithms/exareme3/linear_model/logistic_regression.py).
+
+The CV wrapper is colocated at `linear_model/logistic_regression_cv.py`.
+Shared federated cross-validation utilities remain under `model_selection`.
+
 ## Table of contents
 
 - [Overview](#overview)

@@ -1,8 +1,10 @@
 # Outlier Report
 
+Implementation: [outliers/outlier_report.py](../outliers/outlier_report.py).
+
 ## Family
 
-- `statistics`
+- `outliers`
 
 ## Purpose
 

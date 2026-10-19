@@ -1,5 +1,11 @@
 # Outlier Report
 
+Runtime wrapper: [outliers/outlier_report.py](../../exaflow/algorithms/exareme3/outliers/outlier_report.py).
+
+The report reuses `OutlierWinsorizer.validate_outlier_configuration()` from
+`outliers/outlier_winsorizer.py`; statistical calculations remain in the
+federated `outliers` family.
+
 ## Table of contents
 
 - [Overview](#overview)
