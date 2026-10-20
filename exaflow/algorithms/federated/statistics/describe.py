@@ -12,6 +12,7 @@ from exaflow.algorithms.federated.statistics.percentile import Percentile
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
+from exaflow.algorithms.federated.validation import check_dataframe
 from exaflow.column_names import DATASET_COL
 
 
@@ -58,6 +59,7 @@ class FederatedDescribe:
         dataset_col: str = DATASET_COL,
         integer_vars: List[str] | None = None,
     ) -> DescribeResult:
+        check_dataframe(data)
         datasets: Iterable[str]
         if dataset_col in data.columns:
             datasets = set(data[dataset_col])

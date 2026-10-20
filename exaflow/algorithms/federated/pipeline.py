@@ -11,6 +11,9 @@ import pandas as pd
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
 from exaflow.algorithms.federated.utils.interfaces import FederatedTransformer
+from exaflow.algorithms.federated.validation import check_consistent_length
+from exaflow.algorithms.federated.validation import check_dataframe
+from exaflow.algorithms.federated.validation import check_named_steps
 
 PipelineStep = Tuple[str, object]
 
@@ -30,6 +33,10 @@ class FederatedPipeline:
         categorical_vars: List[str],
         numerical_vars: Optional[List[str]] = None,
     ) -> FederatedEstimatorResults | "FederatedPipeline":
+        check_dataframe(data)
+        check_named_steps(self.steps)
+        if y is not None:
+            check_consistent_length(data, y)
         num_vars = list(numerical_vars or [])
         cat_vars = list(categorical_vars)
 
@@ -56,14 +63,6 @@ class FederatedPipeline:
             )
             return self
 
-        if isinstance(last, FederatedTransformer):
-            last.fit(
-                agg_client=agg_client,
-                data=data,
-                categorical_vars=cat_vars,
-                numerical_vars=num_vars,
-            )
-            return self
         if y is None:
             raise ValueError("Pipeline estimator fit requires y.")
 

@@ -11,7 +11,6 @@ from exaflow.algorithms.federated.statistics.fisher_exact import (
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
-from exaflow.worker_communication import BadUserInput
 
 
 class FisherExactResult(BaseModel):
@@ -91,13 +90,6 @@ def fisher_exact_local_step(agg_client, data, metadata, factor, outcome):
     outcome_categories = aggregator.fed_union(
         data[outcome].to_numpy(copy=False)
     ).tolist()
-    if len(factor_categories) != 2 or len(outcome_categories) != 2:
-        raise BadUserInput(
-            f"Fisher's Exact Test requires exactly 2 observed levels for both "
-            f"the factor and the outcome, but factor {factor!r} has "
-            f"{len(factor_categories)} and outcome {outcome!r} has "
-            f"{len(outcome_categories)}."
-        )
     model = FedFisherExact(aggregator=aggregator)
     res = model.compute(
         dataset=data,

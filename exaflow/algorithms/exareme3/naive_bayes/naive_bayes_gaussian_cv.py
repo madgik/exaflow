@@ -24,7 +24,6 @@ from exaflow.algorithms.federated.model_selection.cross_validation.scorer_multic
     multiclass_classification_summary,
 )
 from exaflow.algorithms.federated.naive_bayes import FederatedGaussianNB
-from exaflow.algorithms.federated.utils import BadInputError
 
 VAR_SMOOTHING = 1e-9  # same as original GaussianNB _fit_global
 
@@ -139,13 +138,6 @@ def local_step(
 
     valid_mask = data[y_var].notna().to_numpy()
     data_valid = data.loc[valid_mask]
-    n_rows = int(data_valid.shape[0])
-    if n_rows == 0 or n_rows < n_splits:
-        raise BadInputError(
-            "Cross validation cannot run because the number of observations "
-            f"({n_rows}) is smaller than the number of splits ({n_splits})."
-        )
-
     X = data_valid[x_vars].to_numpy(dtype=float, copy=False)
     y = data_valid[y_var].to_numpy()
 

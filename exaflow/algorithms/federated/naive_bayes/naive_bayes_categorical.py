@@ -6,9 +6,15 @@ from typing import List
 import numpy as np
 import pandas as pd
 
+from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
+from exaflow.algorithms.federated.validation import as_numeric_array
+from exaflow.algorithms.federated.validation import check_classification_target
+from exaflow.algorithms.federated.validation import check_dataframe
+from exaflow.algorithms.federated.validation import check_dimensions
+from exaflow.algorithms.federated.validation import check_feature_schema
 
 ALPHA = 1.0
 
@@ -49,7 +55,7 @@ class FederatedCategoricalNBResults(FederatedEstimatorResults):
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         if self.class_count is None or self.category_count is None:
-            raise ValueError("CategoricalNB is not fitted yet.")
+            raise BadInputError("CategoricalNB is not fitted yet.")
 
         X_enc = self._prepare_encoded_features(X)
         if X_enc.shape[0] == 0:
@@ -77,23 +83,7 @@ class FederatedCategoricalNBResults(FederatedEstimatorResults):
         return labels[idx]
 
     def _prepare_encoded_features(self, X: np.ndarray) -> np.ndarray:
-        """
-        Normalize encoded feature matrix:
-        - accept numpy arrays or DataFrames
-        - coerce NaNs to -1 to represent unknown categories
-        - ensure a 2D integer array
-        """
-        if isinstance(X, pd.DataFrame):
-            X_enc = X[self.x_vars].to_numpy()
-        else:
-            X_enc = np.asarray(X)
-
-        if X_enc.ndim == 1:
-            X_enc = X_enc.reshape(-1, len(self.x_vars))
-
-        if np.issubdtype(X_enc.dtype, np.floating):
-            X_enc = np.where(np.isnan(X_enc), -1, X_enc)
-        return X_enc.astype(int, copy=False)
+        return _ensure_encoded_features(X, self.x_vars)
 
     def _compute_likelihood(self, X_enc: np.ndarray) -> np.ndarray:
         """
@@ -244,20 +234,30 @@ class FederatedCategoricalNB(FederatedEstimator):
         return results
 
 
-def _ensure_encoded_training_data(X, y, x_vars):
+def _ensure_encoded_features(X, x_vars):
     if isinstance(X, pd.DataFrame):
+        check_dataframe(X, x_vars)
         X_enc = X[x_vars].to_numpy()
     else:
-        X_enc = np.asarray(X)
-
+        try:
+            X_enc = np.asarray(X)
+        except (TypeError, ValueError):
+            raise BadInputError(
+                "Encoded features must be a rectangular array."
+            ) from None
+    check_dimensions(X_enc, (1, 2), input_name="Encoded features")
     if X_enc.ndim == 1:
+        if not x_vars or X_enc.size % len(x_vars):
+            raise BadInputError("Features must match the configured feature columns.")
         X_enc = X_enc.reshape(-1, len(x_vars))
-
     if np.issubdtype(X_enc.dtype, np.floating):
         X_enc = np.where(np.isnan(X_enc), -1, X_enc)
-    X_enc = X_enc.astype(int, copy=False)
+    # Preserve truncation and the existing unknown-category sentinel handling.
+    X_enc = as_numeric_array(X_enc, input_name="Encoded features", dtype=int)
+    check_feature_schema(X_enc, n_features=len(x_vars))
+    return X_enc
 
-    if y is None:
-        raise ValueError("Missing target values for categorical naive Bayes.")
-    y_arr = np.asarray(y)
-    return X_enc, y_arr
+
+def _ensure_encoded_training_data(X, y, x_vars):
+    X_enc = _ensure_encoded_features(X, x_vars)
+    return X_enc, check_classification_target(X_enc, y)

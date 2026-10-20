@@ -10,6 +10,10 @@ import scipy.stats as st
 from statsmodels.stats.libqsturng import psturng
 
 from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.validation import as_numeric_array
+from exaflow.algorithms.federated.validation import check_consistent_length
+from exaflow.algorithms.federated.validation import check_sample_counts
+from exaflow.algorithms.federated.validation import check_scalar
 
 
 class FederatedAnovaOneWay:
@@ -46,6 +50,16 @@ class FederatedAnovaOneWay:
         categories
             Labels for each group in `groups`.
         """
+        check_scalar(self.alpha, name="alpha", minimum=0, maximum=1)
+        check_consistent_length(
+            groups,
+            categories,
+            message="Provide one category label for each ANOVA group.",
+        )
+        if len(categories) < 2:
+            raise BadInputError(
+                "Cannot perform Anova one-way. Covariable has only one level."
+            )
         stats = self._collect_stats(groups, categories)
 
         group_stats_count = stats["group_stats_count"]
@@ -64,6 +78,9 @@ class FederatedAnovaOneWay:
                 "Cannot perform Anova one-way. Covariable has only one level."
             )
 
+        check_sample_counts(
+            n_obs, minimum=len(group_stats_index), name="One-way ANOVA", strict=True
+        )
         df_explained = len(group_stats_index) - 1
         df_residual = n_obs - len(group_stats_index)
 
@@ -159,7 +176,7 @@ class FederatedAnovaOneWay:
         var_max_local = []
 
         for values in groups:
-            arr = np.asarray(values, dtype=float).reshape(-1)
+            arr = as_numeric_array(values, input_name="ANOVA group").reshape(-1)
             if arr.size == 0:
                 group_stats_count_local.append(0.0)
                 group_stats_sum_local.append(0.0)

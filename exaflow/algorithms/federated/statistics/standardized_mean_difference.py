@@ -9,6 +9,8 @@ from exaflow.algorithms.federated.sql import FederatedSQL
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
+from exaflow.algorithms.federated.validation import check_dataframe
+from exaflow.algorithms.federated.validation import check_scalar
 
 RESULT_COLUMNS = [
     "group1",
@@ -58,6 +60,9 @@ class FederatedStandardizedMeanDifference:
         minimum_group_size: int = 2,
     ) -> pd.DataFrame:
         """Compute Cohen's d for every eligible pair of observed groups."""
+
+        check_dataframe(data, (value_var, group_var))
+        check_scalar(minimum_group_size, name="minimum_group_size", minimum=0)
 
         def sample_variance(values):
             count = self.aggregator.global_count(values)

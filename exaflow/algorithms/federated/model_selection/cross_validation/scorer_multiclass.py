@@ -10,6 +10,8 @@ import pandas as pd
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
 from exaflow.algorithms.federated.utils.interfaces import FederatedScorer
+from exaflow.algorithms.federated.validation import check_consistent_length
+from exaflow.algorithms.federated.validation import check_dimensions
 
 
 class FederatedMulticlassClassificationScorer(FederatedScorer):
@@ -53,6 +55,9 @@ class FederatedMulticlassClassificationScorer(FederatedScorer):
         if y_true.size == 0 or y_pred.size == 0:
             return {"confmat": confmat_local}
 
+        check_dimensions(y_true, (1,), input_name="Test outcome")
+        check_dimensions(y_pred, (1,), input_name="Predicted outcome")
+        check_consistent_length(y_true, y_pred)
         true_idx = np.array(
             [label_to_idx.get(label, -1) for label in y_true], dtype=int
         )

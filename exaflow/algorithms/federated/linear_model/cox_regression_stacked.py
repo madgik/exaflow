@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from numbers import Integral
 from typing import Sequence
 
 import numpy as np
@@ -12,12 +13,17 @@ from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
+from exaflow.algorithms.federated.validation import ArrayPolicy
+from exaflow.algorithms.federated.validation import as_numeric_array
+from exaflow.algorithms.federated.validation import check_array
+from exaflow.algorithms.federated.validation import check_choice
+from exaflow.algorithms.federated.validation import check_feature_names
+from exaflow.algorithms.federated.validation import check_feature_schema
+from exaflow.algorithms.federated.validation import check_scalar
+from exaflow.algorithms.federated.validation import check_survival_inputs
+from exaflow.algorithms.federated.validation import check_survival_target
 
 ALLOWED_TIME_GRID_STRATEGIES = {"distinct_event_times", "uniform"}
-
-
-def _as_1d_float(values) -> np.ndarray:
-    return np.asarray(values, dtype=float).reshape(-1)
 
 
 def _strictly_positive_upper_edge(max_time: float) -> float:
@@ -81,9 +87,12 @@ class FederatedStackedCoxRegressionResults(FederatedEstimatorResults):
     time_bins: np.ndarray
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        X = np.asarray(X, dtype=float)
+        X = check_array(
+            X, policy=ArrayPolicy(dimensions=(1, 2)), input_name="Prediction features"
+        )
         if X.ndim == 1:
             X = X.reshape(1, -1)
+        check_feature_schema(X, n_features=self.params.size)
         return _safe_exp(X @ self.params.reshape(-1, 1)).reshape(-1)
 
     def summary(self) -> dict:
@@ -132,13 +141,14 @@ class FederatedStackedCoxRegression(FederatedEstimator):
         time_grid_strategy: str = "distinct_event_times",
         n_time_bins: int = 10,
     ) -> None:
-        if time_grid_strategy not in ALLOWED_TIME_GRID_STRATEGIES:
-            raise BadInputError(
-                "Unsupported time_grid_strategy. Expected one of "
-                f"{sorted(ALLOWED_TIME_GRID_STRATEGIES)}."
-            )
-        if n_time_bins <= 0:
-            raise BadInputError("n_time_bins must be positive.")
+        check_choice(
+            time_grid_strategy,
+            sorted(ALLOWED_TIME_GRID_STRATEGIES),
+            name="time_grid_strategy",
+        )
+        check_scalar(
+            n_time_bins, name="n_time_bins", minimum=0, include_boundaries="neither"
+        )
         self.time_grid_strategy = time_grid_strategy
         self.n_time_bins = int(n_time_bins)
         self.results: FederatedStackedCoxRegressionResults | None = None
@@ -151,15 +161,20 @@ class FederatedStackedCoxRegression(FederatedEstimator):
         agg_client: AggregationClient,
         feature_names: Sequence[str] | None = None,
     ) -> FederatedStackedCoxRegressionResults:
-        X = np.asarray(X, dtype=float)
-        times, events = self._parse_survival_target(y)
-        if X.shape[0] != times.shape[0]:
-            raise BadInputError(
-                "Design matrix row count must match the number of survival target rows."
-            )
-        times = _as_1d_float(times)
-        events = _as_1d_float(events)
-        self._validate_fit_inputs(X, times, events)
+        check_choice(
+            self.time_grid_strategy,
+            ALLOWED_TIME_GRID_STRATEGIES,
+            name="time_grid_strategy",
+        )
+        check_scalar(
+            self.n_time_bins, name="n_time_bins", minimum=1, target_type=Integral
+        )
+        X = as_numeric_array(X, input_name="Features")
+        times, events = check_survival_target(y)
+        times = as_numeric_array(times, input_name="Times").reshape(-1)
+        events = as_numeric_array(events, input_name="Events").reshape(-1)
+        check_survival_inputs(X, times, events, name="cox_regression_stacked")
+        check_feature_names(feature_names, X.shape[1])
         global_n_events = int(
             np.asarray(
                 agg_client.sum(np.array([float(events.sum())], dtype=float)),
@@ -254,36 +269,6 @@ class FederatedStackedCoxRegression(FederatedEstimator):
         self.results = results
         return results
 
-    @staticmethod
-    def _parse_survival_target(y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        y = np.asarray(y, dtype=float)
-
-        if y.ndim != 2:
-            raise BadInputError(
-                "Survival target y must be a 2-dimensional array with columns [time, event]."
-            )
-        if y.shape[1] != 2:
-            raise BadInputError(
-                "Survival target y must have shape (n_obs, 2) with columns [time, event]."
-            )
-        if y.shape[0] == 0:
-            raise BadInputError(
-                "Survival target y must contain at least one observation."
-            )
-        if not np.isfinite(y).all():
-            raise BadInputError("Survival target y contains non-finite values.")
-
-        times = np.asarray(y[:, 0], dtype=float).reshape(-1)
-        events = np.asarray(y[:, 1], dtype=float).reshape(-1)
-
-        unique_events = np.unique(events)
-        if not np.isin(unique_events, [0.0, 1.0]).all():
-            raise BadInputError(
-                "Survival target event column must be binary with values in {0, 1}."
-            )
-
-        return times, events
-
     @classmethod
     def _max_identifiable_time_bins(
         cls,
@@ -344,8 +329,8 @@ class FederatedStackedCoxRegression(FederatedEstimator):
         global_max_time: float,
         n_time_bins: int,
     ) -> np.ndarray:
-        if n_time_bins <= 0:
-            raise BadInputError("n_time_bins must be positive.")
+        check_scalar(n_time_bins, name="n_time_bins", minimum=1, target_type=Integral)
+        check_scalar(global_max_time, name="global_max_time")
         upper_edge = _strictly_positive_upper_edge(float(global_max_time))
         return np.linspace(0.0, upper_edge, n_time_bins + 1, dtype=float)
 
@@ -391,16 +376,17 @@ class FederatedStackedCoxRegression(FederatedEstimator):
         time_bins: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
         X = np.asarray(X, dtype=float)
-        times = _as_1d_float(times)
-        events = _as_1d_float(events)
-        cls._validate_fit_inputs(X, times, events)
+        times = as_numeric_array(times, input_name="Times").reshape(-1)
+        events = as_numeric_array(events, input_name="Events").reshape(-1)
+        check_survival_inputs(X, times, events, name="cox_regression_stacked")
 
         permutation = np.argsort(times, kind="mergesort")
         X_sorted = X[permutation]
         times_sorted = times[permutation]
         events_sorted = events[permutation]
 
-        bins = np.asarray(time_bins, dtype=float).reshape(-1)
+        bins = as_numeric_array(time_bins, input_name="Time bins").reshape(-1)
+        check_array(bins, policy=ArrayPolicy(dimensions=(1,)), input_name="Time bins")
         if bins.size == 0:
             raise BadInputError("time grid must contain at least one value.")
         if np.isclose(bins[0], 0.0):
@@ -506,34 +492,6 @@ class FederatedStackedCoxRegression(FederatedEstimator):
         return stacked_X, stacked_y
 
     @staticmethod
-    def _validate_fit_inputs(
-        X: np.ndarray,
-        times: np.ndarray,
-        events: np.ndarray,
-    ) -> None:
-        if X.ndim != 2:
-            raise BadInputError(f"X must be 2D, got shape {X.shape}.")
-        if times.shape != (X.shape[0],):
-            raise BadInputError("times must have the same length as X.")
-        if events.shape != (X.shape[0],):
-            raise BadInputError("events must have the same length as X.")
-        if X.shape[0] == 0:
-            raise BadInputError(
-                "cox_regression_stacked requires at least one observation."
-            )
-        if X.shape[1] == 0:
-            raise BadInputError(
-                "cox_regression_stacked requires at least one covariate."
-            )
-        if not np.isfinite(X).all():
-            raise BadInputError("X contains NaN/Inf.")
-        if not np.isfinite(times).all():
-            raise BadInputError("times contains NaN/Inf.")
-        if np.min(times) <= 0:
-            raise BadInputError("All time values must be strictly positive.")
-        _validate_binary_events(events)
-
-    @staticmethod
     def _validate_time_bins(*, time_bins: np.ndarray, times: np.ndarray) -> None:
         bins = np.asarray(time_bins, dtype=float).reshape(-1)
         if bins.size < 2:
@@ -555,7 +513,10 @@ class FederatedStackedCoxRegression(FederatedEstimator):
         times: np.ndarray,
         events: np.ndarray,
     ) -> None:
-        distinct = np.asarray(event_times, dtype=float).reshape(-1)
+        distinct = as_numeric_array(event_times, input_name="Event times").reshape(-1)
+        check_array(
+            distinct, policy=ArrayPolicy(dimensions=(1,)), input_name="Event times"
+        )
         if distinct.size < 1:
             raise BadInputError("event_times must contain at least one failure time.")
         if not np.all(np.diff(distinct) > 0):

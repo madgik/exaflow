@@ -5,6 +5,10 @@ import numpy as np
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
 from exaflow.algorithms.federated.utils.interfaces import FederatedScorer
+from exaflow.algorithms.federated.validation import as_numeric_array
+from exaflow.algorithms.federated.validation import check_binary_target
+from exaflow.algorithms.federated.validation import check_consistent_length
+from exaflow.algorithms.federated.validation import check_dimensions
 
 
 class FederatedClassificationScorer(FederatedScorer):
@@ -13,7 +17,8 @@ class FederatedClassificationScorer(FederatedScorer):
     def __init__(self, *, thresholds: np.ndarray | None = None) -> None:
         if thresholds is None:
             thresholds = np.linspace(0.0, 1.0, 101)
-        self.thresholds = np.asarray(thresholds, dtype=float)
+        self.thresholds = as_numeric_array(thresholds, input_name="Thresholds")
+        check_dimensions(self.thresholds, (1,), input_name="Thresholds")
 
     def score(
         self,
@@ -34,9 +39,12 @@ class FederatedClassificationScorer(FederatedScorer):
         X_test: np.ndarray,
         y_test: np.ndarray,
     ) -> dict:
-        y_true = np.asarray(y_test, dtype=float).reshape(-1)
+        check_dimensions(self.thresholds, (1,), input_name="Thresholds")
+        y_true = as_numeric_array(y_test, input_name="Test outcome").reshape(-1)
+        check_binary_target(y_true)
         proba = np.asarray(results.predict(X_test), dtype=float).reshape(-1)
 
+        check_consistent_length(y_true, proba)
         preds05 = (proba >= 0.5).astype(int)
         tp = int(((preds05 == 1) & (y_true == 1)).sum())
         fp = int(((preds05 == 1) & (y_true == 0)).sum())

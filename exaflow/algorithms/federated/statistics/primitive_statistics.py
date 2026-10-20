@@ -5,6 +5,7 @@ import numpy as np
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
+from exaflow.algorithms.federated.validation import check_scalar
 
 
 class PrimitiveStatistics:
@@ -53,6 +54,7 @@ class PrimitiveStatistics:
         Returns:
             The global mean of the array.
         """
+        check_scalar(ddof, name="ddof")
         self._validate_univariate(x)
         n = self.aggregator.global_count(x)
         if n == 0:
@@ -74,6 +76,7 @@ class PrimitiveStatistics:
         Returns:
             The global variance of the array.
         """
+        check_scalar(ddof, name="ddof")
         self._validate_univariate(x)
         n = self.aggregator.global_count(x)
         if n == 0:
@@ -187,6 +190,7 @@ class PrimitiveStatistics:
         Returns:
             The federated covariance between x and y.
         """
+        check_scalar(ddof, name="ddof")
         self._validate_bivariate(x, y)
 
         n = self.aggregator.global_count(x)

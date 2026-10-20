@@ -1,3 +1,4 @@
+from numbers import Integral
 from typing import Optional
 from typing import Tuple
 
@@ -10,6 +11,9 @@ from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
+from exaflow.algorithms.federated.validation import BOOLEAN_RULE
+from exaflow.algorithms.federated.validation import check_scalar
+from exaflow.algorithms.federated.validation import validate_parameters
 
 
 class Percentile:
@@ -28,6 +32,9 @@ class Percentile:
         num_bins: int = 20,
         is_integer: bool = False,
     ) -> Optional[Tuple[float, Optional[float]]]:
+        validate_parameters({"is_integer": is_integer}, {"is_integer": BOOLEAN_RULE})
+        check_scalar(q, name="q", minimum=0, maximum=1)
+        check_scalar(num_bins, name="num_bins", minimum=1, target_type=Integral)
         if is_integer:
             result = self._compute_integer(x, q, num_bins)
         else:
