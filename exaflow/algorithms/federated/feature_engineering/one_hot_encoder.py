@@ -9,6 +9,8 @@ import pandas as pd
 
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedTransformer
+from exaflow.algorithms.federated.validation import as_numeric_array
+from exaflow.algorithms.federated.validation import check_dataframe
 
 
 class FederatedOneHotEncoder(FederatedTransformer):
@@ -25,6 +27,7 @@ class FederatedOneHotEncoder(FederatedTransformer):
         categorical_vars: List[str],
         numerical_vars: Optional[List[str]] = None,
     ) -> None:
+        check_dataframe(data)
         if not categorical_vars:
             self.dummy_categories = {}
             return
@@ -60,6 +63,7 @@ class FederatedOneHotEncoder(FederatedTransformer):
         categorical_vars: List[str],
         numerical_vars: Optional[List[str]] = None,
     ) -> np.ndarray:
+        check_dataframe(data)
         numerical_vars = numerical_vars or []
         return self._build_design_matrix(
             data,
@@ -133,7 +137,7 @@ class FederatedOneHotEncoder(FederatedTransformer):
             if isinstance(col, pd.DataFrame):
                 col = col.iloc[:, 0]
 
-            num_col = col.to_numpy(dtype=float, copy=False).reshape(-1)
+            num_col = as_numeric_array(col, input_name="Numerical features").reshape(-1)
             design[:, col_idx] = num_col
             col_idx += 1
 

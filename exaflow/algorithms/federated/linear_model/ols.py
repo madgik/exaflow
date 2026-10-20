@@ -6,6 +6,14 @@ from scipy import stats
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
+from exaflow.algorithms.federated.validation import BOOLEAN_RULE
+from exaflow.algorithms.federated.validation import ArrayPolicy
+from exaflow.algorithms.federated.validation import as_numeric_array
+from exaflow.algorithms.federated.validation import check_array
+from exaflow.algorithms.federated.validation import check_consistent_length
+from exaflow.algorithms.federated.validation import check_feature_schema
+from exaflow.algorithms.federated.validation import check_scalar
+from exaflow.algorithms.federated.validation import validate_parameters
 
 ALPHA = 0.05
 
@@ -67,13 +75,17 @@ class FederatedOLSResults(FederatedEstimatorResults):
     def predict(self, X: np.ndarray) -> np.ndarray:
         if self.params.size == 0:
             return np.zeros((X.shape[0], 1), dtype=float)
-        X = np.asarray(X, dtype=float)
+        X = check_array(
+            X, policy=ArrayPolicy(dimensions=(1, 2)), input_name="Prediction features"
+        )
         if self.fit_intercept:
             X = FederatedOLS._add_intercept(X)
+        check_feature_schema(X, n_features=self.params.size)
         coeff = self.params.reshape(-1, 1)
         return X @ coeff
 
     def conf_int(self, alpha: float = ALPHA):
+        check_scalar(alpha, name="alpha", minimum=0, maximum=1)
         if self.df_resid <= 0 or self.params.size == 0:
             return np.empty((0, 2), dtype=float)
         t_crit = stats.t.ppf(1.0 - alpha / 2.0, df=self.df_resid)
@@ -122,10 +134,19 @@ class FederatedOLS(FederatedEstimator):
         aggregate client will recompute sufficient statistics every time
         without storing the full federated dataset in the init of the class.
         """
-        X = np.asarray(X, dtype=float)
+        validate_parameters(
+            {"fit_intercept": self.fit_intercept}, {"fit_intercept": BOOLEAN_RULE}
+        )
+        X = check_array(
+            X,
+            policy=ArrayPolicy(dimensions=(1, 2) if self.fit_intercept else (2,)),
+            input_name="Features",
+        )
         if self.fit_intercept:
             X = self._add_intercept(X)
-        y = np.asarray(y, dtype=float).reshape(-1, 1)
+        y = as_numeric_array(y, input_name="Outcome").reshape(-1, 1)
+        check_array(y, policy=ArrayPolicy(), input_name="Outcome")
+        check_consistent_length(X, y)
 
         stats_dict = self._collect_stats(X, y, agg_client)
 

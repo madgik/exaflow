@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from types import MappingProxyType
+
 import numpy as np
 from scipy import stats
 from scipy.special import expit
@@ -9,10 +11,22 @@ from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
+from exaflow.algorithms.federated.validation import BOOLEAN_RULE
+from exaflow.algorithms.federated.validation import ArrayPolicy
+from exaflow.algorithms.federated.validation import as_numeric_array
+from exaflow.algorithms.federated.validation import check_array
+from exaflow.algorithms.federated.validation import check_binary_target
+from exaflow.algorithms.federated.validation import check_consistent_length
+from exaflow.algorithms.federated.validation import check_feature_schema
+from exaflow.algorithms.federated.validation import check_sample_counts
+from exaflow.algorithms.federated.validation import validate_parameters
 
 MAX_ITER = 50
 TOL = 1e-4
 ALPHA = 0.05
+FEATURE_POLICY = ArrayPolicy(dimensions=(1, 2))
+NO_INTERCEPT_FEATURE_POLICY = ArrayPolicy(dimensions=(0, 1, 2))
+TARGET_POLICY = ArrayPolicy(dimensions=(2,))
 
 
 class FederatedLogisticRegressionResults(FederatedEstimatorResults):
@@ -65,9 +79,10 @@ class FederatedLogisticRegressionResults(FederatedEstimatorResults):
     def predict(self, X: np.ndarray) -> np.ndarray:
         if self.params.size == 0:
             return np.zeros((X.shape[0],), dtype=float)
-        X = np.asarray(X, dtype=float)
+        X = check_array(X, policy=FEATURE_POLICY, input_name="Prediction features")
         if self.fit_intercept:
             X = FederatedLogisticRegression._add_intercept(X)
+        check_feature_schema(X, n_features=self.params.size)
         logits = X @ self.params.reshape(-1, 1)
         return expit(logits).reshape(-1)
 
@@ -94,6 +109,12 @@ class FederatedLogisticRegressionResults(FederatedEstimatorResults):
 class FederatedLogisticRegression(FederatedEstimator):
     """Federated logistic regression with statsmodels-like results."""
 
+    _parameter_constraints = MappingProxyType(
+        {
+            "fit_intercept": BOOLEAN_RULE,
+        }
+    )
+
     def __init__(self, *, fit_intercept: bool = True) -> None:
         self.fit_intercept = fit_intercept
         self.results: FederatedLogisticRegressionResults | None = None
@@ -110,11 +131,7 @@ class FederatedLogisticRegression(FederatedEstimator):
         *,
         agg_client: AggregationClient,
     ) -> FederatedLogisticRegressionResults:
-        X = np.asarray(X, dtype=float)
-        if self.fit_intercept:
-            X = self._add_intercept(X)
-        y = np.asarray(y, dtype=float).reshape(-1, 1)
-
+        X, y = self._validate_fit_inputs(X, y)
         stats_dict = self._collect_stats(X, y, agg_client)
         coefficients = np.asarray(stats_dict["coefficients"], dtype=float)
         hessian_inverse = np.asarray(stats_dict["hessian_inverse"], dtype=float)
@@ -161,6 +178,25 @@ class FederatedLogisticRegression(FederatedEstimator):
 
         return results
 
+    def _validate_fit_inputs(self, X, y):
+        validate_parameters(
+            {"fit_intercept": self.fit_intercept}, self._parameter_constraints
+        )
+        policy = FEATURE_POLICY if self.fit_intercept else NO_INTERCEPT_FEATURE_POLICY
+        X = check_array(X, policy=policy, input_name="Features")
+        if self.fit_intercept:
+            X = self._add_intercept(X)
+        # Preserve target flattening before checking the effective array.
+        y = as_numeric_array(y, input_name="Outcome").reshape(-1, 1)
+        if X.ndim != 2:
+            X = np.atleast_2d(X)
+        if X.shape[0] != y.shape[0] and X.shape[1] == y.shape[0]:
+            X = X.T
+        check_array(y, policy=TARGET_POLICY, input_name="Outcome")
+        check_consistent_length(X, y)
+        check_binary_target(y)
+        return X, y
+
     @staticmethod
     def coerce_positive_class(series, positive_class):
         """
@@ -201,21 +237,13 @@ class FederatedLogisticRegression(FederatedEstimator):
 
     @staticmethod
     def _handle_logreg_errors(nobs: int, p: int, y_sum: float) -> None:
-        if nobs <= p:
-            msg = (
-                "Logistic regression cannot run because the number of "
-                "observations is smaller than the number of predictors. Please "
-                "add more predictors or select more observations."
-            )
-            raise BadInputError(msg)
-        if min(y_sum, nobs - y_sum) <= p:
-            msg = (
-                "Logistic regression cannot run because the number of "
-                "observations in one category is smaller than the number of "
-                "predictors. Please add more predictors or select more "
-                "observations for the category in question."
-            )
-            raise BadInputError(msg)
+        check_sample_counts(nobs, minimum=p, name="Logistic regression", strict=True)
+        check_sample_counts(
+            min(y_sum, nobs - y_sum),
+            minimum=p,
+            name="Each outcome class",
+            strict=True,
+        )
 
     @staticmethod
     def _max_abs(values: np.ndarray) -> float:
@@ -224,18 +252,6 @@ class FederatedLogisticRegression(FederatedEstimator):
     def _collect_stats(
         self, X: np.ndarray, y: np.ndarray, agg_client: AggregationClient
     ) -> dict:
-        if X.ndim != 2:
-            X = np.atleast_2d(X)
-        if y.ndim == 2 and y.shape[1] != 1:
-            y = y.reshape(-1, 1)
-        if X.shape[0] != y.shape[0]:
-            if X.shape[1] == y.shape[0]:
-                X = X.T
-            else:
-                raise BadInputError(
-                    "Design matrix row count does not match target size for logistic regression."
-                )
-
         n_obs_local = int(y.size)
         y_sum_local = float(y.sum())
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from numbers import Integral
 
 import numpy as np
 from scipy import stats
@@ -12,6 +13,16 @@ from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
+from exaflow.algorithms.federated.validation import BOOLEAN_RULE
+from exaflow.algorithms.federated.validation import ArrayPolicy
+from exaflow.algorithms.federated.validation import as_numeric_array
+from exaflow.algorithms.federated.validation import check_array
+from exaflow.algorithms.federated.validation import check_dimensions
+from exaflow.algorithms.federated.validation import check_feature_schema
+from exaflow.algorithms.federated.validation import check_interval
+from exaflow.algorithms.federated.validation import check_parameter_ranges
+from exaflow.algorithms.federated.validation import check_scalar
+from exaflow.algorithms.federated.validation import validate_parameters
 
 _SIG_CLIP = 40.0
 
@@ -294,11 +305,14 @@ class FederatedGLMMOrdinalResults(FederatedEstimatorResults):
         return np.argmax(probs, axis=1)
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        X = np.asarray(X, dtype=float)
+        X = check_array(
+            X, policy=ArrayPolicy(dimensions=(1, 2)), input_name="Prediction features"
+        )
         if X.ndim == 1:
             X = X.reshape(-1, 1)
         if self.fit_intercept:
             X = FederatedGLMMOrdinal._add_intercept(X)
+        check_feature_schema(X, n_features=self.params.size)
         eta = X @ self.params
         n = eta.shape[0]
         K = self.K
@@ -396,6 +410,16 @@ def _suffix_sums(values: np.ndarray) -> np.ndarray:
 
 
 class FederatedGLMMOrdinal(FederatedEstimator):
+    _positive_parameters = (
+        "max_iters",
+        "tol_theta",
+        "tol_score",
+        "max_step_norm",
+        "mode_tol",
+        "mode_max_iter",
+    )
+    _nonnegative_parameters = ("ridge",)
+
     def __init__(
         self,
         *,
@@ -412,21 +436,12 @@ class FederatedGLMMOrdinal(FederatedEstimator):
         mode_tol: float = 1e-8,
         mode_max_iter: int = 50,
     ) -> None:
-        if K < 2:
-            raise BadInputError("K must be >= 2.")
-        if max_iters <= 0:
-            raise BadInputError("max_iters must be positive.")
-        if ridge < 0:
-            raise BadInputError("ridge must be non-negative.")
-        if tol_theta <= 0 or tol_score <= 0:
-            raise BadInputError("tol_theta and tol_score must be positive.")
-        if max_step_norm <= 0:
-            raise BadInputError("max_step_norm must be positive.")
-        if mode_tol <= 0:
-            raise BadInputError("mode_tol must be positive.")
-        if mode_max_iter <= 0:
-            raise BadInputError("mode_max_iter must be positive.")
-
+        check_parameter_ranges(
+            locals(),
+            positive=self._positive_parameters,
+            nonnegative=self._nonnegative_parameters,
+        )
+        check_scalar(K, name="K", minimum=2)
         self.K = int(K)
         self.fit_intercept = bool(fit_intercept)
         self.max_iters = int(max_iters)
@@ -739,8 +754,31 @@ class FederatedGLMMOrdinal(FederatedEstimator):
         center_ids: np.ndarray,
         agg_client: AggregationClient,
     ) -> FederatedGLMMOrdinalResults:
-        X = np.asarray(X, dtype=float)
-        y = np.asarray(y, dtype=int).reshape(-1)
+        validate_parameters(
+            vars(self), dict.fromkeys(("fit_intercept", "return_history"), BOOLEAN_RULE)
+        )
+        check_parameter_ranges(
+            vars(self),
+            positive=self._positive_parameters,
+            nonnegative=self._nonnegative_parameters,
+        )
+        check_scalar(self.K, name="K", minimum=2, target_type=Integral)
+        check_scalar(self.max_iters, name="max_iters", minimum=1, target_type=Integral)
+        check_scalar(
+            self.mode_max_iter, name="mode_max_iter", minimum=1, target_type=Integral
+        )
+        check_interval(
+            self.clip_log_sigma_bounds,
+            name="clip_log_sigma_bounds",
+            strict=False,
+            finite=False,
+        )
+        check_scalar(self.log_sigma_u2_init, name="log_sigma_u2_init")
+        X = as_numeric_array(X, input_name="Features")
+        check_dimensions(
+            X, (1, 2) if self.fit_intercept else (2,), input_name="Features"
+        )
+        y = as_numeric_array(y, input_name="Outcome", dtype=int).reshape(-1)
         center_ids = np.asarray(center_ids)
         if self.fit_intercept:
             X = self._add_intercept(X)

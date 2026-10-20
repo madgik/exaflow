@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+from numbers import Integral
+
 import numpy as np
 
+from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
 from exaflow.algorithms.federated.utils.interfaces import FederatedScorer
+from exaflow.algorithms.federated.validation import as_numeric_array
+from exaflow.algorithms.federated.validation import check_consistent_length
+from exaflow.algorithms.federated.validation import check_scalar
 
 
 class FederatedRegressionScorer(FederatedScorer):
@@ -28,7 +34,7 @@ class FederatedRegressionScorer(FederatedScorer):
         X_test: np.ndarray,
         y_test: np.ndarray,
     ) -> dict:
-        y_test = np.asarray(y_test, dtype=float).reshape(-1)
+        y_test = as_numeric_array(y_test, input_name="Test outcome").reshape(-1)
         if y_test.size == 0:
             return {
                 "rss": 0.0,
@@ -39,6 +45,7 @@ class FederatedRegressionScorer(FederatedScorer):
             }
 
         y_pred = np.asarray(results.predict(X_test), dtype=float).reshape(-1)
+        check_consistent_length(y_test, y_pred)
         resid_local = y_test - y_pred
         return {
             "rss": float(np.dot(resid_local, resid_local)),
@@ -55,6 +62,8 @@ class FederatedRegressionScorer(FederatedScorer):
         n_train: int,
         p: int,
     ) -> dict:
+        check_scalar(n_train, name="n_train", minimum=0, target_type=Integral)
+        check_scalar(p, name="p", minimum=0, target_type=Integral)
         rss_arr = agg_client.sum(np.array([local_stats["rss"]], dtype=float))
         sum_abs_resid_arr = agg_client.sum(
             np.array([local_stats["sum_abs_resid"]], dtype=float)
@@ -69,14 +78,16 @@ class FederatedRegressionScorer(FederatedScorer):
         sum_y = float(np.asarray(sum_y_arr, dtype=float).reshape(-1)[0])
         sum_y_sq = float(np.asarray(sum_y_sq_arr, dtype=float).reshape(-1)[0])
         if n_test == 0:
-            raise ValueError("Regression scoring requires a nonempty global test set.")
+            raise BadInputError(
+                "Regression scoring requires a nonempty global test set."
+            )
 
         mean_correction = sum_y * (sum_y / n_test)
         tss = sum_y_sq - mean_correction
         # The subtraction can leave a small signed residual for constant outcomes.
         tss_tol = 100.0 * np.finfo(float).eps * max(abs(sum_y_sq), abs(mean_correction))
         if tss < -tss_tol:
-            raise ValueError("Aggregated test outcome variance is negative.")
+            raise BadInputError("Aggregated test outcome variance is negative.")
         has_variation = tss > tss_tol
 
         rmse_val = float(np.sqrt(rss / n_test))

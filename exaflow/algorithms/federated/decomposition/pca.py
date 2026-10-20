@@ -5,6 +5,13 @@ from typing import Optional
 import numpy as np
 
 from exaflow.algorithms.federated.utils import to_numpy
+from exaflow.algorithms.federated.validation import BOOLEAN_RULE
+from exaflow.algorithms.federated.validation import ArrayPolicy
+from exaflow.algorithms.federated.validation import check_array
+from exaflow.algorithms.federated.validation import check_feature_schema
+from exaflow.algorithms.federated.validation import check_fitted
+from exaflow.algorithms.federated.validation import check_sample_counts
+from exaflow.algorithms.federated.validation import validate_parameters
 
 
 class FederatedPCA:
@@ -15,7 +22,8 @@ class FederatedPCA:
         self.copy = copy
 
     def fit(self, X, y: Optional[None] = None):
-        X = to_numpy(X)
+        validate_parameters({"copy": self.copy}, {"copy": BOOLEAN_RULE})
+        X = check_array(to_numpy(X), policy=ArrayPolicy(), input_name="Features")
 
         n_obs = len(X)
         sx = np.einsum("ij->j", X)
@@ -29,6 +37,7 @@ class FederatedPCA:
         total_sx = np.asarray(total_sx, dtype=float)
         total_sxx = np.asarray(total_sxx, dtype=float)
 
+        check_sample_counts(total_n_obs, minimum=2, name="PCA")
         means = total_sx / total_n_obs
         variances = (total_sxx - total_n_obs * means**2) / (total_n_obs - 1)
         variances = np.maximum(variances, 0.0)
@@ -64,7 +73,11 @@ class FederatedPCA:
         return self
 
     def transform(self, X):
-        X = to_numpy(X)
+        check_fitted(self, "mean_", "scale_", "components_")
+        X = check_array(
+            to_numpy(X), policy=ArrayPolicy(dimensions=(1, 2)), input_name="Features"
+        )
+        check_feature_schema(X, n_features=self.mean_.size)
         if self.copy or not X.flags.writeable:
             X = np.array(X, copy=True)
         np.subtract(X, self.mean_, out=X)

@@ -5,9 +5,19 @@ from typing import List
 import numpy as np
 import pandas as pd
 
+from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
+from exaflow.algorithms.federated.validation import ArrayPolicy
+from exaflow.algorithms.federated.validation import as_numeric_array
+from exaflow.algorithms.federated.validation import as_scalar
+from exaflow.algorithms.federated.validation import check_array
+from exaflow.algorithms.federated.validation import check_classification_target
+from exaflow.algorithms.federated.validation import check_dataframe
+from exaflow.algorithms.federated.validation import check_dimensions
+from exaflow.algorithms.federated.validation import check_feature_schema
+from exaflow.algorithms.federated.validation import check_scalar
 
 VAR_SMOOTHING = 1e-9
 
@@ -36,13 +46,13 @@ class FederatedGaussianNBResults(FederatedEstimatorResults):
         self.class_count = np.asarray(class_count, dtype=float)
         self.class_prior = np.asarray(class_prior, dtype=float)
         self.nobs = int(n_obs)
-        self.var_smoothing = float(var_smoothing)
+        self.var_smoothing = as_scalar(var_smoothing, float, name="var_smoothing")
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
         from scipy import stats as scipy_stats
 
         if self.theta is None or self.var is None or self.class_prior is None:
-            raise ValueError("GaussianNB is not fitted yet.")
+            raise BadInputError("GaussianNB is not fitted yet.")
 
         X_enc = _ensure_numeric_features(X, self.x_vars)
         if X_enc.shape[0] == 0 or len(self.labels) == 0:
@@ -82,7 +92,7 @@ class FederatedGaussianNB(FederatedEstimator):
     ) -> None:
         self.x_vars = list(x_vars)
         self.labels = list(labels)
-        self.var_smoothing = float(var_smoothing)
+        self.var_smoothing = as_scalar(var_smoothing, float, name="var_smoothing")
         self.results: FederatedGaussianNBResults | None = None
 
     def fit(
@@ -92,6 +102,7 @@ class FederatedGaussianNB(FederatedEstimator):
         *,
         agg_client: AggregationClient,
     ) -> FederatedGaussianNBResults:
+        check_scalar(self.var_smoothing, name="var_smoothing", minimum=0)
         X_enc, y_arr = _ensure_training_data(X, y, self.x_vars)
         n_classes = len(self.labels)
         n_features = X_enc.shape[1] if X_enc.ndim == 2 else len(self.x_vars)
@@ -187,18 +198,19 @@ class FederatedGaussianNB(FederatedEstimator):
 
 def _ensure_numeric_features(X: np.ndarray, x_vars: List[str]) -> np.ndarray:
     if isinstance(X, pd.DataFrame):
-        X_enc = X[x_vars].to_numpy(dtype=float, copy=False)
-    else:
-        X_enc = np.asarray(X, dtype=float)
-
+        check_dataframe(X, x_vars)
+        X = X[x_vars]
+    X_enc = as_numeric_array(X, input_name="Features")
+    check_dimensions(X_enc, (1, 2), input_name="Features")
     if X_enc.ndim == 1:
+        if not x_vars or X_enc.size % len(x_vars):
+            raise BadInputError("Features must match the configured feature columns.")
         X_enc = X_enc.reshape(-1, len(x_vars))
+    check_array(X_enc, policy=ArrayPolicy(), input_name="Features")
+    check_feature_schema(X_enc, n_features=len(x_vars))
     return X_enc
 
 
 def _ensure_training_data(X, y, x_vars):
     X_enc = _ensure_numeric_features(X, x_vars)
-    if y is None:
-        raise ValueError("Missing target values for Gaussian naive Bayes.")
-    y_arr = np.asarray(y)
-    return X_enc, y_arr
+    return X_enc, check_classification_target(X_enc, y)

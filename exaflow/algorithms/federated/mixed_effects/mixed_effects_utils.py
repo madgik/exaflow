@@ -6,6 +6,10 @@ from typing import Iterable
 import numpy as np
 
 from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.validation import ArrayPolicy
+from exaflow.algorithms.federated.validation import check_array
+from exaflow.algorithms.federated.validation import check_consistent_length
+from exaflow.algorithms.federated.validation import check_dimensions
 
 
 def validate_inputs(
@@ -14,24 +18,25 @@ def validate_inputs(
     center_ids: np.ndarray,
     w: np.ndarray | None = None,
 ) -> None:
-    if X.ndim != 2:
-        raise BadInputError(f"X must be 2D, got shape {X.shape}.")
-    n, _ = X.shape
-    if y.ndim != 1 or y.shape[0] != n:
-        raise BadInputError(f"y must be 1D with len=={n}, got shape {y.shape}.")
-    if center_ids.ndim != 1 or center_ids.shape[0] != n:
-        raise BadInputError(
-            f"center_ids must be 1D with len=={n}, got shape {center_ids.shape}."
-        )
-
-    if not np.isfinite(X).all():
-        raise BadInputError("X contains NaN/Inf.")
-    if not np.isfinite(y).all():
-        raise BadInputError("y contains NaN/Inf.")
+    check_array(X, policy=ArrayPolicy(), input_name="Features")
+    outcome_dtype = (
+        y.dtype
+        if isinstance(y, np.ndarray) and np.issubdtype(y.dtype, np.integer)
+        else float
+    )
+    check_array(
+        y,
+        policy=ArrayPolicy(dimensions=(1,)),
+        input_name="Outcome",
+        dtype=outcome_dtype,
+    )
+    check_dimensions(center_ids, (1,), input_name="Center identifiers")
+    check_consistent_length(X, y, center_ids)
     if w is not None:
-        if w.ndim != 1 or w.shape[0] != n:
-            raise BadInputError(f"w must be 1D with len=={n}, got shape {w.shape}.")
-        if (w < 0).any() or not np.isfinite(w).all():
+        check_dimensions(w, (1,), input_name="Weights")
+        check_array(w, policy=ArrayPolicy(dimensions=(1,)), input_name="Weights")
+        check_consistent_length(X, w)
+        if (w < 0).any():
             raise BadInputError("w must be non-negative and finite.")
 
 

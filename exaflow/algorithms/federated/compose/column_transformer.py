@@ -15,6 +15,12 @@ import pandas as pd
 from exaflow.algorithms.federated.compose.passthrough import FederatedPassthrough
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedTransformer
+from exaflow.algorithms.federated.validation import as_numeric_array
+from exaflow.algorithms.federated.validation import check_choice
+from exaflow.algorithms.federated.validation import check_consistent_length
+from exaflow.algorithms.federated.validation import check_dataframe
+from exaflow.algorithms.federated.validation import check_dimensions
+from exaflow.algorithms.federated.validation import check_named_steps
 
 ColumnSelector = Callable[[pd.DataFrame], Sequence[str]]
 ColumnSpec = Sequence[str] | Sequence[int] | Sequence[bool] | str | ColumnSelector
@@ -53,6 +59,9 @@ class FederatedColumnTransformer(FederatedTransformer):
         categorical_vars: List[str],
         numerical_vars: Optional[List[str]] = None,
     ) -> None:
+        check_dataframe(data)
+        check_choice(self.remainder, ("drop", "passthrough"), name="remainder")
+        check_named_steps(self.transformers, size=3)
         numerical_vars = list(numerical_vars or [])
         self._resolved = []
         used_cat = set()
@@ -105,11 +114,6 @@ class FederatedColumnTransformer(FederatedTransformer):
                         numerical_vars=remaining_num,
                     )
                 )
-        elif self.remainder != "drop":
-            raise ValueError(
-                "FederatedColumnTransformer remainder must be 'drop' or "
-                f"'passthrough', got {self.remainder!r}"
-            )
 
     def get_feature_names_out(
         self,
@@ -136,6 +140,7 @@ class FederatedColumnTransformer(FederatedTransformer):
         categorical_vars: List[str],
         numerical_vars: Optional[List[str]] = None,
     ) -> np.ndarray:
+        check_dataframe(data)
         blocks = []
         for resolved in self._resolved:
             block = resolved.transformer.transform(
@@ -143,7 +148,10 @@ class FederatedColumnTransformer(FederatedTransformer):
                 categorical_vars=resolved.categorical_vars,
                 numerical_vars=resolved.numerical_vars,
             )
-            blocks.append(np.asarray(block, dtype=float))
+            block = as_numeric_array(block, input_name="Transformer output")
+            check_dimensions(block, (1, 2), input_name="Transformer output")
+            check_consistent_length(data, block)
+            blocks.append(block)
 
         if not blocks:
             return np.empty((len(data), 0), dtype=float)

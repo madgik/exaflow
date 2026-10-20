@@ -9,6 +9,8 @@ from scipy import special
 
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils import to_numpy
+from exaflow.algorithms.federated.validation import check_dataframe
+from exaflow.algorithms.federated.validation import check_scalar
 
 
 class PearsonCorrelationResult:
@@ -47,6 +49,8 @@ class FederatedPearsonCorrelation:
         y_vars: List[str],
         alpha: float,
     ) -> PearsonCorrelationResult:
+        check_scalar(alpha, name="alpha", minimum=0, maximum=1)
+        check_dataframe(data, list(x_vars) + list(y_vars))
         x = to_numpy(data[x_vars])
         y = to_numpy(data[y_vars])
         n_obs = len(y)

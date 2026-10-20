@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from numbers import Integral
 from typing import Sequence
 
 import numpy as np
@@ -10,10 +11,16 @@ from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
-
-
-def _as_1d_float(values) -> np.ndarray:
-    return np.asarray(values, dtype=float).reshape(-1)
+from exaflow.algorithms.federated.validation import ArrayPolicy
+from exaflow.algorithms.federated.validation import as_numeric_array
+from exaflow.algorithms.federated.validation import check_array
+from exaflow.algorithms.federated.validation import check_choice
+from exaflow.algorithms.federated.validation import check_feature_names
+from exaflow.algorithms.federated.validation import check_feature_schema
+from exaflow.algorithms.federated.validation import check_parameter_ranges
+from exaflow.algorithms.federated.validation import check_scalar
+from exaflow.algorithms.federated.validation import check_survival_inputs
+from exaflow.algorithms.federated.validation import check_survival_target
 
 
 def _safe_exp(values: np.ndarray) -> np.ndarray:
@@ -50,9 +57,12 @@ class FederatedClassicalCoxRegressionResults(FederatedEstimatorResults):
     step_norm: float
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        X = np.asarray(X, dtype=float)
+        X = check_array(
+            X, policy=ArrayPolicy(dimensions=(1, 2)), input_name="Prediction features"
+        )
         if X.ndim == 1:
             X = X.reshape(1, -1)
+        check_feature_schema(X, n_features=self.params.size)
         return _safe_exp(X @ self.params.reshape(-1, 1)).reshape(-1)
 
     def summary(self) -> dict:
@@ -84,6 +94,9 @@ class FederatedClassicalCoxRegressionResults(FederatedEstimatorResults):
 
 
 class FederatedClassicalCoxRegression(FederatedEstimator):
+    _positive_parameters = ("tol", "max_iter", "max_step_norm")
+    _nonnegative_parameters = ("ridge",)
+
     def __init__(
         self,
         *,
@@ -94,18 +107,12 @@ class FederatedClassicalCoxRegression(FederatedEstimator):
         max_step_norm: float = 5.0,
         verbose: bool = False,
     ) -> None:
-        if ties != "breslow":
-            raise BadInputError(
-                "FederatedClassicalCoxRegression currently supports ties='breslow' only."
-            )
-        if tol <= 0:
-            raise BadInputError("tol must be positive.")
-        if max_iter <= 0:
-            raise BadInputError("max_iter must be positive.")
-        if ridge < 0:
-            raise BadInputError("ridge must be non-negative.")
-        if max_step_norm <= 0:
-            raise BadInputError("max_step_norm must be positive.")
+        check_parameter_ranges(
+            locals(),
+            positive=self._positive_parameters,
+            nonnegative=self._nonnegative_parameters,
+        )
+        check_choice(ties, ("breslow",), name="ties")
 
         self.ties = ties
         self.tol = float(tol)
@@ -123,13 +130,19 @@ class FederatedClassicalCoxRegression(FederatedEstimator):
         agg_client: AggregationClient,
         feature_names: Sequence[str] | None = None,
     ) -> FederatedClassicalCoxRegressionResults:
-        X = np.asarray(X, dtype=float)
-        times, events = self._parse_survival_target(y)
-        if X.shape[0] != times.shape[0]:
-            raise BadInputError(
-                "Design matrix row count must match the number of survival target rows."
-            )
-        X, times, events = self._validate_inputs(X, times, events)
+        check_parameter_ranges(
+            vars(self),
+            positive=self._positive_parameters,
+            nonnegative=self._nonnegative_parameters,
+        )
+        check_scalar(self.max_iter, name="max_iter", minimum=1, target_type=Integral)
+        check_choice(self.ties, ("breslow",), name="ties")
+        X = as_numeric_array(X, input_name="Features")
+        times, events = check_survival_target(y)
+        X, times, events = check_survival_inputs(
+            X, times, events, name="cox_regression_classical"
+        )
+        check_feature_names(feature_names, X.shape[1])
         X, times, events = self._sort_by_time(X, times, events)
         event_times = self._get_event_time_grid(times, events, agg_client=agg_client)
         event_index = self._build_event_index(event_times)
@@ -252,74 +265,6 @@ class FederatedClassicalCoxRegression(FederatedEstimator):
         )
         self.results = results
         return results
-
-    @staticmethod
-    def _parse_survival_target(y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        y = np.asarray(y, dtype=float)
-
-        if y.ndim != 2:
-            raise BadInputError(
-                "Survival target y must be a 2-dimensional array with columns [time, event]."
-            )
-        if y.shape[1] != 2:
-            raise BadInputError(
-                "Survival target y must have shape (n_obs, 2) with columns [time, event]."
-            )
-        if y.shape[0] == 0:
-            raise BadInputError(
-                "Survival target y must contain at least one observation."
-            )
-        if not np.isfinite(y).all():
-            raise BadInputError("Survival target y contains non-finite values.")
-
-        times = np.asarray(y[:, 0], dtype=float).reshape(-1)
-        events = np.asarray(y[:, 1], dtype=float).reshape(-1)
-
-        unique_events = np.unique(events)
-        if not np.isin(unique_events, [0.0, 1.0]).all():
-            raise BadInputError(
-                "Survival target event column must be binary with values in {0, 1}."
-            )
-
-        return times, events
-
-    @staticmethod
-    def _validate_inputs(
-        X: np.ndarray,
-        times: np.ndarray,
-        events: np.ndarray,
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        X = np.asarray(X, dtype=float)
-        times = _as_1d_float(times)
-        events = _as_1d_float(events)
-        if X.ndim != 2:
-            raise BadInputError(f"X must be 2D, got shape {X.shape}.")
-        if times.shape != (X.shape[0],):
-            raise BadInputError("times must have the same length as X.")
-        if events.shape != (X.shape[0],):
-            raise BadInputError("events must have the same length as X.")
-        if X.shape[0] == 0:
-            raise BadInputError(
-                "cox_regression_classical requires at least one observation."
-            )
-        if X.shape[1] == 0:
-            raise BadInputError(
-                "cox_regression_classical requires at least one covariate."
-            )
-        if not np.isfinite(X).all():
-            raise BadInputError("X contains NaN/Inf.")
-        if not np.isfinite(times).all():
-            raise BadInputError("times contains NaN/Inf.")
-        if not np.isfinite(events).all():
-            raise BadInputError("events contains NaN/Inf.")
-        if np.min(times) <= 0:
-            raise BadInputError("All time values must be strictly positive.")
-        unique_events = np.unique(events)
-        if not np.isin(unique_events, [0.0, 1.0]).all():
-            raise BadInputError(
-                "cox_regression_classical expects a binary event indicator."
-            )
-        return X, times, events
 
     @staticmethod
     def _sort_by_time(

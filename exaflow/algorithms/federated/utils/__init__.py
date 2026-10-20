@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 import pyarrow as pa
 
 
@@ -8,6 +9,16 @@ class BadInputError(ValueError):
     def __init__(self, message):
         super().__init__(message)
         self.message = message
+
+
+def as_numeric_array(data, *, input_name: str, dtype=float) -> np.ndarray:
+    """Preserve existing NumPy numeric conversions with safe input errors."""
+    try:
+        if isinstance(data, pd.Series) and isinstance(data.dtype, np.dtype):
+            return data.to_numpy(dtype=dtype, copy=False)
+        return np.asarray(data, dtype=dtype)
+    except (TypeError, ValueError, OverflowError):
+        raise BadInputError(f"{input_name} must contain numeric values.") from None
 
 
 def to_numpy(x) -> np.ndarray:
@@ -25,4 +36,4 @@ def to_numpy(x) -> np.ndarray:
             return x.to_numpy(zero_copy_only=True)
         except Exception:
             return x.to_numpy(zero_copy_only=False)
-    return np.asarray(x, dtype=float)
+    return as_numeric_array(x, input_name="Input")

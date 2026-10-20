@@ -7,6 +7,8 @@ from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedScorer
 from exaflow.algorithms.federated.utils.interfaces import FederatedSplitter
+from exaflow.algorithms.federated.validation import check_consistent_length
+from exaflow.algorithms.federated.validation import check_dataframe
 
 
 class FederatedCrossValidator:
@@ -33,6 +35,11 @@ class FederatedCrossValidator:
         numerical_vars: list[str] | None = None,
         agg_client: AggregationClient,
     ) -> dict:
+        if data is not None:
+            check_dataframe(data)
+            check_consistent_length(data, y)
+        elif X is not None:
+            check_consistent_length(X, y)
         metrics_per_fold: dict[str, list] = {}
 
         if data is not None:

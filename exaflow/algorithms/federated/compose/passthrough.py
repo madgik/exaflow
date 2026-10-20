@@ -8,6 +8,8 @@ import pandas as pd
 
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedTransformer
+from exaflow.algorithms.federated.validation import as_numeric_array
+from exaflow.algorithms.federated.validation import check_dataframe
 
 
 class FederatedPassthrough(FederatedTransformer):
@@ -21,6 +23,7 @@ class FederatedPassthrough(FederatedTransformer):
         categorical_vars: List[str],
         numerical_vars: Optional[List[str]] = None,
     ) -> None:
+        check_dataframe(data)
         return None
 
     def get_feature_names_out(
@@ -38,6 +41,7 @@ class FederatedPassthrough(FederatedTransformer):
         categorical_vars: List[str],
         numerical_vars: Optional[List[str]] = None,
     ) -> np.ndarray:
+        check_dataframe(data)
         numerical_vars = list(numerical_vars or [])
         if not numerical_vars:
             return np.empty((len(data), 0), dtype=float)
@@ -51,6 +55,8 @@ class FederatedPassthrough(FederatedTransformer):
             col = data[var]
             if isinstance(col, pd.DataFrame):
                 col = col.iloc[:, 0]
-            cols.append(col.to_numpy(dtype=float, copy=False).reshape(-1))
+            cols.append(
+                as_numeric_array(col, input_name="Numerical features").reshape(-1)
+            )
 
         return np.column_stack(cols)
