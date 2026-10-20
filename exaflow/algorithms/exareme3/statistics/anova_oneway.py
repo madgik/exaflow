@@ -17,7 +17,6 @@ from exaflow.algorithms.specifications import ComponentType
 from exaflow.algorithms.specifications import InputDataSpecification
 from exaflow.algorithms.specifications import InputDataStatType
 from exaflow.algorithms.specifications import InputDataType
-from exaflow.worker_communication import BadUserInput
 
 
 class AnovaResult(BaseModel):
@@ -156,11 +155,6 @@ def local_step(agg_client, data, x_var, y_var):
     x_col = x_col.reset_index(drop=True)
     aggregator = NumpyAggregator(agg_client)
     covar_enums = aggregator.fed_union(x_col.to_numpy(copy=False)).tolist()
-
-    if len(covar_enums) < 2:
-        raise BadUserInput(
-            "Cannot perform Anova one-way. Covariable has only one level."
-        )
 
     groups = []
     for category in covar_enums:

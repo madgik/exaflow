@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from numbers import Integral
 from typing import Any
 
 import numpy as np
@@ -32,6 +33,15 @@ from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
+from exaflow.algorithms.federated.validation import BOOLEAN_RULE
+from exaflow.algorithms.federated.validation import ArrayPolicy
+from exaflow.algorithms.federated.validation import as_numeric_array
+from exaflow.algorithms.federated.validation import check_array
+from exaflow.algorithms.federated.validation import check_dimensions
+from exaflow.algorithms.federated.validation import check_feature_schema
+from exaflow.algorithms.federated.validation import check_parameter_ranges
+from exaflow.algorithms.federated.validation import check_scalar
+from exaflow.algorithms.federated.validation import validate_parameters
 
 ALPHA = 0.05
 
@@ -85,11 +95,14 @@ class FederatedLMMResults(FederatedEstimatorResults):
         self.history = history
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        X = np.asarray(X, dtype=float)
+        X = check_array(
+            X, policy=ArrayPolicy(dimensions=(1, 2)), input_name="Prediction features"
+        )
         if X.ndim == 1:
             X = X.reshape(-1, 1)
         if self.fit_intercept:
             X = FederatedLMM._add_intercept(X)
+        check_feature_schema(X, n_features=self.params.size)
         return X @ self.params
 
 
@@ -274,6 +287,16 @@ def _prepare_cluster_stats(
 
 
 class FederatedLMM(FederatedEstimator):
+    _positive_parameters = (
+        "max_iter",
+        "min_iter",
+        "tol",
+        "lower_bound",
+        "init_sigma2",
+        "init_sigma_u2",
+    )
+    _nonnegative_parameters = ("ridge", "reg_lambda")
+
     def __init__(
         self,
         *,
@@ -290,24 +313,20 @@ class FederatedLMM(FederatedEstimator):
         use_rough_init: bool = True,
         return_history: bool = False,
     ) -> None:
-        if max_iter <= 0:
-            raise BadInputError("max_iter must be positive.")
-        if tol <= 0:
-            raise BadInputError("tol must be positive.")
-        if min_iter <= 0:
-            raise BadInputError("min_iter must be positive.")
+        check_parameter_ranges(
+            locals(),
+            positive=self._positive_parameters,
+            nonnegative=self._nonnegative_parameters,
+        )
         if min_iter > max_iter:
             raise BadInputError("min_iter cannot be greater than max_iter.")
-        if ridge < 0:
-            raise BadInputError("ridge must be non-negative.")
-        if lower_bound <= 0:
-            raise BadInputError("lower_bound must be positive.")
-        if upper_bound <= lower_bound:
-            raise BadInputError("upper_bound must be greater than lower_bound.")
-        if reg_lambda < 0:
-            raise BadInputError("reg_lambda must be non-negative.")
-        if init_sigma2 <= 0 or init_sigma_u2 <= 0:
-            raise BadInputError("init_sigma2 and init_sigma_u2 must be positive.")
+        check_scalar(
+            upper_bound,
+            name="upper_bound",
+            minimum=lower_bound,
+            include_boundaries="neither",
+            finite=False,
+        )
         if (
             init_sigma2 < lower_bound
             or init_sigma_u2 < lower_bound
@@ -571,8 +590,39 @@ class FederatedLMM(FederatedEstimator):
         agg_client: AggregationClient,
         w: np.ndarray | None = None,
     ) -> FederatedLMMResults:
-        X = np.asarray(X, dtype=float)
-        y = np.asarray(y, dtype=float).reshape(-1)
+        validate_parameters(
+            vars(self),
+            dict.fromkeys(
+                ("fit_intercept", "use_rough_init", "return_history"), BOOLEAN_RULE
+            ),
+        )
+        check_parameter_ranges(
+            vars(self),
+            positive=self._positive_parameters,
+            nonnegative=self._nonnegative_parameters,
+        )
+        check_scalar(self.max_iter, name="max_iter", minimum=1, target_type=Integral)
+        check_scalar(self.min_iter, name="min_iter", minimum=1, target_type=Integral)
+        check_scalar(self.min_iter, name="min_iter", maximum=self.max_iter)
+        check_scalar(
+            self.upper_bound,
+            name="upper_bound",
+            minimum=self.lower_bound,
+            include_boundaries="neither",
+            finite=False,
+        )
+        for name in ("init_sigma2", "init_sigma_u2"):
+            check_scalar(
+                getattr(self, name),
+                name=name,
+                minimum=self.lower_bound,
+                maximum=self.upper_bound,
+            )
+        X = as_numeric_array(X, input_name="Features")
+        check_dimensions(
+            X, (1, 2) if self.fit_intercept else (2,), input_name="Features"
+        )
+        y = as_numeric_array(y, input_name="Outcome").reshape(-1)
         center_ids = np.asarray(center_ids)
         if self.fit_intercept:
             X = self._add_intercept(X)

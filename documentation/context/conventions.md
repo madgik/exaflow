@@ -52,6 +52,20 @@
   methods, encoders, and passthrough respectively. Keep shared cross-validation
   infrastructure in `model_selection/cross_validation`. Existing mixed-effects
   numerical helpers live in `mixed_effects/mixed_effects_utils.py`.
+- Shared core input checks live in `federated/validation`; coverage and error
+  conventions are documented in `federated/docs/input_validation.md`. Retain each
+  method's existing conversions and
+  apply explicit array/parameter policies rather than blanket restrictions.
+  Validators raise `BadInputError` locally without aggregation. The caller owns
+  distributed error propagation, cancellation, and cleanup; Exareme3 retains its
+  existing request-error handling. Keep successful result contracts unchanged
+  and add validation tests under
+  `tests/standalone_tests/federated_validation` without editing existing tests.
+  Array checks default to float conversion; preserve an already-normalized
+  integer outcome dtype when validation would otherwise discard a float copy.
+  Reuse the categorical dtype returned by category-order validation when
+  constructing pandas categorical values, while validating current categories
+  on every transformation.
 - Algorithm specifications are code-defined through `get_specification()`.
 - Specification metadata should be UI-ready: compact standard `label`,
   one-sentence method-level `desc`, and detailed parent `documentation` for

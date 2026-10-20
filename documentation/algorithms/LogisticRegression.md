@@ -94,7 +94,8 @@ Step 2:
         add an intercept
 
 Step 3:
-    Aggregate validation quantities:
+    Validate local inputs and parameters; raise an input error if invalid.
+    Aggregate sample counts:
         total observations
         total positive outcomes
 
@@ -131,6 +132,13 @@ Output:
 - Wald standard errors and confidence intervals use the inverse Hessian.
 - Missing values are handled before fitting by the required missing-values
   preprocessing step.
+- The core also validates finite numerical features, binary encoded outcomes,
+  row alignment after existing conversions, and the Boolean intercept setting.
+  These checks raise local errors before estimation; the execution runtime
+  handles request failure and cleanup without additional validation aggregation.
+  Prediction checks compatible feature counts. Invalid inputs receive explicit
+  `BadInputError` messages; successful responses and numerical calculations are
+  unchanged.
 
 ## Outputs
 

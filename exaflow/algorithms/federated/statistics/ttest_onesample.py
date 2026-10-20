@@ -5,6 +5,8 @@ import scipy.stats as st
 
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils import to_numpy
+from exaflow.algorithms.federated.validation import check_choice
+from exaflow.algorithms.federated.validation import check_scalar
 
 
 class FederatedTTestOneSample:
@@ -19,6 +21,9 @@ class FederatedTTestOneSample:
         self.agg_client = agg_client
 
     def compute(self, *, sample, mu: float, alpha: float, alternative: str):
+        check_scalar(alpha, name="alpha", minimum=0, maximum=1)
+        check_choice(alternative, ("two-sided", "less", "greater"), name="alternative")
+        check_scalar(mu, name="mu")
         sample = to_numpy(sample).reshape(-1)
         n_obs = sample.size
 

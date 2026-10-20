@@ -5,6 +5,9 @@ import scipy.stats as st
 
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils import to_numpy
+from exaflow.algorithms.federated.validation import check_choice
+from exaflow.algorithms.federated.validation import check_consistent_length
+from exaflow.algorithms.federated.validation import check_scalar
 
 
 class FederatedTTestPaired:
@@ -19,10 +22,13 @@ class FederatedTTestPaired:
         self.agg_client = agg_client
 
     def compute(self, *, sample_x, sample_y, alpha: float, alternative: str):
+        check_scalar(alpha, name="alpha", minimum=0, maximum=1)
+        check_choice(alternative, ("two-sided", "less", "greater"), name="alternative")
         sample_x = to_numpy(sample_x).reshape(-1)
         sample_y = to_numpy(sample_y).reshape(-1)
-        if sample_x.shape != sample_y.shape:
-            raise BadInputError("Paired samples must have the same length.")
+        check_consistent_length(
+            sample_x, sample_y, message="Paired samples must have the same length."
+        )
 
         n_obs = sample_x.size
         diff = sample_x - sample_y

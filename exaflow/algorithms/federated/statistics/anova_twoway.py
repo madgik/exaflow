@@ -10,6 +10,8 @@ import scipy.stats as st
 
 from exaflow.algorithms.federated.linear_model.ols import FederatedOLS
 from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.validation import check_choice
+from exaflow.algorithms.federated.validation import check_dataframe
 
 
 class FederatedAnovaTwoWay:
@@ -65,6 +67,8 @@ class FederatedAnovaTwoWay:
         sstype
             Optional override for sum-of-squares type.
         """
+        check_choice(self.sstype if sstype is None else sstype, (1, 2), name="sstype")
+        check_dataframe(data, (y, x1, x2))
         levels_a = list(levels_a)
         levels_b = list(levels_b)
         if len(levels_a) < 2:

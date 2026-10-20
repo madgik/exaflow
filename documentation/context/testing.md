@@ -16,6 +16,9 @@ test commands, start with `AGENTS.md` at the repository root.
   environment.
 - `tests/standalone_tests/federated_algorithms`: fast parity tests for
   federated algorithm cores.
+- `tests/standalone_tests/federated_validation`: shared validation and
+  algorithm-boundary validation unit tests; existing parity/prod tests and
+  fixtures remain unchanged during validation migrations.
 - `tests/algorithm_validation_tests`: environment-backed algorithm validation
   tests using local services from `inv deploy`.
 - `tests/prod_env_tests`: production-like tests using Docker, kind, Helm, and
@@ -38,6 +41,12 @@ For algorithm core changes:
 
 ```bash
 uv run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py
+```
+
+For shared validation and all federated algorithm integrations:
+
+```bash
+uv run pytest -q tests/standalone_tests/federated_validation tests/standalone_tests/federated_algorithms
 ```
 
 ## Algorithm Integration Tooling

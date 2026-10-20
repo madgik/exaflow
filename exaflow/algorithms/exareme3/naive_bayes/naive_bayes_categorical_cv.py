@@ -28,7 +28,6 @@ from exaflow.algorithms.federated.model_selection.cross_validation.scorer_multic
 )
 from exaflow.algorithms.federated.naive_bayes import FederatedCategoricalNB
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
-from exaflow.algorithms.federated.utils import BadInputError
 
 
 class NaiveBayesCategorical(Algorithm):
@@ -146,12 +145,6 @@ def local_step(
 
     valid_mask = data[y_var].notna().to_numpy()
     data_valid = data.loc[valid_mask]
-    n_rows = int(data_valid.shape[0])
-    if n_rows == 0 or n_rows < n_splits:
-        raise BadInputError(
-            "Cross validation cannot run because the number of observations "
-            f"({n_rows}) is smaller than the number of splits ({n_splits})."
-        )
     y = data_valid[y_var].to_numpy()
 
     splitter = FederatedKFoldSplitter(n_splits=n_splits, shuffle=False)

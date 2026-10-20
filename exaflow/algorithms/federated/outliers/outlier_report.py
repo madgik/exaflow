@@ -8,6 +8,11 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
+from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.validation import as_scalar
+from exaflow.algorithms.federated.validation import check_choice
+from exaflow.algorithms.federated.validation import check_dataframe
+from exaflow.algorithms.federated.validation import check_scalar
 from exaflow.column_names import DATASET_COL
 from exaflow.worker_communication import InsufficientDataError
 
@@ -78,21 +83,29 @@ class WinsorizationHelper:
 
     @staticmethod
     def resolve_fold(strategy: str, fold: Optional[float]) -> float:
-        value = DEFAULT_FOLDS[strategy] if fold is None else float(fold)
+        check_choice(strategy, tuple(DEFAULT_FOLDS), name="strategy")
+        value = (
+            DEFAULT_FOLDS[strategy]
+            if fold is None
+            else as_scalar(fold, float, name="fold")
+        )
         if not np.isfinite(value):
-            raise ValueError("Fold should be finite.")
+            raise BadInputError("Fold should be finite.")
         if strategy == OutlierStrategy.QUANTILE.value:
             if value <= 0 or value >= 0.5:
-                raise ValueError(
+                raise BadInputError(
                     "Quantile fold should be greater than 0 and less than 0.5."
                 )
             return value
         if value <= 0:
-            raise ValueError("Fold should be greater than 0.")
+            raise BadInputError("Fold should be greater than 0.")
         return value
 
     @staticmethod
     def compute_bounds(series: pd.Series, rule: OutlierRule) -> OutlierBounds:
+        check_choice(rule.tail, tuple(tail.value for tail in OutlierTail), name="tail")
+        check_scalar(rule.fold, name="fold")
+        WinsorizationHelper.resolve_fold(rule.strategy, rule.fold)
         values = pd.to_numeric(series.dropna(), errors="coerce").dropna()
 
         if rule.strategy == OutlierStrategy.GAUSSIAN.value:
@@ -149,6 +162,7 @@ class FederatedOutlierReport:
         min_row_count: int,
         dataset_col: str = DATASET_COL,
     ) -> List[Dict[str, object]]:
+        check_dataframe(data, [rule.variable for rule in rules.values()])
         if dataset_col in data.columns:
             dataset_values = data[dataset_col]
             if isinstance(dataset_values, pd.DataFrame):

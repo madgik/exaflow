@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from numbers import Integral
+
 import numpy as np
 from scipy.stats import norm
 
@@ -8,6 +10,10 @@ from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
+from exaflow.algorithms.federated.validation import BOOLEAN_RULE
+from exaflow.algorithms.federated.validation import check_choice
+from exaflow.algorithms.federated.validation import check_scalar
+from exaflow.algorithms.federated.validation import validate_parameters
 
 
 class FederatedBinnedMannWhitneyUTest:
@@ -55,9 +61,11 @@ class FederatedBinnedMannWhitneyUTest:
             two for 'two-sided'. For 'less', a large reported ``u_stat`` still
             yields the z-score of the opposite U.
         """
-        if num_bins < 2:
-            raise BadInputError("num_bins must be at least 2.")
-
+        validate_parameters(
+            {"use_continuity": use_continuity}, {"use_continuity": BOOLEAN_RULE}
+        )
+        check_choice(alternative, ("two-sided", "less", "greater"), name="alternative")
+        check_scalar(num_bins, name="num_bins", minimum=2, target_type=Integral)
         x = np.asarray(x, dtype=float)
         y = np.asarray(y, dtype=float)
         x = x[np.isfinite(x)]
@@ -91,10 +99,8 @@ class FederatedBinnedMannWhitneyUTest:
             u_for_p, factor = max(u_stat, u2), 2
         elif alternative == "greater":
             u_for_p, factor = u_stat, 1
-        elif alternative == "less":
+        else:  # alternative == "less", validated before aggregation
             u_for_p, factor = u2, 1
-        else:
-            raise BadInputError("alternative must be 'two-sided', 'less', or 'greater'")
 
         numerator = u_for_p - mu
         if use_continuity:

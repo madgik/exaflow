@@ -5,6 +5,9 @@ from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
+from exaflow.algorithms.federated.validation import BOOLEAN_RULE
+from exaflow.algorithms.federated.validation import check_dataframe
+from exaflow.algorithms.federated.validation import validate_parameters
 
 
 class CrossTabTable:
@@ -46,6 +49,8 @@ class CrossTabTable:
             pd.DataFrame: The globally aggregated cross-tabulation table.
         """
 
+        validate_parameters({"dropna": dropna}, {"dropna": BOOLEAN_RULE})
+        check_dataframe(dataset, (factor, outcome))
         # 1. Obtain consistent indices across all workers
         if factor_categories:
             factor_idx = pd.Index(factor_categories, name=factor)

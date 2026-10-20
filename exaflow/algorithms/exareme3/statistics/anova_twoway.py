@@ -112,17 +112,6 @@ def local_step(agg_client, data, x1, x2, y, sstype):
     levels_a = aggregator.fed_union(data[x1].to_numpy(copy=False)).tolist()
     levels_b = aggregator.fed_union(data[x2].to_numpy(copy=False)).tolist()
 
-    if len(levels_a) < 2:
-        raise BadUserInput(
-            f"The variable {x1} has less than 2 levels and Anova cannot be "
-            "performed. Please choose another variable."
-        )
-    if len(levels_b) < 2:
-        raise BadUserInput(
-            f"The variable {x2} has less than 2 levels and Anova cannot be "
-            "performed. Please choose another variable."
-        )
-
     model = FederatedAnovaTwoWay(agg_client=agg_client, sstype=sstype)
     model.fit(
         data=data,

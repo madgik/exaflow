@@ -6,6 +6,31 @@ winsorization helpers in `outliers`. Cross-validation machinery remains under
 `model_selection/cross_validation` because it serves multiple model families.
 Mixed-effects numerical helpers live in `mixed_effects/mixed_effects_utils.py`.
 
+## Input validation
+
+The `validation` package provides reusable parameter type rules, numeric-array
+policies, row/feature checks, binary-target checks, and sample-count checks. It
+uses public scikit-learn validation helpers without requiring estimator
+inheritance or importing controller/worker services. Algorithm integrations keep
+their existing normalization and method-specific mathematical requirements. See
+the [validation coverage and error conventions](docs/input_validation.md) for the
+complete inventory, retained behaviors, and Exareme3 boundary changes.
+
+Apply each method's existing normalization before checking its effective inputs.
+Do not introduce uniform restrictions on missing values, empty partitions,
+feature counts, or class availability. Preserve method-specific behavior.
+
+Validators raise `BadInputError` locally without performing aggregation. The
+caller owns error propagation, cancellation, and cleanup of the distributed
+computation. Exareme3 handles request failure and aggregation cleanup through
+its existing worker/controller error handling; it does not guarantee immediate
+cancellation of every running participant. Independent callers must provide
+their own lifecycle handling. Participants still require the same model
+configuration and aligned feature layout for the mathematical aggregations.
+
+Validation unit tests live in `tests/standalone_tests/federated_validation/`.
+Existing algorithm/production tests and fixtures remain unchanged.
+
 ## cluster
 
 - [KMEANS](docs/kmeans.md)

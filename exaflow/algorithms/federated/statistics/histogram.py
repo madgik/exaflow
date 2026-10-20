@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from numbers import Integral
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -14,6 +15,11 @@ from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
+from exaflow.algorithms.federated.validation import check_choice
+from exaflow.algorithms.federated.validation import check_dataframe
+from exaflow.algorithms.federated.validation import check_dimensions
+from exaflow.algorithms.federated.validation import check_interval
+from exaflow.algorithms.federated.validation import check_scalar
 
 HistogramBin = Union[float, str]
 
@@ -99,8 +105,12 @@ class SimpleHistogram:
             BadInputError: If 'x' is not a 1D array or if no finite data is
                           available globally to determine histogram bounds.
         """
-        if x.ndim != 1:
-            raise BadInputError(f"Input 'x' must be a 1D array, but got {x.ndim}D.")
+        check_scalar(num_bins, name="num_bins", minimum=1, target_type=Integral)
+        if bounds is not None:
+            check_interval(bounds, strict=False)
+        check_dimensions(
+            x, (1,), input_name="Input 'x'", message="Input 'x' must be a 1D array."
+        )
 
         if bounds is None:
             min_val = float(self.agg.global_min(x))
@@ -147,8 +157,9 @@ class CategoricalHistogram:
         Raises:
             BadInputError: If 'x' is not a 1D array.
         """
-        if x.ndim != 1:
-            raise BadInputError(f"Input 'x' must be a 1D array, but got {x.ndim}D.")
+        check_dimensions(
+            x, (1,), input_name="Input 'x'", message="Input 'x' must be a 1D array."
+        )
 
         # Ensure we work with object array to handle None/NaN consistently
         x_obj = np.asarray(x, dtype=object)
@@ -216,8 +227,11 @@ class WilkinsonHistogram:
         Raises:
             BadInputError: If x is not 1D or if no finite data is available.
         """
-        if x.ndim != 1:
-            raise BadInputError(f"Input 'x' must be a 1D array, but got {x.ndim}D.")
+        check_scalar(num_bins, name="num_bins", minimum=1, target_type=Integral)
+        check_scalar(min_step, name="min_step", minimum=0)
+        check_dimensions(
+            x, (1,), input_name="Input 'x'", message="Input 'x' must be a 1D array."
+        )
 
         min_val = self.agg.global_min(x)
         max_val = self.agg.global_max(x)
@@ -285,6 +299,7 @@ class FederatedGroupedHistogram:
         is_integer: bool = False,
         min_row_count: int,
     ) -> HistogramResult:
+        check_dataframe(data, [y_var] + list(x_vars))
         y_meta = metadata.get(y_var, {})
         is_categorical = y_meta.get("is_categorical", False)
 
@@ -385,6 +400,7 @@ class FederatedGroupedHistogram:
 
         is_integer = is_integer or metadata.get(y_var, {}).get("sql_type") == "int"
 
+        check_choice(histogram_type, ("wilkinson", "simple"), name="histogram_type")
         if histogram_type == "wilkinson":
             hist_algo = WilkinsonHistogram(aggregator)
             global_hist, bin_edges = hist_algo.compute(

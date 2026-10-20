@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from numbers import Integral
 from typing import Optional
 
 import numpy as np
@@ -8,6 +9,11 @@ import numpy as np
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils import to_numpy
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
+from exaflow.algorithms.federated.validation import as_numeric_array
+from exaflow.algorithms.federated.validation import as_scalar
+from exaflow.algorithms.federated.validation import check_dimensions
+from exaflow.algorithms.federated.validation import check_feature_names
+from exaflow.algorithms.federated.validation import check_scalar
 
 INIT_RANDOM_RANGE = "random_range"
 INIT_MULTI_START_RANDOM_RANGE = "multi_start_random_range"
@@ -16,9 +22,10 @@ INIT_MULTI_START_RANDOM_RANGE = "multi_start_random_range"
 def assign_clusters(x, centers):
     """Assign observations to the nearest supplied centers."""
     X = to_numpy(x)
+    check_dimensions(X, (1, 2), input_name="Features")
     if X.ndim == 1:
         X = X.reshape(-1, 1)
-    centers = np.asarray(centers, dtype=float)
+    centers = as_numeric_array(centers, input_name="Centers")
     if centers.ndim != 2 or centers.shape[0] == 0:
         raise BadInputError("At least one two-dimensional center is required.")
     if X.shape[1] != centers.shape[1]:
@@ -86,20 +93,22 @@ class FederatedKMeans(FederatedEstimator):
         maxiter=100,
         random_state=123,
     ):
-        self.n_clusters = int(n_clusters)
+        self.n_clusters = as_scalar(n_clusters, int, name="n_clusters")
         self.init_method = str(init_method)
-        self.n_init = int(n_init)
-        self.tol = float(tol)
-        self.maxiter = int(maxiter)
-        self.random_state = int(random_state)
+        self.n_init = as_scalar(n_init, int, name="n_init")
+        self.tol = as_scalar(tol, float, name="tol")
+        self.maxiter = as_scalar(maxiter, int, name="maxiter")
+        self.random_state = as_scalar(random_state, int, name="random_state")
 
     def fit(self, x, y=None, *, agg_client, feature_names=None):
         del y
         self._agg_client = agg_client
         self._validate_hyperparameters()
         X = to_numpy(x)
+        check_dimensions(X, (1, 2), input_name="Features")
         if X.ndim == 1:
             X = X.reshape(-1, 1)
+        check_feature_names(feature_names, X.shape[1])
         local_invalid = 0.0 if np.all(np.isfinite(X)) else 1.0
         global_invalid = float(self._agg_client.sum([local_invalid])[0])
         if global_invalid > 0.0:
@@ -196,8 +205,8 @@ class FederatedKMeans(FederatedEstimator):
         random_state=123,
         feature_names=None,
     ):
-        k_min = int(k_min)
-        k_max = int(k_max)
+        k_min = as_scalar(k_min, int, name="k_min")
+        k_max = as_scalar(k_max, int, name="k_max")
         if k_min < 1:
             raise BadInputError("k_min must be greater than or equal to 1.")
         if k_max < k_min:
@@ -350,10 +359,18 @@ class FederatedKMeans(FederatedEstimator):
         )
 
     def _validate_hyperparameters(self):
-        if self.n_clusters < 1:
-            raise BadInputError("n_clusters must be greater than or equal to 1.")
-        if self.maxiter < 1:
-            raise BadInputError("maxiter must be greater than or equal to 1.")
+        for name in ("n_clusters", "maxiter", "n_init"):
+            check_scalar(
+                getattr(self, name), name=name, minimum=1, target_type=Integral
+            )
+        check_scalar(self.tol, name="tol", minimum=0)
+        check_scalar(
+            self.random_state,
+            name="random_state",
+            minimum=0,
+            maximum=2**32 - 1,
+            target_type=Integral,
+        )
         self._effective_n_init()
 
     @staticmethod

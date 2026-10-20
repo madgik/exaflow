@@ -5,6 +5,9 @@ import scipy.stats as st
 
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils import to_numpy
+from exaflow.algorithms.federated.validation import check_choice
+from exaflow.algorithms.federated.validation import check_dataframe
+from exaflow.algorithms.federated.validation import check_scalar
 
 
 class FederatedTTestIndependent:
@@ -30,6 +33,9 @@ class FederatedTTestIndependent:
         alpha: float,
         alternative: str,
     ):
+        check_scalar(alpha, name="alpha", minimum=0, maximum=1)
+        check_choice(alternative, ("two-sided", "less", "greater"), name="alternative")
+        check_dataframe(data, (group_var, value_var))
         grouping = _squeeze_if_needed(data[group_var])
         values = data[value_var]
 
