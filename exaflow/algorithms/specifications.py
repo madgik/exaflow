@@ -8,7 +8,6 @@ from typing import Optional
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
-from pydantic import model_serializer
 from pydantic import model_validator
 
 
@@ -183,10 +182,6 @@ class PreprocessingOutputEnumerationsSpecification(ImmutableBaseModel):
     additional_value_parameter_name: Optional[str] = Field(default=None, min_length=1)
     prefix_parameter_name: Optional[str] = Field(default=None, min_length=1)
 
-    @model_serializer(mode="wrap")
-    def serialize_source(self, handler):
-        return {key: value for key, value in handler(self).items() if value is not None}
-
     @model_validator(mode="after")
     def validate_source_fields(self):
         if self.source_type == PreprocessingOutputEnumerationSource.DICT_KEYS:
@@ -208,14 +203,8 @@ class PreprocessingOutputColumnSpecification(ImmutableBaseModel):
 
     type: InputDataType
     stattype: InputDataStatType
+    column_count_param: Optional[str] = Field(default=None, min_length=1, pattern=r"\S")
     enumerations: Optional[PreprocessingOutputEnumerationsSpecification] = None
-
-    @model_serializer(mode="wrap")
-    def serialize_column(self, handler):
-        serialized = handler(self)
-        if self.enumerations is None:
-            serialized.pop("enumerations", None)
-        return serialized
 
     @model_validator(mode="after")
     def validate_column_type(self):
@@ -298,6 +287,8 @@ class PreprocessingStepSpecification(WorkflowStepSpecification):
             self.outputs.new_column_names_param, ParameterType.TEXT, multiple=True
         )
         for column in self.outputs.columns:
+            if column.column_count_param is not None:
+                require_parameter(column.column_count_param, ParameterType.INT)
             enums = column.enumerations
             if enums is None:
                 continue

@@ -100,17 +100,19 @@ def test_preprocessing_spec_dto_exposes_output_columns():
     dto = _convert_transformer_specification_to_dto(
         CategoricalColumnCreator.get_specification()
     )
-    serialized = dto.model_dump(mode="json", exclude_none=True)
+    serialized = dto.model_dump(mode="json")
     assert serialized["outputs"] == {
         "new_column_names_param": "new_column_names",
         "columns": [
             {
                 "type": "text",
                 "stattype": "nominal",
+                "column_count_param": None,
                 "enumerations": {
                     "source_parameter_name": "rules",
                     "source_type": "dict_keys",
                     "additional_value_parameter_name": "default_enumeration",
+                    "prefix_parameter_name": None,
                 },
             }
         ],

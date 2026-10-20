@@ -136,8 +136,18 @@ def test_two_numerical_outputs_controller_and_worker_contract(monkeypatch):
         mode="json"
     )
     assert serialized["outputs"]["columns"] == [
-        {"type": "real", "stattype": "numerical"},
-        {"type": "real", "stattype": "numerical"},
+        {
+            "type": "real",
+            "stattype": "numerical",
+            "column_count_param": None,
+            "enumerations": None,
+        },
+        {
+            "type": "real",
+            "stattype": "numerical",
+            "column_count_param": None,
+            "enumerations": None,
+        },
     ]
 
 
