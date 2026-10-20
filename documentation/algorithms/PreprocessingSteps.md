@@ -176,24 +176,32 @@ Output:
 ## Outputs
 
 Column creators declare an `outputs` object containing `new_column_names_param`
-and ordered `columns`. The referenced request parameter is a required list of
-names with exactly one name per output specification. Both existing creators
-produce one column and accept `new_column_names: ["chosen_name"]`.
+and ordered `columns`. Each definition produces one column unless its optional
+`column_count_param` references a required, single-valued integer request
+parameter. In that case it repeats by the supplied positive count. The names
+parameter is a required list whose length equals the total expanded count.
+Both existing creators produce one column and accept `new_column_names: ["chosen_name"]`.
 
 Each column has a physical `type` and statistical `stattype`. Numerical columns
-have no enumeration configuration. Nominal columns require a source rule:
+serialize `enumerations: null`. Fixed definitions serialize
+`column_count_param: null`; unused enumeration-source references are also null.
+Nominal columns require a source rule:
 `dict_keys` uses `source_parameter_name` and can include an
 `additional_value_parameter_name`; `prefixed_range` additionally requires
 `prefix_parameter_name` and generates one-based categories from the count.
 The categorical creator uses the keys of `rules` and any `default_enumeration`.
 K-means uses its fitted count and prefix. See the
 [API output contract](../api-specification.md#preprocessingoutputsspecificationdto)
-for the complete schema and a two-column numerical example.
+for the complete schema and a mixed fixed/dynamic numerical example.
 
 The controller and worker transformation hooks validate declared names, types,
-and metadata consistently. Existing metadata fields are preserved. The fixed
-output list determines the number and order of new columns; it is not a
-request-dependent template. Existing steps that modify columns without creating
+and metadata consistently. Existing metadata fields are preserved. Fixed and
+dynamic definitions can be mixed: consume one name per fixed entry and the
+specified number per dynamic entry, in declaration order. All repetitions
+inherit their definition's type and enumeration rule, using independent
+metadata dictionaries. `min` is optional UI metadata for count parameters;
+positive counts are enforced at runtime regardless. No literal `column_count`
+field is supported. Existing steps that modify columns without creating
 new ones do not declare this output container.
 
 This replaces scalar `code` requests and the former `output` metadata. Consumers

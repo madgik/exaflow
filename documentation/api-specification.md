@@ -221,9 +221,28 @@ Enum types:
 
 Each column declares `type` (`text`, `int`, or `real`) and `stattype`
 (`nominal` or `numerical`). Nominal outputs support text/integer types and require
-`enumerations`; numerical outputs support integer/real types and omit it.
-Names match columns by position. Supply exactly one nonblank, unique name per
-column; names cannot collide with existing or earlier generated columns.
+`enumerations`; numerical outputs support integer/real types and serialize
+`enumerations: null`. A missing or null `column_count_param` describes one output
+column. When non-null, `column_count_param` references a required, single-valued integer
+request parameter and repeats that definition by its supplied value. The
+referenced parameter may declare `min` to guide clients, but `min` is not
+required by this contract. Actual counts must always be positive integers.
+
+Fixed and dynamic definitions can appear together, including multiple dynamic
+blocks. Expand definitions in declaration order, then consume names from the
+parameter referenced by `new_column_names_param` in the same order. Supply
+exactly the sum of all resolved counts as nonblank, unique names; names cannot
+collide with existing or earlier generated columns. There is no literal
+`column_count` field and no automatic backend naming. Unset optional output and
+enumeration-source fields are serialized as `null`, consistent with other
+optional specification fields. For example, a fixed numerical column is returned
+as `{"type": "real", "stattype": "numerical", "column_count_param": null, "enumerations": null}`. Examples below may omit unused optional fields for
+brevity; clients must accept their null representation. Removing null filtering
+changes the JSON shape but does not change validation or output resolution.
+
+Repeated nominal definitions share their declared enumeration rule, with an
+independent metadata dictionary for each generated column. Separate definitions
+can provide different enumeration rules.
 
 Enumeration configuration is declarative and can be resolved by clients before
 running the transformation:
@@ -242,15 +261,23 @@ categories. `prefixed_range` reads a positive integer count and produces
 `prefix + "1"` through `prefix + str(count)`. Both source rules operate on request
 parameters, without inspecting observed data. There is no nested-path mechanism.
 
-For example, the output-related portion of a two-component numerical projection
-specification is:
+For example, the output-related portion of a projection specification with one
+fixed numerical column followed by a dynamic block is:
 
 ```json
 {
   "parameters": {
+    "n_components": {
+      "label": "Number of components",
+      "desc": "Number of principal component columns to create.",
+      "types": ["int"],
+      "required": true,
+      "multiple": false,
+      "min": 1
+    },
     "new_column_names": {
       "label": "New column names",
-      "desc": "Names assigned to the component columns.",
+      "desc": "Names assigned to the generated columns in output order.",
       "types": ["text"],
       "required": true,
       "multiple": true
@@ -260,15 +287,32 @@ specification is:
     "new_column_names_param": "new_column_names",
     "columns": [
       {"type": "real", "stattype": "numerical"},
-      {"type": "real", "stattype": "numerical"}
+      {
+        "column_count_param": "n_components",
+        "type": "real",
+        "stattype": "numerical"
+      }
     ]
   }
 }
 ```
 
-For request names `["pca_1", "pca_2"]`, these entries describe the first and
-second components respectively. This illustrates the contract; it does not add
-a PCA preprocessing step.
+For request values `n_components: 2` and
+`new_column_names: ["score", "pca_1", "pca_2"]`, the first definition describes
+`score`; the second describes both component columns. Two fixed numerical
+outputs remain two separate definitions without `column_count_param`.
+
+This illustrates the output contract; it does not add a PCA preprocessing step.
+An actual PCA step must also validate its available-component limit. Clients may
+suggest `pca_1` through `pca_k`, but the request must supply names explicitly.
+Public request validation requires integer counts. Worker protobuf transport
+represents numbers as doubles, so resolution also accepts exact integer-valued
+floats there. Fractional, nonfinite, boolean, missing, and nonpositive counts
+remain invalid. No legacy payload conversion or version fields are introduced.
+
+Clients must understand `column_count_param` before exposing a dynamic step.
+Existing fixed definitions retain their semantics. To roll back this capability,
+withdraw dynamic definitions together with their resolver and client support.
 
 A rule-based nominal column declares:
 

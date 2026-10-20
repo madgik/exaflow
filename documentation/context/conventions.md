@@ -132,17 +132,26 @@
 ## Declared preprocessing outputs
 
 Preprocessing creators use an optional `outputs` container with
-`new_column_names_param` and a fixed ordered `columns` list. Names are supplied
-as a required text-list parameter and match outputs positionally. Each column
-has `type`/`stattype`; nominal columns require enumeration instructions.
+`new_column_names_param` and an ordered `columns` list. A definition produces
+one column unless `column_count_param` names a required, single-valued integer
+parameter. Dynamic definitions repeat by its supplied positive count. Fixed and
+dynamic definitions can appear together; names from the required text-list
+parameter match the expanded output order, with exactly one name per generated
+column. Count parameters may declare `min` for the UI but need not do so; runtime
+resolution always requires positive counts. No literal `column_count` field is
+supported. Optional output fields and enumeration-source references serialize as
+`null` when unset, using standard Pydantic serialization without omission-only
+serializers. Null `column_count_param` means one column; null `enumerations` is
+valid only for numerical columns.
+Each column has `type`/`stattype`; nominal columns require enumeration instructions.
 `DICT_KEYS` reads a required dictionary parameter and optionally a default
 category parameter. `PREFIXED_RANGE` reads a positive count and required prefix
 parameter and generates categories starting at 1. There is no nested source path.
 Shared resolution and validation live in
 `exaflow/algorithms/utils/output_specifications.py` and are used by controller
 validation and worker preprocessing hooks. Protobuf Struct represents numeric
-parameters as doubles, so range-count resolution accepts exact integer-valued
-floats on the worker as well as integers. Fractional, nonfinite, boolean, and
+parameters as doubles, so output-count and enumeration-range resolution accept
+exact integer-valued floats on the worker as well as integers. Fractional, nonfinite, boolean, and
 nonpositive counts remain invalid; public request parameter validation still
 requires the declared integer type. The former single-column output enum
 and scalar `code` creator requests are removed. See the API specification for

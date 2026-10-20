@@ -13,15 +13,33 @@ def resolve_output_metadata(specification, parameters, existing_metadata):
     outputs = specification.outputs
     if outputs is None:
         return {}
+
+    def positive_count(source, parameter_name):
+        # Protobuf Struct transports integer parameters as doubles.
+        if isinstance(source, float) and source.is_integer():
+            source = int(source)
+        if isinstance(source, bool) or not isinstance(source, Integral) or source < 1:
+            raise BadUserInput(f"'{parameter_name}' must be a positive integer.")
+        return source
+
+    widths = [
+        1
+        if column.column_count_param is None
+        else positive_count(
+            parameters.get(column.column_count_param), column.column_count_param
+        )
+        for column in outputs.columns
+    ]
+    output_count = sum(widths)
     names = parameters.get(outputs.new_column_names_param)
     if (
         not isinstance(names, list)
-        or len(names) != len(outputs.columns)
+        or len(names) != output_count
         or any(not isinstance(name, str) or not name.strip() for name in names)
     ):
         raise BadUserInput(
             f"'{outputs.new_column_names_param}' must contain exactly "
-            f"{len(outputs.columns)} nonblank column names."
+            f"{output_count} nonblank column names."
         )
     if len(set(names)) != len(names):
         raise BadUserInput("New column names must be unique.")
@@ -38,7 +56,10 @@ def resolve_output_metadata(specification, parameters, existing_metadata):
         )
 
     resolved = {}
-    for name, column in zip(names, outputs.columns):
+    expanded_columns = (
+        column for column, width in zip(outputs.columns, widths) for _ in range(width)
+    )
+    for name, column in zip(names, expanded_columns):
         nominal = column.stattype == InputDataStatType.NOMINAL
         metadata = {
             "code": name,
@@ -61,17 +82,7 @@ def resolve_output_metadata(specification, parameters, existing_metadata):
                         categories.append(additional)
             else:
                 prefix = value(enums.prefix_parameter_name)
-                # Protobuf Struct transports integer parameters as doubles.
-                if isinstance(source, float) and source.is_integer():
-                    source = int(source)
-                if (
-                    isinstance(source, bool)
-                    or not isinstance(source, Integral)
-                    or source < 1
-                ):
-                    raise BadUserInput(
-                        f"'{enums.source_parameter_name}' must be a positive integer."
-                    )
+                source = positive_count(source, enums.source_parameter_name)
                 if not isinstance(prefix, str):
                     raise BadUserInput("Enumeration prefix must be text.")
                 categories = [f"{prefix}{index}" for index in range(1, source + 1)]
