@@ -30,11 +30,11 @@ from exaflow.protos.aggregation_server.aggregation_server_pb2_grpc import (
     add_AggregationServerServicer_to_server,
 )
 
-from .constants import AggregationType
-
 logger = logging.getLogger("AggregationServer")
 
 NUMERIC_KINDS = {"i", "u", "f"}
+# Numeric aggregation types. "UNION" is the only other one and works on
+# JSON-encoded values instead of Arrow tensors.
 REDUCERS = {"SUM": np.add, "MIN": np.minimum, "MAX": np.maximum}
 GRPC_MAX_MESSAGE_SIZE = 100 * 1024 * 1024  # 100 MiB
 # Contexts with no Aggregate or Unregister call for this long are treated as
@@ -225,7 +225,7 @@ class AggregationContext:
         for idx, op in enumerate(request.operations):
             payload = decode_fn(op.tensor, op.aggregation_type, request.request_id)
             vector_length = len(payload)
-            if op.aggregation_type != AggregationType.UNION.value:
+            if op.aggregation_type != "UNION":
                 if payload.dtype.kind not in NUMERIC_KINDS:
                     raise ValueError(
                         "Numeric aggregation requires numeric tensor payloads."
@@ -326,7 +326,7 @@ class AggregationServer(AggregationServerServicer):
         self, tensor: bytes, aggregation_type: str, request_id: str
     ) -> np.ndarray:
         if tensor:
-            if aggregation_type == AggregationType.UNION.value:
+            if aggregation_type == "UNION":
                 return bytes_to_values(tensor)
             return bytes_to_ndarray(tensor)
         raise ValueError(
@@ -335,7 +335,7 @@ class AggregationServer(AggregationServerServicer):
 
     @staticmethod
     def _reduce(aggregation_type: str, vectors: list[np.ndarray]) -> np.ndarray:
-        if aggregation_type == AggregationType.UNION.value:
+        if aggregation_type == "UNION":
             return np.asarray(sorted(set(np.concatenate(vectors))), dtype=object)
         ufunc = REDUCERS.get(aggregation_type)
         if ufunc is None:
