@@ -12,10 +12,12 @@ from concurrent.futures import ThreadPoolExecutor
 import grpc
 import pytest
 
-from exaflow.aggregation_clients.base_aggregation_client import BaseAggregationClient
 from exaflow.aggregation_clients.constants import AggregationType
 from exaflow.aggregation_clients.controller_aggregation_client import (
     ControllerAggregationClient,
+)
+from exaflow.aggregation_clients.exareme3_udf_aggregation_client import (
+    Exareme3UDFAggregationClient,
 )
 from exaflow.aggregation_server import config as aggregation_config
 from exaflow.aggregation_server.server import AggregationServer
@@ -43,11 +45,11 @@ def _configure(target: str, request_id: str, num_workers: int):
 
 def test_replayed_step_keeps_invalid_argument_status(target):
     _configure(target, "replayed-step", 1)
-    worker = BaseAggregationClient("replayed-step", aggregator_dns=target)
-    worker._aggregate_request(AggregationType.SUM, [1.0], step=1)
+    worker = Exareme3UDFAggregationClient("replayed-step", aggregator_dns=target)
+    worker._aggregate_batch_request([(AggregationType.SUM, [1.0])], step=1)
 
     with pytest.raises(grpc.RpcError) as exc:
-        worker._aggregate_request(AggregationType.SUM, [1.0], step=1)
+        worker._aggregate_batch_request([(AggregationType.SUM, [1.0])], step=1)
 
     assert exc.value.code() == grpc.StatusCode.INVALID_ARGUMENT
     assert "Step 1 already completed" in exc.value.details()
@@ -55,12 +57,12 @@ def test_replayed_step_keeps_invalid_argument_status(target):
 
 def test_aggregation_type_mismatch_reaches_all_workers_with_status(target):
     _configure(target, "type-mismatch", 2)
-    worker_a = BaseAggregationClient("type-mismatch", aggregator_dns=target)
-    worker_b = BaseAggregationClient("type-mismatch", aggregator_dns=target)
+    worker_a = Exareme3UDFAggregationClient("type-mismatch", aggregator_dns=target)
+    worker_b = Exareme3UDFAggregationClient("type-mismatch", aggregator_dns=target)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
-        future_a = pool.submit(worker_a._aggregate_request, AggregationType.SUM, [1.0])
-        future_b = pool.submit(worker_b._aggregate_request, AggregationType.MIN, [1.0])
+        future_a = pool.submit(worker_a.aggregate, AggregationType.SUM, [1.0])
+        future_b = pool.submit(worker_b.aggregate, AggregationType.MIN, [1.0])
 
         for future in (future_a, future_b):
             with pytest.raises(grpc.RpcError) as exc:
@@ -72,15 +74,15 @@ def test_aggregation_type_mismatch_reaches_all_workers_with_status(target):
 def test_cleanup_aborts_workers_still_waiting(target):
     controller = _configure(target, "cleanup-waiters", 3)
     # worker_a waits for the step 1 result, worker_b waits to start step 2.
-    worker_a = BaseAggregationClient("cleanup-waiters", aggregator_dns=target)
-    worker_b = BaseAggregationClient("cleanup-waiters", aggregator_dns=target)
+    worker_a = Exareme3UDFAggregationClient("cleanup-waiters", aggregator_dns=target)
+    worker_b = Exareme3UDFAggregationClient("cleanup-waiters", aggregator_dns=target)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         future_a = pool.submit(
-            worker_a._aggregate_request, AggregationType.SUM, [1.0], step=1
+            worker_a._aggregate_batch_request, [(AggregationType.SUM, [1.0])], step=1
         )
         future_b = pool.submit(
-            worker_b._aggregate_request, AggregationType.SUM, [1.0], step=2
+            worker_b._aggregate_batch_request, [(AggregationType.SUM, [1.0])], step=2
         )
         time.sleep(0.3)
         controller.cleanup()

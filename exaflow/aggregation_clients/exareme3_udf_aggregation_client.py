@@ -28,15 +28,7 @@ class Exareme3UDFAggregationClient(BaseAggregationClient):
     def aggregate(
         self, aggregation_type: AggregationType, values: ArrayInput
     ) -> np.ndarray:
-        original = np.asarray(values)
-        flat = original.ravel()
-
-        aggregated = self._aggregate_request(aggregation_type, flat)
-
-        if original.shape and aggregated.size == original.size:
-            return aggregated.reshape(original.shape)
-
-        return aggregated
+        return self.aggregate_batch([(aggregation_type, values)])[0]
 
     def aggregate_batch(
         self, ops: list[tuple[AggregationType, ArrayInput]]
