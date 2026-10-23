@@ -119,20 +119,20 @@ class Exareme3WithAggregationServerStrategy(Exareme3Strategy):
             getattr(getattr(controller_config, "aggregation_server", {}), "dns", None)
             or None
         )
-        agg_client = ControllerAggregationClient(
+        with ControllerAggregationClient(
             self._request_id,
             aggregator_dns=agg_dns,
             max_message_mb=controller_config.grpc.max_message_mb,
-        )
-        status = agg_client.configure(
-            num_workers=len(self._local_worker_tasks_handlers)
-        )
-        if status != agg_pb2.Status.OK:
-            raise RuntimeError(f"AggregationServer refused to configure: {status}")
-        self._logger.debug(f"Aggregation configured: {status}")
+        ) as agg_client:
+            status = agg_client.configure(
+                num_workers=len(self._local_worker_tasks_handlers)
+            )
+            if status != agg_pb2.Status.OK:
+                raise RuntimeError(f"AggregationServer refused to configure: {status}")
+            self._logger.debug(f"Aggregation configured: {status}")
 
-        try:
-            return await super().execute()
-        finally:
-            cleanup_status = agg_client.cleanup()
-            self._logger.debug(f"Aggregation cleanup response: {cleanup_status}")
+            try:
+                return await super().execute()
+            finally:
+                cleanup_status = agg_client.cleanup()
+                self._logger.debug(f"Aggregation cleanup response: {cleanup_status}")
