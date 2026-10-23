@@ -1,3 +1,4 @@
+import functools
 import inspect
 from typing import Any
 from typing import Dict
@@ -86,6 +87,8 @@ def _get_udf_or_raise(udf_registry_key: str):
     return udf
 
 
+# Rewrite once per UDF: the AST rewrite re-parses source and rebinds module globals.
+@functools.lru_cache(maxsize=None)
 def _wrap_udf_with_lazy_aggregation_if_enabled(udf_registry_key: str, udf):
     if exareme3_registry.lazy_aggregation_enabled(udf_registry_key):
         return lazy_agg(udf)
