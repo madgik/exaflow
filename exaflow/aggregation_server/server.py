@@ -1,5 +1,6 @@
 import logging
 import threading
+import time
 from concurrent import futures
 from enum import Enum
 from typing import Dict
@@ -35,6 +36,9 @@ logger = logging.getLogger("AggregationServer")
 
 NUMERIC_KINDS = {"i", "u", "f"}
 GRPC_MAX_MESSAGE_SIZE = 100 * 1024 * 1024  # 100 MiB
+# ponytail: fixed TTL; make it configurable if a request can legitimately sit
+# idle between aggregation calls for longer than a day.
+STALE_CONTEXT_TTL_SECONDS = 24 * 60 * 60
 """
 Aggregation server, threading model, and data flow
 --------------------------------------------------
@@ -68,6 +72,11 @@ deadlocks from missing workers.
 a result or to start a step, get ABORTED at once instead of waiting for the
 timeout. The controller calls `Cleanup` in a `finally` block, so when one worker
 fails the others are released as soon as the controller sees the failure.
+
+If `Cleanup` never arrives (for example the controller crashed), the context
+would stay in memory with any inputs it collected. `Configure` therefore evicts
+contexts with no `Aggregate` or `Unregister` call for
+`STALE_CONTEXT_TTL_SECONDS`.
 
 Error handling
 ~~~~~~~~~~~~~~
@@ -110,6 +119,7 @@ class AggregationContext:
         self.batch_vector_lengths: Optional[List[Optional[int]]] = None
         self.batch_result: Optional[List[np.ndarray]] = None
         self.cancelled = False
+        self.last_activity = time.monotonic()
         self.condition = threading.Condition()
 
     def reset_step(self) -> None:
@@ -381,8 +391,23 @@ class AggregationServer(AggregationServerServicer):
 
         raise ValueError(f"Unhandled aggregation type '{aggregation_type}'")
 
+    def _evict_stale_contexts(self) -> None:
+        cutoff = time.monotonic() - STALE_CONTEXT_TTL_SECONDS
+        stale_request_ids = [
+            request_id
+            for request_id, agg_ctx in self.aggregation_contexts.items()
+            if agg_ctx.last_activity < cutoff
+        ]
+        for request_id in stale_request_ids:
+            del self.aggregation_contexts[request_id]
+            logger.warning(
+                f"[CONFIGURE] Evicted stale AggregationContext for request_id='{request_id}' "
+                f"(no activity for {STALE_CONTEXT_TTL_SECONDS}s and no Cleanup received)"
+            )
+
     def Configure(self, request, context):
         with self.global_lock:
+            self._evict_stale_contexts()
             if request.request_id in self.aggregation_contexts:
                 logger.warning(
                     f"[CONFIGURE] Request context already exists for request_id='{request.request_id}'"
@@ -404,6 +429,7 @@ class AggregationServer(AggregationServerServicer):
 
     def Unregister(self, request, context):
         agg_ctx = self._get_aggregation_context(request.request_id, context)
+        agg_ctx.last_activity = time.monotonic()
         with agg_ctx.condition:
             if agg_ctx.expected_workers <= 1:
                 msg = (
@@ -446,6 +472,7 @@ class AggregationServer(AggregationServerServicer):
 
     def Aggregate(self, request, context):
         agg_ctx = self._get_aggregation_context(request.request_id, context)
+        agg_ctx.last_activity = time.monotonic()
 
         with agg_ctx.condition:
             try:
