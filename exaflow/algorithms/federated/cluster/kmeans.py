@@ -413,7 +413,11 @@ class FederatedKMeans(FederatedEstimator):
         count_local = np.zeros((self.n_clusters,), dtype=float)
         if X.shape[0] == 0:
             return sum_local, count_local
-        np.add.at(sum_local, labels, X)
+        # bincount per feature: same summation order as np.add.at, ~2x faster.
+        for feature_idx in range(n_features):
+            sum_local[:, feature_idx] = np.bincount(
+                labels, weights=X[:, feature_idx], minlength=self.n_clusters
+            )
         count_local = np.bincount(labels, minlength=self.n_clusters).astype(float)
         return sum_local, count_local
 
