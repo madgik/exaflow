@@ -30,6 +30,9 @@ from exaflow.worker_communication import WorkerInfo
 
 LOGGER = logging.getLogger("WorkerGrpcServer")
 WORKER_HEALTH_SERVICE_NAME = "worker"
+# Same limit as the aggregation server; gRPC's 4 MiB default is too small for
+# large UDF results and arguments.
+GRPC_MAX_MESSAGE_SIZE = 100 * 1024 * 1024
 
 
 class FlowerNotAvailableError(RuntimeError):
@@ -295,6 +298,16 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
             self._handle_exception(context, exc)
 
 
+def _create_grpc_server(max_workers: int) -> grpc.Server:
+    return grpc.server(
+        futures.ThreadPoolExecutor(max_workers=max_workers),
+        options=[
+            ("grpc.max_send_message_length", GRPC_MAX_MESSAGE_SIZE),
+            ("grpc.max_receive_message_length", GRPC_MAX_MESSAGE_SIZE),
+        ],
+    )
+
+
 def serve() -> None:
     logging.basicConfig(
         level=worker_config.framework_log_level,
@@ -304,9 +317,7 @@ def serve() -> None:
             f"[{worker_config.identifier}] - [BACKGROUND] - %(message)s"
         ),
     )
-    server = grpc.server(
-        futures.ThreadPoolExecutor(max_workers=worker_config.grpc.max_workers)
-    )
+    server = _create_grpc_server(worker_config.grpc.max_workers)
 
     health_servicer = health.HealthServicer()
     health_pb2_grpc.add_HealthServicer_to_server(health_servicer, server)
