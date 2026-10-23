@@ -105,7 +105,8 @@ Output:
 ## Technical decisions
 
 - The sign of the reported mean difference is `y - x`.
-- One-sided alternatives replace one confidence bound with infinity.
+- One-sided alternatives report the one-sided (1 - alpha) bound, using the
+  critical value t\_{1-alpha}, and replace the other bound with infinity.
 - Cohen's d is computed as mean paired difference divided by the standard
   deviation of paired differences.
 - The paired samples must have equal length after preprocessing.
