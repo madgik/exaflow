@@ -34,16 +34,16 @@ def run_udf(
     udf = _get_udf_or_raise(udf_registry_key)
     udf = _wrap_udf_with_lazy_aggregation_if_enabled(udf_registry_key, udf)
     preprocessing = system_args.preprocessing
-    agg_client = _create_aggregation_client_if_required(
-        request_id=request_id,
-        udf_registry_key=udf_registry_key,
-        preprocessing=preprocessing,
-    )
     metadata = enforce_enum_order(system_args.metadata)
     data = _load_worker_data_for_udf(
         inputdata=system_args.inputdata,
         preprocessing=preprocessing,
         add_dataset_variable=system_args.add_dataset_variable,
+    )
+    agg_client = _create_aggregation_client_if_required(
+        request_id=request_id,
+        udf_registry_key=udf_registry_key,
+        preprocessing=preprocessing,
     )
 
     try:
@@ -69,7 +69,7 @@ def run_udf(
         logger.info(
             f"Bad input while calling udf. (request_id={request_id})(udf={udf_registry_key})(error={e})"
         )
-        _cleanup_aggregation_client(agg_client)
+        _unregister_aggregation_client(agg_client)
         raise BadUserInput(str(e)) from e
     except TypeError as e:
         logger = get_logger()
@@ -77,6 +77,9 @@ def run_udf(
             f"Error calling udf. (udf={udf_registry_key})({kw_args=})({system_args=})(error={e})"
         )
         raise
+    finally:
+        if agg_client:
+            agg_client.close()
 
 
 def _get_udf_or_raise(udf_registry_key: str):
@@ -161,19 +164,16 @@ def _check_min_rows_or_raise(
     if num_rows >= min_required:
         return
 
-    _cleanup_aggregation_client(agg_client)
+    _unregister_aggregation_client(agg_client)
 
     raise InsufficientDataError(
         f"Insufficient data returned {num_rows} rows; minimum required is {min_required}."
     )
 
 
-def _cleanup_aggregation_client(agg_client: Optional[AggregationClient]) -> None:
+def _unregister_aggregation_client(agg_client: Optional[AggregationClient]) -> None:
     if agg_client:
-        try:
-            agg_client.unregister()
-        finally:
-            agg_client.close()
+        agg_client.unregister()
 
 
 def _apply_preprocessing_steps_to_data_and_metadata(
