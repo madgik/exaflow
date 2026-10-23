@@ -1,11 +1,3 @@
-from enum import Enum
+from exaflow.aggregation_types import AggregationType
 
-
-class AggregationType(Enum):
-    SUM = "SUM"
-    MIN = "MIN"
-    MAX = "MAX"
-    UNION = "UNION"
-
-    def __str__(self):
-        return self.name
+__all__ = ["AggregationType"]

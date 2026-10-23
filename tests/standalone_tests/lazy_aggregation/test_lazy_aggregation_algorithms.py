@@ -284,11 +284,10 @@ def _install_inline_aggregation_server(monkeypatch) -> set:
 
     # Reduce worker payloads in a canonical order instead of arrival order, so
     # floating-point results do not depend on thread scheduling.
-    aggregation_fn = servicer._aggregation_fn
-    servicer._aggregation_fn = lambda aggregation_type: (
-        lambda vectors, fn=aggregation_fn(aggregation_type): fn(
-            sorted(vectors, key=lambda vector: repr(np.asarray(vector).tolist()))
-        )
+    reduce = servicer._reduce
+    servicer._reduce = lambda aggregation_type, vectors: reduce(
+        aggregation_type,
+        sorted(vectors, key=lambda vector: repr(np.asarray(vector).tolist())),
     )
 
     stub = SimpleNamespace(
