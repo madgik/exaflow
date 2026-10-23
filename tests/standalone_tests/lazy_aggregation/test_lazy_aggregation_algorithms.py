@@ -179,11 +179,6 @@ CASES = {
         ["lefthippocampus", "leftamygdala"], ["alzheimerbroadcategory"], {"n_splits": 3}
     ),
     "pca": _case([], ["lefthippocampus", "righthippocampus", "leftamygdala"]),
-    "pca_with_transformation": _case(
-        [],
-        ["lefthippocampus", "righthippocampus", "leftamygdala"],
-        {"data_transformation": {"standardize": ["lefthippocampus"]}},
-    ),
     "pearson_correlation": _case(
         [], ["lefthippocampus", "righthippocampus", "leftamygdala"], {"alpha": 0.95}
     ),
@@ -239,7 +234,6 @@ MAX_LAZY_ROUNDS = {
     "naive_bayes_gaussian": 1,  # eager: 3
     "naive_bayes_gaussian_cv": 6,  # eager: 12
     "pca": 2,  # eager: 4
-    "pca_with_transformation": 3,  # eager: 7
     "pearson_correlation": 1,  # eager: 6
     "quartiles": 18,  # eager: 36
     "standardized_mean_difference": 31,  # eager: 49
@@ -462,6 +456,7 @@ def test_every_aggregation_algorithm_has_a_lazy_case():
         if ComponentType.AGGREGATION_SERVER in cls.get_specification().components
     }
     assert aggregation_algorithms == set(CASES)
+    assert set(MAX_LAZY_ROUNDS) == set(CASES)
 
 
 @pytest.mark.slow
