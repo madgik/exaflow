@@ -14,6 +14,7 @@ from typing import Tuple
 import grpc
 import pytest
 
+import exaflow.protos.aggregation_server.aggregation_server_pb2 as pb2
 from exaflow.aggregation_clients.constants import AggregationType
 from exaflow.aggregation_clients.controller_aggregation_client import (
     ControllerAggregationClient,
@@ -135,3 +136,21 @@ def test_aggregate_without_configure_keeps_invalid_argument(target):
     assert exc.value.code() == grpc.StatusCode.INVALID_ARGUMENT
     assert "not configured" in exc.value.details()
     assert "cleaned up" not in exc.value.details()
+
+
+def test_unknown_aggregation_type_is_rejected_with_its_name(target):
+    endpoint, servicer = target
+    _configure(endpoint, "unknown-type", 2)
+    worker = Exareme3UDFAggregationClient("unknown-type", aggregator_dns=endpoint)
+    request = pb2.AggregateRequest(
+        request_id="unknown-type",
+        step=1,
+        operations=[pb2.Operation(aggregation_type="AVG", tensor=b"x")],
+    )
+
+    # Rejected on the first worker's call, without waiting for the second worker.
+    with pytest.raises(grpc.RpcError) as exc:
+        worker._stub.Aggregate(request, timeout=2)
+
+    assert exc.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+    assert "Unsupported aggregation type 'AVG'" in exc.value.details()

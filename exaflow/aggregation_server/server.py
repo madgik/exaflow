@@ -18,6 +18,7 @@ from exaflow.aggregation_serialization import bytes_to_values
 from exaflow.aggregation_serialization import ndarray_to_bytes
 from exaflow.aggregation_serialization import values_to_bytes
 from exaflow.aggregation_server import config
+from exaflow.aggregation_types import AggregationType
 from exaflow.grpc_options import grpc_message_options
 from exaflow.protos.aggregation_server.aggregation_server_pb2 import AggregateResponse
 from exaflow.protos.aggregation_server.aggregation_server_pb2 import CleanupResponse
@@ -31,11 +32,16 @@ from exaflow.protos.aggregation_server.aggregation_server_pb2_grpc import (
     add_AggregationServerServicer_to_server,
 )
 
-from .constants import AggregationType
-
 logger = logging.getLogger("AggregationServer")
 
 NUMERIC_KINDS = {"i", "u", "f"}
+# Numeric aggregation types. UNION is the only other one and works on
+# JSON-encoded values instead of Arrow tensors.
+REDUCERS = {
+    AggregationType.SUM: np.add,
+    AggregationType.MIN: np.minimum,
+    AggregationType.MAX: np.maximum,
+}
 # Contexts with no Aggregate or Unregister call for this long are treated as
 # abandoned (their Cleanup never arrived) and evicted on the next Configure.
 # A running request never idles near this: each aggregation wait is capped at
@@ -98,8 +104,33 @@ anything else to INTERNAL. gRPC's
 """
 
 
+def _result_dtype(
+    aggregation_type: AggregationType, dtypes: list[np.dtype]
+) -> np.dtype:
+    dtype = np.result_type(*dtypes)
+    if all(input_dtype.kind in "iu" for input_dtype in dtypes):
+        if dtype.kind not in "iu":
+            raise ValueError(
+                "Integer aggregation inputs cannot be safely promoted to a "
+                "fixed-width integer dtype."
+            )
+        if aggregation_type == AggregationType.SUM:
+            # Sum small integers in 64 bits so the total cannot wrap around.
+            dtype = np.dtype(f"{dtype.kind}8")
+    return dtype
+
+
 class AggregationCancelledError(Exception):
     """The request was cleaned up while a worker was still waiting on it."""
+
+
+def _parse_aggregation_type(operation) -> AggregationType:
+    try:
+        return AggregationType(operation.aggregation_type)
+    except ValueError:
+        raise ValueError(
+            f"Unsupported aggregation type '{operation.aggregation_type}'"
+        ) from None
 
 
 class AggregationState(Enum):
@@ -182,11 +213,13 @@ class AggregationContext:
                 )
 
     def _start_step(self, step: int, operations) -> None:
+        # Parsed first, so an unknown type fails the step before it starts.
+        batch_ops = [_parse_aggregation_type(op) for op in operations]
         self.active_step = step
         self.state = AggregationState.COLLECTING
         self.acquired_count = 0
         self.error = None
-        self.batch_ops = [op.aggregation_type for op in operations]
+        self.batch_ops = batch_ops
         self.batch_payloads = [[] for _ in operations]
         self.batch_vector_lengths = [None for _ in operations]
         self.batch_result = None
@@ -212,7 +245,7 @@ class AggregationContext:
         for idx, op in enumerate(request.operations):
             payload = decode_fn(op.tensor, op.aggregation_type, request.request_id)
             vector_length = len(payload)
-            if op.aggregation_type != AggregationType.UNION.value:
+            if op.aggregation_type != AggregationType.UNION:
                 if payload.dtype.kind not in NUMERIC_KINDS:
                     raise ValueError(
                         "Numeric aggregation requires numeric tensor payloads."
@@ -227,14 +260,12 @@ class AggregationContext:
                     )
             self.batch_payloads[idx].append(payload)
 
-    def compute(self, aggregation_fn) -> None:
+    def compute(self, reduce_fn) -> None:
         assert self.batch_ops is not None and self.batch_payloads is not None
-        results: List[np.ndarray] = []
-        for idx, op_type in enumerate(self.batch_ops):
-            agg_fn = aggregation_fn(op_type)
-            results.append(agg_fn(self.batch_payloads[idx]))
-
-        self.batch_result = results
+        self.batch_result = [
+            reduce_fn(op_type, payloads)
+            for op_type, payloads in zip(self.batch_ops, self.batch_payloads)
+        ]
         self.state = AggregationState.READY
         self.condition.notify_all()
 
@@ -327,7 +358,7 @@ class AggregationServer(AggregationServerServicer):
         self, tensor: bytes, aggregation_type: str, request_id: str
     ) -> np.ndarray:
         if tensor:
-            if aggregation_type == AggregationType.UNION.value:
+            if aggregation_type == AggregationType.UNION:
                 return bytes_to_values(tensor)
             return bytes_to_ndarray(tensor)
         raise ValueError(
@@ -335,77 +366,19 @@ class AggregationServer(AggregationServerServicer):
         )
 
     @staticmethod
-    def _numeric_arrays(vectors: list[np.ndarray]) -> list[np.ndarray]:
-        return [np.asarray(vector) for vector in vectors]
-
-    @staticmethod
-    def _numeric_result_dtype(dtypes: list[np.dtype]) -> np.dtype:
-        if not all(dtype.kind in {"i", "u"} for dtype in dtypes):
-            return np.result_type(*dtypes)
-
-        target_dtype = np.result_type(*dtypes)
-        if target_dtype.kind not in {"i", "u"}:
-            raise ValueError(
-                "Integer aggregation inputs cannot be safely promoted to a "
-                "fixed-width integer dtype."
-            )
-        return target_dtype
-
-    @classmethod
-    def _sum_dtype(cls, dtypes: list[np.dtype]) -> np.dtype:
-        target_dtype = cls._numeric_result_dtype(dtypes)
-        if target_dtype.kind == "i" and target_dtype.itemsize < 8:
-            return np.dtype(np.int64)
-        if target_dtype.kind == "u" and target_dtype.itemsize < 8:
-            return np.dtype(np.uint64)
-        return target_dtype
-
-    @staticmethod
-    def _reduce_arrays(arrays: list[np.ndarray], dtype: np.dtype, ufunc) -> np.ndarray:
-        result = arrays[0].astype(dtype, copy=True)
-        for array in arrays[1:]:
-            ufunc(result, array.astype(dtype, copy=False), out=result)
+    def _reduce(
+        aggregation_type: AggregationType, vectors: list[np.ndarray]
+    ) -> np.ndarray:
+        if aggregation_type == AggregationType.UNION:
+            return np.asarray(sorted(set(np.concatenate(vectors))), dtype=object)
+        ufunc = REDUCERS.get(aggregation_type)
+        if ufunc is None:
+            raise ValueError(f"Unsupported aggregation type '{aggregation_type}'")
+        dtype = _result_dtype(aggregation_type, [vector.dtype for vector in vectors])
+        result = vectors[0].astype(dtype, copy=True)
+        for vector in vectors[1:]:
+            ufunc(result, vector.astype(dtype, copy=False), out=result)
         return result
-
-    def _aggregation_fn(self, aggregation_type: str):
-        try:
-            agg_type = AggregationType(aggregation_type)
-        except ValueError as exc:  # noqa: PERF203
-            raise ValueError(
-                f"Unsupported aggregation type '{aggregation_type}'"
-            ) from exc
-
-        if agg_type == AggregationType.SUM:
-
-            def _sum(vectors):
-                arrays = self._numeric_arrays(vectors)
-                dtypes = [array.dtype for array in arrays]
-                dtype = self._sum_dtype(dtypes)
-                return self._reduce_arrays(arrays, dtype, np.add)
-
-            return _sum
-        if agg_type == AggregationType.MIN:
-
-            def _min(vectors):
-                arrays = self._numeric_arrays(vectors)
-                dtype = self._numeric_result_dtype([array.dtype for array in arrays])
-                return self._reduce_arrays(arrays, dtype, np.minimum)
-
-            return _min
-        if agg_type == AggregationType.MAX:
-
-            def _max(vectors):
-                arrays = self._numeric_arrays(vectors)
-                dtype = self._numeric_result_dtype([array.dtype for array in arrays])
-                return self._reduce_arrays(arrays, dtype, np.maximum)
-
-            return _max
-        if agg_type == AggregationType.UNION:
-            return lambda vectors: np.asarray(
-                sorted(set(np.concatenate(vectors))), dtype=object
-            )
-
-        raise ValueError(f"Unhandled aggregation type '{aggregation_type}'")
 
     def _evict_stale_contexts(self) -> None:
         cutoff = time.monotonic() - STALE_CONTEXT_TTL_SECONDS
@@ -482,7 +455,7 @@ class AggregationServer(AggregationServerServicer):
                 and len(agg_ctx.batch_payloads[0]) >= agg_ctx.expected_workers
             ):
                 try:
-                    agg_ctx.compute(self._aggregation_fn)
+                    agg_ctx.compute(self._reduce)
                 except Exception as exc:  # noqa: BLE001
                     agg_ctx.fail(exc)
                     status = self._status_for_exception(exc)
@@ -526,7 +499,7 @@ class AggregationServer(AggregationServerServicer):
                     and agg_ctx.batch_payloads
                     and len(agg_ctx.batch_payloads[0]) >= agg_ctx.expected_workers
                 ):
-                    agg_ctx.compute(self._aggregation_fn)
+                    agg_ctx.compute(self._reduce)
             except Exception as exc:  # noqa: BLE001
                 agg_ctx.fail(exc)
                 logger.error(f"[AGGREGATE] {exc}", exc_info=exc)

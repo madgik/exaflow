@@ -47,7 +47,3 @@ def _load_config():
 
 
 config = _load_config()
-
-from .constants import AggregationType
-
-__all__ = ["config", "AggregationType"]
