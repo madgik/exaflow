@@ -1,3 +1,48 @@
+"""gRPC aggregation server: combines vectors from the workers of one request.
+
+Lifecycle of a request
+----------------------
+- The controller calls `Configure(request_id, num_of_workers)` before running
+  the algorithm and `Cleanup(request_id)` when the request ends, in a `finally`
+  block.
+- Each worker calls `Aggregate(request_id, step, operations)` from its UDF.
+  `step` is numbered by the worker's client (1, 2, 3, ...). `operations` holds
+  one or more `(aggregation_type, tensor)` pairs. Numeric types (`SUM`, `MIN`,
+  `MAX`) send Arrow tensors; `UNION` sends JSON-encoded values.
+- A worker that drops out (too little data, bad input) calls `Unregister`, which
+  lowers the number of inputs each later step waits for.
+
+Synchronization
+---------------
+Each request has an `AggregationContext` guarded by one `Condition`. Only one
+step is active at a time:
+- `IDLE`: no step is active. The next `Aggregate` call starts step
+  `current_step + 1`. A worker that is already ahead waits for that.
+- `COLLECTING`: inputs for the active step are arriving. When all
+  `expected_workers` inputs are in, the result is computed and the state moves
+  to `READY`.
+- `READY`: every worker reads the result. After the last read, the context goes
+  back to `IDLE`.
+Every wait is bounded by `config.max_wait_for_aggregation_inputs`.
+
+Errors
+------
+The first error in a step (mismatched operations, bad payload, timeout) moves
+the context to `FAILED` and wakes every waiting worker with the same error. A
+failed request does not recover: the worker that hit the error never reads a
+result, so the step never completes. The controller ends the request instead.
+
+`Cleanup` removes the context and cancels it, so workers still waiting get
+ABORTED at once instead of waiting for the timeout. If `Cleanup` never arrives
+(for example the controller crashed), `Configure` evicts contexts with no
+`Aggregate` or `Unregister` call for `STALE_CONTEXT_TTL_SECONDS`.
+
+`AggregationContext` raises plain Python exceptions and only the servicer
+methods call `context.abort()`, mapping them with `_grpc_status()`. gRPC's
+`abort()` raises a bare `Exception`, so it must never run inside a
+`try/except Exception` block or its status and details are lost.
+"""
+
 import logging
 import threading
 import time
@@ -42,59 +87,6 @@ GRPC_MAX_MESSAGE_SIZE = 100 * 1024 * 1024  # 100 MiB
 # A running request never idles near this: each aggregation wait is capped at
 # max_wait_for_aggregation_inputs and each UDF call at the worker tasks timeout.
 STALE_CONTEXT_TTL_SECONDS = 24 * 60 * 60
-"""
-Aggregation server, threading model, and data flow
---------------------------------------------------
-
-Overview
-~~~~~~~~
-Each `request_id` represents a round of vector aggregation across `expected_workers`
-callers. Workers first register via `Configure(request_id, num_workers)` and then
-call either:
-- `Aggregate`: single operation (SUM / MIN / MAX) over a flat vector.
-- `AggregateBatch`: multiple operations in one call; each operation defines its
-  own aggregation type and vector.
-
-Payloads are exchanged through the `tensor` bytes field. Numeric payloads use
-Arrow tensor bytes, while `UNION` payloads use JSON-encoded bytes.
-
-Synchronization model
-~~~~~~~~~~~~~~~~~~~~~
-For every `request_id` we keep an `AggregationContext` guarded by a single
-`Condition`. The context follows a small state machine:
-- `collecting`: accepting inputs. Once `expected_workers` inputs arrive we
-  compute the result and move to `ready`.
-- `ready` or `failed`: result (or error) is available. Each worker request that
-  hits this state increments `acquired_count`. When all `expected_workers`
-  have observed the result or error, the context is reset back to `collecting`.
-
-All waits are bounded by `config.max_wait_for_aggregation_inputs` to avoid
-deadlocks from missing workers.
-
-`Cleanup` removes the context and cancels it: workers still waiting on it, for
-a result or to start a step, get ABORTED at once instead of waiting for the
-timeout. The controller calls `Cleanup` in a `finally` block, so when one worker
-fails the others are released as soon as the controller sees the failure.
-
-If `Cleanup` never arrives (for example the controller crashed), the context
-would stay in memory with any inputs it collected. `Configure` therefore evicts
-contexts with no `Aggregate` or `Unregister` call for
-`STALE_CONTEXT_TTL_SECONDS`.
-
-Error handling
-~~~~~~~~~~~~~~
-Any validation or computation error sets the context to `failed`, notifies
-waiters, and counts the triggering request as consumed so the round can drain.
-Subsequent workers immediately receive the same error instead of waiting
-indefinitely.
-
-`AggregationContext` raises plain Python exceptions and only the servicer
-methods call `context.abort()`, mapping `ValueError` to INVALID_ARGUMENT,
-`TimeoutError` to DEADLINE_EXCEEDED, `AggregationCancelledError` to ABORTED and
-anything else to INTERNAL. gRPC's
-`abort()` raises a bare `Exception`, so it must never run inside a
-`try/except Exception` block or its status and details are lost.
-"""
 
 
 def _result_dtype(aggregation_type: str, dtypes: list[np.dtype]) -> np.dtype:
