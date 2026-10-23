@@ -21,7 +21,7 @@ class ControllerAggregationClient(BaseAggregationClient):
                 pb2.CleanupRequest(request_id=self._request_id)
             )
             return response.status
-        except grpc._channel._InactiveRpcError:
+        except grpc.RpcError:
             # aggregation_server already shut down remotely – not an error
             return pb2.Status.ERROR
 

@@ -702,23 +702,14 @@ def test_batch_call_without_configuration_aborts(worker_factory):
     assert exc.value.code() == grpc.StatusCode.INVALID_ARGUMENT
 
 
-def test_cleanup_handles_offline_server(controller_factory, monkeypatch):
+def test_cleanup_handles_offline_server(controller_factory):
     controller = controller_factory("offline-cleanup")
     controller.configure(1)
 
-    class DummyInactiveError(Exception):
-        pass
+    def raise_unavailable(*_args, **_kwargs):
+        raise InlineRpcError(grpc.StatusCode.UNAVAILABLE, "offline")
 
-    def raise_inactive(*_args, **_kwargs):
-        raise DummyInactiveError("offline")
-
-    controller._stub.Cleanup = raise_inactive  # type: ignore[attr-defined]
-    monkeypatch.setattr(
-        grpc,
-        "_channel",
-        SimpleNamespace(_InactiveRpcError=DummyInactiveError),
-        raising=False,
-    )
+    controller._stub.Cleanup = raise_unavailable  # type: ignore[attr-defined]
 
     status = controller.cleanup()
     assert status == server_pb2.Status.ERROR
