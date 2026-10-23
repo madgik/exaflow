@@ -36,8 +36,10 @@ logger = logging.getLogger("AggregationServer")
 
 NUMERIC_KINDS = {"i", "u", "f"}
 GRPC_MAX_MESSAGE_SIZE = 100 * 1024 * 1024  # 100 MiB
-# ponytail: fixed TTL; make it configurable if a request can legitimately sit
-# idle between aggregation calls for longer than a day.
+# Contexts with no Aggregate or Unregister call for this long are treated as
+# abandoned (their Cleanup never arrived) and evicted on the next Configure.
+# A running request never idles near this: each aggregation wait is capped at
+# max_wait_for_aggregation_inputs and each UDF call at the worker tasks timeout.
 STALE_CONTEXT_TTL_SECONDS = 24 * 60 * 60
 """
 Aggregation server, threading model, and data flow
