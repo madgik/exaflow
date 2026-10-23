@@ -4,6 +4,7 @@ import json
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import NamedTuple
 
 import duckdb
 
@@ -105,6 +106,12 @@ def _load_variables_metadata(
         conn.executemany(f'INSERT INTO "{table_name}" VALUES (?, ?)', rows)
 
 
+def _build_dataset_properties(csv_columns: list[str], cde_codes: set[str]) -> dict:
+    """CSV header columns that are CDEs, in header order."""
+    variables = [column for column in csv_columns if column in cde_codes]
+    return {"tags": [], "properties": {"variables": variables}}
+
+
 def _reformat_metadata(metadata: dict) -> dict:
     new_key_assign = {
         "isCategorical": "is_categorical",
@@ -131,16 +138,24 @@ def _reformat_metadata(metadata: dict) -> dict:
 _SOURCE_CSV_COL = "__source_csv_idx"
 
 
+class PrimaryDataTable(NamedTuple):
+    dataset_csv_map: dict[str, Path]
+    """Dataset code -> the CSV file that defines it."""
+    csv_columns: dict[Path, list[str]]
+    """Each CSV's header columns, in header order ([] if unreadable)."""
+
+
 def _create_primary_data_table(
     conn: duckdb.DuckDBPyConnection,
     table_prefix: str,
     csv_paths: list[Path],
     metadata: dict | None = None,
-) -> dict[str, Path]:
-    """Create the primary data table and return the dataset code -> CSV map.
+) -> PrimaryDataTable:
+    """Create the primary data table and return what the loader needs from it.
 
     Each CSV is read once into a staging table tagged with its source index,
-    so dataset codes are derived without re-reading the files.
+    so dataset codes are derived without re-reading the files. The header
+    columns read here are returned too, so dataset variables reuse them.
     """
     if not csv_paths:
         raise ValueError("No CSV files provided to create the primary data table.")
@@ -214,7 +229,10 @@ def _create_primary_data_table(
             f'CREATE TABLE "{table_name}" AS '
             f'SELECT * EXCLUDE ("{_SOURCE_CSV_COL}") FROM "{staging_table}"'
         )
-        return _datasets_from_staging_table(conn, staging_table, csv_paths, column_map)
+        dataset_csv_map = _datasets_from_staging_table(
+            conn, staging_table, csv_paths, column_map
+        )
+        return PrimaryDataTable(dataset_csv_map=dataset_csv_map, csv_columns=column_map)
     finally:
         conn.execute(f'DROP TABLE IF EXISTS "{staging_table}"')
 
@@ -226,8 +244,8 @@ def _read_csv_columns(csv_path: Path) -> list[str]:
         # Own connection: the module-level default connection is not thread-safe.
         with duckdb.connect() as conn:
             return conn.read_csv(str(csv_path), header=True).columns
-    except Exception:
-        # Fallback or empty if file is unreadable/empty
+    except Exception as e:
+        LOGGER.warning("Failed to read the header of CSV file %s: %s", csv_path, e)
         return []
 
 
@@ -334,9 +352,11 @@ def load_all_csvs_from_data_folder(request_id: str) -> str:
             data_model_id += 1
             table_prefix = _sanitize_name(f"{code}:{version}")
 
-            dataset_csv_map = _create_primary_data_table(
+            primary_data = _create_primary_data_table(
                 conn, table_prefix, csv_paths, metadata
             )
+            dataset_csv_map = primary_data.dataset_csv_map
+            csv_columns = primary_data.csv_columns
             _load_variables_metadata(conn, table_prefix, metadata)
             properties = {}
             properties["cdes"] = metadata
@@ -353,9 +373,21 @@ def load_all_csvs_from_data_folder(request_id: str) -> str:
             )
 
             assigned_datasets = sorted(dataset_csv_map.keys())
+            cde_codes = set(_build_column_types(metadata))
 
             for dataset_code in assigned_datasets:
                 dataset_id += 1
+                dataset_csv_path = dataset_csv_map[dataset_code]
+                if not csv_columns[dataset_csv_path]:
+                    LOGGER.warning(
+                        "Could not read the header of CSV file %s for dataset '%s'. "
+                        "Its variables will be reported as unknown.",
+                        dataset_csv_path,
+                        dataset_code,
+                    )
+                dataset_properties = _build_dataset_properties(
+                    csv_columns[dataset_csv_path], cde_codes
+                )
                 conn.execute(
                     "INSERT INTO datasets VALUES (?, ?, ?, ?, ?, ?, ?)",
                     [
@@ -364,8 +396,8 @@ def load_all_csvs_from_data_folder(request_id: str) -> str:
                         dataset_code,
                         dataset_code,
                         "ENABLED",
-                        str(dataset_csv_map.get(dataset_code, csv_paths[0])),
-                        None,
+                        str(dataset_csv_path),
+                        json.dumps(dataset_properties),
                     ],
                 )
     finally:

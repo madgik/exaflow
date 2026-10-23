@@ -128,7 +128,7 @@ def test_create_primary_data_table_returns_dataset_csv_map(tmp_path):
     no_dataset = _write_csv(tmp_path / "c.csv", ["age"], [[4]])
 
     with duckdb.connect(":memory:") as conn:
-        dataset_map = _create_primary_data_table(
+        result = _create_primary_data_table(
             conn, "test", [first, second, no_dataset], METADATA
         )
         tables = {
@@ -139,7 +139,12 @@ def test_create_primary_data_table_returns_dataset_csv_map(tmp_path):
             row[0] for row in conn.execute('DESCRIBE "test__primary_data"').fetchall()
         ]
 
-    assert dataset_map == {"ds1": first, "ds2": first, "ds3": second}
+    assert result.dataset_csv_map == {"ds1": first, "ds2": first, "ds3": second}
+    assert result.csv_columns == {
+        first: ["dataset", "age"],
+        second: ["dataset", "age"],
+        no_dataset: ["age"],
+    }
     assert tables == {"test__primary_data"}
     assert columns[0] == "dataset" and "__source_csv_idx" not in columns
 
