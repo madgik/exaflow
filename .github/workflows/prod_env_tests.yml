@@ -14,17 +14,17 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.10"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v10.3.2
         with:
-          version: "0.11.0"
+          version: "0.13.5"
           enable-cache: true
 
       - name: Install dependencies
@@ -38,13 +38,13 @@ jobs:
             --test-data-folder tests/test_data
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
         with:
           driver-opts: network=host
 
       - name: Create k8s Kind Cluster
         id: kind
-        uses: helm/kind-action@v1.13.0
+        uses: helm/kind-action@v1.15.1
         with:
           cluster_name: kind
           config: tests/prod_env_tests/deployment_configs/kind_configuration/kind_cluster.yaml
@@ -55,18 +55,20 @@ jobs:
       - name: Configure Kind registry on nodes
         run: |
           REG_HOST="localhost:5001"
+          # kind-action >= v1.14 runs the registry container on registry_port (5001)
+          # inside the kind network too, not on 5000.
           # Wire the local registry into Kind: map runner localhost to the in-network registry
           # so containerd on each node can pull freshly built images without a remote registry.
           for node in $(kind get nodes --name kind); do
             docker exec "$node" mkdir -p "/etc/containerd/certs.d/${REG_HOST}"
             cat <<'EOF' | docker exec -i "$node" tee "/etc/containerd/certs.d/${REG_HOST}/hosts.toml"
-          [host."http://kind-registry:5000"]
+          [host."http://kind-registry:5001"]
             capabilities = ["pull", "resolve", "push"]
           EOF
           done
 
       - name: Load Docker buildx cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ hashFiles('exaflow/**') }}
@@ -74,7 +76,7 @@ jobs:
             ${{ runner.os }}-buildx-
 
       - name: Build and push images with bake
-        uses: docker/bake-action@v6
+        uses: docker/bake-action@v7
         with:
           files: .github/workflows/docker-bake.hcl
           targets: default
@@ -94,9 +96,9 @@ jobs:
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
       - name: Install Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v5
         with:
-          version: 4.1.1
+          version: 4.3.1
         id: install
 
       - name: Taint Nodes
