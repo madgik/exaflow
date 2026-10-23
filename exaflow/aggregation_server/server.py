@@ -64,6 +64,11 @@ For every `request_id` we keep an `AggregationContext` guarded by a single
 All waits are bounded by `config.max_wait_for_aggregation_inputs` to avoid
 deadlocks from missing workers.
 
+`Cleanup` removes the context and cancels it: workers still waiting on it, for
+a result or to start a step, get ABORTED at once instead of waiting for the
+timeout. The controller calls `Cleanup` in a `finally` block, so when one worker
+fails the others are released as soon as the controller sees the failure.
+
 Error handling
 ~~~~~~~~~~~~~~
 Any validation or computation error sets the context to `failed`, notifies
@@ -73,10 +78,15 @@ indefinitely.
 
 `AggregationContext` raises plain Python exceptions and only the servicer
 methods call `context.abort()`, mapping `ValueError` to INVALID_ARGUMENT,
-`TimeoutError` to DEADLINE_EXCEEDED and anything else to INTERNAL. gRPC's
+`TimeoutError` to DEADLINE_EXCEEDED, `AggregationCancelledError` to ABORTED and
+anything else to INTERNAL. gRPC's
 `abort()` raises a bare `Exception`, so it must never run inside a
 `try/except Exception` block or its status and details are lost.
 """
+
+
+class AggregationCancelledError(Exception):
+    """The request was cleaned up while a worker was still waiting on it."""
 
 
 class AggregationState(Enum):
@@ -99,6 +109,7 @@ class AggregationContext:
         self.batch_payloads: Optional[List[List[np.ndarray]]] = None
         self.batch_vector_lengths: Optional[List[Optional[int]]] = None
         self.batch_result: Optional[List[np.ndarray]] = None
+        self.cancelled = False
         self.condition = threading.Condition()
 
     def reset_step(self) -> None:
@@ -117,6 +128,15 @@ class AggregationContext:
         self.state = AggregationState.FAILED
         self.condition.notify_all()
 
+    def cancel(self) -> None:
+        self.cancelled = True
+        self.fail(
+            AggregationCancelledError(
+                f"Aggregation for request_id='{self.request_id}' was cancelled "
+                "because the controller cleaned up the request."
+            )
+        )
+
     def ensure_step(self, step: int, operations) -> None:
         def _can_start_new_step() -> bool:
             return (
@@ -126,6 +146,8 @@ class AggregationContext:
             )
 
         while True:
+            if self.cancelled:
+                raise self.error
             if step <= self.current_step:
                 raise ValueError(
                     f"Step {step} already completed for request_id='{self.request_id}'"
@@ -220,6 +242,8 @@ class AggregationContext:
         raise timeout_exc
 
     def consume(self):
+        if self.cancelled:
+            raise self.error
         if self.error is not None:
             error = self.error
             self._finish_step(reset_step=False)
@@ -251,6 +275,8 @@ class AggregationServer(AggregationServerServicer):
 
     @staticmethod
     def _status_for_exception_static(exc: Exception) -> grpc.StatusCode:
+        if isinstance(exc, AggregationCancelledError):
+            return grpc.StatusCode.ABORTED
         if isinstance(exc, TimeoutError):
             return grpc.StatusCode.DEADLINE_EXCEEDED
         if isinstance(exc, ValueError):
@@ -481,7 +507,7 @@ class AggregationServer(AggregationServerServicer):
             )
 
         with agg_ctx.condition:
-            agg_ctx.reset_step()
+            agg_ctx.cancel()
 
         logger.info(
             f"[CLEANUP] Removed AggregationContext for request_id='{request.request_id}'"

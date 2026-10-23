@@ -5,6 +5,7 @@ The inline stub in ``test_aggregation_clients.py`` raises an ``RpcError`` from
 codes and error propagation must be checked against a real server.
 """
 
+import time
 from concurrent import futures
 from concurrent.futures import ThreadPoolExecutor
 
@@ -66,3 +67,27 @@ def test_aggregation_type_mismatch_reaches_all_workers_with_status(target):
                 future.result(timeout=2)
             assert exc.value.code() == grpc.StatusCode.INVALID_ARGUMENT
             assert "aggregation_type mismatch" in exc.value.details()
+
+
+def test_cleanup_aborts_workers_still_waiting(target):
+    controller = _configure(target, "cleanup-waiters", 3)
+    # worker_a waits for the step 1 result, worker_b waits to start step 2.
+    worker_a = BaseAggregationClient("cleanup-waiters", aggregator_dns=target)
+    worker_b = BaseAggregationClient("cleanup-waiters", aggregator_dns=target)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        future_a = pool.submit(
+            worker_a._aggregate_request, AggregationType.SUM, [1.0], step=1
+        )
+        future_b = pool.submit(
+            worker_b._aggregate_request, AggregationType.SUM, [1.0], step=2
+        )
+        time.sleep(0.3)
+        controller.cleanup()
+
+        # The server waits up to 5s for inputs; Cleanup must release both at once.
+        for future in (future_a, future_b):
+            with pytest.raises(grpc.RpcError) as exc:
+                future.result(timeout=2)
+            assert exc.value.code() == grpc.StatusCode.ABORTED
+            assert "cancelled" in exc.value.details()
