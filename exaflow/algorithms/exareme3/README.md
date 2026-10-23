@@ -110,8 +110,9 @@ are resolved recursively; duplicate filenames are rejected.
 
 - Aggregation client contract:
 
-  - Interface: `exaflow/algorithms/exareme3/utils/udf_aggregation_client_interface.py`
-    (`Exareme3UDFAggregationClientI`).
+  - Protocol: `AggregationClient` in `exaflow/algorithms/federated/utils/agg_client.py`;
+    the worker injects `Exareme3UDFAggregationClient`
+    (`exaflow/aggregation_clients/exareme3_udf_aggregation_client.py`).
   - `agg_client.sum/min/max(...)` return numpy arrays; convert to lists for JSON.
 
 - Lazy aggregation (now default for aggregation UDFs):
