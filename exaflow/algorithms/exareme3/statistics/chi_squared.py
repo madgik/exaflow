@@ -1,4 +1,5 @@
 from typing import List
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -18,6 +19,7 @@ class ChiSquaredResult(BaseModel):
     chi2: float
     p_value: float
     dof: int
+    cramers_v: Optional[float]
     expected: List[List[float]]
     x_labels: List[str]
     y_labels: List[str]
@@ -35,8 +37,10 @@ class ChiSquared(Algorithm):
                 "with expected counts under independence. Rows with missing "
                 "values in either selected variable are excluded.\n\n"
                 "The result includes the chi-squared statistic, p-value, "
-                "degrees of freedom, expected counts, and category labels for "
-                "both variables.\n\n"
+                "degrees of freedom, Cramer's V effect size, expected counts, "
+                "and category labels for both variables. Cramer's V uses the "
+                "chi-squared statistic without continuity correction and is "
+                "empty when the table has a single row or column.\n\n"
                 "Reference behavior is aligned with scipy.stats.chi2_contingency "
                 "for a contingency table built from the selected variables. "
                 "The method computes the table and expected counts from "
@@ -78,11 +82,12 @@ class ChiSquared(Algorithm):
         )
 
         res = results[0]
-        chi2, p, dof, expected, x_labels, y_labels = res
+        chi2, p, dof, expected, x_labels, y_labels, cramers_v = res
         return ChiSquaredResult(
             chi2=chi2,
             p_value=p,
             dof=dof,
+            cramers_v=cramers_v,
             expected=expected,
             x_labels=x_labels,
             y_labels=y_labels,
@@ -113,4 +118,5 @@ def chi_squared_local_step(agg_client, data, metadata, factor, outcome):
         res[3].tolist() if hasattr(res[3], "tolist") else res[3],
         res.x_labels,
         res.y_labels,
+        res.cramers_v,
     )

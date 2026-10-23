@@ -176,3 +176,57 @@ class TestFederatedChiSquared(FederatedAlgorithmTest):
             outcome_categories=case["outcome_categories"],
             dropna=case["dropna"],
         )
+
+
+@pytest.mark.parametrize(
+    "factor,outcome",
+    [
+        (
+            ["A", "A", "B", "B", "C", "C", "A", "B"],
+            ["X", "Y", "X", "X", "Y", "Y", "X", "Y"],
+        ),
+        (
+            ["A", "A", "B", "B", "A", "B", "A", "B"],
+            ["X", "Y", "X", "X", "Y", "Y", "X", "X"],
+        ),
+    ],
+)
+def test_cramers_v_matches_scipy_association(factor, outcome):
+    from scipy.stats.contingency import association
+
+    from tests.standalone_tests.federated_algorithms.utils.dummy_agg_client import (
+        DummyAggClient,
+    )
+
+    data = pd.DataFrame({"factor": factor, "outcome": outcome})
+    result = ChiSquared(NumpyAggregator(DummyAggClient())).compute(
+        data,
+        factor="factor",
+        outcome="outcome",
+        factor_categories=None,
+        outcome_categories=None,
+        dropna=True,
+    )
+    table = pd.crosstab(data["factor"], data["outcome"]).to_numpy()
+
+    np.testing.assert_allclose(
+        result.cramers_v, association(table, method="cramer"), rtol=1e-12
+    )
+
+
+def test_cramers_v_is_none_for_single_row_table():
+    from tests.standalone_tests.federated_algorithms.utils.dummy_agg_client import (
+        DummyAggClient,
+    )
+
+    data = pd.DataFrame({"factor": ["A"] * 4, "outcome": ["X", "Y", "X", "Y"]})
+    result = ChiSquared(NumpyAggregator(DummyAggClient())).compute(
+        data,
+        factor="factor",
+        outcome="outcome",
+        factor_categories=None,
+        outcome_categories=None,
+        dropna=True,
+    )
+
+    assert result.cramers_v is None
