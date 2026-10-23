@@ -17,6 +17,7 @@ from exaflow.aggregation_clients.exareme3_udf_aggregation_client import (
     Exareme3UDFAggregationClient,
 )
 from exaflow.aggregation_server import config as aggregation_config
+from exaflow.aggregation_server.server import STALE_CONTEXT_TTL_SECONDS
 from exaflow.aggregation_server.server import AggregationServer
 from exaflow.protos.aggregation_server import aggregation_server_pb2 as server_pb2
 
@@ -743,3 +744,27 @@ def test_unregister_reduces_expected_workers(controller_factory):
 
     controller.cleanup()
     client.close()
+
+
+def test_configure_evicts_stale_contexts(inline_grpc_stub, controller_factory):
+    controller_factory("stale").configure(1)
+    stale_context = inline_grpc_stub.aggregation_contexts["stale"]
+    stale_context.last_activity -= STALE_CONTEXT_TTL_SECONDS + 1
+
+    controller_factory("fresh").configure(1)
+
+    assert "stale" not in inline_grpc_stub.aggregation_contexts
+    assert "fresh" in inline_grpc_stub.aggregation_contexts
+
+
+def test_aggregate_keeps_context_active(
+    inline_grpc_stub, controller_factory, worker_factory
+):
+    controller_factory("active").configure(1)
+    active_context = inline_grpc_stub.aggregation_contexts["active"]
+    active_context.last_activity -= STALE_CONTEXT_TTL_SECONDS + 1
+    worker_factory("active")._aggregate_request(AggregationType.SUM, [1.0])
+
+    controller_factory("other").configure(1)
+
+    assert "active" in inline_grpc_stub.aggregation_contexts

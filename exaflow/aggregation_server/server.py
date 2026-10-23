@@ -1,5 +1,6 @@
 import logging
 import threading
+import time
 from concurrent import futures
 from enum import Enum
 from typing import Dict
@@ -35,6 +36,11 @@ logger = logging.getLogger("AggregationServer")
 
 NUMERIC_KINDS = {"i", "u", "f"}
 GRPC_MAX_MESSAGE_SIZE = 100 * 1024 * 1024  # 100 MiB
+# Contexts with no Aggregate or Unregister call for this long are treated as
+# abandoned (their Cleanup never arrived) and evicted on the next Configure.
+# A running request never idles near this: each aggregation wait is capped at
+# max_wait_for_aggregation_inputs and each UDF call at the worker tasks timeout.
+STALE_CONTEXT_TTL_SECONDS = 24 * 60 * 60
 """
 Aggregation server, threading model, and data flow
 --------------------------------------------------
@@ -64,13 +70,34 @@ For every `request_id` we keep an `AggregationContext` guarded by a single
 All waits are bounded by `config.max_wait_for_aggregation_inputs` to avoid
 deadlocks from missing workers.
 
+`Cleanup` removes the context and cancels it: workers still waiting on it, for
+a result or to start a step, get ABORTED at once instead of waiting for the
+timeout. The controller calls `Cleanup` in a `finally` block, so when one worker
+fails the others are released as soon as the controller sees the failure.
+
+If `Cleanup` never arrives (for example the controller crashed), the context
+would stay in memory with any inputs it collected. `Configure` therefore evicts
+contexts with no `Aggregate` or `Unregister` call for
+`STALE_CONTEXT_TTL_SECONDS`.
+
 Error handling
 ~~~~~~~~~~~~~~
 Any validation or computation error sets the context to `failed`, notifies
 waiters, and counts the triggering request as consumed so the round can drain.
 Subsequent workers immediately receive the same error instead of waiting
 indefinitely.
+
+`AggregationContext` raises plain Python exceptions and only the servicer
+methods call `context.abort()`, mapping `ValueError` to INVALID_ARGUMENT,
+`TimeoutError` to DEADLINE_EXCEEDED, `AggregationCancelledError` to ABORTED and
+anything else to INTERNAL. gRPC's
+`abort()` raises a bare `Exception`, so it must never run inside a
+`try/except Exception` block or its status and details are lost.
 """
+
+
+class AggregationCancelledError(Exception):
+    """The request was cleaned up while a worker was still waiting on it."""
 
 
 class AggregationState(Enum):
@@ -93,6 +120,8 @@ class AggregationContext:
         self.batch_payloads: Optional[List[List[np.ndarray]]] = None
         self.batch_vector_lengths: Optional[List[Optional[int]]] = None
         self.batch_result: Optional[List[np.ndarray]] = None
+        self.cancelled = False
+        self.last_activity = time.monotonic()
         self.condition = threading.Condition()
 
     def reset_step(self) -> None:
@@ -111,7 +140,16 @@ class AggregationContext:
         self.state = AggregationState.FAILED
         self.condition.notify_all()
 
-    def ensure_step(self, step: int, operations, context) -> None:
+    def cancel(self) -> None:
+        self.cancelled = True
+        self.fail(
+            AggregationCancelledError(
+                f"Aggregation for request_id='{self.request_id}' was cancelled "
+                "because the controller cleaned up the request."
+            )
+        )
+
+    def ensure_step(self, step: int, operations) -> None:
         def _can_start_new_step() -> bool:
             return (
                 self.active_step is None
@@ -120,13 +158,14 @@ class AggregationContext:
             )
 
         while True:
+            if self.cancelled:
+                raise self.error
             if step <= self.current_step:
-                context.abort(
-                    grpc.StatusCode.INVALID_ARGUMENT,
-                    f"Step {step} already completed for request_id='{self.request_id}'",
+                raise ValueError(
+                    f"Step {step} already completed for request_id='{self.request_id}'"
                 )
             if self.active_step == step:
-                self._validate_ops(operations, context)
+                self._validate_ops(operations)
                 return
             if _can_start_new_step():
                 self._start_step(step, operations)
@@ -136,9 +175,8 @@ class AggregationContext:
                 timeout=config.max_wait_for_aggregation_inputs
             )
             if not notified:
-                context.abort(
-                    grpc.StatusCode.DEADLINE_EXCEEDED,
-                    f"Timeout waiting to start step {step} for request_id='{self.request_id}'",
+                raise TimeoutError(
+                    f"Timeout waiting to start step {step} for request_id='{self.request_id}'"
                 )
 
     def _start_step(self, step: int, operations) -> None:
@@ -151,24 +189,19 @@ class AggregationContext:
         self.batch_vector_lengths = [None for _ in operations]
         self.batch_result = None
 
-    def _validate_ops(self, operations, context) -> None:
+    def _validate_ops(self, operations) -> None:
         if self.batch_ops is None:
-            context.abort(
-                grpc.StatusCode.INTERNAL,
-                "Batch ops not initialized for active step.",
-            )
+            raise RuntimeError("Batch ops not initialized for active step.")
         if len(operations) != len(self.batch_ops):
-            context.abort(
-                grpc.StatusCode.INVALID_ARGUMENT,
+            raise ValueError(
                 f"Batch op count mismatch for request_id='{self.request_id}' "
-                f"(expected {len(self.batch_ops)}, got {len(operations)})",
+                f"(expected {len(self.batch_ops)}, got {len(operations)})"
             )
         for idx, op in enumerate(operations):
             if op.aggregation_type != self.batch_ops[idx]:
-                context.abort(
-                    grpc.StatusCode.INVALID_ARGUMENT,
+                raise ValueError(
                     f"Batch aggregation_type mismatch at index {idx} for request_id='{self.request_id}' "
-                    f"(expected '{self.batch_ops[idx]}', got '{op.aggregation_type}')",
+                    f"(expected '{self.batch_ops[idx]}', got '{op.aggregation_type}')"
                 )
 
     def store_payloads(self, request, decode_fn) -> None:
@@ -203,7 +236,7 @@ class AggregationContext:
         self.state = AggregationState.READY
         self.condition.notify_all()
 
-    def wait_for_ready(self, context) -> None:
+    def wait_for_ready(self) -> None:
         ready = self.condition.wait_for(
             lambda: self.state in {AggregationState.READY, AggregationState.FAILED},
             timeout=config.max_wait_for_aggregation_inputs,
@@ -218,18 +251,19 @@ class AggregationContext:
         logger.error(f"[AGGREGATE] {msg}")
         timeout_exc = TimeoutError(msg)
         self.fail(timeout_exc)
-        context.abort(grpc.StatusCode.DEADLINE_EXCEEDED, msg)
+        raise timeout_exc
 
-    def consume(self, context):
+    def consume(self):
+        if self.cancelled:
+            raise self.error
         if self.error is not None:
             error = self.error
-            status = AggregationServer._status_for_exception_static(error)
             self._finish_step(reset_step=False)
             logger.error(f"[AGGREGATE] Error during batch aggregation: {error}")
-            context.abort(status, str(error))
+            raise error
 
         if not self.batch_result:
-            context.abort(grpc.StatusCode.INTERNAL, "Batch result missing.")
+            raise RuntimeError("Batch result missing.")
 
         tensors = self.batch_result
         self._finish_step(reset_step=True)
@@ -253,11 +287,8 @@ class AggregationServer(AggregationServerServicer):
 
     @staticmethod
     def _status_for_exception_static(exc: Exception) -> grpc.StatusCode:
-        if isinstance(exc, grpc.RpcError):
-            try:
-                return exc.code()
-            except Exception:  # pragma: no cover
-                pass
+        if isinstance(exc, AggregationCancelledError):
+            return grpc.StatusCode.ABORTED
         if isinstance(exc, TimeoutError):
             return grpc.StatusCode.DEADLINE_EXCEEDED
         if isinstance(exc, ValueError):
@@ -362,8 +393,23 @@ class AggregationServer(AggregationServerServicer):
 
         raise ValueError(f"Unhandled aggregation type '{aggregation_type}'")
 
+    def _evict_stale_contexts(self) -> None:
+        cutoff = time.monotonic() - STALE_CONTEXT_TTL_SECONDS
+        stale_request_ids = [
+            request_id
+            for request_id, agg_ctx in self.aggregation_contexts.items()
+            if agg_ctx.last_activity < cutoff
+        ]
+        for request_id in stale_request_ids:
+            del self.aggregation_contexts[request_id]
+            logger.warning(
+                f"[CONFIGURE] Evicted stale AggregationContext for request_id='{request_id}' "
+                f"(no activity for {STALE_CONTEXT_TTL_SECONDS}s and no Cleanup received)"
+            )
+
     def Configure(self, request, context):
         with self.global_lock:
+            self._evict_stale_contexts()
             if request.request_id in self.aggregation_contexts:
                 logger.warning(
                     f"[CONFIGURE] Request context already exists for request_id='{request.request_id}'"
@@ -385,6 +431,7 @@ class AggregationServer(AggregationServerServicer):
 
     def Unregister(self, request, context):
         agg_ctx = self._get_aggregation_context(request.request_id, context)
+        agg_ctx.last_activity = time.monotonic()
         with agg_ctx.condition:
             if agg_ctx.expected_workers <= 1:
                 msg = (
@@ -427,10 +474,11 @@ class AggregationServer(AggregationServerServicer):
 
     def Aggregate(self, request, context):
         agg_ctx = self._get_aggregation_context(request.request_id, context)
+        agg_ctx.last_activity = time.monotonic()
 
         with agg_ctx.condition:
             try:
-                agg_ctx.ensure_step(request.step, request.operations, context)
+                agg_ctx.ensure_step(request.step, request.operations)
                 agg_ctx.store_payloads(
                     request,
                     lambda tensor, aggregation_type, request_id=request.request_id: (
@@ -454,18 +502,16 @@ class AggregationServer(AggregationServerServicer):
                     and len(agg_ctx.batch_payloads[0]) >= agg_ctx.expected_workers
                 ):
                     agg_ctx.compute(self._aggregation_fn)
-            except grpc.RpcError as exc:
-                agg_ctx.fail(exc)
-                logger.error(f"[AGGREGATE] {exc}", exc_info=exc)
-                raise
             except Exception as exc:  # noqa: BLE001
                 agg_ctx.fail(exc)
-                status = self._status_for_exception(exc)
                 logger.error(f"[AGGREGATE] {exc}", exc_info=exc)
-                context.abort(status, str(exc))
+                context.abort(self._status_for_exception(exc), str(exc))
 
-            agg_ctx.wait_for_ready(context)
-            tensors = agg_ctx.consume(context)
+            try:
+                agg_ctx.wait_for_ready()
+                tensors = agg_ctx.consume()
+            except Exception as exc:  # noqa: BLE001
+                context.abort(self._status_for_exception(exc), str(exc))
 
         return AggregateResponse(
             tensors=[
@@ -490,7 +536,7 @@ class AggregationServer(AggregationServerServicer):
             )
 
         with agg_ctx.condition:
-            agg_ctx.reset_step()
+            agg_ctx.cancel()
 
         logger.info(
             f"[CLEANUP] Removed AggregationContext for request_id='{request.request_id}'"

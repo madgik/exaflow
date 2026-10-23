@@ -15,7 +15,7 @@ ______________________________________________________________________
 Note: `UNION` returns JSON-encoded bytes in the `tensors` field.
 | **Payload formats** | Payloads are sent in `tensor` bytes (`Arrow` for numeric vectors, `JSON` bytes for `UNION`). |
 | **Concurrency** | Thread-pool server (configurable worker pool). |
-| **Request lifecycle** | A `request_id` can span multiple steps until `Cleanup` resets the context. |
+| **Request lifecycle** | A `request_id` can span multiple steps until `Cleanup` removes the context. Workers still waiting on it get `ABORTED` immediately. |
 
 ## Docker
 
