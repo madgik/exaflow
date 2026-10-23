@@ -9,7 +9,7 @@ from exaflow.protos.worker import (
     worker_pb2 as exaflow_dot_protos_dot_worker_dot_worker__pb2,
 )
 
-GRPC_GENERATED_VERSION = "1.78.0"
+GRPC_GENERATED_VERSION = "1.84.1"
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -32,7 +32,7 @@ if _version_not_supported:
     )
 
 
-class WorkerServiceStub(object):
+class WorkerServiceStub:
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -109,7 +109,7 @@ class WorkerServiceStub(object):
         )
 
 
-class WorkerServiceServicer(object):
+class WorkerServiceServicer:
     """Missing associated documentation comment in .proto file."""
 
     def GetWorkerInfo(self, request, context):
@@ -247,7 +247,7 @@ def add_WorkerServiceServicer_to_server(servicer, server):
 
 
 # This class is part of an EXPERIMENTAL API.
-class WorkerService(object):
+class WorkerService:
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
