@@ -11,7 +11,7 @@ class RecordingAggClient:
     def __init__(self):
         self.calls = []
 
-    def aggregate_batch(self, ops):
+    def _aggregate_batch(self, ops):
         self.calls.append(("batch", len(ops)))
         return [value for _, value in ops]
 
@@ -211,11 +211,11 @@ def test_lazy_agg_batches_min_and_max():
 
 
 class NoBatchAggClient(RecordingAggClient):
-    aggregate_batch = None
+    _aggregate_batch = None
 
 
 class RaisingBatchAggClient(RecordingAggClient):
-    def aggregate_batch(self, ops):
+    def _aggregate_batch(self, ops):
         raise RuntimeError("no batch support")
 
 

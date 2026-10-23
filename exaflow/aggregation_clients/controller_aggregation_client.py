@@ -4,12 +4,9 @@ import grpc
 
 import exaflow.protos.aggregation_server.aggregation_server_pb2 as pb2
 from exaflow.aggregation_clients import BaseAggregationClient
-from exaflow.controller.services.exareme3.controller_aggregation_client_interface import (
-    ControllerAggregationClientI,
-)
 
 
-class ControllerAggregationClient(ControllerAggregationClientI, BaseAggregationClient):
+class ControllerAggregationClient(BaseAggregationClient):
     def configure(self, num_workers: int) -> str:
         response = self._stub.Configure(
             pb2.ConfigureRequest(

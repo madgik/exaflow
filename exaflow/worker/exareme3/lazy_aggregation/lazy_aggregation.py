@@ -77,8 +77,10 @@ class _LazyTail:
 class LazyAggregationClient:
     """
     Aggregation client proxy that queues submitted operations and sends every
-    queued operation in one `aggregate_batch` call when any result is needed.
+    queued operation in one `_aggregate_batch` call when any result is needed.
     Direct `sum/min/max/union` calls are sent immediately, together with the queue.
+    It exposes only `sum/min/max/union` to the UDF; it does not forward other
+    attributes to the wrapped client.
     """
 
     def __init__(self, client):
@@ -98,7 +100,7 @@ class LazyAggregationClient:
         if not self._pending:
             return
         batch, self._pending = self._pending, []
-        aggregate_batch = getattr(self._client, "aggregate_batch", None)
+        aggregate_batch = getattr(self._client, "_aggregate_batch", None)
         if aggregate_batch is None:
             results = [getattr(self._client, op)(values) for op, values, _ in batch]
         else:
@@ -125,12 +127,6 @@ class LazyAggregationClient:
 
     def union(self, values):
         return self._aggregate_now("union", values)
-
-    def __getattr__(self, name):
-        if name.startswith("__") or name in ("_client", "_pending"):
-            raise AttributeError(name)
-        self.flush()
-        return getattr(self._client, name)
 
 
 # --- helpers called by rewritten code ----------------------------------------- #
@@ -983,7 +979,7 @@ class RecordingAggClient:
     def __init__(self):
         self.calls = []
 
-    def aggregate_batch(self, ops):
+    def _aggregate_batch(self, ops):
         self.calls.append(("batch", len(ops)))
         return [value for _, value in ops]
 

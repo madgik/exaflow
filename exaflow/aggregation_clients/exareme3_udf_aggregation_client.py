@@ -3,31 +3,31 @@ import numpy as np
 import exaflow.protos.aggregation_server.aggregation_server_pb2 as pb2
 from exaflow.aggregation_clients import AggregationType
 from exaflow.aggregation_clients import BaseAggregationClient
-from exaflow.algorithms.exareme3.utils.udf_aggregation_client_interface import (
-    ArrayInput,
-)
-from exaflow.algorithms.exareme3.utils.udf_aggregation_client_interface import (
-    Exareme3UDFAggregationClientI,
-)
+from exaflow.algorithms.federated.utils.agg_client import ArrayInput
 
 
-class Exareme3UDFAggregationClient(
-    BaseAggregationClient, Exareme3UDFAggregationClientI
-):
-    def aggregate(
-        self, aggregation_type: AggregationType, values: ArrayInput
-    ) -> np.ndarray:
-        original = np.asarray(values)
-        flat = original.ravel()
+class Exareme3UDFAggregationClient(BaseAggregationClient):
+    """Aggregation client injected into UDFs as `agg_client`.
 
-        aggregated = self._aggregate_request(aggregation_type, flat)
+    Its public methods are exactly the `AggregationClient` protocol that
+    algorithm code is written against (`sum/min/max/union`), plus `unregister`
+    and `close`, which only the worker calls. Batching is private: the worker's
+    lazy aggregation layer is its only caller.
+    """
 
-        if original.shape and aggregated.size == original.size:
-            return aggregated.reshape(original.shape)
+    def sum(self, values: ArrayInput) -> np.ndarray:
+        return self._aggregate_batch([(AggregationType.SUM, values)])[0]
 
-        return aggregated
+    def min(self, values: ArrayInput) -> np.ndarray:
+        return self._aggregate_batch([(AggregationType.MIN, values)])[0]
 
-    def aggregate_batch(
+    def max(self, values: ArrayInput) -> np.ndarray:
+        return self._aggregate_batch([(AggregationType.MAX, values)])[0]
+
+    def union(self, values: list[object]) -> np.ndarray:
+        return self._aggregate_batch([(AggregationType.UNION, values)])[0]
+
+    def _aggregate_batch(
         self, ops: list[tuple[AggregationType, ArrayInput]]
     ) -> list[np.ndarray]:
         originals = [np.asarray(vals) for _, vals in ops]

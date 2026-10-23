@@ -62,18 +62,6 @@ class BaseAggregationClient:
         self._step_counter += 1
         return step
 
-    def _aggregate_request(
-        self,
-        aggregation_type: AggregationType,
-        flat_values: ArrayInput,
-        *,
-        step: int | None = None,
-    ) -> NDArray:
-        results = self._aggregate_batch_request(
-            [(aggregation_type, flat_values)], step=step
-        )
-        return results[0]
-
     def _aggregate_batch_request(
         self, ops: list[tuple[AggregationType, ArrayInput]], *, step: int | None = None
     ) -> list[NDArray]:
