@@ -14,10 +14,12 @@ from typing import Tuple
 import grpc
 import pytest
 
-from exaflow.aggregation_clients.base_aggregation_client import BaseAggregationClient
 from exaflow.aggregation_clients.constants import AggregationType
 from exaflow.aggregation_clients.controller_aggregation_client import (
     ControllerAggregationClient,
+)
+from exaflow.aggregation_clients.exareme3_udf_aggregation_client import (
+    Exareme3UDFAggregationClient,
 )
 from exaflow.aggregation_server import config as aggregation_config
 from exaflow.aggregation_server.server import AggregationServer
@@ -47,11 +49,11 @@ def _configure(target: str, request_id: str, num_workers: int):
 def test_replayed_step_keeps_invalid_argument_status(target):
     endpoint, _ = target
     _configure(endpoint, "replayed-step", 1)
-    worker = BaseAggregationClient("replayed-step", aggregator_dns=endpoint)
-    worker._aggregate_request(AggregationType.SUM, [1.0], step=1)
+    worker = Exareme3UDFAggregationClient("replayed-step", aggregator_dns=endpoint)
+    worker._aggregate_batch_request([(AggregationType.SUM, [1.0])], step=1)
 
     with pytest.raises(grpc.RpcError) as exc:
-        worker._aggregate_request(AggregationType.SUM, [1.0], step=1)
+        worker._aggregate_batch_request([(AggregationType.SUM, [1.0])], step=1)
 
     assert exc.value.code() == grpc.StatusCode.INVALID_ARGUMENT
     assert "Step 1 already completed" in exc.value.details()
@@ -60,12 +62,12 @@ def test_replayed_step_keeps_invalid_argument_status(target):
 def test_aggregation_type_mismatch_reaches_all_workers_with_status(target):
     endpoint, _ = target
     _configure(endpoint, "type-mismatch", 2)
-    worker_a = BaseAggregationClient("type-mismatch", aggregator_dns=endpoint)
-    worker_b = BaseAggregationClient("type-mismatch", aggregator_dns=endpoint)
+    worker_a = Exareme3UDFAggregationClient("type-mismatch", aggregator_dns=endpoint)
+    worker_b = Exareme3UDFAggregationClient("type-mismatch", aggregator_dns=endpoint)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
-        future_a = pool.submit(worker_a._aggregate_request, AggregationType.SUM, [1.0])
-        future_b = pool.submit(worker_b._aggregate_request, AggregationType.MIN, [1.0])
+        future_a = pool.submit(worker_a.sum, [1.0])
+        future_b = pool.submit(worker_b.min, [1.0])
 
         for future in (future_a, future_b):
             with pytest.raises(grpc.RpcError) as exc:
@@ -89,15 +91,15 @@ def test_cleanup_aborts_workers_still_waiting(target):
     endpoint, servicer = target
     controller = _configure(endpoint, "cleanup-waiters", 3)
     # worker_a waits for the step 1 result, worker_b waits to start step 2.
-    worker_a = BaseAggregationClient("cleanup-waiters", aggregator_dns=endpoint)
-    worker_b = BaseAggregationClient("cleanup-waiters", aggregator_dns=endpoint)
+    worker_a = Exareme3UDFAggregationClient("cleanup-waiters", aggregator_dns=endpoint)
+    worker_b = Exareme3UDFAggregationClient("cleanup-waiters", aggregator_dns=endpoint)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         future_a = pool.submit(
-            worker_a._aggregate_request, AggregationType.SUM, [1.0], step=1
+            worker_a._aggregate_batch_request, [(AggregationType.SUM, [1.0])], step=1
         )
         future_b = pool.submit(
-            worker_b._aggregate_request, AggregationType.SUM, [1.0], step=2
+            worker_b._aggregate_batch_request, [(AggregationType.SUM, [1.0])], step=2
         )
         _wait_for_payloads(servicer, "cleanup-waiters")
         controller.cleanup()
@@ -114,10 +116,10 @@ def test_aggregate_after_cleanup_is_aborted_not_invalid_argument(target):
     endpoint, _ = target
     controller = _configure(endpoint, "late-after-cleanup", 1)
     controller.cleanup()
-    worker = BaseAggregationClient("late-after-cleanup", aggregator_dns=endpoint)
+    worker = Exareme3UDFAggregationClient("late-after-cleanup", aggregator_dns=endpoint)
 
     with pytest.raises(grpc.RpcError) as exc:
-        worker._aggregate_request(AggregationType.SUM, [1.0])
+        worker.sum([1.0])
 
     assert exc.value.code() == grpc.StatusCode.ABORTED
     assert "cleaned up" in exc.value.details()
@@ -125,10 +127,10 @@ def test_aggregate_after_cleanup_is_aborted_not_invalid_argument(target):
 
 def test_aggregate_without_configure_keeps_invalid_argument(target):
     endpoint, _ = target
-    worker = BaseAggregationClient("never-configured", aggregator_dns=endpoint)
+    worker = Exareme3UDFAggregationClient("never-configured", aggregator_dns=endpoint)
 
     with pytest.raises(grpc.RpcError) as exc:
-        worker._aggregate_request(AggregationType.SUM, [1.0])
+        worker.sum([1.0])
 
     assert exc.value.code() == grpc.StatusCode.INVALID_ARGUMENT
     assert "not configured" in exc.value.details()

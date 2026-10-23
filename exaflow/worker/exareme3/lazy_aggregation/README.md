@@ -7,7 +7,7 @@ The worker wraps every UDF registered with lazy aggregation (the default for
 `with_aggregation_server=True`) in `lazy_agg`. On each call `lazy_agg`:
 
 1. wraps the `agg_client` argument in a `LazyAggregationClient`, which queues
-   submitted operations and sends the whole queue with one `aggregate_batch`
+   submitted operations and sends the whole queue with one `_aggregate_batch`
    call when any result is needed;
 1. runs a rewritten copy of the UDF. Every project function or method it calls
    (anything outside the standard library and site-packages) also runs
@@ -65,7 +65,7 @@ y = np.asarray(_lazy_force(_lazy_tmp1), dtype=float)
 - Calls on objects that are not aggregation clients (`array.sum(0)`) run as
   usual.
 - Tracebacks keep the original file and line numbers.
-- `aggregate_batch` errors propagate; clients without `aggregate_batch` get one
+- `_aggregate_batch` errors propagate; clients without `_aggregate_batch` get one
   call per operation.
 
 ## Limits

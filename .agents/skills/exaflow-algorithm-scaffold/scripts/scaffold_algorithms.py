@@ -492,6 +492,7 @@ def algorithm_template(
         "from exaflow.algorithms import specifications as specs",
         "from exaflow.algorithms.exareme3.utils.algorithm import Algorithm",
         "from exaflow.algorithms.exareme3.utils.registry import exareme3_udf",
+        "from exaflow.algorithms.federated.utils.agg_client import AggregationClient",
     ]
 
     if include_federated_core and family:
@@ -564,7 +565,9 @@ class {class_name}(Algorithm):
 
 
 @exareme3_udf(with_aggregation_server={profile.with_aggregation_server})
-def local_step(agg_client, data, target_var, feature_vars, metadata):
+def local_step(
+    agg_client: AggregationClient, data, target_var, feature_vars, metadata
+):
 {local_step_logic}
 '''
     )
@@ -574,11 +577,13 @@ def federated_core_template(algorithm: str) -> str:
     federated_symbol = federated_symbol_for_algorithm(algorithm)
     return f'''from __future__ import annotations
 
+from exaflow.algorithms.federated.utils.agg_client import AggregationClient
+
 
 class {federated_symbol}:
     """Federated core placeholder for `{algorithm}`."""
 
-    def __init__(self, agg_client=None):
+    def __init__(self, agg_client: AggregationClient | None = None):
         self.agg_client = agg_client
 
     def compute(self, *, data, target_var, feature_vars, metadata):
