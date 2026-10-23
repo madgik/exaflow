@@ -133,6 +133,16 @@ def _parse_aggregation_type(operation) -> AggregationType:
         ) from None
 
 
+def _grpc_status(exc: Exception) -> grpc.StatusCode:
+    if isinstance(exc, AggregationCancelledError):
+        return grpc.StatusCode.ABORTED
+    if isinstance(exc, TimeoutError):
+        return grpc.StatusCode.DEADLINE_EXCEEDED
+    if isinstance(exc, ValueError):
+        return grpc.StatusCode.INVALID_ARGUMENT
+    return grpc.StatusCode.INTERNAL
+
+
 class AggregationState(Enum):
     IDLE = "idle"
     COLLECTING = "collecting"
@@ -321,19 +331,6 @@ class AggregationServer(AggregationServerServicer):
         self.cleaned_up_request_ids: Dict[str, float] = {}
         self.global_lock = threading.Lock()
 
-    @staticmethod
-    def _status_for_exception_static(exc: Exception) -> grpc.StatusCode:
-        if isinstance(exc, AggregationCancelledError):
-            return grpc.StatusCode.ABORTED
-        if isinstance(exc, TimeoutError):
-            return grpc.StatusCode.DEADLINE_EXCEEDED
-        if isinstance(exc, ValueError):
-            return grpc.StatusCode.INVALID_ARGUMENT
-        return grpc.StatusCode.INTERNAL
-
-    def _status_for_exception(self, exc: Exception) -> grpc.StatusCode:
-        return AggregationServer._status_for_exception_static(exc)
-
     def _get_aggregation_context(self, request_id, context) -> AggregationContext:
         agg_ctx = self.aggregation_contexts.get(request_id)
         if agg_ctx:
@@ -349,7 +346,7 @@ class AggregationServer(AggregationServerServicer):
                 )
                 logger.error(f"[AGGREGATE] {msg}")
                 context.abort(grpc.StatusCode.ABORTED, msg)
-            msg = f"[CONFIGURE] request_id='{request_id}' is not configured."
+            msg = f"request_id='{request_id}' is not configured."
             logger.error(msg)
             context.abort(grpc.StatusCode.INVALID_ARGUMENT, msg)
         return agg_ctx
@@ -458,9 +455,8 @@ class AggregationServer(AggregationServerServicer):
                     agg_ctx.compute(self._reduce)
                 except Exception as exc:  # noqa: BLE001
                     agg_ctx.fail(exc)
-                    status = self._status_for_exception(exc)
                     logger.error(f"[UNREGISTER/AGGREGATE] {exc}", exc_info=exc)
-                    context.abort(status, str(exc))
+                    context.abort(_grpc_status(exc), str(exc))
 
             agg_ctx.condition.notify_all()
 
@@ -487,7 +483,7 @@ class AggregationServer(AggregationServerServicer):
                     len(agg_ctx.batch_payloads[0]) if agg_ctx.batch_payloads else 0
                 )
                 logger.info(
-                    "[AGGREGATE] Received worker results for context_id='%s' "
+                    "[AGGREGATE] Received worker results for request_id='%s' "
                     "(%d/%d workers reported)",
                     request.request_id,
                     received_workers,
@@ -503,13 +499,13 @@ class AggregationServer(AggregationServerServicer):
             except Exception as exc:  # noqa: BLE001
                 agg_ctx.fail(exc)
                 logger.error(f"[AGGREGATE] {exc}", exc_info=exc)
-                context.abort(self._status_for_exception(exc), str(exc))
+                context.abort(_grpc_status(exc), str(exc))
 
             try:
                 agg_ctx.wait_for_ready()
                 tensors = agg_ctx.consume()
             except Exception as exc:  # noqa: BLE001
-                context.abort(self._status_for_exception(exc), str(exc))
+                context.abort(_grpc_status(exc), str(exc))
 
         return AggregateResponse(
             tensors=[
