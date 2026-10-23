@@ -163,7 +163,8 @@ Standalone tests compare the result with `scipy.stats.mannwhitneyu`:
 
 ```python
 scipy.stats.mannwhitneyu(
-    group_a, group_b,
+    group_a,
+    group_b,
     alternative=alternative,
     method="asymptotic",
     use_continuity=True,

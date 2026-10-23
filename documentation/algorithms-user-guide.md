@@ -169,11 +169,11 @@ from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 
 @exareme3_udf()
 def mean_local(data, inputdata, column):
-  # Keep only the column of interest and drop NA locally
-  series = data[column].dropna()
-  sx = float(series.sum())
-  n = int(len(series))
-  return {"sx": sx, "n": n}
+    # Keep only the column of interest and drop NA locally
+    series = data[column].dropna()
+    sx = float(series.sum())
+    n = int(len(series))
+    return {"sx": sx, "n": n}
 ```
 
 Whenever a UDF needs access to the secure aggregation service (for operations
@@ -196,25 +196,25 @@ from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 
 
 class MeanResult(BaseModel):
-  variable: str
-  mean: float
+    variable: str
+    mean: float
 
 
 class MeanAlgorithm(Algorithm, algname="mean"):
-  def run(self):
-    column = self.inputdata.x[0]
+    def run(self):
+        column = self.inputdata.x[0]
 
-    worker_payloads = self.run_local_udf(
-      func=mean_local,
-      kw_args={
-        "column": column,
-      },
-    )
+        worker_payloads = self.run_local_udf(
+            func=mean_local,
+            kw_args={
+                "column": column,
+            },
+        )
 
-    sx = sum(payload["sx"] for payload in worker_payloads)
-    n = sum(payload["n"] for payload in worker_payloads)
+        sx = sum(payload["sx"] for payload in worker_payloads)
+        n = sum(payload["n"] for payload in worker_payloads)
 
-    return MeanResult(variable=column, mean=sx / n)
+        return MeanResult(variable=column, mean=sx / n)
 ```
 
 `run_algorithm_udf` schedules the registered UDF on every participating worker
@@ -323,10 +323,10 @@ from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 
 @exareme3_udf(with_aggregation_server=True)
 def xtx_local(data, inputdata, covariates, agg_client):
-  X = data[covariates].to_numpy(dtype=float, copy=False)
-  payload = np.array([X.T @ X, X.sum(axis=0), [len(X)]], dtype=object)
-  xtx, sx, count = agg_client.sum(payload)
-  return {"xtx": xtx.tolist(), "sx": sx.tolist(), "count": int(count[0])}
+    X = data[covariates].to_numpy(dtype=float, copy=False)
+    payload = np.array([X.T @ X, X.sum(axis=0), [len(X)]], dtype=object)
+    xtx, sx, count = agg_client.sum(payload)
+    return {"xtx": xtx.tolist(), "sx": sx.tolist(), "count": int(count[0])}
 ```
 
 The return value of a UDF can be any JSON-serializable object; most flows
@@ -369,7 +369,7 @@ Preprocessing steps that need the aggregation server must declare it in their
 specification:
 
 ```python
-components=[specs.ComponentType.AGGREGATION_SERVER]
+components = [specs.ComponentType.AGGREGATION_SERVER]
 ```
 
 The runtime then configures the aggregation server for requests that include the
@@ -384,20 +384,20 @@ from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingSt
 
 
 class GlobalPreprocessingStep(PreprocessingStep):
-  @classmethod
-  def get_specification(cls):
-    return specs.PreprocessingStepSpecification(
-      name="global_preprocessing_step",
-      desc="Example aggregation-aware preprocessing step.",
-      documentation="Example aggregation-aware preprocessing step.",
-      label="Global Preprocessing Step",
-      enabled=True,
-      components=[specs.ComponentType.AGGREGATION_SERVER],
-    )
+    @classmethod
+    def get_specification(cls):
+        return specs.PreprocessingStepSpecification(
+            name="global_preprocessing_step",
+            desc="Example aggregation-aware preprocessing step.",
+            documentation="Example aggregation-aware preprocessing step.",
+            label="Global Preprocessing Step",
+            enabled=True,
+            components=[specs.ComponentType.AGGREGATION_SERVER],
+        )
 
-  def transform_data(self, *, data, agg_client):
-    global_count = agg_client.sum([float(len(data))])
-    return data
+    def transform_data(self, *, data, agg_client):
+        global_count = agg_client.sum([float(len(data))])
+        return data
 ```
 
 Do not rely on `**kwargs` for this injection path; the parameter must be
@@ -417,12 +417,12 @@ from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 
 @exareme3_udf(with_aggregation_server=True)
 def privacy_preserving_counts(data, agg_client, categories):
-  matrix = np.stack(
-    [data[cat].value_counts(dropna=False).reindex(categories, fill_value=0)]
-  )
-  # The aggregation server sums the matrices across workers
-  total_counts = agg_client.sum(matrix)
-  return {"counts": total_counts.tolist()}
+    matrix = np.stack(
+        [data[cat].value_counts(dropna=False).reindex(categories, fill_value=0)]
+    )
+    # The aggregation server sums the matrices across workers
+    total_counts = agg_client.sum(matrix)
+    return {"counts": total_counts.tolist()}
 ```
 
 Inside the flow you treat the aggregated values like any other result; the main
@@ -453,7 +453,7 @@ and then it will sum the elements of this last matrix to obtain the final result
 To overcome this we can use `numpy.einsum` like this
 
 ```python
-result = numpy.einsum('ij,jk,kl->', A, B, C)
+result = numpy.einsum("ij,jk,kl->", A, B, C)
 ```
 
 This will only allocate a single float!
@@ -559,33 +559,33 @@ from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 
 
 class IterationResult(BaseModel):
-  value: float
+    value: float
 
 
 @exareme3_udf()
 def update_local(data, column, val):
-  gradient = data[column].mean() - val
-  return {"gradient": gradient}
+    gradient = data[column].mean() - val
+    return {"gradient": gradient}
 
 
 class MyAlgorithm(Algorithm, algname="iterative"):
-  def run(self):
-    val = 0.0
-    while True:
-      local_results = self.run_local_udf(
-        func=update_local,
-        kw_args={
-          "column": self.inputdata.x[0],
-          "val": val,
-        },
-      )
-      # Combine local gradients and update the iterate
-      gradient = sum(result["gradient"] for result in local_results)
-      val -= 0.1 * gradient
-      if abs(gradient) < 1e-3:
-        break
+    def run(self):
+        val = 0.0
+        while True:
+            local_results = self.run_local_udf(
+                func=update_local,
+                kw_args={
+                    "column": self.inputdata.x[0],
+                    "val": val,
+                },
+            )
+            # Combine local gradients and update the iterate
+            gradient = sum(result["gradient"] for result in local_results)
+            val -= 0.1 * gradient
+            if abs(gradient) < 1e-3:
+                break
 
-    return IterationResult(value=val)
+        return IterationResult(value=val)
 ```
 
 Here we initialize `val` to 0 and start the iteration. In each step the flow
@@ -609,34 +609,34 @@ from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 
 
 class MyModel:
-  def __init__(self, engine):
-    self.engine = engine
+    def __init__(self, engine):
+        self.engine = engine
 
-  def fit(self, inputdata_json):
-    self.run_local_udf(
-      func=some_local_training_step,
-      kw_args={"inputdata": inputdata_json},
-    )
+    def fit(self, inputdata_json):
+        self.run_local_udf(
+            func=some_local_training_step,
+            kw_args={"inputdata": inputdata_json},
+        )
 
-  def predict(self, inputdata_json):
-    return self.run_local_udf(
-      func=some_predict_step,
-      kw_args={"inputdata": inputdata_json},
-    )
+    def predict(self, inputdata_json):
+        return self.run_local_udf(
+            func=some_predict_step,
+            kw_args={"inputdata": inputdata_json},
+        )
 
 
 class PredictionResult(BaseModel):
-  predictions: list
+    predictions: list
 
 
 class MyAlgorithm(Algorithm, algname="complex_algorithm"):
-  def run(self):
-    model = MyModel(self.run_local_udf)
-    model.fit(self.inputdata.json())
+    def run(self):
+        model = MyModel(self.run_local_udf)
+        model.fit(self.inputdata.json())
 
-    new_inputdata = self.inputdata.copy(update={"datasets": ["validation"]})
-    predictions = model.predict(new_inputdata.json())
-    return PredictionResult(predictions=predictions)
+        new_inputdata = self.inputdata.copy(update={"datasets": ["validation"]})
+        predictions = model.predict(new_inputdata.json())
+        return PredictionResult(predictions=predictions)
 ```
 
 ## Customizing worker inputs
