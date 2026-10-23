@@ -4,6 +4,7 @@ import traceback
 from abc import ABC
 from collections import OrderedDict
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from logging import Logger
 from typing import Any
 from typing import Dict
@@ -349,42 +350,39 @@ class WorkerLandscapeAggregator:
             self._update_loop_thread.join()
 
     def healthcheck(self):
-        worker_info_tasks_handlers = [
+        def _check(worker_queue_addr: str):
             WorkerInfoTasksHandler(
                 worker_queue_addr=worker_queue_addr,
                 tasks_timeout=self._worker_info_tasks_timeout,
                 request_id=WORKER_LANDSCAPE_AGGREGATOR_REQUEST_ID,
-            )
-            for worker_queue_addr in WorkersAddressesFactory(
-                self._deployment_type, self._localworkers
-            )
+            ).get_healthcheck_task(False)
+
+        _map_concurrently(
+            _check,
+            WorkersAddressesFactory(self._deployment_type, self._localworkers)
             .get_workers_addresses()
-            .socket_addresses
-        ]
-        for task_handler in worker_info_tasks_handlers:
-            task_handler.get_healthcheck_task(False)
+            .socket_addresses,
+        )
 
     def _get_workers_info(self, workers_socket_addr: List[str]) -> List[WorkerInfo]:
-        worker_info_tasks_handlers = [
-            WorkerInfoTasksHandler(
+        def _fetch(worker_queue_addr: str) -> Optional[WorkerInfo]:
+            tasks_handler = WorkerInfoTasksHandler(
                 worker_queue_addr=worker_queue_addr,
                 tasks_timeout=self._worker_info_tasks_timeout,
                 request_id=WORKER_LANDSCAPE_AGGREGATOR_REQUEST_ID,
             )
-            for worker_queue_addr in workers_socket_addr
-        ]
-        workers_info = []
-        for tasks_handler in worker_info_tasks_handlers:
             try:
-                result = tasks_handler.get_worker_info_task()
-                workers_info.append(result)
+                return tasks_handler.get_worker_info_task()
             except (WorkerClientConnectionError, WorkerClientTimeoutException) as exc:
                 # just log the exception do not reraise it
                 self._logger.warning(exc)
             except Exception:
                 # just log full traceback exception as error and do not reraise it
                 self._logger.error(traceback.format_exc())
-        return workers_info
+            return None
+
+        workers_info = _map_concurrently(_fetch, workers_socket_addr)
+        return [info for info in workers_info if info is not None]
 
     def _get_worker_datasets_per_data_model(
         self,
@@ -661,40 +659,58 @@ class WorkerLandscapeAggregator:
         cached_datasets: Optional[Dict[str, DatasetsInfoPerDataModel]] = None,
     ) -> DataModelsMetadataPerWorker:
         cached_datasets = cached_datasets or {}
-        data_models_metadata_per_worker = {}
 
-        for worker_info in workers:
+        def _fetch(worker_info: WorkerInfo) -> Optional[DataModelsMetadata]:
             data_models_metadata = {}
-
             worker_socket_addr = worker_info.socket_addr
             datasets_per_data_model = cached_datasets.get(worker_info.id)
             if not datasets_per_data_model:
                 datasets_per_data_model = self._get_worker_datasets_per_data_model(
                     worker_socket_addr
                 )
-            if datasets_per_data_model:
-                for (
-                    data_model,
-                    dataset_infos,
-                ) in datasets_per_data_model.datasets_info_per_data_model.items():
-                    cdes = self._get_worker_cdes(worker_socket_addr, data_model)
-                    attributes = self._get_data_model_attributes(
-                        worker_socket_addr, data_model
-                    )
-                    cdes = cdes if cdes else None
-                    attributes = attributes if attributes else None
-                    data_models_metadata[data_model] = DataModelMetadata(
-                        dataset_infos=dataset_infos,
-                        cdes=cdes,
-                        attributes=attributes,
-                    )
-                    data_models_metadata_per_worker[worker_info.id] = (
-                        DataModelsMetadata(data_models_metadata=data_models_metadata)
-                    )
+            if not datasets_per_data_model:
+                return None
+            for (
+                data_model,
+                dataset_infos,
+            ) in datasets_per_data_model.datasets_info_per_data_model.items():
+                cdes = self._get_worker_cdes(worker_socket_addr, data_model)
+                attributes = self._get_data_model_attributes(
+                    worker_socket_addr, data_model
+                )
+                cdes = cdes if cdes else None
+                attributes = attributes if attributes else None
+                data_models_metadata[data_model] = DataModelMetadata(
+                    dataset_infos=dataset_infos,
+                    cdes=cdes,
+                    attributes=attributes,
+                )
+            if not data_models_metadata:
+                return None
+            return DataModelsMetadata(data_models_metadata=data_models_metadata)
 
+        # One slow worker should only delay the update by its own latency.
+        metadata_per_worker = _map_concurrently(_fetch, workers)
         return DataModelsMetadataPerWorker(
-            data_models_metadata_per_worker=data_models_metadata_per_worker
+            data_models_metadata_per_worker={
+                worker_info.id: metadata
+                for worker_info, metadata in zip(workers, metadata_per_worker)
+                if metadata is not None
+            }
         )
+
+
+def _map_concurrently(fn, items) -> list:
+    """Apply fn to every item in parallel threads, preserving order.
+
+    Worker RPCs are I/O bound, so the update takes as long as the slowest
+    worker instead of the sum over workers. Exceptions propagate as with map.
+    """
+    items = list(items)
+    if not items:
+        return []
+    with ThreadPoolExecutor(max_workers=len(items)) as pool:
+        return list(pool.map(fn, items))
 
 
 def _crunch_data_model_registry_data(

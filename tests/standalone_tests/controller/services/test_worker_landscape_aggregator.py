@@ -968,3 +968,31 @@ def test_get_worker_cdes_properly_handles_errors(
     monkeypatch.setattr(wla_module, "WorkerInfoTasksHandler", FakeHandler)
     cdes = worker_landscape_aggregator._get_worker_cdes("fail", "dementia:0.1")
     assert cdes is None
+
+
+def test_get_workers_info_queries_workers_concurrently(
+    worker_landscape_aggregator, monkeypatch
+):
+    import threading
+
+    addresses = ["w1", "w2", "w3"]
+    barrier = threading.Barrier(len(addresses), timeout=5)
+
+    class FakeHandler:
+        def __init__(self, worker_queue_addr, *args, **kwargs):
+            self.worker_queue_addr = worker_queue_addr
+
+        def get_worker_info_task(self):
+            # Only returns once every worker call is in flight at the same time.
+            barrier.wait()
+            return WorkerInfo(
+                id=self.worker_queue_addr,
+                role=WorkerRole.LOCALWORKER,
+                ip=ipaddress.ip_address("127.0.0.10"),
+                port=50010,
+            )
+
+    monkeypatch.setattr(wla_module, "WorkerInfoTasksHandler", FakeHandler)
+    workers = worker_landscape_aggregator._get_workers_info(addresses)
+
+    assert [worker.id for worker in workers] == addresses
