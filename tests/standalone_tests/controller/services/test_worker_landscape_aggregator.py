@@ -901,6 +901,64 @@ def test_crunch_data_model_registry_data_includes_datasets_variables(
     }
 
 
+def test_crunch_data_model_registry_data_omits_datasets_without_variables(
+    worker_landscape_aggregator,
+):
+    metadata = DataModelsMetadataPerWorker(
+        data_models_metadata_per_worker={
+            "localworker1": DataModelsMetadata(
+                data_models_metadata={
+                    "data_model:1": DataModelMetadata(
+                        dataset_infos=[
+                            DatasetInfo(
+                                code="known",
+                                label="KNOWN",
+                                variables=["var1"],
+                            ),
+                            DatasetInfo(code="missing", label="MISSING"),
+                            DatasetInfo(code="empty", label="EMPTY", variables=[]),
+                        ],
+                        cdes=CommonDataElements(
+                            values={
+                                "dataset": _build_dataset_cde(
+                                    {
+                                        "known": "KNOWN",
+                                        "missing": "MISSING",
+                                        "empty": "EMPTY",
+                                    }
+                                ),
+                                "var1": CommonDataElement(
+                                    code="var1",
+                                    label="Variable 1",
+                                    sql_type="text",
+                                    is_categorical=False,
+                                ),
+                            }
+                        ),
+                        attributes=DataModelAttributes(tags=[], properties={}),
+                    ),
+                    "data_model:2": DataModelMetadata(
+                        dataset_infos=[DatasetInfo(code="unknown", label="UNKNOWN")],
+                        cdes=CommonDataElements(
+                            values={
+                                "dataset": _build_dataset_cde({"unknown": "UNKNOWN"}),
+                            }
+                        ),
+                        attributes=DataModelAttributes(tags=[], properties={}),
+                    ),
+                }
+            )
+        }
+    )
+    dmr = _crunch_data_model_registry_data(
+        metadata, worker_landscape_aggregator._logger
+    )
+    assert dmr.datasets_variables.datasets_variables == {
+        "data_model:1": {"known": ["var1"]},
+        "data_model:2": {},
+    }
+
+
 def test_get_datasets_per_worker(mocked_wla):
     datasets = mocked_wla.get_datasets_per_worker("dementia:0.1")
     assert datasets["localworker1"] == ["ppmi0", "edsd0", "desd-synthdata0"]

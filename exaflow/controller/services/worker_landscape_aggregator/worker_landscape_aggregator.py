@@ -903,7 +903,7 @@ def _extract_datasets_locations(
 def _extract_datasets_variables(
     data_models_metadata_per_worker: DataModelsMetadataPerWorker,
 ) -> DatasetsVariables:
-    datasets_variables_dict = defaultdict(lambda: defaultdict(list))
+    datasets_variables_dict = defaultdict(dict)
 
     for (
         _,
@@ -913,11 +913,12 @@ def _extract_datasets_variables(
             data_model,
             model_metadata,
         ) in data_models_metadata.data_models_metadata.items():
+            model_variables = datasets_variables_dict[data_model]
             for dataset in model_metadata.dataset_infos:
+                # No variable info means "unknown", so the dataset is left out.
                 variables = getattr(dataset, "variables", None)
-                datasets_variables_dict[data_model][dataset.code] = (
-                    list(variables) if variables else []
-                )
+                if variables:
+                    model_variables[dataset.code] = list(variables)
 
     return DatasetsVariables(datasets_variables=datasets_variables_dict)
 
