@@ -572,26 +572,15 @@ def _validate_parameters(
         if isinstance(parameter_values, dict) and len(parameter_values) == 0:
             raise BadUserInput(f"Parameter '{parameter_name}' should not be blank.")
 
-        if isinstance(parameter_values, bool):
-            _validate_parameter_values(
-                parameter_values=parameter_values,
-                parameter_spec=parameter_spec,
-                inputdata=inputdata,
-                data_model_cdes=data_model_cdes,
-                algorithm_x=algorithm_x,
-                algorithm_y=algorithm_y,
-            )
-            continue
-
-        if parameter_values:
-            _validate_parameter_values(
-                parameter_values=parameter_values,
-                parameter_spec=parameter_spec,
-                inputdata=inputdata,
-                data_model_cdes=data_model_cdes,
-                algorithm_x=algorithm_x,
-                algorithm_y=algorithm_y,
-            )
+        # Falsy values such as 0 or 0.0 must be validated too (min/max, enums).
+        _validate_parameter_values(
+            parameter_values=parameter_values,
+            parameter_spec=parameter_spec,
+            inputdata=inputdata,
+            data_model_cdes=data_model_cdes,
+            algorithm_x=algorithm_x,
+            algorithm_y=algorithm_y,
+        )
 
 
 def _validate_parameters_are_in_the_specs(
@@ -657,7 +646,7 @@ def _validate_parameter_type(
     }
 
     for param_type in parameter_spec.types:
-        if isinstance(
+        if _is_instance_of_param_type(
             parameter_value, exaflowtypes_to_python_types.get(param_type.value)
         ):
             return
@@ -665,6 +654,13 @@ def _validate_parameter_type(
         raise BadUserInput(
             f"Parameter '{parameter_spec.label}' values should be of types: {[type.value for type in parameter_spec.types]}."
         )
+
+
+def _is_instance_of_param_type(value: Any, python_type) -> bool:
+    # bool is a subclass of int (and numbers.Real); only accept it as boolean.
+    if isinstance(value, bool) and python_type is not bool:
+        return False
+    return isinstance(value, python_type)
 
 
 def _validate_parameter_value_type(
@@ -682,7 +678,9 @@ def _validate_parameter_value_type(
     if parameter_type == ParameterDictValueType.FILTER:
         return
 
-    if isinstance(parameter_value, exaflowtypes_to_python_types[parameter_type.value]):
+    if _is_instance_of_param_type(
+        parameter_value, exaflowtypes_to_python_types[parameter_type.value]
+    ):
         return
 
     raise BadUserInput(
