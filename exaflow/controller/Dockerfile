@@ -1,10 +1,10 @@
-FROM python:3.10.18-slim-bullseye AS builder
+FROM python:3.10.22-slim-trixie AS builder
 
 ENV UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never \
     CODE_PATH="/opt/code"
 
-COPY --from=ghcr.io/astral-sh/uv:0.11.0 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /uvx /bin/
 
 WORKDIR $CODE_PATH
 
@@ -12,7 +12,7 @@ COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-project --no-default-groups --group controller
 
-FROM python:3.10.18-slim-bullseye
+FROM python:3.10.22-slim-trixie
 LABEL maintainer="Thanasis Karampatsis <tkarabatsis@athenarc.gr>"
 
 #######################################################

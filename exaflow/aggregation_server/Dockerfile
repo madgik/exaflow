@@ -1,9 +1,9 @@
-FROM python:3.10.18-slim-bullseye AS builder
+FROM python:3.10.22-slim-trixie AS builder
 
 ENV UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never
 
-COPY --from=ghcr.io/astral-sh/uv:0.11.0 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /uvx /bin/
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-project --only-group aggregation-server
 
-FROM python:3.10.18-slim-bullseye
+FROM python:3.10.22-slim-trixie
 LABEL maintainer="Konstantinos Filippopolitis <kfilippopolitis@athenarc.gr>"
 
 WORKDIR /app
