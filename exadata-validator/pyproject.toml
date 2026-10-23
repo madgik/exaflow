@@ -8,8 +8,8 @@ authors = [
 ]
 requires-python = ">=3.10,<3.11"
 dependencies = [
-    "click>=8.1.0,<8.2.0",
-    "duckdb>=1.1.0,<1.2.0",
+    "click>=8.5.0,<8.6.0",
+    "duckdb>=1.5.6,<1.6.0",
 ]
 
 [project.scripts]
@@ -17,7 +17,7 @@ exadata-validator = "validator.commands:entry"
 
 [dependency-groups]
 dev = [
-    "pytest>=8.4.0,<8.5.0",
+    "pytest>=9.1.1,<9.2.0",
 ]
 
 [build-system]
