@@ -148,6 +148,8 @@ Output:
 | `coefficients` | Estimated coefficients including intercept. |
 | `stderr` | Standard errors. |
 | `lower_ci`, `upper_ci` | Confidence interval bounds. |
+| `odds_ratios` | Exponentiated coefficients, `exp(coefficients)`. |
+| `or_lower_ci`, `or_upper_ci` | Odds-ratio confidence bounds, `exp(lower_ci)` and `exp(upper_ci)`. |
 | `z_scores` | Wald z statistics. |
 | `pvalues` | Two-sided coefficient p-values. |
 | `df_model` | Model degrees of freedom. |

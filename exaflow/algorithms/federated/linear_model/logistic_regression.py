@@ -29,6 +29,11 @@ NO_INTERCEPT_FEATURE_POLICY = ArrayPolicy(dimensions=(0, 1, 2))
 TARGET_POLICY = ArrayPolicy(dimensions=(2,))
 
 
+def _safe_exp(values: np.ndarray) -> np.ndarray:
+    """exp() clipped to the finite float range so huge coefficients stay finite."""
+    return np.exp(np.clip(values, None, np.log(np.finfo(float).max)))
+
+
 class FederatedLogisticRegressionResults(FederatedEstimatorResults):
     """Container for fitted federated logistic regression statistics."""
 
@@ -65,6 +70,9 @@ class FederatedLogisticRegressionResults(FederatedEstimatorResults):
         self.stderr = np.asarray(stderr, dtype=float)
         self.lower_ci = np.asarray(lower_ci, dtype=float)
         self.upper_ci = np.asarray(upper_ci, dtype=float)
+        self.odds_ratios = _safe_exp(self.params)
+        self.or_lower_ci = _safe_exp(self.lower_ci)
+        self.or_upper_ci = _safe_exp(self.upper_ci)
         self.z_scores = np.asarray(z_scores, dtype=float)
         self.pvalues = np.asarray(pvalues, dtype=float)
         self.df_model = int(df_model)
@@ -93,6 +101,9 @@ class FederatedLogisticRegressionResults(FederatedEstimatorResults):
             "stderr": self.stderr.tolist(),
             "lower_ci": self.lower_ci.tolist(),
             "upper_ci": self.upper_ci.tolist(),
+            "odds_ratios": self.odds_ratios.tolist(),
+            "or_lower_ci": self.or_lower_ci.tolist(),
+            "or_upper_ci": self.or_upper_ci.tolist(),
             "z_scores": self.z_scores.tolist(),
             "pvalues": self.pvalues.tolist(),
             "df_model": int(self.df_model),
