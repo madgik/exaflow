@@ -14,28 +14,27 @@ Lifecycle of a request
 
 Synchronization
 ---------------
-Each request has an `AggregationContext` guarded by one `Condition`. Only one
-step is active at a time:
-- `IDLE`: no step is active. The next `Aggregate` call starts step
-  `current_step + 1`. A worker that is already ahead waits for that.
-- `COLLECTING`: inputs for the active step are arriving. When all
-  `expected_workers` inputs are in, the result is computed and the state moves
-  to `READY`.
-- `READY`: every worker reads the result. After the last read, the context goes
-  back to `IDLE`.
+Each request has an `AggregationContext` guarded by one `Condition`. It keeps
+one slot per step number that is still in progress:
+- A worker's `Aggregate` call adds its inputs to the slot for its step,
+  creating the slot if it is the first to arrive.
+- When the slot has inputs from all `expected_workers`, the result is computed
+  and every waiting worker wakes up and reads it.
+- After the last read the slot is deleted. A worker that finishes a step early
+  can already start the next one; it gets its own slot.
 Every wait is bounded by `config.max_wait_for_aggregation_inputs`.
 
 Errors
 ------
-The first error in a step (mismatched operations, bad payload, timeout) moves
-the context to `FAILED` and wakes every waiting worker with the same error. A
-failed request does not recover: the worker that hit the error never reads a
-result, so the step never completes. The controller ends the request instead.
+The first error (mismatched operations, bad payload, timeout) ends the request:
+every waiting worker and every later call for the request gets that same error.
+The controller then ends the request and calls `Cleanup`.
 
-`Cleanup` removes the context and cancels it, so workers still waiting get
-ABORTED at once instead of waiting for the timeout. If `Cleanup` never arrives
-(for example the controller crashed), `Configure` evicts contexts with no
-`Aggregate` or `Unregister` call for `STALE_CONTEXT_TTL_SECONDS`.
+`Cleanup` removes the context. If workers are still waiting on a step, it ends
+the request with ABORTED so they return at once instead of at the timeout.
+If `Cleanup` never arrives (for example the controller crashed), `Configure`
+evicts contexts with no `Aggregate` or `Unregister` call for
+`STALE_CONTEXT_TTL_SECONDS`.
 
 `AggregationContext` raises plain Python exceptions and only the servicer
 methods call `context.abort()`, mapping them with `_grpc_status()`. gRPC's
@@ -47,10 +46,11 @@ import logging
 import threading
 import time
 from concurrent import futures
-from enum import Enum
+from dataclasses import dataclass
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Tuple
 
 import grpc
 import numpy as np
@@ -103,6 +103,31 @@ def _result_dtype(aggregation_type: str, dtypes: list[np.dtype]) -> np.dtype:
     return dtype
 
 
+def _decode_operations(request) -> Tuple[List[str], List[np.ndarray]]:
+    if not request.operations:
+        raise ValueError(f"request_id='{request.request_id}' sent no operations")
+    aggregation_types = []
+    payloads = []
+    for op in request.operations:
+        if op.aggregation_type != "UNION" and op.aggregation_type not in REDUCERS:
+            raise ValueError(f"Unsupported aggregation type '{op.aggregation_type}'")
+        if not op.tensor:
+            raise ValueError(
+                f"request_id='{request.request_id}' missing tensor payload"
+            )
+        if op.aggregation_type == "UNION":
+            payload = bytes_to_values(op.tensor)
+        else:
+            payload = bytes_to_ndarray(op.tensor)
+            if payload.dtype.kind not in NUMERIC_KINDS:
+                raise ValueError(
+                    "Numeric aggregation requires numeric tensor payloads."
+                )
+        aggregation_types.append(op.aggregation_type)
+        payloads.append(payload)
+    return aggregation_types, payloads
+
+
 class AggregationCancelledError(Exception):
     """The request was cleaned up while a worker was still waiting on it."""
 
@@ -117,182 +142,122 @@ def _grpc_status(exc: Exception) -> grpc.StatusCode:
     return grpc.StatusCode.INTERNAL
 
 
-class AggregationState(Enum):
-    IDLE = "idle"
-    COLLECTING = "collecting"
-    READY = "ready"
-    FAILED = "failed"
+@dataclass
+class _Step:
+    aggregation_types: List[str]
+    # inputs[i] holds one vector per worker for operation i.
+    inputs: List[List[np.ndarray]]
+    result: Optional[List[np.ndarray]] = None
+    reads: int = 0
 
 
 class AggregationContext:
+    """Aggregation state of one request, guarded by `condition`."""
+
     def __init__(self, request_id: str, expected_workers: int):
         self.request_id = request_id
         self.expected_workers = expected_workers
-        self.current_step = 0
-        self.active_step: Optional[int] = None
-        self.state = AggregationState.IDLE
-        self.acquired_count = 0
+        self.steps: Dict[int, _Step] = {}
+        self.last_completed_step = 0
         self.error: Optional[Exception] = None
-        self.batch_ops: Optional[List[str]] = None
-        self.batch_payloads: Optional[List[List[np.ndarray]]] = None
-        self.batch_vector_lengths: Optional[List[Optional[int]]] = None
-        self.batch_result: Optional[List[np.ndarray]] = None
-        self.cancelled = False
         self.last_activity = time.monotonic()
         self.condition = threading.Condition()
 
-    def reset_step(self) -> None:
-        self.active_step = None
-        self.state = AggregationState.IDLE
-        self.acquired_count = 0
-        self.error = None
-        self.batch_ops = None
-        self.batch_payloads = None
-        self.batch_vector_lengths = None
-        self.batch_result = None
-        self.condition.notify_all()
-
     def fail(self, exc: Exception) -> None:
-        self.error = exc
-        self.state = AggregationState.FAILED
-        self.condition.notify_all()
+        """End the request: every waiting and later call raises the first error."""
+        with self.condition:
+            if self.error is None:
+                self.error = exc
+                logger.error(
+                    f"[AGGREGATE] request_id='{self.request_id}' failed: {exc}",
+                    exc_info=exc,
+                )
+            self.condition.notify_all()
 
-    def cancel(self) -> None:
-        self.cancelled = True
-        self.fail(
-            AggregationCancelledError(
-                f"Aggregation for request_id='{self.request_id}' was cancelled "
-                "because the controller cleaned up the request."
-            )
-        )
-
-    def ensure_step(self, step: int, operations) -> None:
-        def _can_start_new_step() -> bool:
-            return (
-                self.active_step is None
-                and self.state == AggregationState.IDLE
-                and step == self.current_step + 1
-            )
-
-        while True:
-            if self.cancelled:
+    def aggregate(
+        self,
+        step_no: int,
+        aggregation_types: List[str],
+        payloads: List[np.ndarray],
+        reduce_fn,
+    ) -> List[np.ndarray]:
+        """Add one worker's inputs for `step_no` and wait for the combined result."""
+        with self.condition:
+            if self.error is not None:
                 raise self.error
-            if step <= self.current_step:
+            if step_no <= self.last_completed_step:
                 raise ValueError(
-                    f"Step {step} already completed for request_id='{self.request_id}'"
+                    f"Step {step_no} already completed for request_id='{self.request_id}'"
                 )
-            if self.active_step == step:
-                self._validate_ops(operations)
-                return
-            if _can_start_new_step():
-                self._start_step(step, operations)
-                return
-
-            notified = self.condition.wait(
-                timeout=config.max_wait_for_aggregation_inputs
+            step = self.steps.setdefault(
+                step_no, _Step(aggregation_types, [[] for _ in aggregation_types])
             )
-            if not notified:
+            self._add_inputs(step, step_no, aggregation_types, payloads)
+            logger.info(
+                "[AGGREGATE] request_id='%s' step %d: %d/%d workers reported",
+                self.request_id,
+                step_no,
+                len(step.inputs[0]),
+                self.expected_workers,
+            )
+            self.compute_complete_steps(reduce_fn)
+
+            done = self.condition.wait_for(
+                lambda: step.result is not None or self.error is not None,
+                timeout=config.max_wait_for_aggregation_inputs,
+            )
+            if self.error is not None:
+                raise self.error
+            if not done:
                 raise TimeoutError(
-                    f"Timeout waiting to start step {step} for request_id='{self.request_id}'"
+                    f"Timeout waiting for aggregation result for request_id='{self.request_id}' "
+                    f"step {step_no} (received {len(step.inputs[0])}/{self.expected_workers})"
                 )
+            step.reads += 1
+            if step.reads >= self.expected_workers:
+                del self.steps[step_no]
+                self.last_completed_step = max(self.last_completed_step, step_no)
+            return step.result
 
-    def _start_step(self, step: int, operations) -> None:
-        self.active_step = step
-        self.state = AggregationState.COLLECTING
-        self.acquired_count = 0
-        self.error = None
-        self.batch_ops = [op.aggregation_type for op in operations]
-        self.batch_payloads = [[] for _ in operations]
-        self.batch_vector_lengths = [None for _ in operations]
-        self.batch_result = None
-
-    def _validate_ops(self, operations) -> None:
-        if self.batch_ops is None:
-            raise RuntimeError("Batch ops not initialized for active step.")
-        if len(operations) != len(self.batch_ops):
-            raise ValueError(
-                f"Batch op count mismatch for request_id='{self.request_id}' "
-                f"(expected {len(self.batch_ops)}, got {len(operations)})"
-            )
-        for idx, op in enumerate(operations):
-            if op.aggregation_type != self.batch_ops[idx]:
-                raise ValueError(
-                    f"Batch aggregation_type mismatch at index {idx} for request_id='{self.request_id}' "
-                    f"(expected '{self.batch_ops[idx]}', got '{op.aggregation_type}')"
-                )
-
-    def store_payloads(self, request, decode_fn) -> None:
-        assert self.batch_payloads is not None
-        assert self.batch_vector_lengths is not None
-        for idx, op in enumerate(request.operations):
-            payload = decode_fn(op.tensor, op.aggregation_type, request.request_id)
-            vector_length = len(payload)
-            if op.aggregation_type != "UNION":
-                if payload.dtype.kind not in NUMERIC_KINDS:
-                    raise ValueError(
-                        "Numeric aggregation requires numeric tensor payloads."
+    def compute_complete_steps(self, reduce_fn) -> None:
+        """Compute every step that has inputs from all expected workers."""
+        for step in self.steps.values():
+            if step.result is None and len(step.inputs[0]) >= self.expected_workers:
+                step.result = [
+                    reduce_fn(aggregation_type, inputs)
+                    for aggregation_type, inputs in zip(
+                        step.aggregation_types, step.inputs
                     )
-                expected_len = self.batch_vector_lengths[idx]
-                if expected_len is None:
-                    self.batch_vector_lengths[idx] = vector_length
-                elif vector_length != expected_len:
-                    raise ValueError(
-                        f"All vectors in batch op {idx} must have the same length "
-                        f"(expected {expected_len}, got {vector_length})"
-                    )
-            self.batch_payloads[idx].append(payload)
-
-    def compute(self, reduce_fn) -> None:
-        assert self.batch_ops is not None and self.batch_payloads is not None
-        self.batch_result = [
-            reduce_fn(op_type, payloads)
-            for op_type, payloads in zip(self.batch_ops, self.batch_payloads)
-        ]
-        self.state = AggregationState.READY
-        self.condition.notify_all()
-
-    def wait_for_ready(self) -> None:
-        ready = self.condition.wait_for(
-            lambda: self.state in {AggregationState.READY, AggregationState.FAILED},
-            timeout=config.max_wait_for_aggregation_inputs,
-        )
-        if ready:
-            return
-        received = len(self.batch_payloads[0]) if self.batch_payloads else 0
-        msg = (
-            f"Timeout waiting for aggregation result for request_id='{self.request_id}' "
-            f"(received {received}/{self.expected_workers})"
-        )
-        logger.error(f"[AGGREGATE] {msg}")
-        timeout_exc = TimeoutError(msg)
-        self.fail(timeout_exc)
-        raise timeout_exc
-
-    def consume(self):
-        if self.cancelled:
-            raise self.error
-        if self.error is not None:
-            error = self.error
-            self._finish_step(reset_step=False)
-            logger.error(f"[AGGREGATE] Error during batch aggregation: {error}")
-            raise error
-
-        if not self.batch_result:
-            raise RuntimeError("Batch result missing.")
-
-        tensors = self.batch_result
-        self._finish_step(reset_step=True)
-        return tensors
-
-    def _finish_step(self, reset_step: bool) -> None:
-        self.acquired_count += 1
-        if self.acquired_count >= self.expected_workers:
-            self.current_step = self.active_step or self.current_step
-            if reset_step:
-                self.reset_step()
-            else:
-                self.state = AggregationState.IDLE
+                ]
                 self.condition.notify_all()
+
+    def _add_inputs(
+        self,
+        step: _Step,
+        step_no: int,
+        aggregation_types: List[str],
+        payloads: List[np.ndarray],
+    ) -> None:
+        if aggregation_types != step.aggregation_types:
+            raise ValueError(
+                f"Batch aggregation_type mismatch for request_id='{self.request_id}' "
+                f"step {step_no} (expected {step.aggregation_types}, "
+                f"got {aggregation_types})"
+            )
+        for idx, (aggregation_type, inputs, payload) in enumerate(
+            zip(aggregation_types, step.inputs, payloads)
+        ):
+            if (
+                aggregation_type != "UNION"
+                and inputs
+                and len(payload) != len(inputs[0])
+            ):
+                raise ValueError(
+                    f"All vectors in batch op {idx} must have the same length "
+                    f"(expected {len(inputs[0])}, got {len(payload)})"
+                )
+        for inputs, payload in zip(step.inputs, payloads):
+            inputs.append(payload)
 
 
 class AggregationServer(AggregationServerServicer):
@@ -311,24 +276,11 @@ class AggregationServer(AggregationServerServicer):
             context.abort(grpc.StatusCode.INVALID_ARGUMENT, msg)
         return agg_ctx
 
-    def _decode_vector(
-        self, tensor: bytes, aggregation_type: str, request_id: str
-    ) -> np.ndarray:
-        if tensor:
-            if aggregation_type == "UNION":
-                return bytes_to_values(tensor)
-            return bytes_to_ndarray(tensor)
-        raise ValueError(
-            f"[AGGREGATE] request_id='{request_id}' missing tensor payload"
-        )
-
     @staticmethod
     def _reduce(aggregation_type: str, vectors: list[np.ndarray]) -> np.ndarray:
         if aggregation_type == "UNION":
             return np.asarray(sorted(set(np.concatenate(vectors))), dtype=object)
-        ufunc = REDUCERS.get(aggregation_type)
-        if ufunc is None:
-            raise ValueError(f"Unsupported aggregation type '{aggregation_type}'")
+        ufunc = REDUCERS[aggregation_type]
         dtype = _result_dtype(aggregation_type, [vector.dtype for vector in vectors])
         result = vectors[0].astype(dtype, copy=True)
         for vector in vectors[1:]:
@@ -393,19 +345,11 @@ class AggregationServer(AggregationServerServicer):
                 f"to {agg_ctx.expected_workers}"
             )
 
-            if (
-                agg_ctx.state == AggregationState.COLLECTING
-                and agg_ctx.batch_payloads
-                and len(agg_ctx.batch_payloads[0]) >= agg_ctx.expected_workers
-            ):
-                try:
-                    agg_ctx.compute(self._reduce)
-                except Exception as exc:  # noqa: BLE001
-                    agg_ctx.fail(exc)
-                    logger.error(f"[UNREGISTER/AGGREGATE] {exc}", exc_info=exc)
-                    context.abort(_grpc_status(exc), str(exc))
-
-            agg_ctx.condition.notify_all()
+            try:
+                agg_ctx.compute_complete_steps(self._reduce)
+            except Exception as exc:  # noqa: BLE001
+                agg_ctx.fail(exc)
+                context.abort(_grpc_status(exc), str(exc))
 
         return UnregisterResponse(
             status=Status.OK,
@@ -416,43 +360,14 @@ class AggregationServer(AggregationServerServicer):
     def Aggregate(self, request, context):
         agg_ctx = self._get_aggregation_context(request.request_id, context)
         agg_ctx.last_activity = time.monotonic()
-
-        with agg_ctx.condition:
-            try:
-                agg_ctx.ensure_step(request.step, request.operations)
-                agg_ctx.store_payloads(
-                    request,
-                    lambda tensor, aggregation_type, request_id=request.request_id: (
-                        self._decode_vector(tensor, aggregation_type, request_id)
-                    ),
-                )
-                received_workers = (
-                    len(agg_ctx.batch_payloads[0]) if agg_ctx.batch_payloads else 0
-                )
-                logger.info(
-                    "[AGGREGATE] Received worker results for request_id='%s' "
-                    "(%d/%d workers reported)",
-                    request.request_id,
-                    received_workers,
-                    agg_ctx.expected_workers,
-                )
-
-                if (
-                    agg_ctx.state == AggregationState.COLLECTING
-                    and agg_ctx.batch_payloads
-                    and len(agg_ctx.batch_payloads[0]) >= agg_ctx.expected_workers
-                ):
-                    agg_ctx.compute(self._reduce)
-            except Exception as exc:  # noqa: BLE001
-                agg_ctx.fail(exc)
-                logger.error(f"[AGGREGATE] {exc}", exc_info=exc)
-                context.abort(_grpc_status(exc), str(exc))
-
-            try:
-                agg_ctx.wait_for_ready()
-                tensors = agg_ctx.consume()
-            except Exception as exc:  # noqa: BLE001
-                context.abort(_grpc_status(exc), str(exc))
+        try:
+            aggregation_types, payloads = _decode_operations(request)
+            tensors = agg_ctx.aggregate(
+                request.step, aggregation_types, payloads, self._reduce
+            )
+        except Exception as exc:  # noqa: BLE001
+            agg_ctx.fail(exc)
+            context.abort(_grpc_status(exc), str(exc))
 
         return AggregateResponse(
             tensors=[
@@ -477,7 +392,13 @@ class AggregationServer(AggregationServerServicer):
             )
 
         with agg_ctx.condition:
-            agg_ctx.cancel()
+            if agg_ctx.steps:
+                agg_ctx.fail(
+                    AggregationCancelledError(
+                        f"Aggregation for request_id='{request.request_id}' was "
+                        "cancelled because the controller cleaned up the request."
+                    )
+                )
 
         logger.info(
             f"[CLEANUP] Removed AggregationContext for request_id='{request.request_id}'"

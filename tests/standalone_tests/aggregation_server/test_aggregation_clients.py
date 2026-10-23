@@ -15,6 +15,7 @@ from exaflow.aggregation_clients.controller_aggregation_client import (
 from exaflow.aggregation_clients.exareme3_udf_aggregation_client import (
     Exareme3UDFAggregationClient,
 )
+from exaflow.aggregation_serialization import ndarray_to_bytes
 from exaflow.aggregation_server import config as aggregation_config
 from exaflow.aggregation_server.server import STALE_CONTEXT_TTL_SECONDS
 from exaflow.aggregation_server.server import AggregationServer
@@ -52,7 +53,7 @@ def _wait_for_batch_mode(
     while time.time() < deadline:
         ctx = servicer.aggregation_contexts.get(request_id)
         # Wait until the aggregation context has initialized batch operations
-        if ctx and ctx.batch_ops:
+        if ctx and ctx.steps:
             return
         time.sleep(0.01)
     raise AssertionError(f"Batch mode not initialized for {request_id}")
@@ -754,3 +755,42 @@ def test_aggregate_keeps_context_active(
     controller_factory("other").configure(1)
 
     assert "active" in inline_grpc_stub.aggregation_contexts
+
+
+def test_failed_request_rejects_later_steps_immediately(
+    controller_factory, worker_factory
+):
+    request_id = "failed-request"
+    controller_factory(request_id).configure(2)
+    worker_a = worker_factory(request_id)
+    worker_b = worker_factory(request_id)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        future_a = pool.submit(worker_a.aggregate, AggregationType.SUM, [1.0])
+        future_b = pool.submit(worker_b.aggregate, AggregationType.MIN, [1.0])
+        for future in (future_a, future_b):
+            with pytest.raises(InlineRpcError):
+                future.result(timeout=2)
+
+    # The next step must fail with the original error, not wait for the timeout.
+    with pytest.raises(InlineRpcError) as exc:
+        worker_a.aggregate(AggregationType.SUM, [1.0])
+    assert exc.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+    assert "aggregation_type mismatch" in exc.value.details()
+
+
+def test_unsupported_aggregation_type_is_rejected(inline_grpc_stub, controller_factory):
+    controller_factory("bad-type").configure(1)
+    request = server_pb2.AggregateRequest(
+        request_id="bad-type",
+        step=1,
+        operations=[
+            server_pb2.Operation(
+                aggregation_type="MEDIAN", tensor=ndarray_to_bytes(np.array([1.0]))
+            )
+        ],
+    )
+
+    with pytest.raises(InlineRpcError) as exc:
+        inline_grpc_stub.Aggregate(request, InlineGrpcContext())
+    assert exc.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+    assert "Unsupported aggregation type 'MEDIAN'" in exc.value.details()
