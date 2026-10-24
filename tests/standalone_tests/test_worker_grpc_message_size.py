@@ -302,3 +302,16 @@ def test_aggregation_config_reads_max_message_mb_from_env(monkeypatch, tmp_path)
     loaded = agg_server._load_config()
     assert loaded.max_message_mb == 6
     assert isinstance(loaded.max_message_mb, int)
+
+
+def test_aggregation_config_treats_blank_max_message_mb_as_default(
+    monkeypatch, tmp_path
+):
+    import exaflow.aggregation_server as agg_server
+
+    # Helm renders a missing grpc_max_message_mb value as an empty string.
+    monkeypatch.setenv("GRPC_MAX_MESSAGE_MB", "")
+    cfg_path = tmp_path / "aggregation.toml"
+    cfg_path.write_text('max_message_mb = "$GRPC_MAX_MESSAGE_MB"\n')
+    monkeypatch.setenv("AGG_SERVER_CONFIG_FILE", str(cfg_path))
+    assert agg_server._load_config().max_message_mb == 100
