@@ -128,6 +128,15 @@ pool. Aggregation configure/cleanup and Flower start/stop/garbage-collect run
 on it as well. If the client disconnects, the request waits until the analysis
 thread finishes before aggregation cleanup.
 
+Concurrent analyses need matching capacity downstream. A `RunUdf` call holds a
+worker gRPC thread, and an `Aggregate` call holds an aggregation server thread,
+while it waits for the other workers. Both pools are therefore derived from
+`max_concurrent_experiments`: workers get `max_concurrent_experiments + 4`
+gRPC threads and the aggregation server gets `max_concurrent_experiments`
+threads per local worker, in Helm and in `inv create-configs`. Smaller pools
+let partial steps of different analyses hold every thread until the
+aggregation wait times out.
+
 Kubernetes probes: startup and liveness both call `/livez` with a 5 second
 timeout (liveness `failureThreshold` 3). Readiness calls `/healthcheck`, which
 can take as long as `worker_tasks_timeout`. A worker that is down does not

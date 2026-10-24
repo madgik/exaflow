@@ -25,7 +25,6 @@ protect_local_data = false
 [aggregation_server]
 enabled = true
 port = 50051
-max_grpc_connections = 10
 max_wait_for_aggregation_inputs = 30
 
 [smpc]

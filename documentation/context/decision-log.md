@@ -48,15 +48,19 @@ timeout. Use `/healthcheck` only as a readiness probe.
 Consequences: More than `max_concurrent_experiments` simultaneous analyses
 receive 503. Client disconnect no longer cleans up aggregation state early.
 A down worker removes the controller from Service endpoints and does not
-restart it. There is no separate overall analysis deadline; per-call worker
-timeouts still apply. An overall deadline that returned before the thread
-stopped would race cleanup again.
+restart it. Worker gRPC pools (`max_concurrent_experiments + 4`) and the
+aggregation server pool (`max_concurrent_experiments` per local worker) are
+derived from the same limit; the `.deployment.toml` key
+`aggregation_server.max_grpc_connections` is gone. There is no separate
+overall analysis deadline; per-call worker timeouts still apply. An overall
+deadline that returned before the thread stopped would race cleanup again.
 
 Files affected: `exaflow/controller/services/analysis_execution.py`,
 `exaflow/controller/services/exareme3/strategies.py`,
 `exaflow/controller/services/flower/strategies.py`,
 `exaflow/controller/quart/endpoints.py`,
 `kubernetes/templates/exaflow-controller.yaml`,
+`kubernetes/templates/exaflow-localworker.yaml`, `tasks.py`,
 `documentation/api-specification.md`.
 
 Date: 2026-10-24

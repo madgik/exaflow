@@ -103,6 +103,9 @@ EXAFLOW_AGG_SERVER_CONFIG_FILE = "EXAFLOW_AGG_SERVER_CONFIG_FILE"
 DATA_PATH = "DATA_PATH"
 WORKER_STARTUP_SUCCESS_LOG = "Data folder loaded successfully on startup."
 WORKER_STARTUP_TIMEOUT_SECONDS = 120
+# Worker gRPC threads beyond one RunUdf per concurrent analysis, for metadata,
+# health and Flower calls. Keep in sync with the Helm worker templates.
+WORKER_GRPC_SPARE_THREADS = 4
 UV_RUN_NO_SYNC = "uv run --no-sync"
 
 
@@ -160,6 +163,11 @@ def create_configs(c):
     with open(WORKER_CONFIG_TEMPLATE_FILE) as fp:
         template_worker_config = toml.load(fp)
 
+    max_concurrent_experiments = deployment_config["max_concurrent_experiments"]
+    num_localworkers = sum(
+        worker["role"] == "LOCALWORKER" for worker in deployment_config["workers"]
+    )
+
     for worker in deployment_config["workers"]:
         worker_config = copy.deepcopy(template_worker_config)
 
@@ -181,6 +189,11 @@ def create_configs(c):
         worker_config["grpc"]["ip"] = deployment_config["ip"]
         worker_config["grpc"]["port"] = worker["grpc_port"]
         worker_config["grpc"]["bind_ip"] = "0.0.0.0"
+        # Every concurrent analysis holds a worker thread for its RunUdf call,
+        # which can block on aggregation until the other workers join.
+        worker_config["grpc"]["max_workers"] = (
+            max_concurrent_experiments + WORKER_GRPC_SPARE_THREADS
+        )
 
         worker_config["worker_tasks"]["tasks_timeout"] = deployment_config[
             "worker_tasks_timeout"
@@ -257,9 +270,7 @@ def create_configs(c):
     controller_config["worker_tasks_timeout"] = deployment_config[
         "worker_tasks_timeout"
     ]
-    controller_config["max_concurrent_experiments"] = deployment_config[
-        "max_concurrent_experiments"
-    ]
+    controller_config["max_concurrent_experiments"] = max_concurrent_experiments
 
     controller_config["deployment_type"] = "LOCAL"
 
@@ -322,9 +333,11 @@ def create_configs(c):
         "enabled"
     ]
     aggregation_server_config["port"] = deployment_config["aggregation_server"]["port"]
-    aggregation_server_config["max_grpc_connections"] = deployment_config[
-        "aggregation_server"
-    ]["max_grpc_connections"]
+    # Each Aggregate call holds a thread while it waits for the other workers,
+    # so every concurrent analysis needs one per local worker, as in Helm.
+    aggregation_server_config["max_grpc_connections"] = (
+        max_concurrent_experiments * num_localworkers
+    )
     aggregation_server_config["max_wait_for_aggregation_inputs"] = deployment_config[
         "aggregation_server"
     ]["max_wait_for_aggregation_inputs"]
