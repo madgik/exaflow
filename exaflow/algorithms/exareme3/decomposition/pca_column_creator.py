@@ -175,8 +175,8 @@ class PCAColumnCreator(PreprocessingStep):
             )
         if recipe is not None:
             component_indices = {
-                choice.component_id: index
-                for index, choice in enumerate(recipe.component_choices)
+                component_id: self._component_index(component_id)
+                for component_id in self._selected_components
             }
         else:
             component_indices = {
@@ -189,7 +189,12 @@ class PCAColumnCreator(PreprocessingStep):
                 raise BadUserInput(
                     f"Selected PCA component is not available: {component_id}."
                 )
-            data[output_code] = scores[:, component_indices[component_id]]
+            component_index = component_indices[component_id]
+            if component_index >= scores.shape[1]:
+                raise BadUserInput(
+                    f"Selected PCA component is not available: {component_id}."
+                )
+            data[output_code] = scores[:, component_index]
         return data
 
     def _parse_recipe(self) -> PCAReusablePreprocessing:
@@ -247,6 +252,22 @@ class PCAColumnCreator(PreprocessingStep):
                 "Selected PCA components are not available in the recipe: "
                 f"{unavailable_components}."
             )
+        for component in selected_components:
+            self._component_index(component)
+
+    @staticmethod
+    def _component_index(component_id: str) -> int:
+        component_number = component_id.removeprefix("PC")
+        if (
+            not component_id.startswith("PC")
+            or not component_number.isdigit()
+            or int(component_number) < 1
+        ):
+            raise BadUserInput(
+                "Selected PCA components should use positive PC numbers: "
+                f"[{component_id}]."
+            )
+        return int(component_number) - 1
 
     def _validated_recipe(self) -> Optional[PCAReusablePreprocessing]:
         if self._recipe is None:

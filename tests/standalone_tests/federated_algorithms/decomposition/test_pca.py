@@ -1253,6 +1253,25 @@ def test_component_sign_rule_uses_largest_loading_and_first_tie():
     np.testing.assert_allclose(canonicalized[1], components[1])
 
 
+def test_component_sign_rule_uses_first_approximate_tie():
+    components = np.array([[-0.5, 0.5 + 1e-13, 0.1]])
+
+    canonicalized = canonicalize_component_signs(components)
+
+    np.testing.assert_allclose(canonicalized, [[0.5, -0.5 - 1e-13, -0.1]])
+
+
+def test_component_sign_rule_is_stable_for_partition_tie_perturbations():
+    first_partition = np.array([[-0.5, 0.5 + 1e-13, 0.1]])
+    second_partition = np.array([[-0.5, 0.5 - 1e-13, 0.1]])
+
+    first = canonicalize_component_signs(first_partition)
+    second = canonicalize_component_signs(second_partition)
+
+    np.testing.assert_allclose(first, second)
+    assert first[0, 0] > 0
+
+
 def test_feature_order_is_preserved_and_only_loading_coordinates_are_permuted():
     X = np.array(
         [

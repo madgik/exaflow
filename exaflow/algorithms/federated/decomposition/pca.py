@@ -13,21 +13,32 @@ from exaflow.algorithms.federated.validation import check_fitted
 from exaflow.algorithms.federated.validation import check_sample_counts
 from exaflow.algorithms.federated.validation import validate_parameters
 
+SIGN_ANCHOR_RTOL = 1e-12
+SIGN_ANCHOR_ATOL = 1e-15
+
 
 def canonicalize_component_signs(components):
     """Choose a deterministic sign for each PCA component.
 
     Eigenvectors are defined up to sign.  Choosing the loading with the
     greatest absolute magnitude as the anchor makes component replay stable
-    for well-separated eigenvalues.  ``np.argmax`` deliberately keeps the
-    first feature when anchors tie, which matches the caller's feature order.
+    for well-separated eigenvalues.  Loadings within numerical tolerance of
+    the maximum are treated as tied, and the first tied feature is selected.
     """
     components = np.asarray(components, dtype=float)
     if components.ndim != 2:
         raise ValueError("components must be a two-dimensional array.")
 
     canonicalized = np.array(components, copy=True)
-    anchors = np.argmax(np.abs(canonicalized), axis=1)
+    absolute_loadings = np.abs(canonicalized)
+    maximum_loadings = absolute_loadings.max(axis=1, keepdims=True)
+    tied_anchors = np.isclose(
+        absolute_loadings,
+        maximum_loadings,
+        rtol=SIGN_ANCHOR_RTOL,
+        atol=SIGN_ANCHOR_ATOL,
+    )
+    anchors = np.argmax(tied_anchors, axis=1)
     signs = np.sign(canonicalized[np.arange(canonicalized.shape[0]), anchors])
     signs[signs == 0] = 1.0
     canonicalized *= signs[:, np.newaxis]
