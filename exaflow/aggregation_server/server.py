@@ -1,3 +1,48 @@
+"""gRPC aggregation server: combines vectors from the workers of one request.
+
+Lifecycle of a request
+----------------------
+- The controller calls `Configure(request_id, num_of_workers)` before running
+  the algorithm and `Cleanup(request_id)` when the request ends, in a `finally`
+  block.
+- Each worker calls `Aggregate(request_id, step, operations)` from its UDF.
+  `step` is numbered by the worker's client (1, 2, 3, ...). `operations` holds
+  one or more `(aggregation_type, tensor)` pairs. Numeric types (`SUM`, `MIN`,
+  `MAX`) send Arrow tensors; `UNION` sends JSON-encoded values.
+- A worker that drops out (too little data, bad input) calls `Unregister`, which
+  lowers the number of inputs each later step waits for.
+
+Synchronization
+---------------
+Each request has an `AggregationContext` guarded by one `Condition`. Only one
+step is active at a time:
+- `IDLE`: no step is active. The next `Aggregate` call starts step
+  `current_step + 1`. A worker that is already ahead waits for that.
+- `COLLECTING`: inputs for the active step are arriving. When all
+  `expected_workers` inputs are in, the result is computed and the state moves
+  to `READY`.
+- `READY`: every worker reads the result. After the last read, the context goes
+  back to `IDLE`.
+Every wait is bounded by `config.max_wait_for_aggregation_inputs`.
+
+Errors
+------
+The first error in a step (mismatched operations, bad payload, timeout) moves
+the context to `FAILED` and wakes every waiting worker with the same error. A
+failed request does not recover: the worker that hit the error never reads a
+result, so the step never completes. The controller ends the request instead.
+
+`Cleanup` removes the context and cancels it, so workers still waiting get
+ABORTED at once instead of waiting for the timeout. If `Cleanup` never arrives
+(for example the controller crashed), `Configure` evicts contexts with no
+`Aggregate` or `Unregister` call for `STALE_CONTEXT_TTL_SECONDS`.
+
+`AggregationContext` raises plain Python exceptions and only the servicer
+methods call `context.abort()`, mapping them with `_grpc_status()`. gRPC's
+`abort()` raises a bare `Exception`, so it must never run inside a
+`try/except Exception` block or its status and details are lost.
+"""
+
 import logging
 import threading
 import time
@@ -30,74 +75,46 @@ from exaflow.protos.aggregation_server.aggregation_server_pb2_grpc import (
     add_AggregationServerServicer_to_server,
 )
 
-from .constants import AggregationType
-
 logger = logging.getLogger("AggregationServer")
 
 NUMERIC_KINDS = {"i", "u", "f"}
+# Numeric aggregation types. "UNION" is the only other one and works on
+# JSON-encoded values instead of Arrow tensors.
+REDUCERS = {"SUM": np.add, "MIN": np.minimum, "MAX": np.maximum}
 GRPC_MAX_MESSAGE_SIZE = 100 * 1024 * 1024  # 100 MiB
 # Contexts with no Aggregate or Unregister call for this long are treated as
 # abandoned (their Cleanup never arrived) and evicted on the next Configure.
 # A running request never idles near this: each aggregation wait is capped at
 # max_wait_for_aggregation_inputs and each UDF call at the worker tasks timeout.
 STALE_CONTEXT_TTL_SECONDS = 24 * 60 * 60
-"""
-Aggregation server, threading model, and data flow
---------------------------------------------------
 
-Overview
-~~~~~~~~
-Each `request_id` represents a round of vector aggregation across `expected_workers`
-callers. Workers first register via `Configure(request_id, num_workers)` and then
-call either:
-- `Aggregate`: single operation (SUM / MIN / MAX) over a flat vector.
-- `AggregateBatch`: multiple operations in one call; each operation defines its
-  own aggregation type and vector.
 
-Payloads are exchanged through the `tensor` bytes field. Numeric payloads use
-Arrow tensor bytes, while `UNION` payloads use JSON-encoded bytes.
-
-Synchronization model
-~~~~~~~~~~~~~~~~~~~~~
-For every `request_id` we keep an `AggregationContext` guarded by a single
-`Condition`. The context follows a small state machine:
-- `collecting`: accepting inputs. Once `expected_workers` inputs arrive we
-  compute the result and move to `ready`.
-- `ready` or `failed`: result (or error) is available. Each worker request that
-  hits this state increments `acquired_count`. When all `expected_workers`
-  have observed the result or error, the context is reset back to `collecting`.
-
-All waits are bounded by `config.max_wait_for_aggregation_inputs` to avoid
-deadlocks from missing workers.
-
-`Cleanup` removes the context and cancels it: workers still waiting on it, for
-a result or to start a step, get ABORTED at once instead of waiting for the
-timeout. The controller calls `Cleanup` in a `finally` block, so when one worker
-fails the others are released as soon as the controller sees the failure.
-
-If `Cleanup` never arrives (for example the controller crashed), the context
-would stay in memory with any inputs it collected. `Configure` therefore evicts
-contexts with no `Aggregate` or `Unregister` call for
-`STALE_CONTEXT_TTL_SECONDS`.
-
-Error handling
-~~~~~~~~~~~~~~
-Any validation or computation error sets the context to `failed`, notifies
-waiters, and counts the triggering request as consumed so the round can drain.
-Subsequent workers immediately receive the same error instead of waiting
-indefinitely.
-
-`AggregationContext` raises plain Python exceptions and only the servicer
-methods call `context.abort()`, mapping `ValueError` to INVALID_ARGUMENT,
-`TimeoutError` to DEADLINE_EXCEEDED, `AggregationCancelledError` to ABORTED and
-anything else to INTERNAL. gRPC's
-`abort()` raises a bare `Exception`, so it must never run inside a
-`try/except Exception` block or its status and details are lost.
-"""
+def _result_dtype(aggregation_type: str, dtypes: list[np.dtype]) -> np.dtype:
+    dtype = np.result_type(*dtypes)
+    if all(input_dtype.kind in "iu" for input_dtype in dtypes):
+        if dtype.kind not in "iu":
+            raise ValueError(
+                "Integer aggregation inputs cannot be safely promoted to a "
+                "fixed-width integer dtype."
+            )
+        if aggregation_type == "SUM":
+            # Sum small integers in 64 bits so the total cannot wrap around.
+            dtype = np.dtype(f"{dtype.kind}8")
+    return dtype
 
 
 class AggregationCancelledError(Exception):
     """The request was cleaned up while a worker was still waiting on it."""
+
+
+def _grpc_status(exc: Exception) -> grpc.StatusCode:
+    if isinstance(exc, AggregationCancelledError):
+        return grpc.StatusCode.ABORTED
+    if isinstance(exc, TimeoutError):
+        return grpc.StatusCode.DEADLINE_EXCEEDED
+    if isinstance(exc, ValueError):
+        return grpc.StatusCode.INVALID_ARGUMENT
+    return grpc.StatusCode.INTERNAL
 
 
 class AggregationState(Enum):
@@ -210,7 +227,7 @@ class AggregationContext:
         for idx, op in enumerate(request.operations):
             payload = decode_fn(op.tensor, op.aggregation_type, request.request_id)
             vector_length = len(payload)
-            if op.aggregation_type != AggregationType.UNION.value:
+            if op.aggregation_type != "UNION":
                 if payload.dtype.kind not in NUMERIC_KINDS:
                     raise ValueError(
                         "Numeric aggregation requires numeric tensor payloads."
@@ -225,14 +242,12 @@ class AggregationContext:
                     )
             self.batch_payloads[idx].append(payload)
 
-    def compute(self, aggregation_fn) -> None:
+    def compute(self, reduce_fn) -> None:
         assert self.batch_ops is not None and self.batch_payloads is not None
-        results: List[np.ndarray] = []
-        for idx, op_type in enumerate(self.batch_ops):
-            agg_fn = aggregation_fn(op_type)
-            results.append(agg_fn(self.batch_payloads[idx]))
-
-        self.batch_result = results
+        self.batch_result = [
+            reduce_fn(op_type, payloads)
+            for op_type, payloads in zip(self.batch_ops, self.batch_payloads)
+        ]
         self.state = AggregationState.READY
         self.condition.notify_all()
 
@@ -285,24 +300,11 @@ class AggregationServer(AggregationServerServicer):
         self.aggregation_contexts: Dict[str, AggregationContext] = {}
         self.global_lock = threading.Lock()
 
-    @staticmethod
-    def _status_for_exception_static(exc: Exception) -> grpc.StatusCode:
-        if isinstance(exc, AggregationCancelledError):
-            return grpc.StatusCode.ABORTED
-        if isinstance(exc, TimeoutError):
-            return grpc.StatusCode.DEADLINE_EXCEEDED
-        if isinstance(exc, ValueError):
-            return grpc.StatusCode.INVALID_ARGUMENT
-        return grpc.StatusCode.INTERNAL
-
-    def _status_for_exception(self, exc: Exception) -> grpc.StatusCode:
-        return AggregationServer._status_for_exception_static(exc)
-
     def _get_aggregation_context(self, request_id, context) -> AggregationContext:
         agg_ctx = self.aggregation_contexts.get(request_id)
         if not agg_ctx:
             msg = (
-                f"[CONFIGURE] request_id='{request_id}' is not configured "
+                f"request_id='{request_id}' is not configured "
                 "or has already been cleaned up."
             )
             logger.error(msg)
@@ -313,7 +315,7 @@ class AggregationServer(AggregationServerServicer):
         self, tensor: bytes, aggregation_type: str, request_id: str
     ) -> np.ndarray:
         if tensor:
-            if aggregation_type == AggregationType.UNION.value:
+            if aggregation_type == "UNION":
                 return bytes_to_values(tensor)
             return bytes_to_ndarray(tensor)
         raise ValueError(
@@ -321,77 +323,17 @@ class AggregationServer(AggregationServerServicer):
         )
 
     @staticmethod
-    def _numeric_arrays(vectors: list[np.ndarray]) -> list[np.ndarray]:
-        return [np.asarray(vector) for vector in vectors]
-
-    @staticmethod
-    def _numeric_result_dtype(dtypes: list[np.dtype]) -> np.dtype:
-        if not all(dtype.kind in {"i", "u"} for dtype in dtypes):
-            return np.result_type(*dtypes)
-
-        target_dtype = np.result_type(*dtypes)
-        if target_dtype.kind not in {"i", "u"}:
-            raise ValueError(
-                "Integer aggregation inputs cannot be safely promoted to a "
-                "fixed-width integer dtype."
-            )
-        return target_dtype
-
-    @classmethod
-    def _sum_dtype(cls, dtypes: list[np.dtype]) -> np.dtype:
-        target_dtype = cls._numeric_result_dtype(dtypes)
-        if target_dtype.kind == "i" and target_dtype.itemsize < 8:
-            return np.dtype(np.int64)
-        if target_dtype.kind == "u" and target_dtype.itemsize < 8:
-            return np.dtype(np.uint64)
-        return target_dtype
-
-    @staticmethod
-    def _reduce_arrays(arrays: list[np.ndarray], dtype: np.dtype, ufunc) -> np.ndarray:
-        result = arrays[0].astype(dtype, copy=True)
-        for array in arrays[1:]:
-            ufunc(result, array.astype(dtype, copy=False), out=result)
+    def _reduce(aggregation_type: str, vectors: list[np.ndarray]) -> np.ndarray:
+        if aggregation_type == "UNION":
+            return np.asarray(sorted(set(np.concatenate(vectors))), dtype=object)
+        ufunc = REDUCERS.get(aggregation_type)
+        if ufunc is None:
+            raise ValueError(f"Unsupported aggregation type '{aggregation_type}'")
+        dtype = _result_dtype(aggregation_type, [vector.dtype for vector in vectors])
+        result = vectors[0].astype(dtype, copy=True)
+        for vector in vectors[1:]:
+            ufunc(result, vector.astype(dtype, copy=False), out=result)
         return result
-
-    def _aggregation_fn(self, aggregation_type: str):
-        try:
-            agg_type = AggregationType(aggregation_type)
-        except ValueError as exc:  # noqa: PERF203
-            raise ValueError(
-                f"Unsupported aggregation type '{aggregation_type}'"
-            ) from exc
-
-        if agg_type == AggregationType.SUM:
-
-            def _sum(vectors):
-                arrays = self._numeric_arrays(vectors)
-                dtypes = [array.dtype for array in arrays]
-                dtype = self._sum_dtype(dtypes)
-                return self._reduce_arrays(arrays, dtype, np.add)
-
-            return _sum
-        if agg_type == AggregationType.MIN:
-
-            def _min(vectors):
-                arrays = self._numeric_arrays(vectors)
-                dtype = self._numeric_result_dtype([array.dtype for array in arrays])
-                return self._reduce_arrays(arrays, dtype, np.minimum)
-
-            return _min
-        if agg_type == AggregationType.MAX:
-
-            def _max(vectors):
-                arrays = self._numeric_arrays(vectors)
-                dtype = self._numeric_result_dtype([array.dtype for array in arrays])
-                return self._reduce_arrays(arrays, dtype, np.maximum)
-
-            return _max
-        if agg_type == AggregationType.UNION:
-            return lambda vectors: np.asarray(
-                sorted(set(np.concatenate(vectors))), dtype=object
-            )
-
-        raise ValueError(f"Unhandled aggregation type '{aggregation_type}'")
 
     def _evict_stale_contexts(self) -> None:
         cutoff = time.monotonic() - STALE_CONTEXT_TTL_SECONDS
@@ -457,12 +399,11 @@ class AggregationServer(AggregationServerServicer):
                 and len(agg_ctx.batch_payloads[0]) >= agg_ctx.expected_workers
             ):
                 try:
-                    agg_ctx.compute(self._aggregation_fn)
+                    agg_ctx.compute(self._reduce)
                 except Exception as exc:  # noqa: BLE001
                     agg_ctx.fail(exc)
-                    status = self._status_for_exception(exc)
                     logger.error(f"[UNREGISTER/AGGREGATE] {exc}", exc_info=exc)
-                    context.abort(status, str(exc))
+                    context.abort(_grpc_status(exc), str(exc))
 
             agg_ctx.condition.notify_all()
 
@@ -489,7 +430,7 @@ class AggregationServer(AggregationServerServicer):
                     len(agg_ctx.batch_payloads[0]) if agg_ctx.batch_payloads else 0
                 )
                 logger.info(
-                    "[AGGREGATE] Received worker results for context_id='%s' "
+                    "[AGGREGATE] Received worker results for request_id='%s' "
                     "(%d/%d workers reported)",
                     request.request_id,
                     received_workers,
@@ -501,17 +442,17 @@ class AggregationServer(AggregationServerServicer):
                     and agg_ctx.batch_payloads
                     and len(agg_ctx.batch_payloads[0]) >= agg_ctx.expected_workers
                 ):
-                    agg_ctx.compute(self._aggregation_fn)
+                    agg_ctx.compute(self._reduce)
             except Exception as exc:  # noqa: BLE001
                 agg_ctx.fail(exc)
                 logger.error(f"[AGGREGATE] {exc}", exc_info=exc)
-                context.abort(self._status_for_exception(exc), str(exc))
+                context.abort(_grpc_status(exc), str(exc))
 
             try:
                 agg_ctx.wait_for_ready()
                 tensors = agg_ctx.consume()
             except Exception as exc:  # noqa: BLE001
-                context.abort(self._status_for_exception(exc), str(exc))
+                context.abort(_grpc_status(exc), str(exc))
 
         return AggregateResponse(
             tensors=[

@@ -1,15 +1,16 @@
 from __future__ import annotations
 
+import logging
+
 import grpc
 
 import exaflow.protos.aggregation_server.aggregation_server_pb2 as pb2
 from exaflow.aggregation_clients import BaseAggregationClient
-from exaflow.controller.services.exareme3.controller_aggregation_client_interface import (
-    ControllerAggregationClientI,
-)
+
+logger = logging.getLogger(__name__)
 
 
-class ControllerAggregationClient(ControllerAggregationClientI, BaseAggregationClient):
+class ControllerAggregationClient(BaseAggregationClient):
     def configure(self, num_workers: int) -> str:
         response = self._stub.Configure(
             pb2.ConfigureRequest(
@@ -24,8 +25,15 @@ class ControllerAggregationClient(ControllerAggregationClientI, BaseAggregationC
                 pb2.CleanupRequest(request_id=self._request_id)
             )
             return response.status
-        except grpc._channel._InactiveRpcError:
-            # aggregation_server already shut down remotely – not an error
+        except grpc.RpcError as exc:
+            # Cleanup is what releases workers still waiting on this request, so
+            # a failure must be visible.
+            logger.warning(
+                "Aggregation cleanup for request_id=%s failed: %s %s",
+                self._request_id,
+                exc.code(),
+                exc.details(),
+            )
             return pb2.Status.ERROR
 
     def __enter__(self) -> ControllerAggregationClient:

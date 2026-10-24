@@ -3,29 +3,32 @@ import numpy as np
 import exaflow.protos.aggregation_server.aggregation_server_pb2 as pb2
 from exaflow.aggregation_clients import AggregationType
 from exaflow.aggregation_clients import BaseAggregationClient
-from exaflow.algorithms.exareme3.utils.udf_aggregation_client_interface import (
-    ArrayInput,
-)
-from exaflow.algorithms.exareme3.utils.udf_aggregation_client_interface import (
-    Exareme3UDFAggregationClientI,
-)
+from exaflow.algorithms.federated.utils.agg_client import ArrayInput
 
 
-class Exareme3UDFAggregationClient(
-    BaseAggregationClient, Exareme3UDFAggregationClientI
-):
+class Exareme3UDFAggregationClient(BaseAggregationClient):
+    """Aggregation client injected into UDFs as `agg_client`.
+
+    It satisfies the `AggregationClient` protocol that the federated algorithm
+    code is written against.
+    """
+
+    def sum(self, values: ArrayInput) -> np.ndarray:
+        return self.aggregate(AggregationType.SUM, values)
+
+    def min(self, values: ArrayInput) -> np.ndarray:
+        return self.aggregate(AggregationType.MIN, values)
+
+    def max(self, values: ArrayInput) -> np.ndarray:
+        return self.aggregate(AggregationType.MAX, values)
+
+    def union(self, values: list[object]) -> np.ndarray:
+        return self.aggregate(AggregationType.UNION, values)
+
     def aggregate(
         self, aggregation_type: AggregationType, values: ArrayInput
     ) -> np.ndarray:
-        original = np.asarray(values)
-        flat = original.ravel()
-
-        aggregated = self._aggregate_request(aggregation_type, flat)
-
-        if original.shape and aggregated.size == original.size:
-            return aggregated.reshape(original.shape)
-
-        return aggregated
+        return self.aggregate_batch([(aggregation_type, values)])[0]
 
     def aggregate_batch(
         self, ops: list[tuple[AggregationType, ArrayInput]]

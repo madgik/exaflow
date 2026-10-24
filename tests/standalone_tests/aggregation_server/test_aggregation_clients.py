@@ -8,7 +8,6 @@ import grpc
 import numpy as np
 import pytest
 
-from exaflow.aggregation_clients.base_aggregation_client import BaseAggregationClient
 from exaflow.aggregation_clients.constants import AggregationType
 from exaflow.aggregation_clients.controller_aggregation_client import (
     ControllerAggregationClient,
@@ -111,10 +110,10 @@ def controller_factory():
 
 @pytest.fixture
 def worker_factory():
-    created: list[BaseAggregationClient] = []
+    created: list[Exareme3UDFAggregationClient] = []
 
-    def factory(request_id: str) -> BaseAggregationClient:
-        client = BaseAggregationClient(request_id)
+    def factory(request_id: str) -> Exareme3UDFAggregationClient:
+        client = Exareme3UDFAggregationClient(request_id)
         created.append(client)
         return client
 
@@ -162,7 +161,7 @@ def test_single_worker_sum_returns_input(controller_factory, worker_factory):
     controller.configure(1)
     worker = worker_factory(request_id)
 
-    result = worker._aggregate_request(AggregationType.SUM, [1.0, 2.5, -3.0])
+    result = worker.aggregate(AggregationType.SUM, [1.0, 2.5, -3.0])
     np.testing.assert_allclose(result, np.array([1.0, 2.5, -3.0]))
     controller.cleanup()
 
@@ -177,7 +176,7 @@ def test_single_worker_numeric_ops_preserve_integer_dtype(
     worker = worker_factory(request_id)
 
     values = np.array([1, 2, -3], dtype=np.int64)
-    result = worker._aggregate_request(agg_type, values)
+    result = worker.aggregate(agg_type, values)
     assert np.issubdtype(result.dtype, np.integer)
     np.testing.assert_array_equal(result, values)
     controller.cleanup()
@@ -192,7 +191,7 @@ def test_single_worker_sum_of_integers_preserves_integer_dtype(
     worker = worker_factory(request_id)
 
     values = np.array([1, 2, -3], dtype=np.int64)
-    result = worker._aggregate_request(AggregationType.SUM, values)
+    result = worker.aggregate(AggregationType.SUM, values)
     assert np.issubdtype(result.dtype, np.integer)
     np.testing.assert_array_equal(result, values)
     controller.cleanup()
@@ -207,8 +206,8 @@ def test_multi_worker_sum_combines_vectors(controller_factory, worker_factory):
 
     vectors = ([1.0, 2.0, 3.0], [3.5, -1.0, 0.5])
     results = _run_parallel(
-        lambda: worker_a._aggregate_request(AggregationType.SUM, vectors[0]),
-        lambda: worker_b._aggregate_request(AggregationType.SUM, vectors[1]),
+        lambda: worker_a.aggregate(AggregationType.SUM, vectors[0]),
+        lambda: worker_b.aggregate(AggregationType.SUM, vectors[1]),
     )
     expected = np.add(*vectors)
     for res in results:
@@ -227,8 +226,8 @@ def test_multi_worker_min_selects_elementwise_minimum(
 
     vectors = ([1.0, -4.0, 3.0], [0.5, -2.0, 5.0])
     results = _run_parallel(
-        lambda: worker_a._aggregate_request(AggregationType.MIN, vectors[0]),
-        lambda: worker_b._aggregate_request(AggregationType.MIN, vectors[1]),
+        lambda: worker_a.aggregate(AggregationType.MIN, vectors[0]),
+        lambda: worker_b.aggregate(AggregationType.MIN, vectors[1]),
     )
     expected = np.minimum(*vectors)
     for res in results:
@@ -246,8 +245,8 @@ def test_multi_worker_max_selects_elementwise_maximum(
 
     vectors = ([-1.0, 7.0, 3.5], [0.5, 6.0, 5.0])
     results = _run_parallel(
-        lambda: worker_a._aggregate_request(AggregationType.MAX, vectors[0]),
-        lambda: worker_b._aggregate_request(AggregationType.MAX, vectors[1]),
+        lambda: worker_a.aggregate(AggregationType.MAX, vectors[0]),
+        lambda: worker_b.aggregate(AggregationType.MAX, vectors[1]),
     )
     expected = np.maximum(*vectors)
     for res in results:
@@ -267,8 +266,8 @@ def test_multi_worker_sum_preserves_nan_and_infinity(
     vec_b = np.array([2.0, 3.0, -4.0, np.nan], dtype=np.float64)
     expected = np.add(vec_a, vec_b)
     results = _run_parallel(
-        lambda: worker_a._aggregate_request(AggregationType.SUM, vec_a),
-        lambda: worker_b._aggregate_request(AggregationType.SUM, vec_b),
+        lambda: worker_a.aggregate(AggregationType.SUM, vec_a),
+        lambda: worker_b.aggregate(AggregationType.SUM, vec_b),
     )
     for res in results:
         assert res.dtype == np.float64
@@ -293,8 +292,8 @@ def test_multi_worker_min_max_preserve_infinity(
         else np.maximum(vec_a, vec_b)
     )
     results = _run_parallel(
-        lambda: worker_a._aggregate_request(agg_type, vec_a),
-        lambda: worker_b._aggregate_request(agg_type, vec_b),
+        lambda: worker_a.aggregate(agg_type, vec_a),
+        lambda: worker_b.aggregate(agg_type, vec_b),
     )
     for res in results:
         assert res.dtype == np.float64
@@ -319,8 +318,8 @@ def test_multi_worker_min_max_propagate_nan(
         else np.maximum(vec_a, vec_b)
     )
     results = _run_parallel(
-        lambda: worker_a._aggregate_request(agg_type, vec_a),
-        lambda: worker_b._aggregate_request(agg_type, vec_b),
+        lambda: worker_a.aggregate(agg_type, vec_a),
+        lambda: worker_b.aggregate(agg_type, vec_b),
     )
     for res in results:
         assert res.dtype == np.float64
@@ -348,8 +347,8 @@ def test_multi_worker_integer_width_mixing_promotes_consistently(
     )
 
     results = _run_parallel(
-        lambda: worker_a._aggregate_request(agg_type, vec_a),
-        lambda: worker_b._aggregate_request(agg_type, vec_b),
+        lambda: worker_a.aggregate(agg_type, vec_a),
+        lambda: worker_b.aggregate(agg_type, vec_b),
     )
     for res in results:
         assert res.dtype == expected_dtype
@@ -381,8 +380,8 @@ def test_multi_worker_int_float_mixing_promotes_to_float(
     )
 
     results = _run_parallel(
-        lambda: worker_a._aggregate_request(agg_type, vec_a),
-        lambda: worker_b._aggregate_request(agg_type, vec_b),
+        lambda: worker_a.aggregate(agg_type, vec_a),
+        lambda: worker_b.aggregate(agg_type, vec_b),
     )
     for res in results:
         assert res.dtype == expected_dtype
@@ -399,8 +398,8 @@ def test_multi_worker_sum_avoids_int64_wraparound(controller_factory, worker_fac
     vec_a = np.array([np.iinfo(np.int32).max], dtype=np.int32)
     vec_b = np.array([1], dtype=np.int64)
     results = _run_parallel(
-        lambda: worker_a._aggregate_request(AggregationType.SUM, vec_a),
-        lambda: worker_b._aggregate_request(AggregationType.SUM, vec_b),
+        lambda: worker_a.aggregate(AggregationType.SUM, vec_a),
+        lambda: worker_b.aggregate(AggregationType.SUM, vec_b),
     )
     expected = np.array([np.iinfo(np.int32).max + 1], dtype=np.int64)
     for res in results:
@@ -422,12 +421,12 @@ def test_integer_aggregation_rejects_unsafe_signed_unsigned_mix(
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         future_a = pool.submit(
-            worker_a._aggregate_request,
+            worker_a.aggregate,
             agg_type,
             np.array([np.iinfo(np.int64).max], dtype=np.int64),
         )
         future_b = pool.submit(
-            worker_b._aggregate_request,
+            worker_b.aggregate,
             agg_type,
             np.array([np.iinfo(np.uint64).max], dtype=np.uint64),
         )
@@ -453,8 +452,8 @@ def test_reusing_request_id_supports_multiple_rounds(
         vec_b = np.array([3.0 + offset, -1.0 + offset])
         expected = vec_a + vec_b
         results = _run_parallel(
-            lambda: worker_a._aggregate_request(AggregationType.SUM, vec_a),
-            lambda: worker_b._aggregate_request(AggregationType.SUM, vec_b),
+            lambda: worker_a.aggregate(AggregationType.SUM, vec_a),
+            lambda: worker_b.aggregate(AggregationType.SUM, vec_b),
         )
         for res in results:
             np.testing.assert_allclose(res, expected)
@@ -469,8 +468,8 @@ def test_parallel_request_ids_do_not_conflict(controller_factory, worker_factory
     worker_b = worker_factory("parallel-b")
 
     results = _run_parallel(
-        lambda: worker_a._aggregate_request(AggregationType.MAX, [1.0, 5.0]),
-        lambda: worker_b._aggregate_request(AggregationType.MIN, [3.0, -2.0]),
+        lambda: worker_a.aggregate(AggregationType.MAX, [1.0, 5.0]),
+        lambda: worker_b.aggregate(AggregationType.MIN, [3.0, -2.0]),
     )
     np.testing.assert_allclose(results[0], np.array([1.0, 5.0]))
     np.testing.assert_allclose(results[1], np.array([3.0, -2.0]))
@@ -479,7 +478,7 @@ def test_parallel_request_ids_do_not_conflict(controller_factory, worker_factory
 def test_worker_call_without_configure_aborts(worker_factory):
     worker = worker_factory("missing-config")
     with pytest.raises(InlineRpcError) as exc:
-        worker._aggregate_request(AggregationType.SUM, [1.0])
+        worker.aggregate(AggregationType.SUM, [1.0])
     assert exc.value.code() == grpc.StatusCode.INVALID_ARGUMENT
     assert "not configured" in exc.value.details()
 
@@ -494,12 +493,8 @@ def test_aggregation_type_mismatch_aborts_all_workers(
     worker_b = worker_factory(request_id)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
-        future_a = pool.submit(
-            worker_a._aggregate_request, AggregationType.SUM, [1.0, 2.0]
-        )
-        future_b = pool.submit(
-            worker_b._aggregate_request, AggregationType.MIN, [1.0, 2.0]
-        )
+        future_a = pool.submit(worker_a.aggregate, AggregationType.SUM, [1.0, 2.0])
+        future_b = pool.submit(worker_b.aggregate, AggregationType.MIN, [1.0, 2.0])
 
         with pytest.raises(InlineRpcError) as exc_b:
             future_b.result(timeout=2)
@@ -519,7 +514,7 @@ def test_worker_times_out_when_not_enough_contributions(
     worker = worker_factory(request_id)
 
     with pytest.raises(InlineRpcError) as exc:
-        worker._aggregate_request(AggregationType.SUM, [1.0, 2.0])
+        worker.aggregate(AggregationType.SUM, [1.0, 2.0])
     assert exc.value.code() == grpc.StatusCode.DEADLINE_EXCEEDED
 
 
@@ -707,26 +702,20 @@ def test_batch_call_without_configuration_aborts(worker_factory):
     assert exc.value.code() == grpc.StatusCode.INVALID_ARGUMENT
 
 
-def test_cleanup_handles_offline_server(controller_factory, monkeypatch):
+def test_cleanup_handles_offline_server(controller_factory, caplog):
     controller = controller_factory("offline-cleanup")
     controller.configure(1)
 
-    class DummyInactiveError(Exception):
-        pass
+    def raise_unavailable(*_args, **_kwargs):
+        raise InlineRpcError(grpc.StatusCode.UNAVAILABLE, "offline")
 
-    def raise_inactive(*_args, **_kwargs):
-        raise DummyInactiveError("offline")
+    controller._stub.Cleanup = raise_unavailable  # type: ignore[attr-defined]
 
-    controller._stub.Cleanup = raise_inactive  # type: ignore[attr-defined]
-    monkeypatch.setattr(
-        grpc,
-        "_channel",
-        SimpleNamespace(_InactiveRpcError=DummyInactiveError),
-        raising=False,
-    )
-
-    status = controller.cleanup()
+    with caplog.at_level("WARNING"):
+        status = controller.cleanup()
     assert status == server_pb2.Status.ERROR
+    assert "request_id=offline-cleanup failed" in caplog.text
+    assert "UNAVAILABLE offline" in caplog.text
 
 
 def test_unregister_reduces_expected_workers(controller_factory):
@@ -763,7 +752,7 @@ def test_aggregate_keeps_context_active(
     controller_factory("active").configure(1)
     active_context = inline_grpc_stub.aggregation_contexts["active"]
     active_context.last_activity -= STALE_CONTEXT_TTL_SECONDS + 1
-    worker_factory("active")._aggregate_request(AggregationType.SUM, [1.0])
+    worker_factory("active").aggregate(AggregationType.SUM, [1.0])
 
     controller_factory("other").configure(1)
 
