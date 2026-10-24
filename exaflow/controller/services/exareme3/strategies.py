@@ -125,16 +125,28 @@ class Exareme3WithAggregationServerStrategy(Exareme3Strategy):
         agg_client = ControllerAggregationClient(
             self._request_id, aggregator_dns=agg_dns
         )
-        try:
-            status = await run_blocking(
-                agg_client.configure, len(self._local_worker_tasks_handlers)
+        # Set inside the thread so a cancel during configure still cleans up.
+        configured = False
+
+        def _configure():
+            nonlocal configured
+            status = agg_client.configure(
+                num_workers=len(self._local_worker_tasks_handlers)
             )
+            configured = status == agg_pb2.Status.OK
+            return status
+
+        try:
+            status = await run_blocking(_configure)
             if status != agg_pb2.Status.OK:
                 raise RuntimeError(f"AggregationServer refused to configure: {status}")
             self._logger.debug(f"Aggregation configured: {status}")
             return await super().execute()
         finally:
-            # Runs only after configure/run have finished, including when the
-            # request task was cancelled while algorithm.run was still in flight.
-            cleanup_status = await run_blocking(agg_client.cleanup)
-            self._logger.debug(f"Aggregation cleanup response: {cleanup_status}")
+            # Clean up only a context this request configured: ALREADY_CONFIGURED
+            # means another request with the same id owns it. Runs only after
+            # configure/run have finished, including when the request task was
+            # cancelled while algorithm.run was still in flight.
+            if configured:
+                cleanup_status = await run_blocking(agg_client.cleanup)
+                self._logger.debug(f"Aggregation cleanup response: {cleanup_status}")
