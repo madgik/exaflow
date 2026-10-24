@@ -58,6 +58,12 @@ def test_preprocessing_specifications_include_kmeans_cluster_creator():
         "k",
         "enumeration_prefix",
         "reusable_preprocessing",
+        "variables",
+        "init_method",
+        "n_init",
+        "tol",
+        "maxiter",
+        "random_state",
     }
     assert kmeans_spec["outputs"] == {
         "new_column_names_param": "new_column_names",

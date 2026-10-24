@@ -15,11 +15,14 @@ all of them through `exaflow.exareme3_preprocessing_step_classes` and
 | Categorical column creator | [feature_engineering/categorical_column_creator.py](feature_engineering/categorical_column_creator.py) |
 | Longitudinal transformer | [longitudinal/longitudinal_transformer.py](longitudinal/longitudinal_transformer.py) |
 | K-means cluster creator | [cluster/kmeans_cluster_creator.py](cluster/kmeans_cluster_creator.py) |
+| PCA column creator | [decomposition/pca_column_creator.py](decomposition/pca_column_creator.py) |
 
 Outlier reporting reuses `OutlierWinsorizer.validate_outlier_configuration()`
 from `outliers/outlier_winsorizer.py`. K-means owns its replay models and
 fingerprint helpers in `cluster/kmeans.py`; the cluster column creator imports
-them there. Related modules can depend directly on the module that owns the
+them there. PCA owns its response and recipe models and result helpers in
+`decomposition/pca.py`; its column creator imports the recipe model there.
+Related modules can depend directly on the module that owns the
 behavior. Shared metadata transformations live in `utils/metadata.py`; base
 contracts remain in `utils/`. Statistical computations stay in the federated
 core families.

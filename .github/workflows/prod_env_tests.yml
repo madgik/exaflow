@@ -82,8 +82,12 @@ jobs:
           targets: default
           push: true
           set: |
-            *.cache-from=type=local,src=/tmp/.buildx-cache
-            *.cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max
+            worker.cache-from=type=local,src=/tmp/.buildx-cache/worker
+            worker.cache-to=type=local,dest=/tmp/.buildx-cache-new/worker,mode=max
+            controller.cache-from=type=local,src=/tmp/.buildx-cache/controller
+            controller.cache-to=type=local,dest=/tmp/.buildx-cache-new/controller,mode=max
+            aggregation_server.cache-from=type=local,src=/tmp/.buildx-cache/aggregation_server
+            aggregation_server.cache-to=type=local,dest=/tmp/.buildx-cache-new/aggregation_server,mode=max
         env:
           REGISTRY: localhost:5001
 
