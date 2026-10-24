@@ -8,6 +8,7 @@ deployment_type="$DEPLOYMENT_TYPE"
 
 worker_landscape_aggregator_update_interval="$WORKER_LANDSCAPE_AGGREGATOR_UPDATE_INTERVAL"
 worker_tasks_timeout="$WORKER_TASKS_TIMEOUT"
+max_concurrent_experiments="$MAX_CONCURRENT_EXPERIMENTS"
 
 [flower]
 enabled = "$FLOWER_ENABLED"
