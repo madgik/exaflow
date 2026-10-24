@@ -702,7 +702,7 @@ def test_batch_call_without_configuration_aborts(worker_factory):
     assert exc.value.code() == grpc.StatusCode.INVALID_ARGUMENT
 
 
-def test_cleanup_handles_offline_server(controller_factory):
+def test_cleanup_handles_offline_server(controller_factory, caplog):
     controller = controller_factory("offline-cleanup")
     controller.configure(1)
 
@@ -711,8 +711,11 @@ def test_cleanup_handles_offline_server(controller_factory):
 
     controller._stub.Cleanup = raise_unavailable  # type: ignore[attr-defined]
 
-    status = controller.cleanup()
+    with caplog.at_level("WARNING"):
+        status = controller.cleanup()
     assert status == server_pb2.Status.ERROR
+    assert "request_id=offline-cleanup failed" in caplog.text
+    assert "UNAVAILABLE offline" in caplog.text
 
 
 def test_unregister_reduces_expected_workers(controller_factory):
