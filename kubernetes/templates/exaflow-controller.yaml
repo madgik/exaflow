@@ -51,6 +51,8 @@ spec:
           value: {{ quote .Values.controller.worker_tasks_timeout }}
         - name: GRPC_MAX_MESSAGE_MB
           value: {{ quote .Values.grpc_max_message_mb }}
+        - name: MAX_CONCURRENT_EXPERIMENTS
+          value: {{ quote .Values.max_concurrent_experiments }}
         - name: AGGREGATION_SERVER_ENABLED
           value: {{ quote .Values.aggregation_server.enabled }}
         - name: AGGREGATION_SERVER_DNS
@@ -77,18 +79,26 @@ spec:
         {{- end }}
         startupProbe:
           httpGet:
-            path: /healthcheck
+            path: /livez
             port: 5000
           initialDelaySeconds: 5
           periodSeconds: 5
+          timeoutSeconds: 5
           failureThreshold: 30
-          timeoutSeconds: {{ .Values.controller.worker_tasks_timeout }}
         livenessProbe:
+          httpGet:
+            path: /livez
+            port: 5000
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
           httpGet:
             path: /healthcheck
             port: 5000
           periodSeconds: 30
           timeoutSeconds: {{ .Values.controller.worker_tasks_timeout }}
+          failureThreshold: 3
 
       ### --- SMPC components ---
       {{ if .Values.smpc.enabled }}
