@@ -5,6 +5,8 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
+import grpc
+
 from exaflow import exareme3_preprocessing_step_classes
 from exaflow.aggregation_clients.exareme3_udf_aggregation_client import (
     Exareme3UDFAggregationClient as AggregationClient,
@@ -172,8 +174,16 @@ def _check_min_rows_or_raise(
 
 
 def _unregister_aggregation_client(agg_client: Optional[AggregationClient]) -> None:
-    if agg_client:
+    # Best effort: a failed Unregister must not replace the error the caller is
+    # about to raise. The controller skips a worker only on InsufficientDataError.
+    if agg_client is None:
+        return
+    try:
         agg_client.unregister()
+    except grpc.RpcError as exc:
+        get_logger().warning(
+            f"Could not unregister from aggregation server: {exc.code()} {exc.details()}"
+        )
 
 
 def _apply_preprocessing_steps_to_data_and_metadata(
