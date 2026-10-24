@@ -141,6 +141,10 @@ contexts until cleanup.
 - Algorithm discovery can be controlled by `EXAREME3_ALGORITHM_FOLDERS` and
   `FLOWER_ALGORITHM_FOLDERS`.
 - Local deployment uses `.deployment.toml` and generated files under `configs/`.
+- `GRPC_MAX_MESSAGE_MB` (default 100) is the send and receive limit, in
+  mebibytes, for every controller-worker and aggregation gRPC message.
+  Helm value `grpc_max_message_mb` passes it to the controller, workers, and
+  aggregation server. `exaflow/grpc_options.py` is the shared reader.
 
 ## Known Gaps
 

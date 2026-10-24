@@ -6,6 +6,7 @@ from exaflow.controller.logger import get_background_service_logger
 from exaflow.controller.services.api.analysis_request_validator import BadRequest
 from exaflow.controller.services.errors import WorkerTaskTimeoutError
 from exaflow.controller.services.errors import WorkerUnresponsiveError
+from exaflow.controller.worker_client.app import WorkerMessageTooLargeError
 from exaflow.data_filters import FilterError
 from exaflow.smpc_cluster_communication import SMPCUsageError
 from exaflow.worker_communication import BadUserInput
@@ -24,6 +25,7 @@ INSUFFICIENT_DATA_ERROR_MESSAGE = (
 class HTTPStatusCode(enum.IntEnum):
     OK = 200
     BAD_REQUEST = 400
+    WORKER_MESSAGE_TOO_LARGE = 413
     BAD_USER_INPUT = 460
     INSUFFICIENT_DATA_ERROR = 461
     SMPC_USAGE_ERROR = 462
@@ -86,6 +88,14 @@ def handle_smpc_error(error: SMPCUsageError):
         f"Request Error. Type: '{type(error).__name__}' Message: '{error}'"
     )
     return error.message, HTTPStatusCode.SMPC_USAGE_ERROR
+
+
+@error_handlers.app_errorhandler(WorkerMessageTooLargeError)
+def handle_worker_message_too_large(error: WorkerMessageTooLargeError):
+    get_background_service_logger().error(
+        f"Request Error. Type: '{type(error).__name__}' Message: '{error}'"
+    )
+    return error.message, HTTPStatusCode.WORKER_MESSAGE_TOO_LARGE
 
 
 @error_handlers.app_errorhandler(WorkerUnresponsiveError)

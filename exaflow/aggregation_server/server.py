@@ -17,6 +17,7 @@ from exaflow.aggregation_serialization import bytes_to_values
 from exaflow.aggregation_serialization import ndarray_to_bytes
 from exaflow.aggregation_serialization import values_to_bytes
 from exaflow.aggregation_server import config
+from exaflow.grpc_options import grpc_message_options
 from exaflow.protos.aggregation_server.aggregation_server_pb2 import AggregateResponse
 from exaflow.protos.aggregation_server.aggregation_server_pb2 import CleanupResponse
 from exaflow.protos.aggregation_server.aggregation_server_pb2 import ConfigureResponse
@@ -34,7 +35,6 @@ from .constants import AggregationType
 logger = logging.getLogger("AggregationServer")
 
 NUMERIC_KINDS = {"i", "u", "f"}
-GRPC_MAX_MESSAGE_SIZE = 100 * 1024 * 1024  # 100 MiB
 """
 Aggregation server, threading model, and data flow
 --------------------------------------------------
@@ -506,10 +506,7 @@ def serve():
 
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=config.max_grpc_connections),
-        options=[
-            ("grpc.max_send_message_length", GRPC_MAX_MESSAGE_SIZE),
-            ("grpc.max_receive_message_length", GRPC_MAX_MESSAGE_SIZE),
-        ],
+        options=grpc_message_options(config.max_message_mb),
     )
     add_AggregationServerServicer_to_server(AggregationServer(), server)
 

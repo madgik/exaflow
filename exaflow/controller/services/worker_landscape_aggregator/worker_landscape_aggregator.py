@@ -28,6 +28,7 @@ from exaflow.controller.services.worker_landscape_aggregator.worker_info_tasks_h
 )
 from exaflow.controller.worker_client.app import WorkerClientConnectionError
 from exaflow.controller.worker_client.app import WorkerClientTimeoutException
+from exaflow.controller.worker_client.app import WorkerMessageTooLargeError
 from exaflow.controller.workers_addresses import WorkersAddressesFactory
 from exaflow.utils import AttrDict
 from exaflow.worker_communication import BadUserInput
@@ -364,6 +365,17 @@ class WorkerLandscapeAggregator:
             .socket_addresses,
         )
 
+    def _reject_oversized_worker_message(
+        self, worker_queue_addr: str, exc: WorkerMessageTooLargeError
+    ) -> None:
+        self._logger.error(
+            "Worker %s is reachable but sent a gRPC message larger than the "
+            "configured limit. The worker will not be removed as unresponsive. %s",
+            worker_queue_addr,
+            exc,
+        )
+        raise exc
+
     def _get_workers_info(self, workers_socket_addr: List[str]) -> List[WorkerInfo]:
         def _fetch(worker_queue_addr: str) -> Optional[WorkerInfo]:
             tasks_handler = WorkerInfoTasksHandler(
@@ -373,6 +385,8 @@ class WorkerLandscapeAggregator:
             )
             try:
                 return tasks_handler.get_worker_info_task()
+            except WorkerMessageTooLargeError as exc:
+                self._reject_oversized_worker_message(worker_queue_addr, exc)
             except (WorkerClientConnectionError, WorkerClientTimeoutException) as exc:
                 # just log the exception do not reraise it
                 self._logger.warning(exc)
@@ -397,6 +411,8 @@ class WorkerLandscapeAggregator:
             datasets_per_data_model = (
                 tasks_handler.get_worker_datasets_per_data_model_task()
             )
+        except WorkerMessageTooLargeError as exc:
+            self._reject_oversized_worker_message(worker_queue_addr, exc)
         except (WorkerClientConnectionError, WorkerClientTimeoutException) as exc:
             # just log the exception do not reraise it
             self._logger.warning(exc)
@@ -420,6 +436,8 @@ class WorkerLandscapeAggregator:
                 data_model=data_model,
             )
             return worker_cdes
+        except WorkerMessageTooLargeError as exc:
+            self._reject_oversized_worker_message(worker_queue_addr, exc)
         except (WorkerClientConnectionError, WorkerClientTimeoutException) as exc:
             # just log the exception do not reraise it
             self._logger.warning(exc)
@@ -440,6 +458,8 @@ class WorkerLandscapeAggregator:
                 data_model=data_model
             )
             return attributes
+        except WorkerMessageTooLargeError as exc:
+            self._reject_oversized_worker_message(worker_queue_addr, exc)
         except (WorkerClientConnectionError, WorkerClientTimeoutException) as exc:
             # just log the exception do not reraise it
             self._logger.warning(exc)
@@ -614,6 +634,8 @@ class WorkerLandscapeAggregator:
                     datasets_per_data_model = (
                         handler.get_worker_datasets_per_data_model_task()
                     )
+                except WorkerMessageTooLargeError as exc:
+                    self._reject_oversized_worker_message(worker_info.socket_addr, exc)
                 except (WorkerClientConnectionError, WorkerClientTimeoutException):
                     # Most commonly raised when metadata tables are missing (first boot)
                     self._logger.debug(
@@ -640,12 +662,16 @@ class WorkerLandscapeAggregator:
                         and datasets_per_data_model.datasets_info_per_data_model
                     ):
                         cached_datasets[worker_info.id] = datasets_per_data_model
+                except WorkerMessageTooLargeError as exc:
+                    self._reject_oversized_worker_message(worker_info.socket_addr, exc)
                 except (WorkerClientConnectionError, WorkerClientTimeoutException):
                     self._logger.debug(
                         "Failed to fetch datasets after loading data for worker %s",
                         worker_info.id,
                         exc_info=True,
                     )
+            except WorkerMessageTooLargeError:
+                raise
             except Exception:
                 self._logger.error(
                     "Failed to auto-load data for worker %s", worker_info.id

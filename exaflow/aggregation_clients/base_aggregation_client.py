@@ -12,6 +12,7 @@ from exaflow.aggregation_serialization import bytes_to_ndarray
 from exaflow.aggregation_serialization import bytes_to_values
 from exaflow.aggregation_serialization import ndarray_to_bytes
 from exaflow.aggregation_serialization import values_to_bytes
+from exaflow.grpc_options import grpc_message_options
 
 from .constants import AggregationType
 
@@ -45,14 +46,9 @@ class BaseAggregationClient:
                     "Failed to resolve aggregator DNS %s: %s", aggregator_dns, exc
                 )
 
-        # Increase gRPC message size limits to support large Arrow tensors (e.g., ~80 MiB)
-        GRPC_MAX_MESSAGE_SIZE = 100 * 1024 * 1024  # 100 MiB
         self._channel = grpc.insecure_channel(
             target,
-            options=[
-                ("grpc.max_send_message_length", GRPC_MAX_MESSAGE_SIZE),
-                ("grpc.max_receive_message_length", GRPC_MAX_MESSAGE_SIZE),
-            ],
+            options=grpc_message_options(),
         )
         self._stub = pb2_grpc.AggregationServerStub(self._channel)
 

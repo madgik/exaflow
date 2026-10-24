@@ -36,6 +36,8 @@ spec:
               value: {{ .Values.aggregation_server.max_wait_for_aggregation_inputs | quote }}
             - name: LOG_LEVEL
               value: {{ .Values.log_level | quote }}
+            - name: GRPC_MAX_MESSAGE_MB
+              value: {{ quote .Values.grpc_max_message_mb }}
           livenessProbe:
             grpc:
               port: 50051

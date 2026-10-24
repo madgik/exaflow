@@ -542,6 +542,7 @@ Exaflow maps API exceptions to status codes:
 | Status | Meaning | Client Handling |
 | --- | --- | --- |
 | `400` | Malformed request or filter format error. | Treat as client payload/schema issue. |
+| `413` | gRPC message exceeded the configured size limit. | Reduce variables, factor levels, or result size and retry. |
 | `460` | Semantic user-input validation error. | Show the server message near the relevant form field when possible. |
 | `461` | Insufficient data for algorithm execution. | Explain that the chosen datasets/filters/variables do not leave enough usable data. |
 | `512` | Worker unresponsive during execution. | Treat as execution infrastructure failure. |
