@@ -26,10 +26,13 @@ def _format_mib(num_bytes: int) -> str:
 def _message_too_large_text(error_details: str, max_message_bytes: int) -> str:
     details = error_details or ""
     details_lower = details.lower()
-    if details_lower.startswith("client") or (
-        "received message larger" in details_lower
-    ):
-        kind = "request"
+    # The controller is the gRPC client: what it sends, or the worker receives,
+    # is the request; what the worker sends, or the controller receives, is the
+    # result.
+    if "sent message larger" in details_lower:
+        kind = "request" if "client:" in details_lower else "result"
+    elif "received message larger" in details_lower:
+        kind = "result" if "client:" in details_lower else "request"
     else:
         kind = "result"
     match = _GRPC_SIZE_RE.search(details)

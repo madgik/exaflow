@@ -32,8 +32,10 @@ class _OverLimitResultService(worker_pb2_grpc.WorkerServiceServicer):
 
 
 def _set_configured_message_mb(monkeypatch, mb: int) -> None:
-    """Set the env and component config values, not the hard-coded byte copies."""
-    monkeypatch.setenv("GRPC_MAX_MESSAGE_MB", str(mb))
+    """Set the component config values, not the hard-coded byte copies."""
+    # The limit must come from config: an env value the configs do not carry
+    # must not reach any channel or server.
+    monkeypatch.setenv("GRPC_MAX_MESSAGE_MB", str(mb + 1))
 
     from exaflow.aggregation_server import config as agg_config
     from exaflow.controller import config as ctrl_config
@@ -96,6 +98,31 @@ def test_over_limit_request_raises_worker_message_too_large(monkeypatch):
         server.stop(0)
 
     _assert_message_too_large(exc_info.value)
+
+
+@pytest.mark.parametrize(
+    "details, kind",
+    [
+        ("CLIENT: Sent message larger than max (2097152 vs. 1048576)", "request"),
+        ("SERVER: Received message larger than max (2097152 vs. 1048576)", "request"),
+        (
+            "Stream removed (CLIENT: Received message larger than max "
+            "(2097152 vs. 1048576))",
+            "result",
+        ),
+        ("SERVER: Sent message larger than max (2097152 vs. 1048576)", "result"),
+    ],
+    ids=["controller_sends", "worker_receives", "controller_receives", "worker_sends"],
+)
+def test_message_too_large_names_the_oversized_side(details, kind):
+    from exaflow.controller.worker_client.app import WorkerMessageTooLargeError
+
+    error = WorkerMessageTooLargeError(
+        connection_address="127.0.0.1:1",
+        error_details=details,
+        max_message_bytes=ONE_MIB,
+    )
+    assert error.message.startswith(f"{kind} too large (2097152 bytes")
 
 
 def test_over_limit_response_raises_worker_message_too_large(monkeypatch):
@@ -192,12 +219,15 @@ def test_configured_limit_reaches_channel_and_server_options(monkeypatch):
     WorkerClient("127.0.0.1:1")
     grpc_server._create_grpc_server(max_workers=1)
 
-    from exaflow.aggregation_clients.base_aggregation_client import (
-        BaseAggregationClient,
-    )
     from exaflow.aggregation_server.server import serve
+    from exaflow.worker.exareme3.udf import udf_service
 
-    BaseAggregationClient("req-size")
+    monkeypatch.setattr(
+        udf_service.exareme3_registry, "aggregation_server_required", lambda _: True
+    )
+    udf_service._create_aggregation_client_if_required(
+        request_id="req-size", udf_registry_key="udf", preprocessing=None
+    )
     serve()
 
     assert captured["channels"], "controller and aggregation channels were not opened"

@@ -144,7 +144,8 @@ contexts until cleanup.
 - `GRPC_MAX_MESSAGE_MB` (default 100) is the send and receive limit, in
   mebibytes, for every controller-worker and aggregation gRPC message.
   Helm value `grpc_max_message_mb` passes it to the controller, workers, and
-  aggregation server. `exaflow/grpc_options.py` is the shared reader.
+  aggregation server through their config files; `exaflow/grpc_options.py`
+  turns each component's configured value into gRPC options.
 
 ## Known Gaps
 

@@ -6,28 +6,21 @@ connections, including metadata, health, and Flower calls, not only RunUdf.
 
 ``GRPC_MAX_MESSAGE_MB`` (default 100) is the configuration value, in
 mebibytes. Component config files interpolate that variable and Helm sets it
-on the controller, workers, and aggregation server.
+on the controller, workers, and aggregation server. Callers pass the value from
+their component config; this module does not read the environment.
 """
-
-import os
 
 DEFAULT_GRPC_MAX_MESSAGE_MB = 100
 GRPC_MAX_MESSAGE_MB_ENV = "GRPC_MAX_MESSAGE_MB"
 _MIB = 1024 * 1024
 
-# Default send and receive limit. Use grpc_message_options() for the
-# configured size.
-GRPC_MAX_MESSAGE_SIZE = DEFAULT_GRPC_MAX_MESSAGE_MB * _MIB
-
 
 def grpc_max_message_mb(value=None) -> int:
     """Return a message limit in mebibytes.
 
-    An explicit config ``value`` wins. Otherwise ``GRPC_MAX_MESSAGE_MB`` is
-    read, and a missing or blank value defaults to 100.
+    ``value`` comes from a component config. A missing or blank value
+    defaults to 100.
     """
-    if value is None:
-        value = os.environ.get(GRPC_MAX_MESSAGE_MB_ENV, "")
     if isinstance(value, str):
         value = value.strip()
         if value == "":

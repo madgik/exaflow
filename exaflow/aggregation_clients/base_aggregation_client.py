@@ -25,7 +25,12 @@ DEFAULT_AGGREGATION_PORT = "50051"
 
 
 class BaseAggregationClient:
-    def __init__(self, request_id: str, aggregator_dns: str | None = None):
+    def __init__(
+        self,
+        request_id: str,
+        aggregator_dns: str | None = None,
+        max_message_mb: int | None = None,
+    ):
         self._request_id = request_id
         self._step_counter = 1
 
@@ -48,7 +53,7 @@ class BaseAggregationClient:
 
         self._channel = grpc.insecure_channel(
             target,
-            options=grpc_message_options(),
+            options=grpc_message_options(max_message_mb),
         )
         self._stub = pb2_grpc.AggregationServerStub(self._channel)
 
