@@ -133,9 +133,11 @@ class WorkerClientFactory(metaclass=Singleton):
 
     def get_client(self, socket_addr: str) -> WorkerClient:
         with self._lock:
-            if socket_addr not in self._clients:
-                self._clients[socket_addr] = WorkerClient(socket_addr)
-            return self._clients[socket_addr]
+            client = self._clients.get(socket_addr)
+            if client is None:
+                client = WorkerClient(socket_addr)
+                self._clients[socket_addr] = client
+            return client
 
     def retain_only(self, socket_addrs: set[str]) -> None:
         """

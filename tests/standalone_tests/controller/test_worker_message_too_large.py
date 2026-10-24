@@ -136,7 +136,9 @@ def test_flower_safe_worker_call_logs_message_too_large_as_reachable(caplog):
         raise error
 
     with caplog.at_level(logging.DEBUG, logger="flower-message-size"):
-        strategy._safe_worker_call("garbage collect on global worker", boom)
+        asyncio.run(
+            strategy._safe_worker_call("garbage collect on global worker", boom)
+        )
 
     text = caplog.text.lower()
     assert "reachable" in text
