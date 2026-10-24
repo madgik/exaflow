@@ -1,7 +1,14 @@
+import asyncio
+
 import pytest
 from pydantic import ValidationError
+from quart import Quart
+from quart import request
 
 import exaflow.controller.services.api.analysis_request_validator as analysis_request_validator
+from exaflow.algorithms.exareme3.cluster.kmeans_cluster_creator import (
+    KMeansClusterCreator,
+)
 from exaflow.algorithms.exareme3.feature_engineering.categorical_column_creator import (
     CategoricalColumnCreator,
 )
@@ -15,6 +22,7 @@ from exaflow.algorithms.specifications import InputDataType
 from exaflow.algorithms.specifications import ParameterDictValueType
 from exaflow.algorithms.specifications import ParameterSpecification
 from exaflow.algorithms.specifications import ParameterType
+from exaflow.controller.quart.error_handlers import error_handlers
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisAlgorithmDTO
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisInputDataDTO
 from exaflow.controller.services.api.analysis_request_dtos import (
@@ -76,7 +84,7 @@ def _cdes():
     }
 
 
-def _algorithm_spec():
+def _algorithm_spec(parameters=None):
     return AlgorithmSpecification(
         name="sample_algorithm",
         desc="sample",
@@ -100,10 +108,11 @@ def _algorithm_spec():
             required=True,
             min_count=1,
         ),
+        parameters=parameters,
     )
 
 
-def _request(*, preprocessing=None, x=None, y=None, variables=None):
+def _request(*, preprocessing=None, x=None, y=None, variables=None, parameters=None):
     return AnalysisRequestDTO(
         inputdata=AnalysisInputDataDTO(
             data_model=DATA_MODEL,
@@ -115,24 +124,69 @@ def _request(*, preprocessing=None, x=None, y=None, variables=None):
             name="sample_algorithm",
             x=x or ["gender"],
             y=y or ["outcome"],
-            parameters={},
+            parameters={} if parameters is None else parameters,
         ),
         flags={},
     )
 
 
-def _validate(request):
+def _default_preprocessing_specs():
+    return {
+        "categorical_column_creator": CategoricalColumnCreator.get_specification(),
+        "longitudinal_transformer": LongitudinalTransformer.get_specification(),
+    }
+
+
+def _validate(request, *, algorithms_specs=None, preprocessing_steps_specs=None):
     return analysis_request_validator.validate_analysis_request(
         analysis_request_dto=request,
-        algorithms_specs={"sample_algorithm": _algorithm_spec()},
-        preprocessing_steps_specs={
-            "categorical_column_creator": CategoricalColumnCreator.get_specification(),
-            "longitudinal_transformer": LongitudinalTransformer.get_specification(),
-        },
+        algorithms_specs=algorithms_specs
+        or {"sample_algorithm": _algorithm_spec()},
+        preprocessing_steps_specs=preprocessing_steps_specs
+        or _default_preprocessing_specs(),
         worker_landscape_aggregator=FakeWorkerLandscapeAggregator(),
         smpc_enabled=False,
         smpc_optional=False,
     )
+
+
+def _validate_parameter_request(parameters, parameter_specs):
+    return _validate(
+        _request(parameters=parameters),
+        algorithms_specs={
+            "sample_algorithm": _algorithm_spec(parameters=parameter_specs)
+        },
+    )
+
+
+def _post_parameter_request(parameters, parameter_specs):
+    app = Quart(__name__)
+    app.register_blueprint(error_handlers)
+    algorithms_specs = {
+        "sample_algorithm": _algorithm_spec(parameters=parameter_specs)
+    }
+    body = _request(parameters=parameters).model_dump(mode="json")
+
+    @app.post("/analysis")
+    async def run_analysis():
+        analysis_request_dto = AnalysisRequestDTO.model_validate(await request.json)
+        analysis_request_validator.validate_analysis_request(
+            analysis_request_dto=analysis_request_dto,
+            algorithms_specs=algorithms_specs,
+            preprocessing_steps_specs=_default_preprocessing_specs(),
+            worker_landscape_aggregator=FakeWorkerLandscapeAggregator(),
+            smpc_enabled=False,
+            smpc_optional=False,
+        )
+        return "ok"
+
+    async def _call():
+        async with app.test_client() as client:
+            response = await client.post("/analysis", json=body)
+            body_text = await response.get_data(as_text=True)
+            return response.status_code, body_text
+
+    return asyncio.run(_call())
 
 
 def _risk_group_step(rules=None):
@@ -378,3 +432,159 @@ def test_parameter_validation_accepts_bool_for_boolean_parameters():
     spec = _int_parameter_spec(types=[ParameterType.BOOLEAN], min=None, max=None)
 
     _validate_parameters(False, spec)
+
+
+def _dict_int_parameter_spec():
+    return {
+        "folds": ParameterSpecification(
+            label="Folds",
+            desc="Fold for each variable.",
+            types=[ParameterType.DICT],
+            required=True,
+            multiple=False,
+            dict_values_type=ParameterDictValueType.INT,
+        )
+    }
+
+
+def _message(parameters, parameter_specs):
+    with pytest.raises(BadUserInput) as exc_info:
+        _validate_parameter_request(parameters, parameter_specs)
+    return str(exc_info.value)
+
+
+def test_out_of_range_int_returns_http_460_with_at_least_message():
+    status_code, body = _post_parameter_request({"k": 0}, _int_parameter_spec())
+
+    assert status_code == 460
+    assert body == "Parameter 'K' values should be at least 1 ."
+    assert "1.0" not in body
+    assert "greater than" not in body
+
+
+@pytest.mark.parametrize("value", [True, False])
+def test_real_parameter_rejects_booleans(value):
+    spec = _int_parameter_spec(types=[ParameterType.REAL], min=None, max=None)
+
+    message = _message({"k": value}, spec)
+
+    assert "Parameter 'K' values should be of types: ['real']." == message
+
+
+def test_multi_value_int_rejects_boolean_item():
+    spec = _int_parameter_spec(multiple=True, min=None, max=None)
+
+    message = _message({"k": [1, True]}, spec)
+
+    assert "Parameter 'K' values should be of types: ['int']." == message
+
+
+def test_dict_of_ints_rejects_boolean_and_accepts_zero():
+    spec = _dict_int_parameter_spec()
+
+    message = _message({"folds": {"a": True}}, spec)
+
+    assert message == (
+        "Parameter 'Folds' dictionary values should be of type: int."
+    )
+    _validate_parameter_request({"folds": {"a": 0}}, spec)
+
+
+def test_boolean_parameter_rejects_zero_and_accepts_true():
+    spec = _int_parameter_spec(types=[ParameterType.BOOLEAN], min=None, max=None)
+
+    message = _message({"k": 0}, spec)
+
+    assert "Parameter 'K' values should be of types: ['boolean']." == message
+    _validate_parameter_request({"k": True}, spec)
+
+
+def test_int_parameter_with_minimum_zero_accepts_zero():
+    _validate_parameter_request({"k": 0}, _int_parameter_spec(min=0))
+
+
+def test_optional_int_rejects_zero_below_minimum_and_accepts_null():
+    spec = _int_parameter_spec(required=False)
+
+    message = _message({"k": 0}, spec)
+
+    assert message == "Parameter 'K' values should be at least 1 ."
+    _validate_parameter_request({"k": None}, spec)
+
+
+def test_int_limit_messages_use_at_least_and_at_most_without_decimal():
+    below = _message({"k": 0}, _int_parameter_spec())
+    above = _message({"k": 11}, _int_parameter_spec())
+
+    assert below == "Parameter 'K' values should be at least 1 ."
+    assert above == "Parameter 'K' values should be at most 10 ."
+
+
+def test_real_limit_messages_keep_decimal_bounds():
+    spec = _int_parameter_spec(types=[ParameterType.REAL], min=0.1, max=1.0)
+    below = _message({"k": 0.0}, spec)
+    above = _message({"k": 1.5}, spec)
+
+    assert below == "Parameter 'K' values should be at least 0.1 ."
+    assert above == "Parameter 'K' values should be at most 1.0 ."
+
+
+@pytest.mark.parametrize(
+    "parameters,parameter_specs",
+    [
+        ({"seed": 1}, None),
+        ({"k": "  "}, "int"),
+        ({"k": []}, "multiple"),
+        ({"k": None}, "int"),
+        ({"folds": {}}, "dict"),
+    ],
+)
+def test_blank_parameter_message_uses_label(parameters, parameter_specs):
+    if parameter_specs == "multiple":
+        specs = _int_parameter_spec(multiple=True, min=None, max=None)
+    elif parameter_specs == "dict":
+        specs = _dict_int_parameter_spec()
+    elif parameter_specs is None:
+        specs = {
+            "k": _int_parameter_spec()["k"],
+            "seed": ParameterSpecification(
+                label="Seed",
+                desc="Seed.",
+                types=[ParameterType.INT],
+                required=True,
+                multiple=False,
+                min=0,
+            ),
+        }
+    else:
+        specs = _int_parameter_spec()
+
+    message = _message(parameters, specs)
+
+    assert "should not be blank" in message
+    assert "Parameter 'k'" not in message
+    assert "Parameter 'folds'" not in message
+    assert message.startswith("Parameter 'K'") or message.startswith(
+        "Parameter 'Folds'"
+    )
+
+
+def test_preprocessing_parameter_rejects_zero_below_minimum():
+    request = _request(
+        preprocessing=[
+            AnalysisPreprocessingStepDTO(
+                name="kmeans_cluster_creator",
+                parameters={"new_column_names": ["cluster"], "k": 0},
+            )
+        ]
+    )
+    specs = _default_preprocessing_specs()
+    specs["kmeans_cluster_creator"] = KMeansClusterCreator.get_specification()
+
+    with pytest.raises(BadUserInput) as exc_info:
+        _validate(request, preprocessing_steps_specs=specs)
+
+    assert (
+        str(exc_info.value)
+        == "Parameter 'Number of clusters' values should be at least 1 ."
+    )

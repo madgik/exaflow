@@ -552,7 +552,9 @@ def _validate_parameters(
             if not parameters:
                 raise BadUserInput(f"Algorithm parameters not provided.")
             if parameter_name not in parameters.keys():
-                raise BadUserInput(f"Parameter '{parameter_name}' should not be blank.")
+                raise BadUserInput(
+                    f"Parameter '{parameter_spec.label}' should not be blank."
+                )
 
         if parameters is None or parameter_name not in parameters:
             continue
@@ -560,17 +562,25 @@ def _validate_parameters(
         parameter_values = parameters.get(parameter_name)
         if parameter_values is None:
             if parameter_spec.required:
-                raise BadUserInput(f"Parameter '{parameter_name}' should not be blank.")
+                raise BadUserInput(
+                    f"Parameter '{parameter_spec.label}' should not be blank."
+                )
             continue
 
         if isinstance(parameter_values, str) and not parameter_values.strip():
-            raise BadUserInput(f"Parameter '{parameter_name}' should not be blank.")
+            raise BadUserInput(
+                f"Parameter '{parameter_spec.label}' should not be blank."
+            )
 
         if isinstance(parameter_values, list) and len(parameter_values) == 0:
-            raise BadUserInput(f"Parameter '{parameter_name}' should not be blank.")
+            raise BadUserInput(
+                f"Parameter '{parameter_spec.label}' should not be blank."
+            )
 
         if isinstance(parameter_values, dict) and len(parameter_values) == 0:
-            raise BadUserInput(f"Parameter '{parameter_name}' should not be blank.")
+            raise BadUserInput(
+                f"Parameter '{parameter_spec.label}' should not be blank."
+            )
 
         # Falsy values such as 0 or 0.0 must be validated too (min/max, enums).
         _validate_parameter_values(
@@ -869,6 +879,18 @@ def _validate_param_dict_enums(
             )
 
 
+def _format_parameter_limit(
+    parameter_spec: ParameterSpecification, limit: float
+) -> str:
+    integer_parameter = (
+        ParameterType.INT in parameter_spec.types
+        and ParameterType.REAL not in parameter_spec.types
+    )
+    if integer_parameter and float(limit).is_integer():
+        return str(int(limit))
+    return str(limit)
+
+
 def _validate_parameter_inside_min_max(
     parameter_value: Any,
     parameter_spec: ParameterSpecification,
@@ -877,15 +899,17 @@ def _validate_parameter_inside_min_max(
         return
 
     if parameter_spec.min is not None and parameter_value < parameter_spec.min:
+        minimum = _format_parameter_limit(parameter_spec, parameter_spec.min)
         raise BadUserInput(
             f"Parameter '{parameter_spec.label}' values "
-            f"should be greater than {parameter_spec.min} ."
+            f"should be at least {minimum} ."
         )
 
     if parameter_spec.max is not None and parameter_value > parameter_spec.max:
+        maximum = _format_parameter_limit(parameter_spec, parameter_spec.max)
         raise BadUserInput(
             f"Parameter '{parameter_spec.label}' values "
-            f"should be at most equal to {parameter_spec.max} ."
+            f"should be at most {maximum} ."
         )
 
 
