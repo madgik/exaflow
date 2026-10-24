@@ -8,6 +8,7 @@ from typing import NamedTuple
 
 import duckdb
 
+from exaflow.column_names import DATASET_COL
 from exaflow.worker import config as worker_config
 from exaflow.worker.utils.logger import init_logger
 
