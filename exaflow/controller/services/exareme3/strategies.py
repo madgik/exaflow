@@ -9,6 +9,7 @@ from exaflow.aggregation_clients.controller_aggregation_client import (
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.controller import config as controller_config
 from exaflow.controller.federation_info_logs import log_experiment_execution
+from exaflow.controller.services.analysis_execution import run_blocking
 from exaflow.controller.services.exareme3 import Exareme3Controller
 from exaflow.controller.services.exareme3.algorithm_flow_engine_interface import (
     Exareme3AlgorithmFlowEngineInterface,
@@ -106,7 +107,9 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
             self._analysis_request_dto.algorithm.parameters,
             [h.worker_id for h in self._local_worker_tasks_handlers],
         )
-        result = algorithm.run()
+        # Worker calls block. Run them on the analysis pool so /livez stays
+        # responsive. Wait for the thread on cancel so cleanup cannot race it.
+        result = await run_blocking(algorithm.run)
         self._logger.info(
             f"Execution completed: {self._algorithm_name} ({self._request_id})"
         )
@@ -122,15 +125,28 @@ class Exareme3WithAggregationServerStrategy(Exareme3Strategy):
         agg_client = ControllerAggregationClient(
             self._request_id, aggregator_dns=agg_dns
         )
-        status = agg_client.configure(
-            num_workers=len(self._local_worker_tasks_handlers)
-        )
-        if status != agg_pb2.Status.OK:
-            raise RuntimeError(f"AggregationServer refused to configure: {status}")
-        self._logger.debug(f"Aggregation configured: {status}")
+        # Set inside the thread so a cancel during configure still cleans up.
+        configured = False
+
+        def _configure():
+            nonlocal configured
+            status = agg_client.configure(
+                num_workers=len(self._local_worker_tasks_handlers)
+            )
+            configured = status == agg_pb2.Status.OK
+            return status
 
         try:
+            status = await run_blocking(_configure)
+            if status != agg_pb2.Status.OK:
+                raise RuntimeError(f"AggregationServer refused to configure: {status}")
+            self._logger.debug(f"Aggregation configured: {status}")
             return await super().execute()
         finally:
-            cleanup_status = agg_client.cleanup()
-            self._logger.debug(f"Aggregation cleanup response: {cleanup_status}")
+            # Clean up only a context this request configured: ALREADY_CONFIGURED
+            # means another request with the same id owns it. Runs only after
+            # configure/run have finished, including when the request task was
+            # cancelled while algorithm.run was still in flight.
+            if configured:
+                cleanup_status = await run_blocking(agg_client.cleanup)
+                self._logger.debug(f"Aggregation cleanup response: {cleanup_status}")

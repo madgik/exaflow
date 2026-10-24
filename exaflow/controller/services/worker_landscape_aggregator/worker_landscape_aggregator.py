@@ -281,6 +281,7 @@ class WorkerLandscapeAggregator:
         self._deployment_type = deployment_type
         self._localworkers = localworkers
         self._registries = _wlaRegistries()
+        self._update_lock = threading.Lock()
         self._keep_updating = True
         self._update_loop_thread = None
         self._loaded_workers = set()
@@ -303,20 +304,21 @@ class WorkerLandscapeAggregator:
         For each data model the 'enumerations' field in the cde with code 'dataset' is updated with all datasets across workers.
         Once all the information is aggregated and validated the wla will provide the information to the Worker Registry and to the Data Model Registry.
         """
-        (
-            workers_info,
-            data_models_metadata_per_worker,
-        ) = self._fetch_workers_metadata()
-        worker_registry = WorkerRegistry(workers_info=workers_info)
-        dmr = _crunch_data_model_registry_data(
-            data_models_metadata_per_worker, self._logger
-        )
+        with self._update_lock:
+            (
+                workers_info,
+                data_models_metadata_per_worker,
+            ) = self._fetch_workers_metadata()
+            worker_registry = WorkerRegistry(workers_info=workers_info)
+            dmr = _crunch_data_model_registry_data(
+                data_models_metadata_per_worker, self._logger
+            )
 
-        self._set_new_registries(worker_registry, dmr)
+            self._set_new_registries(worker_registry, dmr)
 
-        self._logger.debug(
-            f"Workers:{[worker_info.id for worker_info in self.get_workers()]}"
-        )
+            self._logger.debug(
+                f"Workers:{[worker_info.id for worker_info in self.get_workers()]}"
+            )
 
     def _update_loop(self):
         while self._keep_updating:

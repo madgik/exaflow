@@ -6,7 +6,8 @@ Purpose: HTTP API, runtime config, worker discovery, execution strategies, and
 controller-side task orchestration.
 
 Key files: `quart/endpoints.py`, `services/api/*`,
-`services/exareme3/strategies.py`, `services/exareme3/algorithm_flow_engine_interface.py`.
+`services/analysis_execution.py`, `services/exareme3/strategies.py`,
+`services/exareme3/algorithm_flow_engine_interface.py`.
 
 Used by: `run_analysis`, prod tests, algorithm validation tests, workers, and
 deployment manifests.

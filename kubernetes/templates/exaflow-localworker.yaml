@@ -83,8 +83,10 @@ spec:
               fieldPath: status.podIP
         - name: GRPC_PORT
           value: "5672"
+        # One thread per concurrent analysis plus spare threads for metadata,
+        # health and Flower calls (WORKER_GRPC_SPARE_THREADS in tasks.py).
         - name: GRPC_MAX_WORKERS
-          value: "20"
+          value: {{ .Values.max_concurrent_experiments | int | add 4 | quote }}
         - name: AGGREGATION_SERVER_ENABLED
           value: {{ quote .Values.aggregation_server.enabled }}
         - name: AGGREGATION_SERVER_DNS
