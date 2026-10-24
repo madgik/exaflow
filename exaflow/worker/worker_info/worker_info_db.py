@@ -28,7 +28,7 @@ def get_data_models() -> List[str]:
     """
 
     data_models_code_and_version = metadata_db.execute_and_fetchall(
-        f"""SELECT code, version
+        """SELECT code, version
             FROM data_models
             WHERE status = 'ENABLED'
         """
@@ -51,18 +51,19 @@ def get_dataset_infos(data_model: str) -> List[DatasetInfo]:
     data_model_code, data_model_version = data_model.split(":")
 
     datasets_rows = metadata_db.execute_and_fetchall(
-        f"""
+        """
         SELECT code, label, properties
         FROM datasets
         WHERE data_model_id =
         (
             SELECT data_model_id
             FROM data_models
-            WHERE code = '{data_model_code}'
-            AND version = '{data_model_version}'
+            WHERE code = ?
+            AND version = ?
         )
         AND status = 'ENABLED'
-        """
+        """,
+        [data_model_code, data_model_version],
     )
     return [
         DatasetInfo(
@@ -131,6 +132,8 @@ def get_dataset_csv_paths(data_model, datasets: List[str]) -> List[str]:
     Retrieves the enabled dataset csv_paths.
     """
     data_model_code, data_model_version = data_model.split(":")
+    if not datasets:
+        return []
     datasets_rows = metadata_db.execute_and_fetchall(
         f"""
         SELECT csv_path
@@ -139,12 +142,13 @@ def get_dataset_csv_paths(data_model, datasets: List[str]) -> List[str]:
         (
             SELECT data_model_id
             FROM data_models
-            WHERE code = '{data_model_code}'
-            AND version = '{data_model_version}'
+            WHERE code = ?
+            AND version = ?
         )
-        AND code IN ({", ".join("'" + str(value) + "'" for value in datasets)})
+        AND code IN ({", ".join("?" for _ in datasets)})
         AND status = 'ENABLED'
-        """
+        """,
+        [data_model_code, data_model_version, *map(str, datasets)],
     )
     return [
         convert_csv_paths_to_absolute(row[0]) if row[0] is not None else None
@@ -163,7 +167,7 @@ def get_data_model_cdes(data_model: str) -> CommonDataElements:
     """
     data_model_code, data_model_version = data_model.split(":")
     sanitized = _sanitize_table_name(f"{data_model_code}:{data_model_version}")
-    table_name = f"{sanitized}_variables_metadata"
+    table_name = f"{sanitized}_variables_metadata".replace('"', '""')
     query = f'SELECT code, metadata FROM "{table_name}"'
     cdes_rows = metadata_db.execute_and_fetchall(query)
     cdes = CommonDataElements(
@@ -187,7 +191,8 @@ def get_data_model_attributes(data_model: str) -> DataModelAttributes:
     data_model_code, data_model_version = data_model.split(":")
 
     rows = metadata_db.execute_and_fetchall(
-        f"SELECT properties FROM data_models WHERE code = '{data_model_code}' AND version = '{data_model_version}'"
+        "SELECT properties FROM data_models WHERE code = ? AND version = ?",
+        [data_model_code, data_model_version],
     )
     raw = json.loads(rows[0][0]) if rows else {}
     return DataModelAttributes(
@@ -201,7 +206,7 @@ def check_database_connection():
     Check that the connection with the database is working.
     """
     result = metadata_db.execute_and_fetchall(
-        f"SELECT '{HEALTHCHECK_VALIDATION_STRING}'"
+        "SELECT ?", [HEALTHCHECK_VALIDATION_STRING]
     )
     assert result[0][0] == HEALTHCHECK_VALIDATION_STRING
 

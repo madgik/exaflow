@@ -1,28 +1,27 @@
+import math
 from typing import Dict
 
 from exaflow import DType
 from exaflow.worker_communication import CommonDataElement
 
-FILTER_OPERATORS = {
-    "equal": lambda column, value: f"{column} = {value}",
-    "not_equal": lambda column, value: f"{column} <> {value}",
-    "less": lambda column, value: f"{column} < {value}",
-    "greater": lambda column, value: f"{column} > {value}",
-    "less_or_equal": lambda column, value: f"{column} <= {value}",
-    "greater_or_equal": lambda column, value: f"{column} >= {value}",
-    "between": lambda column, values: f"{column} BETWEEN {values[0]} AND {values[1]}",
-    "not_between": lambda column, value: (
-        f"NOT {column} BETWEEN {value[0]} AND {value[1]}"
-    ),
-    "is_null": lambda column, value: f"{column} IS NULL",
-    "is_not_null": lambda column, value: f"{column} IS NOT NULL",
-    "in": lambda column, values: (
-        f"{column} IN ({','.join(str(value) for value in values)})"
-    ),
-    "not_in": lambda column, values: (
-        f"{column} NOT IN ({','.join(str(value) for value in values)})"
-    ),
+_COMPARISON_SQL = {
+    "equal": "=",
+    "not_equal": "<>",
+    "less": "<",
+    "greater": ">",
+    "less_or_equal": "<=",
+    "greater_or_equal": ">=",
 }
+_RANGE_OPERATORS = {"between", "not_between"}
+_MEMBERSHIP_OPERATORS = {"in", "not_in"}
+_NULL_OPERATORS = {"is_null", "is_not_null"}
+
+FILTER_OPERATORS = (
+    set(_COMPARISON_SQL)
+    | _RANGE_OPERATORS
+    | _MEMBERSHIP_OPERATORS
+    | _NULL_OPERATORS
+)
 
 __all__ = ["build_filter_clause", "validate_filter", "FilterError"]
 
@@ -35,27 +34,37 @@ class FilterError(Exception):
 
 def build_filter_clause(rules):
     """
-    Converts and returns a given filter in jQuery format to a sql clause.
-    This function will not check the validity of the
-    filters (the only exception is the SQL Injection which will be handled by pydantic)
+    Convert a jQuery-format filter into a SQL clause and bound parameters.
+
+    Identifiers are quoted. Values are returned as parameters and are never
+    interpolated into the SQL text; the caller must execute the clause with
+    those parameters. The value shape required by each operator is checked
+    here. Column metadata is checked by validate_filter.
     """
     if rules is None:
-        return
+        return None
 
     if not isinstance(rules, dict):
         raise FilterError("A dictionary should be provided to build a filter clause.")
 
     if "condition" in rules:
         _check_condition(rules["condition"])
+        _check_group_rules(rules.get("rules"))
         cond = rules["condition"]
-        rules = rules["rules"]
-        return "(" + f" {cond} ".join(build_filter_clause(rule) for rule in rules) + ")"
+        parts = []
+        params = []
+        for rule in rules["rules"]:
+            clause, clause_params = build_filter_clause(rule)
+            parts.append(clause)
+            params.extend(clause_params)
+        return "(" + f" {cond} ".join(parts) + ")", params
 
     if "id" in rules:
-        column_name = f'"{rules["id"]}"'
-        op = FILTER_OPERATORS[rules["operator"]]
-        value = _format_value_if_string(rules["type"], rules["value"])
-        return op(column_name, value)
+        column_name = _quote_identifier(rules["id"])
+        operator = rules["operator"]
+        value = rules["value"]
+        _check_operator_value(operator, value)
+        return _operator_clause(column_name, operator, value)
 
     raise FilterError("Filters did not contain the keys: 'condition' or 'id'.")
 
@@ -68,7 +77,8 @@ def validate_filter(data_model: str, rules: dict, cdes: Dict[str, CommonDataElem
         2. The column name (if it exists in the metadata of the data_model)
         3. All the conditions that the filter contains
         4. All the operators that the filter contains
-        5. The type of the given value (if the column of the data_model and the value are the same type)
+        5. The value shape required by each operator
+        6. The type of the given value (if the column of the data_model and the value are the same type)
     """
     if rules is None:
         return
@@ -77,6 +87,7 @@ def validate_filter(data_model: str, rules: dict, cdes: Dict[str, CommonDataElem
 
     if "condition" in rules:
         _check_condition(rules["condition"])
+        _check_group_rules(rules.get("rules"))
         rules = rules["rules"]
         for rule in rules:
             validate_filter(data_model, rule, cdes)
@@ -85,6 +96,7 @@ def validate_filter(data_model: str, rules: dict, cdes: Dict[str, CommonDataElem
         val = rules["value"]
         _check_operator(rules["operator"])
         _check_column_exists(data_model, column_name, cdes)
+        _check_operator_value(rules["operator"], val)
         _check_value_type(column_name, val, cdes)
     else:
         raise FilterError(
@@ -92,17 +104,28 @@ def validate_filter(data_model: str, rules: dict, cdes: Dict[str, CommonDataElem
         )
 
 
-def _format_value_if_string(column_type, val):
-    if column_type != "string":
-        return val
+def _quote_identifier(identifier) -> str:
+    escaped = str(identifier).replace('"', '""')
+    return f'"{escaped}"'
 
-    def _quote(value):
-        escaped = str(value).replace("'", "''")
-        return f"'{escaped}'"
 
-    if isinstance(val, list):
-        return [_quote(item) for item in val]
-    return _quote(val)
+def _operator_clause(column, operator, value):
+    if operator in _COMPARISON_SQL:
+        return f"{column} {_COMPARISON_SQL[operator]} ?", [value]
+    if operator == "between":
+        return f"{column} BETWEEN ? AND ?", list(value)
+    if operator == "not_between":
+        return f"NOT {column} BETWEEN ? AND ?", list(value)
+    if operator == "is_null":
+        return f"{column} IS NULL", []
+    if operator == "is_not_null":
+        return f"{column} IS NOT NULL", []
+    placeholders = ", ".join("?" for _ in value)
+    if operator == "in":
+        return f"{column} IN ({placeholders})", list(value)
+    if operator == "not_in":
+        return f"{column} NOT IN ({placeholders})", list(value)
+    raise FilterError(f"Operator: {operator} is not acceptable.")
 
 
 def _check_filter_type(rules):
@@ -115,9 +138,65 @@ def _check_condition(condition: str):
         raise FilterError(f"Condition: {condition} is not acceptable.")
 
 
+def _check_group_rules(rules):
+    # An empty group would become "()" in the SQL text.
+    if not isinstance(rules, list) or not rules:
+        raise FilterError("A filter group requires a non-empty list of rules.")
+
+
 def _check_operator(operator: str):
     if operator not in FILTER_OPERATORS:
         raise FilterError(f"Operator: {operator} is not acceptable.")
+
+
+def _check_operator_value(operator, value):
+    _check_operator(operator)
+    if operator in _NULL_OPERATORS:
+        if value is not None:
+            raise FilterError(f"Operator {operator} only accepts None as its value.")
+        return
+    if value is None:
+        raise FilterError("None is only allowed for is_null and is_not_null.")
+    if operator in _COMPARISON_SQL:
+        _check_scalar_value(value)
+        return
+    if operator in _RANGE_OPERATORS:
+        if not isinstance(value, list) or len(value) != 2:
+            raise FilterError(
+                f"Operator {operator} requires a list of exactly two values."
+            )
+        for item in value:
+            _check_scalar_value(item)
+        return
+    if operator in _MEMBERSHIP_OPERATORS:
+        if not isinstance(value, list) or len(value) == 0:
+            raise FilterError(
+                f"Operator {operator} requires a non-empty list of values."
+            )
+        for item in value:
+            _check_scalar_value(item)
+        return
+    raise FilterError(f"Operator: {operator} is not acceptable.")
+
+
+def _check_scalar_value(value):
+    if isinstance(value, list):
+        raise FilterError(
+            "Filter value must be a single int, float, or str, not a list."
+        )
+    if value is None:
+        raise FilterError("None is only allowed for is_null and is_not_null.")
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        raise FilterError(
+            f"Filter value {value!r} should be of type int, float or str "
+            f"but was {type(value)}."
+        )
+    if isinstance(value, str):
+        if "\x00" in value:
+            raise FilterError("Filter value must not contain a NUL byte.")
+        return
+    if isinstance(value, float) and not math.isfinite(value):
+        raise FilterError(f"Filter value {value} must be a finite number.")
 
 
 def _check_column_exists(data_model: str, column: str, cdes):
