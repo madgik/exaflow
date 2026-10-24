@@ -25,6 +25,46 @@ Date:
 
 ## Accepted Decisions
 
+### Decision: Bound Controller Analyses and Keep Liveness Off That Pool
+
+Status: Accepted
+
+Context: The controller is one Hypercorn process. Moving `algorithm.run` off
+the event loop let analyses overlap on the default thread pool, which is sized
+from node CPUs rather than `max_concurrent_experiments`, and which `/healthcheck`
+and `/wla` share. Quart cancels the request task on client disconnect, so an
+unshielded `asyncio.to_thread` ran aggregation cleanup while `algorithm.run`
+was still using that aggregation context. Startup and liveness probes that call
+`/healthcheck`, or that wait `worker_tasks_timeout` seconds, restart a live
+controller when a worker is down or the loop is briefly busy.
+
+Decision: Run analysis work, aggregation configure/cleanup, and Flower
+start/stop/garbage-collect on a dedicated pool of `max_concurrent_experiments`
+threads. Reject extra analyses with HTTP 503. On cancellation, wait for the
+in-flight thread before cleanup. Keep `/livez`, `/healthcheck`, and `/wla` off
+that pool. Point startup and liveness probes at `/livez` with a 5 second
+timeout. Use `/healthcheck` only as a readiness probe.
+
+Consequences: More than `max_concurrent_experiments` simultaneous analyses
+receive 503. Client disconnect no longer cleans up aggregation state early.
+A down worker removes the controller from Service endpoints and does not
+restart it. Worker gRPC pools (`max_concurrent_experiments + 4`) and the
+aggregation server pool (`max_concurrent_experiments` per local worker) are
+derived from the same limit; the `.deployment.toml` key
+`aggregation_server.max_grpc_connections` is gone. There is no separate
+overall analysis deadline; per-call worker timeouts still apply. An overall
+deadline that returned before the thread stopped would race cleanup again.
+
+Files affected: `exaflow/controller/services/analysis_execution.py`,
+`exaflow/controller/services/exareme3/strategies.py`,
+`exaflow/controller/services/flower/strategies.py`,
+`exaflow/controller/quart/endpoints.py`,
+`kubernetes/templates/exaflow-controller.yaml`,
+`kubernetes/templates/exaflow-localworker.yaml`, `tasks.py`,
+`documentation/api-specification.md`.
+
+Date: 2026-10-24
+
 ### Decision: Organize Federated Implementations by Domain
 
 Status: Accepted
