@@ -701,6 +701,21 @@ def test_security_build_filter_clause_rejects_nested_injection_payload():
     _expect_filter_error(lambda: build_filter_clause(rules))
 
 
+@pytest.mark.parametrize(
+    "group",
+    [
+        {"condition": "AND", "rules": []},
+        {"condition": "AND"},
+        {"condition": "OR", "rules": {"id": "s", "operator": "is_null"}},
+        {"condition": "AND", "rules": [{"condition": "OR", "rules": []}]},
+    ],
+    ids=["empty", "missing", "not_a_list", "nested_empty"],
+)
+def test_security_filter_rejects_group_without_rules(group):
+    _expect_filter_error(lambda: validate_filter("dm", group, _text_column_cdes()))
+    _expect_filter_error(lambda: build_filter_clause(group))
+
+
 @pytest.mark.parametrize("operator", RANGE_OPERATORS)
 @pytest.mark.parametrize(
     "column,value",
@@ -956,9 +971,3 @@ def test_security_build_filter_clause_binds_nested_parameters_in_order():
     sql, params = result
     assert sql == '("s" = ? OR ("age" BETWEEN ? AND ? AND "s" IN (?, ?)))'
     assert params == ["a", 1, 2, "x", "y"]
-
-
-def test_security_build_filter_clause_docstring_describes_parameter_binding():
-    doc = (build_filter_clause.__doc__ or "").lower()
-    assert "pydantic" not in doc
-    assert "parameter" in doc

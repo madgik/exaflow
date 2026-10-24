@@ -49,6 +49,7 @@ def build_filter_clause(rules):
 
     if "condition" in rules:
         _check_condition(rules["condition"])
+        _check_group_rules(rules.get("rules"))
         cond = rules["condition"]
         parts = []
         params = []
@@ -86,6 +87,7 @@ def validate_filter(data_model: str, rules: dict, cdes: Dict[str, CommonDataElem
 
     if "condition" in rules:
         _check_condition(rules["condition"])
+        _check_group_rules(rules.get("rules"))
         rules = rules["rules"]
         for rule in rules:
             validate_filter(data_model, rule, cdes)
@@ -134,6 +136,12 @@ def _check_filter_type(rules):
 def _check_condition(condition: str):
     if condition not in ["OR", "AND"]:
         raise FilterError(f"Condition: {condition} is not acceptable.")
+
+
+def _check_group_rules(rules):
+    # An empty group would become "()" in the SQL text.
+    if not isinstance(rules, list) or not rules:
+        raise FilterError("A filter group requires a non-empty list of rules.")
 
 
 def _check_operator(operator: str):
