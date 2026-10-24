@@ -8,6 +8,12 @@ from exaflow.algorithms.exareme3.cluster.kmeans_cluster_creator import (
 )
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.worker_communication import BadUserInput
+from tests.standalone_tests.federated_algorithms.utils.simulated_agg_client import (
+    AggregationCoordinator,
+)
+from tests.standalone_tests.federated_algorithms.utils.simulated_agg_client import (
+    SimulatedAggClient,
+)
 
 
 def _params(**replay_overrides):
@@ -54,7 +60,23 @@ def _params(**replay_overrides):
     }
 
 
-def test_specification_exposes_only_full_replay_inputs():
+def _independent_params(**overrides):
+    params = {
+        "new_column_names": ["cluster"],
+        "k": 2,
+        "enumeration_prefix": "cluster_",
+        "variables": ["x", "y"],
+    }
+    params.update(overrides)
+    return params
+
+
+def _agg_client():
+    coordinator = AggregationCoordinator(n_workers=1)
+    return SimulatedAggClient(worker_id=0, coordinator=coordinator)
+
+
+def test_specification_exposes_replay_and_independent_inputs():
     spec = KMeansClusterCreator.get_specification()
 
     assert spec.label == "KMeans Column Creator"
@@ -63,8 +85,16 @@ def test_specification_exposes_only_full_replay_inputs():
         "k",
         "enumeration_prefix",
         "reusable_preprocessing",
+        "variables",
+        "init_method",
+        "n_init",
+        "tol",
+        "maxiter",
+        "random_state",
     }
-    assert spec.components == []
+    assert spec.parameters["reusable_preprocessing"].required is False
+    assert spec.parameters["variables"].multiple is True
+    assert spec.components
 
 
 def test_creator_assigns_rows_to_supplied_centers_without_aggregation():
@@ -74,6 +104,35 @@ def test_creator_assigns_rows_to_supplied_centers_without_aggregation():
     transformed = creator.transform_data(data=data)
 
     assert transformed["cluster"].tolist() == ["cluster_1", "cluster_2", "cluster_1"]
+
+
+def test_creator_can_fit_kmeans_without_a_reusable_recipe():
+    creator = KMeansClusterCreator(params=_independent_params())
+    inputdata = Inputdata(
+        data_model="dm:0.1",
+        datasets=["dataset"],
+        filters=None,
+        variables=["x", "y"],
+    )
+    creator.validate_params(
+        inputdata=inputdata,
+        metadata={
+            "x": {"is_categorical": False, "sql_type": "real"},
+            "y": {"is_categorical": False, "sql_type": "real"},
+        },
+    )
+
+    transformed = creator.transform_data(
+        data=pd.DataFrame(
+            {
+                "x": [0.0, 0.1, 9.9, 10.0],
+                "y": [0.0, 0.2, 10.1, 9.8],
+            }
+        ),
+        agg_client=_agg_client(),
+    )
+
+    assert set(transformed["cluster"]) == {"cluster_1", "cluster_2"}
 
 
 @pytest.mark.parametrize(

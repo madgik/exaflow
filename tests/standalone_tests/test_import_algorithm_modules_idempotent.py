@@ -81,6 +81,7 @@ def test_domain_preprocessing_discovery_preserves_registries_and_udfs():
         "categorical_column_creator": "feature_engineering",
         "longitudinal_transformer": "longitudinal",
         "kmeans_cluster_creator": "cluster",
+        "pca_column_creator": "decomposition",
     }
     steps = runtime_classes(PreprocessingStep)
     assert set(expected) <= set(steps)
@@ -90,6 +91,7 @@ def test_domain_preprocessing_discovery_preserves_registries_and_udfs():
         )
 
     for name, domain in {
+        "pca": "decomposition",
         "outlier_report": "outliers",
         "standardized_mean_difference": "statistics",
         "binned_mann_whitney_u_test": "statistics",
