@@ -8,6 +8,7 @@ exareme3_algorithm_folders = "./exaflow/algorithms/exareme3,./tests/algorithms/e
 
 worker_landscape_aggregator_update_interval = 30000
 worker_tasks_timeout = 10
+max_concurrent_experiments = 32
 [flower]
 enabled = true
 execution_timeout=60

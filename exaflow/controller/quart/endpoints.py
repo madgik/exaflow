@@ -9,6 +9,9 @@ from quart import request
 from exaflow.controller import config as ctrl_config
 from exaflow.controller.quart.loggers import loggers
 from exaflow.controller.services import get_worker_landscape_aggregator
+from exaflow.controller.services.analysis_execution import analysis_slot
+from exaflow.controller.services.analysis_execution import shutdown_analysis_execution
+from exaflow.controller.services.analysis_execution import start_analysis_execution
 from exaflow.controller.services.algorithm_execution_strategy_factory import (
     get_algorithm_execution_strategy,
 )
@@ -37,6 +40,12 @@ algorithms = Blueprint("algorithms_endpoint", __name__)
 async def startup():
     configure_loggers()
     start_background_services()
+    start_analysis_execution()
+
+
+@algorithms.after_app_serving
+async def shutdown():
+    await asyncio.to_thread(shutdown_analysis_execution, True)
 
 
 @algorithms.route("/datasets", methods=["GET"])
@@ -144,7 +153,8 @@ async def run_analysis() -> str:
     )
 
     strategy = get_algorithm_execution_strategy(analysis_request_dto)
-    return await strategy.execute()
+    async with analysis_slot():
+        return await strategy.execute()
 
 
 @algorithms.route("/flower/input", methods=["GET"])

@@ -3,6 +3,7 @@ import enum
 from quart import Blueprint
 
 from exaflow.controller.logger import get_background_service_logger
+from exaflow.controller.services.analysis_execution import AnalysisCapacityExceeded
 from exaflow.controller.services.api.analysis_request_validator import BadRequest
 from exaflow.controller.services.errors import WorkerTaskTimeoutError
 from exaflow.controller.services.errors import WorkerUnresponsiveError
@@ -27,9 +28,18 @@ class HTTPStatusCode(enum.IntEnum):
     BAD_USER_INPUT = 460
     INSUFFICIENT_DATA_ERROR = 461
     SMPC_USAGE_ERROR = 462
+    SERVICE_UNAVAILABLE = 503
     WORKER_UNRESPONSIVE_ALGORITHM_EXECUTION_ERROR = 512
     WORKER_TASK_TIMEOUT_ALGORITHM_EXECUTION_ERROR = 513
     UNEXPECTED_ERROR = 500
+
+
+@error_handlers.app_errorhandler(AnalysisCapacityExceeded)
+def handle_analysis_capacity_exceeded(error: AnalysisCapacityExceeded):
+    get_background_service_logger().info(
+        f"Request Error. Type: '{type(error).__name__}' Message: '{error}'"
+    )
+    return error.message, HTTPStatusCode.SERVICE_UNAVAILABLE
 
 
 @error_handlers.app_errorhandler(BadRequest)

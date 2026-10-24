@@ -257,6 +257,9 @@ def create_configs(c):
     controller_config["worker_tasks_timeout"] = deployment_config[
         "worker_tasks_timeout"
     ]
+    controller_config["max_concurrent_experiments"] = deployment_config[
+        "max_concurrent_experiments"
+    ]
 
     controller_config["deployment_type"] = "LOCAL"
 

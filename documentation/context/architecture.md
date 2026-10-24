@@ -106,8 +106,8 @@ The Quart API exposes:
 - `GET /cdes_metadata`
 - `GET /data_models_attributes`
 - `POST /wla`
-- `GET /healthcheck` (checks every worker; used by the startup probe)
-- `GET /livez` (controller process only; used by the liveness probe)
+- `GET /healthcheck` (checks every worker; readiness probe only)
+- `GET /livez` (controller process only; startup and liveness probes)
 - Flower routes: `GET /flower/input`, `POST /flower/result`
 
 `documentation/api-specification.md` is the human-facing API contract. The
@@ -117,9 +117,24 @@ endpoints.
 ## Background Jobs and Services
 
 Controller startup calls `start_background_services()`, which maintains runtime
-state such as worker landscape aggregation. Workers expose gRPC services and
-load data at startup. The aggregation server keeps request-scoped aggregation
-contexts until cleanup.
+state such as worker landscape aggregation, and `start_analysis_execution()`,
+which creates the analysis thread pool. Shutdown stops that pool.
+
+Analyses run on one `ThreadPoolExecutor` sized by `max_concurrent_experiments`
+(Helm value, passed as `MAX_CONCURRENT_EXPERIMENTS`, default 32). A semaphore
+of the same size rejects further `POST /analysis` requests with HTTP 503
+instead of queueing them. `/livez`, `/healthcheck`, and `/wla` do not use that
+pool. Aggregation configure/cleanup and Flower start/stop/garbage-collect run
+on it as well. If the client disconnects, the request waits until the analysis
+thread finishes before aggregation cleanup.
+
+Kubernetes probes: startup and liveness both call `/livez` with a 5 second
+timeout (liveness `failureThreshold` 3). Readiness calls `/healthcheck`, which
+can take as long as `worker_tasks_timeout`. A worker that is down does not
+restart the controller.
+
+Workers expose gRPC services and load data at startup. The aggregation server
+keeps request-scoped aggregation contexts until cleanup.
 
 ## External Services
 
