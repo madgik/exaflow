@@ -146,6 +146,39 @@ def test_creator_scores_match_a_single_pca_fit_and_transform():
     )
 
 
+def test_creator_resolves_reordered_recipe_components_by_identifier():
+    recipe = PCAReusablePreprocessing(
+        base_parameters=PCAReusableBaseParameters(variables=VARIABLES),
+        component_choices=[
+            PCAComponentChoice(component_id="PC2", explained_variance_ratio=0.3),
+            PCAComponentChoice(component_id="PC1", explained_variance_ratio=0.6),
+            PCAComponentChoice(component_id="PC3", explained_variance_ratio=0.1),
+        ],
+    ).model_dump()
+    creator = PCAColumnCreator(
+        params={
+            "reusable_preprocessing": recipe,
+            "selected_components": ["PC2", "PC1"],
+            "new_column_names": ["score_2", "score_1"],
+            "n_components": 2,
+        }
+    )
+    _validate(creator)
+    data = _data()
+
+    transformed, _ = creator.transform_data_and_metadata(
+        data=data.copy(), metadata=_metadata(), agg_client=_agg_client()
+    )
+
+    reference_input = data.loc[:, VARIABLES].to_numpy(dtype=float, copy=True)
+    reference_model = FederatedPCA(agg_client=_agg_client(), copy=True)
+    reference_model.fit(reference_input)
+    expected_scores = reference_model.transform(reference_input)
+
+    np.testing.assert_allclose(transformed["score_2"], expected_scores[:, 1])
+    np.testing.assert_allclose(transformed["score_1"], expected_scores[:, 0])
+
+
 def test_creator_can_fit_pca_without_a_reusable_recipe():
     creator = _independent_creator(["PC1", "PC2"], ["score_1", "score_2"], 2)
     creator.validate_params(inputdata=_inputdata(), metadata=_metadata())
