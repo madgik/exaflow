@@ -1,5 +1,7 @@
+import contextlib
 from types import SimpleNamespace
 
+import grpc
 import pandas as pd
 import pytest
 
@@ -21,6 +23,20 @@ class _DummyAggClient:
 
     def close(self):
         self.closed = True
+
+
+class _UnreachableServerError(grpc.RpcError):
+    def code(self):
+        return grpc.StatusCode.UNAVAILABLE
+
+    def details(self):
+        return "aggregation server unreachable"
+
+
+class _FailingUnregisterAggClient(_DummyAggClient):
+    def unregister(self):
+        super().unregister()
+        raise _UnreachableServerError()
 
 
 class _BaseStep:
@@ -118,7 +134,6 @@ def test_check_min_rows_uses_pandas_row_count(monkeypatch):
         )
 
     assert agg_client.unregistered is True
-    assert agg_client.closed is True
 
 
 def test_apply_preprocessing_checks_min_rows_after_each_step(monkeypatch):
@@ -323,6 +338,110 @@ def test_run_udf_converts_preprocessing_bad_input_to_bad_user_input(monkeypatch)
     )
 
     with pytest.raises(BadUserInput, match="bad preprocessing input"):
+        udf_service.run_udf(
+            request_id="req",
+            udf_registry_key="udf",
+            kw_args={},
+            system_args=system_args,
+        )
+
+    assert agg_client.unregistered is True
+    assert agg_client.closed is True
+
+
+def _raise_value_error(data):
+    raise ValueError("udf failed")
+
+
+@pytest.mark.parametrize(
+    "udf, expectation",
+    [
+        (lambda data: {"rows": len(data)}, contextlib.nullcontext()),
+        (_raise_value_error, pytest.raises(ValueError, match="udf failed")),
+    ],
+    ids=["success", "udf_error"],
+)
+def test_run_udf_closes_agg_client_without_unregistering(monkeypatch, udf, expectation):
+    agg_client = _DummyAggClient()
+    monkeypatch.setattr(udf_service, "_get_udf_or_raise", lambda _: udf)
+    monkeypatch.setattr(
+        udf_service,
+        "_wrap_udf_with_lazy_aggregation_if_enabled",
+        lambda _, udf: udf,
+    )
+    monkeypatch.setattr(
+        udf_service,
+        "_create_aggregation_client_if_required",
+        lambda **_: agg_client,
+    )
+    monkeypatch.setattr(
+        udf_service,
+        "_load_worker_data_for_udf",
+        lambda **_: pd.DataFrame({"x": [1, 2]}),
+    )
+    system_args = SimpleNamespace(
+        preprocessing=[],
+        metadata={"x": {"is_categorical": False}},
+        inputdata=None,
+        add_dataset_variable=False,
+        check_min_rows=False,
+    )
+
+    with expectation:
+        udf_service.run_udf(
+            request_id="req",
+            udf_registry_key="udf",
+            kw_args={},
+            system_args=system_args,
+        )
+
+    assert agg_client.closed is True
+    assert agg_client.unregistered is False
+
+
+@pytest.mark.parametrize(
+    "preprocessing, check_min_rows, expected_error",
+    [
+        ([], True, InsufficientDataError),
+        ([{"name": "bad_input", "parameters": {}}], False, BadUserInput),
+    ],
+    ids=["insufficient_data", "bad_input"],
+)
+def test_run_udf_keeps_error_when_unregister_fails(
+    monkeypatch, preprocessing, check_min_rows, expected_error
+):
+    agg_client = _FailingUnregisterAggClient()
+    monkeypatch.setattr(udf_service.worker_config.privacy, "minimum_row_count", 3)
+    monkeypatch.setattr(udf_service, "_get_udf_or_raise", lambda _: lambda data: {})
+    monkeypatch.setattr(
+        udf_service,
+        "_wrap_udf_with_lazy_aggregation_if_enabled",
+        lambda _, udf: udf,
+    )
+    monkeypatch.setattr(
+        udf_service,
+        "_create_aggregation_client_if_required",
+        lambda **_: agg_client,
+    )
+    monkeypatch.setattr(
+        udf_service,
+        "_load_worker_data_for_udf",
+        lambda **_: pd.DataFrame({"x": [1, 2]}),
+    )
+    monkeypatch.setattr(
+        udf_service,
+        "exareme3_preprocessing_step_classes",
+        {"bad_input": _BadInputStep},
+    )
+    system_args = SimpleNamespace(
+        preprocessing=preprocessing,
+        metadata={"x": {"is_categorical": False}},
+        inputdata=None,
+        add_dataset_variable=False,
+        check_min_rows=check_min_rows,
+    )
+
+    with pytest.raises(expected_error):
         udf_service.run_udf(
             request_id="req",
             udf_registry_key="udf",
