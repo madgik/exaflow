@@ -8,6 +8,7 @@ exareme3_algorithm_folders = "./exaflow/algorithms/exareme3,./tests/algorithms/e
 
 worker_landscape_aggregator_update_interval = 3000
 worker_tasks_timeout = 180
+max_concurrent_experiments = 32
 
 [flower]
 enabled = false
@@ -24,7 +25,6 @@ protect_local_data = false
 [aggregation_server]
 enabled = true
 port = 50051
-max_grpc_connections = 10
 max_wait_for_aggregation_inputs = 30
 
 [smpc]
