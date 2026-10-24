@@ -30,11 +30,11 @@ The first error (mismatched operations, bad payload, timeout) ends the request:
 every waiting worker and every later call for the request gets that same error.
 The controller then ends the request and calls `Cleanup`.
 
-`Cleanup` removes the context. If workers are still waiting on a step, it ends
-the request with ABORTED so they return at once instead of at the timeout.
-If `Cleanup` never arrives (for example the controller crashed), `Configure`
-evicts contexts with no `Aggregate` or `Unregister` call for
-`STALE_CONTEXT_TTL_SECONDS`.
+`Cleanup` removes the context and ends the request with ABORTED, so workers
+still waiting on a step, and calls that fetched the context just before it was
+removed, return at once instead of at the timeout. If `Cleanup` never arrives
+(for example the controller crashed), `Configure` evicts contexts with no
+`Aggregate` or `Unregister` call for `STALE_CONTEXT_TTL_SECONDS`.
 
 `AggregationContext` raises plain Python exceptions and only the servicer
 methods call `context.abort()`, mapping them with `_grpc_status()`. gRPC's
@@ -42,6 +42,7 @@ methods call `context.abort()`, mapping them with `_grpc_status()`. gRPC's
 `try/except Exception` block or its status and details are lost.
 """
 
+import copy
 import logging
 import threading
 import time
@@ -163,16 +164,22 @@ class AggregationContext:
         self.last_activity = time.monotonic()
         self.condition = threading.Condition()
 
-    def fail(self, exc: Exception) -> None:
+    def fail(self, exc: Exception, *, log: bool = True) -> None:
         """End the request: every waiting and later call raises the first error."""
         with self.condition:
             if self.error is None:
                 self.error = exc
-                logger.error(
-                    f"[AGGREGATE] request_id='{self.request_id}' failed: {exc}",
-                    exc_info=exc,
-                )
+                if log:
+                    logger.error(
+                        f"[AGGREGATE] request_id='{self.request_id}' failed: {exc}",
+                        exc_info=exc,
+                    )
             self.condition.notify_all()
+
+    def _raise_error(self) -> None:
+        # Raise a copy: every caller shares the stored error, and each raise of
+        # the same object would extend its traceback.
+        raise copy.copy(self.error) from self.error
 
     def aggregate(
         self,
@@ -184,7 +191,7 @@ class AggregationContext:
         """Add one worker's inputs for `step_no` and wait for the combined result."""
         with self.condition:
             if self.error is not None:
-                raise self.error
+                self._raise_error()
             if step_no <= self.last_completed_step:
                 raise ValueError(
                     f"Step {step_no} already completed for request_id='{self.request_id}'"
@@ -207,14 +214,16 @@ class AggregationContext:
                 timeout=config.max_wait_for_aggregation_inputs,
             )
             if self.error is not None:
-                raise self.error
+                self._raise_error()
             if not done:
                 raise TimeoutError(
                     f"Timeout waiting for aggregation result for request_id='{self.request_id}' "
                     f"step {step_no} (received {len(step.inputs[0])}/{self.expected_workers})"
                 )
             step.reads += 1
-            if step.reads >= self.expected_workers:
+            # Every worker that sent inputs reads the result once. Count against
+            # those inputs: an Unregister may have lowered expected_workers since.
+            if step.reads >= len(step.inputs[0]):
                 del self.steps[step_no]
                 self.last_completed_step = max(self.last_completed_step, step_no)
             return step.result
@@ -391,14 +400,17 @@ class AggregationServer(AggregationServerServicer):
                 status=Status.NOT_FOUND, status_message="No such request_id"
             )
 
+        # Fail the context even with no step in progress: an Aggregate call that
+        # fetched it before the pop must not open a new step and wait out the
+        # timeout. Log only when workers were actually cut off.
         with agg_ctx.condition:
-            if agg_ctx.steps:
-                agg_ctx.fail(
-                    AggregationCancelledError(
-                        f"Aggregation for request_id='{request.request_id}' was "
-                        "cancelled because the controller cleaned up the request."
-                    )
-                )
+            agg_ctx.fail(
+                AggregationCancelledError(
+                    f"Aggregation for request_id='{request.request_id}' was "
+                    "cancelled because the controller cleaned up the request."
+                ),
+                log=bool(agg_ctx.steps),
+            )
 
         logger.info(
             f"[CLEANUP] Removed AggregationContext for request_id='{request.request_id}'"

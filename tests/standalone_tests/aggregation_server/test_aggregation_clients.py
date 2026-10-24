@@ -15,9 +15,12 @@ from exaflow.aggregation_clients.controller_aggregation_client import (
 from exaflow.aggregation_clients.exareme3_udf_aggregation_client import (
     Exareme3UDFAggregationClient,
 )
+from exaflow.aggregation_serialization import bytes_to_ndarray
 from exaflow.aggregation_serialization import ndarray_to_bytes
 from exaflow.aggregation_server import config as aggregation_config
 from exaflow.aggregation_server.server import STALE_CONTEXT_TTL_SECONDS
+from exaflow.aggregation_server.server import AggregationCancelledError
+from exaflow.aggregation_server.server import AggregationContext
 from exaflow.aggregation_server.server import AggregationServer
 from exaflow.protos.aggregation_server import aggregation_server_pb2 as server_pb2
 
@@ -794,3 +797,85 @@ def test_unsupported_aggregation_type_is_rejected(inline_grpc_stub, controller_f
         inline_grpc_stub.Aggregate(request, InlineGrpcContext())
     assert exc.value.code() == grpc.StatusCode.INVALID_ARGUMENT
     assert "Unsupported aggregation type 'MEDIAN'" in exc.value.details()
+
+
+def _sum_request(request_id: str, step: int = 1) -> server_pb2.AggregateRequest:
+    return server_pb2.AggregateRequest(
+        request_id=request_id,
+        step=step,
+        operations=[
+            server_pb2.Operation(
+                aggregation_type="SUM", tensor=ndarray_to_bytes(np.array([1.0]))
+            )
+        ],
+    )
+
+
+def test_cleanup_without_open_steps_still_ends_the_request(
+    inline_grpc_stub, controller_factory, caplog
+):
+    controller_factory("stale-reference").configure(1)
+    # An Aggregate call that fetched the context just before Cleanup removed it.
+    agg_ctx = inline_grpc_stub.aggregation_contexts["stale-reference"]
+
+    with caplog.at_level("ERROR"):
+        assert controller_factory("stale-reference").cleanup() == server_pb2.Status.OK
+    assert not caplog.records
+
+    with pytest.raises(AggregationCancelledError):
+        agg_ctx.aggregate(1, ["SUM"], [np.array([1.0])], inline_grpc_stub._reduce)
+
+
+def test_failed_context_raises_a_fresh_copy_of_the_error():
+    agg_ctx = AggregationContext("copied-error", 1)
+    agg_ctx.fail(ValueError("bad payload"))
+
+    raised = []
+    for _ in range(2):
+        with pytest.raises(ValueError, match="bad payload") as exc:
+            agg_ctx.aggregate(1, ["SUM"], [np.array([1.0])], AggregationServer._reduce)
+        raised.append(exc.value)
+
+    assert raised[0] is not raised[1]
+    assert all(error.__cause__ is agg_ctx.error for error in raised)
+    assert agg_ctx.error.__traceback__ is None
+
+
+def test_step_result_reaches_every_worker_after_an_unregister(
+    inline_grpc_stub, monkeypatch
+):
+    monkeypatch.setattr(aggregation_config, "max_wait_for_aggregation_inputs", 5)
+    request_id = "unregister-after-read"
+    inline_grpc_stub.Configure(
+        server_pb2.ConfigureRequest(request_id=request_id, num_of_workers=3),
+        InlineGrpcContext(),
+    )
+    agg_ctx = inline_grpc_stub.aggregation_contexts[request_id]
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        waiting = [
+            pool.submit(
+                inline_grpc_stub.Aggregate,
+                _sum_request(request_id),
+                InlineGrpcContext(),
+            )
+            for _ in range(2)
+        ]
+        deadline = time.time() + 2
+        while not (agg_ctx.steps and len(agg_ctx.steps[1].inputs[0]) == 2):
+            assert time.time() < deadline, "workers never sent their inputs"
+            time.sleep(0.01)
+
+        # Holding the lock, the third worker reads the result and then drops
+        # out, before the two waiting workers get to read it.
+        with agg_ctx.condition:
+            inline_grpc_stub.Aggregate(_sum_request(request_id), InlineGrpcContext())
+            inline_grpc_stub.Unregister(
+                server_pb2.UnregisterRequest(request_id=request_id),
+                InlineGrpcContext(),
+            )
+
+        for future in waiting:
+            response = future.result(timeout=2)
+            assert bytes_to_ndarray(response.tensors[0]).tolist() == [3.0]
+    assert agg_ctx.steps == {}
