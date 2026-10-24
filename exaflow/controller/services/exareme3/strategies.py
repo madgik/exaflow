@@ -120,7 +120,9 @@ class Exareme3WithAggregationServerStrategy(Exareme3Strategy):
             or None
         )
         agg_client = ControllerAggregationClient(
-            self._request_id, aggregator_dns=agg_dns
+            self._request_id,
+            aggregator_dns=agg_dns,
+            max_message_mb=controller_config.grpc.max_message_mb,
         )
         status = agg_client.configure(
             num_workers=len(self._local_worker_tasks_handlers)

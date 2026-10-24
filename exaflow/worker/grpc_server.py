@@ -11,6 +11,7 @@ from grpc_health.v1 import health
 from grpc_health.v1 import health_pb2
 from grpc_health.v1 import health_pb2_grpc
 
+from exaflow.grpc_options import grpc_message_options
 from exaflow.protos.worker import worker_pb2
 from exaflow.protos.worker import worker_pb2_grpc
 from exaflow.udf_result_serialization import UDF_RESULT_FORMAT_JSON_BYTES_V1
@@ -295,6 +296,14 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
             self._handle_exception(context, exc)
 
 
+def _create_grpc_server(max_workers: int) -> grpc.Server:
+    # The limit applies to every worker RPC, not only RunUdf.
+    return grpc.server(
+        futures.ThreadPoolExecutor(max_workers=max_workers),
+        options=grpc_message_options(worker_config.grpc.max_message_mb),
+    )
+
+
 def serve() -> None:
     logging.basicConfig(
         level=worker_config.framework_log_level,
@@ -304,9 +313,7 @@ def serve() -> None:
             f"[{worker_config.identifier}] - [BACKGROUND] - %(message)s"
         ),
     )
-    server = grpc.server(
-        futures.ThreadPoolExecutor(max_workers=worker_config.grpc.max_workers)
-    )
+    server = _create_grpc_server(worker_config.grpc.max_workers)
 
     health_servicer = health.HealthServicer()
     health_pb2_grpc.add_HealthServicer_to_server(health_servicer, server)
