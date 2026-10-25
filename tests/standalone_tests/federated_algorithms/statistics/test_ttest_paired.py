@@ -1,12 +1,22 @@
 import numpy as np
 import pandas as pd
 import pytest
-import scipy.stats as st
+from statsmodels.stats.weightstats import DescrStatsW
 
 from exaflow.algorithms.federated.statistics.ttest_paired import FederatedTTestPaired
+from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
+    NumpyAggregator,
+)
 from tests.standalone_tests.federated_algorithms.utils.federated_algorithm_test import (
     FederatedAlgorithmTest,
 )
+
+ALTERNATIVES = ["two-sided", "less", "greater"]
+STATSMODELS_ALTERNATIVES = {
+    "two-sided": "two-sided",
+    "less": "smaller",
+    "greater": "larger",
+}
 
 TEST_CASES = [
     {
@@ -77,14 +87,15 @@ class TestFederatedTTestPaired(FederatedAlgorithmTest):
         sample_x = kwargs["sample_x"]
         sample_y = kwargs["sample_y"]
         alpha = kwargs["alpha"]
+        alternative = STATSMODELS_ALTERNATIVES[kwargs["alternative"]]
 
-        t_stat, p_value = st.ttest_rel(sample_x, sample_y, alternative="two-sided")
-        df = len(sample_x) - 1
         diff = sample_x - sample_y
+        stats = DescrStatsW(diff)
+        t_stat, p_value, df = stats.ttest_mean(value=0.0, alternative=alternative)
         mean_diff = float(np.mean(diff))
         sd_diff = float(np.std(diff, ddof=1))
         se_diff = sd_diff / np.sqrt(len(diff))
-        ci_lower, ci_upper = st.t.interval(1 - alpha, df, loc=mean_diff, scale=se_diff)
+        ci_lower, ci_upper = stats.tconfint_mean(alpha=alpha, alternative=alternative)
         cohens_d = mean_diff / sd_diff
 
         return {
@@ -99,12 +110,12 @@ class TestFederatedTTestPaired(FederatedAlgorithmTest):
         }
 
     def compute_federated_result(self, X, y, *, agg_client, **kwargs):
-        ttest = FederatedTTestPaired(agg_client)
+        ttest = FederatedTTestPaired(NumpyAggregator(agg_client))
         return ttest.compute(
             sample_x=X["x"],
             sample_y=X["y"],
             alpha=kwargs["alpha"],
-            alternative="two-sided",
+            alternative=kwargs["alternative"],
         )
 
     def compare(self, federated_output, centralized_output, **kwargs):
@@ -139,13 +150,13 @@ class TestFederatedTTestPaired(FederatedAlgorithmTest):
             atol=1e-10,
         )
         np.testing.assert_allclose(
-            federated_output["ci_lower"],
+            float(federated_output["ci_lower"]),
             centralized_output["ci_lower"],
             rtol=1e-7,
             atol=1e-10,
         )
         np.testing.assert_allclose(
-            federated_output["ci_upper"],
+            float(federated_output["ci_upper"]),
             centralized_output["ci_upper"],
             rtol=1e-7,
             atol=1e-10,
@@ -157,10 +168,11 @@ class TestFederatedTTestPaired(FederatedAlgorithmTest):
             atol=1e-10,
         )
 
+    @pytest.mark.parametrize("alternative", ALTERNATIVES)
     @pytest.mark.parametrize(
         "case", TEST_CASES, ids=[case["name"] for case in TEST_CASES]
     )
-    def test_federated_algorithm_with_one_worker(self, case):
+    def test_federated_algorithm_with_one_worker(self, case, alternative):
         sample_x = np.asarray(case["x"], dtype=float)
         sample_y = np.asarray(case["y"], dtype=float)
         df = pd.DataFrame({"x": sample_x, "y": sample_y})
@@ -171,12 +183,14 @@ class TestFederatedTTestPaired(FederatedAlgorithmTest):
             sample_x=sample_x,
             sample_y=sample_y,
             alpha=case["alpha"],
+            alternative=alternative,
         )
 
+    @pytest.mark.parametrize("alternative", ALTERNATIVES)
     @pytest.mark.parametrize(
         "case", TEST_CASES, ids=[case["name"] for case in TEST_CASES]
     )
-    def test_federated_algorithm_with_multiple_workers(self, case):
+    def test_federated_algorithm_with_multiple_workers(self, case, alternative):
         sample_x = np.asarray(case["x"], dtype=float)
         sample_y = np.asarray(case["y"], dtype=float)
         df = pd.DataFrame({"x": sample_x, "y": sample_y})
@@ -187,4 +201,5 @@ class TestFederatedTTestPaired(FederatedAlgorithmTest):
             sample_x=sample_x,
             sample_y=sample_y,
             alpha=case["alpha"],
+            alternative=alternative,
         )

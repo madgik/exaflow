@@ -36,3 +36,12 @@ def test_independent_ttest(test_input, expected, subtests):
         )
     with subtests.test():
         assert_allclose(result["cohens_d"], expected["cohens_d"], rtol=1e-8, atol=1e-10)
+    # Open one-sided bounds are returned as "Infinity" / "-Infinity".
+    with subtests.test():
+        assert_allclose(
+            float(result["ci_upper"]), expected["ci_upper"], rtol=1e-8, atol=1e-10
+        )
+    with subtests.test():
+        assert_allclose(
+            float(result["ci_lower"]), expected["ci_lower"], rtol=1e-8, atol=1e-10
+        )

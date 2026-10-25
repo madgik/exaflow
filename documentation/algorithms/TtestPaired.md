@@ -27,8 +27,8 @@ confidence interval, standard error, and Cohen's d for the paired differences.
 
 | Input | Description |
 |---|---|
-| `y` | First numerical measurement. |
-| `x` | Second numerical measurement. |
+| `x` | First numerical measurement. |
+| `y` | Second numerical measurement. |
 
 ### Parameters
 
@@ -77,8 +77,8 @@ sufficient statistics for the paired differences.
 
 ```text
 Input:
-    y: first measurement
-    x: second measurement
+    x: first measurement
+    y: second measurement
     alpha: significance level
     alternative: two-sided, less, or greater
 
@@ -104,7 +104,7 @@ Output:
 
 ## Technical decisions
 
-- The sign of the reported mean difference is `y - x`.
+- The sign of the reported mean difference is `x - y`.
 - One-sided alternatives replace one confidence bound with infinity.
 - Cohen's d is computed as mean paired difference divided by the standard
   deviation of paired differences.
@@ -125,14 +125,16 @@ Output:
 
 ## Validation against state-of-the-art implementation
 
-Standalone tests compare the result with:
+Standalone tests compare the result, for every alternative, with
+`statsmodels.stats.weightstats` applied to the paired differences:
 
 ```text
-scipy.stats.ttest_rel(sample_x, sample_y, alternative="two-sided")
+DescrStatsW(sample_x - sample_y).ttest_mean(value=0, alternative=alternative)
+DescrStatsW(sample_x - sample_y).tconfint_mean(alpha=alpha, alternative=alternative)
 ```
 
-Reference behavior is aligned with SciPy's paired t-test for the t statistic and
-p-value, with additional confidence interval and effect-size reporting.
+Reference behavior is aligned with a paired t-test on the differences, with
+additional effect-size reporting.
 
 ## Limitations and assumptions
 

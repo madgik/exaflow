@@ -5,6 +5,9 @@ import scipy.stats as st
 
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils import to_numpy
+from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
+    NumpyAggregator,
+)
 from exaflow.algorithms.federated.validation import check_choice
 from exaflow.algorithms.federated.validation import check_scalar
 
@@ -17,8 +20,8 @@ class FederatedTTestOneSample:
     Uses df = n - 1 and standard errors from the sample standard deviation.
     """
 
-    def __init__(self, agg_client):
-        self.agg_client = agg_client
+    def __init__(self, aggregator: NumpyAggregator):
+        self.aggregator = aggregator
 
     def compute(self, *, sample, mu: float, alpha: float, alternative: str):
         check_scalar(alpha, name="alpha", minimum=0, maximum=1)
@@ -32,11 +35,15 @@ class FederatedTTestOneSample:
         diff_x = sum_x - n_obs * mu
         diff_sqrd_x = sqrd_x - 2 * mu * sum_x + n_obs * mu**2
 
-        total_n_obs_arr = self.agg_client.sum(np.array([float(n_obs)], dtype=float))
-        total_sum_x_arr = self.agg_client.sum(np.array([float(sum_x)], dtype=float))
-        total_sqrd_x_arr = self.agg_client.sum(np.array([float(sqrd_x)], dtype=float))
-        total_diff_x_arr = self.agg_client.sum(np.array([float(diff_x)], dtype=float))
-        total_diff_sqrd_x_arr = self.agg_client.sum(
+        total_n_obs_arr = self.aggregator.fed_sum(np.array([float(n_obs)], dtype=float))
+        total_sum_x_arr = self.aggregator.fed_sum(np.array([float(sum_x)], dtype=float))
+        total_sqrd_x_arr = self.aggregator.fed_sum(
+            np.array([float(sqrd_x)], dtype=float)
+        )
+        total_diff_x_arr = self.aggregator.fed_sum(
+            np.array([float(diff_x)], dtype=float)
+        )
+        total_diff_sqrd_x_arr = self.aggregator.fed_sum(
             np.array([float(diff_sqrd_x)], dtype=float)
         )
         total_n_obs = float(np.asarray(total_n_obs_arr).reshape(-1)[0])
@@ -59,13 +66,15 @@ class FederatedTTestOneSample:
         ci_lower, ci_upper = st.t.interval(1 - alpha, df, loc=smpl_mean, scale=sed)
 
         if alternative == "greater":
-            p_value = 1.0 - st.t.cdf(t_stat, df)
+            p_value = st.t.sf(t_stat, df)
+            ci_lower = smpl_mean - st.t.ppf(1 - alpha, df) * sed
             ci_upper = "Infinity"
         elif alternative == "less":
-            p_value = 1.0 - st.t.cdf(-t_stat, df)
+            p_value = st.t.cdf(t_stat, df)
             ci_lower = "-Infinity"
+            ci_upper = smpl_mean + st.t.ppf(1 - alpha, df) * sed
         else:
-            p_value = (1.0 - st.t.cdf(abs(t_stat), df)) * 2.0
+            p_value = st.t.sf(abs(t_stat), df) * 2.0
 
         cohens_d = (smpl_mean - mu) / sd
 

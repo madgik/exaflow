@@ -40,7 +40,7 @@ Avoid / be careful when:
 | **popmean**    | Hypothesized population mean           |
 | **alpha**      | Significance level                     |
 | **alternative**| "two-sided", "greater", or "less"      |
-| **agg_client** | Federated aggregation client           |
+| **aggregator** | `NumpyAggregator` instance             |
 
 **Outputs (dict)**
 

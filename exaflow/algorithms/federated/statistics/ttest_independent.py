@@ -5,6 +5,9 @@ import scipy.stats as st
 
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils import to_numpy
+from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
+    NumpyAggregator,
+)
 from exaflow.algorithms.federated.validation import check_choice
 from exaflow.algorithms.federated.validation import check_dataframe
 from exaflow.algorithms.federated.validation import check_scalar
@@ -19,8 +22,8 @@ class FederatedTTestIndependent:
     standard deviation.
     """
 
-    def __init__(self, agg_client):
-        self.agg_client = agg_client
+    def __init__(self, aggregator: NumpyAggregator):
+        self.aggregator = aggregator
 
     def compute(
         self,
@@ -51,7 +54,7 @@ class FederatedTTestIndependent:
         n_a = sample_a.size
         n_b = sample_b.size
 
-        totals_arr = self.agg_client.sum(
+        totals_arr = self.aggregator.fed_sum(
             np.array(
                 [
                     float(n_a),
@@ -62,7 +65,7 @@ class FederatedTTestIndependent:
                 dtype=float,
             )
         )
-        sq_sums_arr = self.agg_client.sum(
+        sq_sums_arr = self.aggregator.fed_sum(
             np.array(
                 [
                     float(np.dot(sample_a, sample_a)),
@@ -86,18 +89,11 @@ class FederatedTTestIndependent:
         mean_a = sum_a_total / n_a_total
         mean_b = sum_b_total / n_b_total
 
-        sd_a = np.sqrt(
-            (sq_sum_a - 2 * mean_a * sum_a_total + (mean_a**2) * n_a_total)
-            / (n_a_total - 1)
-        )
-        sd_b = np.sqrt(
-            (sq_sum_b - 2 * mean_b * sum_b_total + (mean_b**2) * n_b_total)
-            / (n_b_total - 1)
-        )
-
-        pooled_var = ((n_a_total - 1) * sd_a**2 + (n_b_total - 1) * sd_b**2) / (
-            n_a_total + n_b_total - 2
-        )
+        # Pool the sums of squared deviations directly so that a group with a
+        # single observation contributes zero instead of 0 * NaN.
+        ss_a = sq_sum_a - 2 * mean_a * sum_a_total + (mean_a**2) * n_a_total
+        ss_b = sq_sum_b - 2 * mean_b * sum_b_total + (mean_b**2) * n_b_total
+        pooled_var = (ss_a + ss_b) / (n_a_total + n_b_total - 2)
         sed = np.sqrt(pooled_var * (1 / n_a_total + 1 / n_b_total))
         t_stat = (mean_a - mean_b) / sed
         df = n_a_total + n_b_total - 2
@@ -106,13 +102,15 @@ class FederatedTTestIndependent:
         ci_lower, ci_upper = st.t.interval(1 - alpha, df, loc=diff_mean, scale=sed)
 
         if alternative == "greater":
-            p_value = 1.0 - st.t.cdf(t_stat, df)
+            p_value = st.t.sf(t_stat, df)
+            ci_lower = diff_mean - st.t.ppf(1 - alpha, df) * sed
             ci_upper = "Infinity"
         elif alternative == "less":
-            p_value = 1.0 - st.t.cdf(-t_stat, df)
+            p_value = st.t.cdf(t_stat, df)
             ci_lower = "-Infinity"
+            ci_upper = diff_mean + st.t.ppf(1 - alpha, df) * sed
         else:
-            p_value = (1.0 - st.t.cdf(abs(t_stat), df)) * 2.0
+            p_value = st.t.sf(abs(t_stat), df) * 2.0
 
         cohens_d = diff_mean / np.sqrt(pooled_var)
 
