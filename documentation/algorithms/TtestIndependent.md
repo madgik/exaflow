@@ -122,11 +122,14 @@ Output:
 
 ## Validation against state-of-the-art implementation
 
-Standalone tests compare the result with `statsmodels.stats.weightstats`:
+Standalone tests compare the result, for every alternative, with
+`statsmodels.stats.weightstats`:
 
 ```text
 CompareMeans(DescrStatsW(sample_a), DescrStatsW(sample_b))
-    .ttest_ind(usevar="pooled", alternative="two-sided")
+    .ttest_ind(usevar="pooled", alternative=alternative)
+CompareMeans(DescrStatsW(sample_a), DescrStatsW(sample_b))
+    .tconfint_diff(alpha=alpha, alternative=alternative, usevar="pooled")
 ```
 
 Reference behavior is aligned with an equal-variance independent t-test.

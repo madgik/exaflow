@@ -32,17 +32,23 @@ from exaflow.algorithms.federated.statistics.ttest_onesample import (
 )
 from exaflow.algorithms.federated.statistics.ttest_paired import FederatedTTestPaired
 from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
+    NumpyAggregator,
+)
 
 
 def compute_ttest(kind, client, **parameters):
     settings = {"alpha": 0.05, "alternative": "two-sided", **parameters}
+    aggregator = NumpyAggregator(client)
     if kind == "one":
-        return FederatedTTestOneSample(client).compute(sample=[1, 2], mu=0, **settings)
+        return FederatedTTestOneSample(aggregator).compute(
+            sample=[1, 2], mu=0, **settings
+        )
     if kind == "paired":
-        return FederatedTTestPaired(client).compute(
+        return FederatedTTestPaired(aggregator).compute(
             sample_x=[1, 2], sample_y=[2, 3], **settings
         )
-    return FederatedTTestIndependent(client).compute(
+    return FederatedTTestIndependent(aggregator).compute(
         data=pd.DataFrame({"group": [0, 1], "value": [1, 2]}),
         group_var="group",
         value_var="value",

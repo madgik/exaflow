@@ -5,6 +5,9 @@ import scipy.stats as st
 
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils import to_numpy
+from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
+    NumpyAggregator,
+)
 from exaflow.algorithms.federated.validation import check_choice
 from exaflow.algorithms.federated.validation import check_consistent_length
 from exaflow.algorithms.federated.validation import check_scalar
@@ -18,8 +21,8 @@ class FederatedTTestPaired:
     based on mean(diff) / std(diff).
     """
 
-    def __init__(self, agg_client):
-        self.agg_client = agg_client
+    def __init__(self, aggregator: NumpyAggregator):
+        self.aggregator = aggregator
 
     def compute(self, *, sample_x, sample_y, alpha: float, alternative: str):
         check_scalar(alpha, name="alpha", minimum=0, maximum=1)
@@ -40,7 +43,7 @@ class FederatedTTestPaired:
         x_sq_sum = np.dot(sample_x, sample_x)
         y_sq_sum = np.dot(sample_y, sample_y)
 
-        totals_arr = self.agg_client.sum(
+        totals_arr = self.aggregator.fed_sum(
             np.array(
                 [
                     float(n_obs),
@@ -52,8 +55,12 @@ class FederatedTTestPaired:
                 dtype=float,
             )
         )
-        total_x_sq_arr = self.agg_client.sum(np.array([float(x_sq_sum)], dtype=float))
-        total_y_sq_arr = self.agg_client.sum(np.array([float(y_sq_sum)], dtype=float))
+        total_x_sq_arr = self.aggregator.fed_sum(
+            np.array([float(x_sq_sum)], dtype=float)
+        )
+        total_y_sq_arr = self.aggregator.fed_sum(
+            np.array([float(y_sq_sum)], dtype=float)
+        )
         total_n_obs, total_sum_x, total_sum_y, total_diff_sum, total_diff_sq_sum = (
             np.asarray(totals_arr, dtype=float).reshape(-1)
         )
@@ -85,13 +92,15 @@ class FederatedTTestPaired:
         ci_lower, ci_upper = st.t.interval(1 - alpha, df, loc=mean_diff, scale=sed)
 
         if alternative == "greater":
-            p_value = 1.0 - st.t.cdf(t_stat, df)
+            p_value = st.t.sf(t_stat, df)
+            ci_lower = mean_diff - st.t.ppf(1 - alpha, df) * sed
             ci_upper = "Infinity"
         elif alternative == "less":
-            p_value = 1.0 - st.t.cdf(-t_stat, df)
+            p_value = st.t.cdf(t_stat, df)
             ci_lower = "-Infinity"
+            ci_upper = mean_diff + st.t.ppf(1 - alpha, df) * sed
         else:
-            p_value = (1.0 - st.t.cdf(abs(t_stat), df)) * 2.0
+            p_value = st.t.sf(abs(t_stat), df) * 2.0
 
         cohens_d = mean_diff / sd_diff
 

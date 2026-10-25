@@ -6,6 +6,9 @@ from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.ttest_onesample import (
     FederatedTTestOneSample,
 )
+from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
+    NumpyAggregator,
+)
 
 
 class TTestOneSampleResult(BaseModel):
@@ -127,7 +130,7 @@ class TTestOneSample(Algorithm):
 def local_step(agg_client, data, y_var, alpha, alternative, mu):
     sample = data[y_var].to_numpy(dtype=float, copy=False)
 
-    ttest = FederatedTTestOneSample(agg_client=agg_client)
+    ttest = FederatedTTestOneSample(aggregator=NumpyAggregator(agg_client))
     return ttest.compute(
         sample=sample,
         mu=mu,

@@ -6,6 +6,9 @@ from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.ttest_independent import (
     FederatedTTestIndependent,
 )
+from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
+    NumpyAggregator,
+)
 
 
 class TTestIndependentResult(BaseModel):
@@ -38,8 +41,8 @@ class TTestIndependent(Algorithm):
                 "The 'groupA' and 'groupB' settings select the grouping-variable "
                 "categories compared by the test.\n\n"
                 "The result includes the t statistic, p-value, confidence "
-                "interval, group means, group sizes, degrees of freedom, and "
-                "Cohen's d.\n\n"
+                "interval, mean difference, standard error of the difference, "
+                "degrees of freedom, and Cohen's d.\n\n"
                 "Reference behavior is aligned with the equal-variance "
                 "independent t-test methodology used by scipy.stats.ttest_ind "
                 "with equal_var=True. The method computes the test quantities "
@@ -148,7 +151,7 @@ class TTestIndependent(Algorithm):
 def local_step(
     agg_client, data, group_var, value_var, alpha, alternative, group_a, group_b
 ):
-    ttest = FederatedTTestIndependent(agg_client=agg_client)
+    ttest = FederatedTTestIndependent(aggregator=NumpyAggregator(agg_client))
     return ttest.compute(
         data=data,
         group_var=group_var,

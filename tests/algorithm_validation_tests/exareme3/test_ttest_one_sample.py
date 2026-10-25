@@ -31,8 +31,10 @@ def test_one_sample_ttest(test_input, expected):
         atol=1e-10,
     )
 
-    # confidence intervals are not tested because of an issue with rpy2.
-    # However, the way they are calculated is correct, and verifying them
-    # was deemed not an absolute necessity at the current state of the project.
-    # assert_allclose(result["ci_upper"], expected["ci_upper"], rtol=1e-8, atol=1e-10)
-    # assert_allclose(result["ci_lower"], expected["ci_lower"], rtol=1e-8, atol=1e-10)
+    # Open one-sided bounds are returned as "Infinity" / "-Infinity".
+    assert_allclose(
+        float(result["ci_upper"]), expected["ci_upper"], rtol=1e-8, atol=1e-10
+    )
+    assert_allclose(
+        float(result["ci_lower"]), expected["ci_lower"], rtol=1e-8, atol=1e-10
+    )

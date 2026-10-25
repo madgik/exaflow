@@ -122,11 +122,12 @@ Output:
 
 ## Validation against state-of-the-art implementation
 
-Standalone tests compare the result with `statsmodels.stats.weightstats.DescrStatsW`
-using:
+Standalone tests compare the result, for every alternative, with
+`statsmodels.stats.weightstats.DescrStatsW` using:
 
 ```text
-DescrStatsW(sample).ttest_mean(value=mu, alternative="two-sided")
+DescrStatsW(sample).ttest_mean(value=mu, alternative=alternative)
+DescrStatsW(sample).tconfint_mean(alpha=alpha, alternative=alternative)
 ```
 
 The method is also aligned with standard one-sample t-test formulas used by

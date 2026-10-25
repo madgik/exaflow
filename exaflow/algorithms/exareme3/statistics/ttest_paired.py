@@ -4,6 +4,9 @@ from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.ttest_paired import FederatedTTestPaired
+from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
+    NumpyAggregator,
+)
 
 
 class TTestPairedResult(BaseModel):
@@ -24,8 +27,9 @@ class TTestPaired(Algorithm):
             name="ttest_paired",
             desc="Paired-samples t-test comparing two related numerical measurements.",
             documentation=(
-                "Compare the mean of paired differences between two related "
-                "numerical measurements. Degrees of freedom are n - 1, and "
+                "Compare the mean of paired differences (measurement 1 minus "
+                "measurement 2) between two related numerical measurements. "
+                "Degrees of freedom are n - 1, and "
                 "Cohen's d is computed from the paired differences.\n\n"
                 "The 'alt_hypothesis' setting selects the alternative hypothesis: "
                 "'two-sided', 'less', or 'greater'. Default is 'two-sided'.\n\n"
@@ -43,16 +47,16 @@ class TTestPaired(Algorithm):
             enabled=True,
             required_preprocessing=["missing_values_handler"],
             y=specs.InputDataSpecification(
-                label="Measurement 1",
-                desc="First numerical measurement in each pair.",
+                label="Measurement 2",
+                desc="Second numerical measurement in each pair.",
                 types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                 stattypes=[specs.InputDataStatType.NUMERICAL],
                 required=True,
                 max_count=1,
             ),
             x=specs.InputDataSpecification(
-                label="Measurement 2",
-                desc="Second numerical measurement in each pair.",
+                label="Measurement 1",
+                desc="First numerical measurement in each pair.",
                 types=[specs.InputDataType.REAL, specs.InputDataType.INT],
                 stattypes=[specs.InputDataStatType.NUMERICAL],
                 required=True,
@@ -117,7 +121,7 @@ def local_step(agg_client, data, x_var, y_var, alpha, alternative):
     sample_x = data[x_var].to_numpy(dtype=float, copy=False)
     sample_y = data[y_var].to_numpy(dtype=float, copy=False)
 
-    ttest = FederatedTTestPaired(agg_client=agg_client)
+    ttest = FederatedTTestPaired(aggregator=NumpyAggregator(agg_client))
     return ttest.compute(
         sample_x=sample_x,
         sample_y=sample_y,
