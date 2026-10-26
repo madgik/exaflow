@@ -71,7 +71,11 @@ class QuartilesAlgorithm(Algorithm):
         )
 
     def run(self):
-        num_bins = int(self.get_parameter("num_bins", 20) or 20)
+        default_bins = self.get_specification().parameters["num_bins"].default
+        num_bins = self.get_parameter("num_bins", default_bins)
+        if num_bins is None:
+            num_bins = default_bins
+        num_bins = int(num_bins)
         y_var = self.y[0]
         is_integer = (
             self.metadata.get(y_var, {}).get("sql_type")

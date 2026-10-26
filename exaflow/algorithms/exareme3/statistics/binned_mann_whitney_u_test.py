@@ -113,7 +113,11 @@ class BinnedMannWhitneyUTest(Algorithm):
         alternative = self.get_parameter("alt_hypothesis")
         group_a = self.get_parameter("groupA")
         group_b = self.get_parameter("groupB")
-        num_bins = int(self.get_parameter("num_bins", 40) or 40)
+        default_bins = self.get_specification().parameters["num_bins"].default
+        num_bins = self.get_parameter("num_bins", default_bins)
+        if num_bins is None:
+            num_bins = default_bins
+        num_bins = int(num_bins)
 
         if group_a == group_b:
             raise BadInputError(
