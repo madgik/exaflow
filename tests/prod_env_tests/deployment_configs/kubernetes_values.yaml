@@ -8,6 +8,8 @@ exaflow_images:
 log_level: DEBUG
 framework_log_level: INFO
 
+grpc_max_message_mb: 100
+
 max_concurrent_experiments: 32
 
 globalworker_identifier: globalworker

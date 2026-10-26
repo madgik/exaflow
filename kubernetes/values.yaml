@@ -11,6 +11,10 @@ federation: dementia
 log_level: INFO
 framework_log_level: ERROR
 
+# Send and receive limit, in mebibytes, for every gRPC message on the
+# controller, workers, and aggregation server.
+grpc_max_message_mb: 100
+
 max_concurrent_experiments: 32
 
 flower:

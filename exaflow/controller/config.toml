@@ -34,3 +34,6 @@ get_result_max_retries = "$SMPC_GET_RESULT_MAX_RETRIES"
 enabled = "$DP_ENABLED"
 sensitivity = "$DP_SENSITIVITY"
 privacy_budget = "$DP_PRIVACY_BUDGET"
+
+[grpc]
+max_message_mb = "${GRPC_MAX_MESSAGE_MB:-100}"

@@ -6,6 +6,7 @@ import envtoml
 
 from exaflow import AttrDict
 from exaflow import worker
+from exaflow.grpc_options import grpc_max_message_mb
 
 
 def _ensure_duckdb_config(cfg: AttrDict) -> None:
@@ -43,6 +44,7 @@ def _ensure_grpc_config(cfg: AttrDict) -> None:
     grpc_cfg.port = _normalize_port(port_value, default_port)
     max_workers_value = grpc_cfg.get("max_workers", 10)
     grpc_cfg.max_workers = _normalize_port(max_workers_value, 10)
+    grpc_cfg.max_message_mb = grpc_max_message_mb(grpc_cfg.get("max_message_mb"))
 
     cfg.grpc = grpc_cfg
 
