@@ -3,6 +3,9 @@ from typing import Any
 
 import grpc
 
+from exaflow.controller import config as ctrl_config
+from exaflow.grpc_options import grpc_max_message_size
+from exaflow.grpc_options import grpc_message_options
 from exaflow.protos.worker import worker_pb2_grpc
 from exaflow.utils import Singleton
 from exaflow.worker_communication import BadUserInput
@@ -26,7 +29,11 @@ class WorkerClientTimeoutException(Exception):
 class WorkerClient:
     def __init__(self, socket_addr: str):
         self._socket_addr = socket_addr
-        self._channel = grpc.insecure_channel(socket_addr)
+        self._max_message_bytes = grpc_max_message_size(ctrl_config.grpc.max_message_mb)
+        self._channel = grpc.insecure_channel(
+            socket_addr,
+            options=grpc_message_options(ctrl_config.grpc.max_message_mb),
+        )
         self._stub = worker_pb2_grpc.WorkerServiceStub(self._channel)
 
     def close(self) -> None:
