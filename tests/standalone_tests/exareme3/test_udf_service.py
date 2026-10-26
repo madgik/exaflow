@@ -230,7 +230,7 @@ def test_preprocessing_requirement_can_create_client_for_non_aggregation_udf(
     created_clients = []
 
     class _CreatedAggClient(_DummyAggClient):
-        def __init__(self, request_id, aggregator_dns=None):
+        def __init__(self, request_id, aggregator_dns=None, max_message_mb=None):
             super().__init__()
             self.request_id = request_id
             self.aggregator_dns = aggregator_dns
