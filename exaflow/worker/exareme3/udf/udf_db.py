@@ -14,7 +14,7 @@ def primary_table_name(data_model: str) -> str:
     sanitized = data_model
     for ch in (":", "-", "."):
         sanitized = sanitized.replace(ch, "_")
-    return f'"{sanitized}__primary_data"'
+    return quote_identifier(f"{sanitized}__primary_data")
 
 
 def quote_identifier(identifier: str) -> str:
@@ -59,11 +59,14 @@ def _fetch_with_duckdb(inputdata: Inputdata, required_columns: Set[str]) -> pa.T
     select_columns = ", ".join(quote_identifier(col) for col in columns)
 
     where_clauses = []
+    params: list = []
     datasets_clause = ", ".join(quote_literal(value) for value in datasets)
     where_clauses.append(f"{quote_identifier(DATASET_COL)} IN ({datasets_clause})")
 
     if inputdata.filters:
-        where_clauses.append(build_filter_clause(inputdata.filters))
+        filter_sql, filter_params = build_filter_clause(inputdata.filters)
+        where_clauses.append(filter_sql)
+        params.extend(filter_params)
 
     where_sql = ""
     if where_clauses:
@@ -73,7 +76,10 @@ def _fetch_with_duckdb(inputdata: Inputdata, required_columns: Set[str]) -> pa.T
 
     with duckdb.connect(worker_config.duckdb.path, read_only=True) as conn:
         # Use fetch_arrow_table for zero-copy loading
-        arrow_table = conn.execute(query).fetch_arrow_table()
+        if params:
+            arrow_table = conn.execute(query, params).fetch_arrow_table()
+        else:
+            arrow_table = conn.execute(query).fetch_arrow_table()
 
     # Drop duplicate column names if any (Arrow tables enforce unique names usually, but good to be safe)
     # Note: Arrow handles duplicates differently than Pandas, usually by appending suffixes or erroring.
