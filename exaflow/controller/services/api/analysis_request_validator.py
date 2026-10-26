@@ -552,7 +552,9 @@ def _validate_parameters(
             if not parameters:
                 raise BadUserInput(f"Algorithm parameters not provided.")
             if parameter_name not in parameters.keys():
-                raise BadUserInput(f"Parameter '{parameter_name}' should not be blank.")
+                raise BadUserInput(
+                    f"Parameter '{parameter_spec.label}' should not be blank."
+                )
 
         if parameters is None or parameter_name not in parameters:
             continue
@@ -560,38 +562,35 @@ def _validate_parameters(
         parameter_values = parameters.get(parameter_name)
         if parameter_values is None:
             if parameter_spec.required:
-                raise BadUserInput(f"Parameter '{parameter_name}' should not be blank.")
+                raise BadUserInput(
+                    f"Parameter '{parameter_spec.label}' should not be blank."
+                )
             continue
 
         if isinstance(parameter_values, str) and not parameter_values.strip():
-            raise BadUserInput(f"Parameter '{parameter_name}' should not be blank.")
+            raise BadUserInput(
+                f"Parameter '{parameter_spec.label}' should not be blank."
+            )
 
         if isinstance(parameter_values, list) and len(parameter_values) == 0:
-            raise BadUserInput(f"Parameter '{parameter_name}' should not be blank.")
+            raise BadUserInput(
+                f"Parameter '{parameter_spec.label}' should not be blank."
+            )
 
         if isinstance(parameter_values, dict) and len(parameter_values) == 0:
-            raise BadUserInput(f"Parameter '{parameter_name}' should not be blank.")
-
-        if isinstance(parameter_values, bool):
-            _validate_parameter_values(
-                parameter_values=parameter_values,
-                parameter_spec=parameter_spec,
-                inputdata=inputdata,
-                data_model_cdes=data_model_cdes,
-                algorithm_x=algorithm_x,
-                algorithm_y=algorithm_y,
+            raise BadUserInput(
+                f"Parameter '{parameter_spec.label}' should not be blank."
             )
-            continue
 
-        if parameter_values:
-            _validate_parameter_values(
-                parameter_values=parameter_values,
-                parameter_spec=parameter_spec,
-                inputdata=inputdata,
-                data_model_cdes=data_model_cdes,
-                algorithm_x=algorithm_x,
-                algorithm_y=algorithm_y,
-            )
+        # Falsy values such as 0 or 0.0 must be validated too (min/max, enums).
+        _validate_parameter_values(
+            parameter_values=parameter_values,
+            parameter_spec=parameter_spec,
+            inputdata=inputdata,
+            data_model_cdes=data_model_cdes,
+            algorithm_x=algorithm_x,
+            algorithm_y=algorithm_y,
+        )
 
 
 def _validate_parameters_are_in_the_specs(
@@ -657,7 +656,7 @@ def _validate_parameter_type(
     }
 
     for param_type in parameter_spec.types:
-        if isinstance(
+        if _is_instance_of_param_type(
             parameter_value, exaflowtypes_to_python_types.get(param_type.value)
         ):
             return
@@ -665,6 +664,13 @@ def _validate_parameter_type(
         raise BadUserInput(
             f"Parameter '{parameter_spec.label}' values should be of types: {[type.value for type in parameter_spec.types]}."
         )
+
+
+def _is_instance_of_param_type(value: Any, python_type) -> bool:
+    # bool is a subclass of int (and numbers.Real); only accept it as boolean.
+    if isinstance(value, bool) and python_type is not bool:
+        return False
+    return isinstance(value, python_type)
 
 
 def _validate_parameter_value_type(
@@ -682,7 +688,9 @@ def _validate_parameter_value_type(
     if parameter_type == ParameterDictValueType.FILTER:
         return
 
-    if isinstance(parameter_value, exaflowtypes_to_python_types[parameter_type.value]):
+    if _is_instance_of_param_type(
+        parameter_value, exaflowtypes_to_python_types[parameter_type.value]
+    ):
         return
 
     raise BadUserInput(
@@ -871,6 +879,18 @@ def _validate_param_dict_enums(
             )
 
 
+def _format_parameter_limit(
+    parameter_spec: ParameterSpecification, limit: float
+) -> str:
+    integer_parameter = (
+        ParameterType.INT in parameter_spec.types
+        and ParameterType.REAL not in parameter_spec.types
+    )
+    if integer_parameter and float(limit).is_integer():
+        return str(int(limit))
+    return str(limit)
+
+
 def _validate_parameter_inside_min_max(
     parameter_value: Any,
     parameter_spec: ParameterSpecification,
@@ -879,15 +899,15 @@ def _validate_parameter_inside_min_max(
         return
 
     if parameter_spec.min is not None and parameter_value < parameter_spec.min:
+        minimum = _format_parameter_limit(parameter_spec, parameter_spec.min)
         raise BadUserInput(
-            f"Parameter '{parameter_spec.label}' values "
-            f"should be greater than {parameter_spec.min} ."
+            f"Parameter '{parameter_spec.label}' values should be at least {minimum} ."
         )
 
     if parameter_spec.max is not None and parameter_value > parameter_spec.max:
+        maximum = _format_parameter_limit(parameter_spec, parameter_spec.max)
         raise BadUserInput(
-            f"Parameter '{parameter_spec.label}' values "
-            f"should be at most equal to {parameter_spec.max} ."
+            f"Parameter '{parameter_spec.label}' values should be at most {maximum} ."
         )
 
 
