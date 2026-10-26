@@ -3,10 +3,12 @@ import logging
 from typing import Dict
 from typing import List
 
+import dns.resolver
 import pytest
 
 from exaflow import AttrDict
 from exaflow.controller import DeploymentType
+from exaflow.controller import workers_addresses as workers_addresses_module
 from exaflow.controller.services.worker_landscape_aggregator import (
     worker_landscape_aggregator as wla_module,
 )
@@ -41,7 +43,9 @@ from exaflow.controller.services.worker_landscape_aggregator.worker_landscape_ag
     _crunch_data_model_registry_data,
 )
 from exaflow.controller.worker_client.app import WorkerClientConnectionError
+from exaflow.controller.worker_client.app import WorkerClientFactory
 from exaflow.controller.worker_client.app import WorkerClientTimeoutException
+from exaflow.utils import Singleton
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import CommonDataElement
 from exaflow.worker_communication import CommonDataElements
@@ -1054,3 +1058,94 @@ def test_get_workers_info_queries_workers_concurrently(
     workers = worker_landscape_aggregator._get_workers_info(addresses)
 
     assert [worker.id for worker in workers] == addresses
+
+
+def _drop_worker_client_factory():
+    factory = Singleton._instances.pop(WorkerClientFactory, None)
+    if factory is None:
+        return
+    for client in list(factory._clients.values()):
+        client.close()
+
+
+@pytest.fixture
+def reset_worker_client_factory():
+    _drop_worker_client_factory()
+    yield
+    _drop_worker_client_factory()
+
+
+def _kubernetes_landscape_aggregator():
+    return WorkerLandscapeAggregator(
+        logger=logging.getLogger("worker-landscape-tests"),
+        update_interval=0,
+        tasks_timeout=0,
+        deployment_type=DeploymentType.KUBERNETES,
+        localworkers=AttrDict({"dns": "workers.example", "port": 5670}),
+    )
+
+
+class _DnsAddress:
+    def __init__(self, address):
+        self.address = address
+
+
+class _InfoHandler:
+    def __init__(self, worker_queue_addr, *args, **kwargs):
+        self.worker_queue_addr = worker_queue_addr
+
+    def get_worker_info_task(self):
+        if self.worker_queue_addr == "10.0.0.3:5670":
+            raise WorkerClientConnectionError(self.worker_queue_addr, "unreachable")
+        return WorkerInfo(
+            id="worker-healthy",
+            role=WorkerRole.LOCALWORKER,
+            ip=ipaddress.ip_address("10.0.0.1"),
+            port=5670,
+        )
+
+    def get_worker_datasets_per_data_model_task(self):
+        return {}
+
+
+def test_update_prunes_departed_worker_and_keeps_unhealthy_dns_worker(
+    monkeypatch, reset_worker_client_factory
+):
+    factory = WorkerClientFactory()
+    healthy = factory.get_client("10.0.0.1:5670")
+    departed = factory.get_client("10.0.0.2:5670")
+    unhealthy = factory.get_client("10.0.0.3:5670")
+
+    def _resolve(name, *args, **kwargs):
+        assert name == "workers.example"
+        return [_DnsAddress("10.0.0.1"), _DnsAddress("10.0.0.3")]
+
+    monkeypatch.setattr(workers_addresses_module.dns.resolver, "resolve", _resolve)
+    monkeypatch.setattr(wla_module, "WorkerInfoTasksHandler", _InfoHandler)
+
+    _kubernetes_landscape_aggregator().update()
+
+    assert factory.get_client("10.0.0.1:5670") is healthy
+    assert factory.get_client("10.0.0.3:5670") is unhealthy
+    assert factory.get_client("10.0.0.2:5670") is not departed
+    departed.close()
+
+
+def test_update_does_not_prune_clients_when_dns_resolution_fails(
+    monkeypatch, reset_worker_client_factory
+):
+    factory = WorkerClientFactory()
+    kept = {
+        addr: factory.get_client(addr) for addr in ("10.0.0.1:5670", "10.0.0.2:5670")
+    }
+
+    def _resolve(*args, **kwargs):
+        raise dns.resolver.NXDOMAIN
+
+    monkeypatch.setattr(workers_addresses_module.dns.resolver, "resolve", _resolve)
+
+    with pytest.raises(dns.resolver.NXDOMAIN):
+        _kubernetes_landscape_aggregator().update()
+
+    for addr, client in kept.items():
+        assert factory.get_client(addr) is client

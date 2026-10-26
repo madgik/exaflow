@@ -295,20 +295,6 @@ def _datasets_from_staging_table(
     return datasets
 
 
-def _dataset_codes_from_metadata(metadata: dict) -> list[str]:
-    dataset_var = next(
-        (
-            var
-            for var in metadata.get("variables", [])
-            if var.get("code") == DATASET_COL
-        ),
-        None,
-    )
-    if dataset_var and "enumerations" in dataset_var:
-        return [enum.get("code", DATASET_COL) for enum in dataset_var["enumerations"]]
-    return [metadata.get("code", DATASET_COL)]
-
-
 def load_all_csvs_from_data_folder(request_id: str) -> str:
     db_path = worker_config.duckdb.path
     folder_path = Path(worker_config.data_path).expanduser()
