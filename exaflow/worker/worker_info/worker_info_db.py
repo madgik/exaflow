@@ -1,5 +1,6 @@
 import json
 import warnings
+from pathlib import Path
 from typing import List
 
 from pydantic import ValidationError
@@ -14,7 +15,7 @@ from exaflow.worker_communication import DatasetInfo
 from exaflow.worker_communication import DatasetProperties
 
 HEALTHCHECK_VALIDATION_STRING = "HEALTHCHECK"
-LOGGER = init_logger("WORKER DATA LOADER")
+LOGGER = init_logger("WORKER INFO DB")
 
 
 def get_data_models() -> List[str]:
@@ -91,39 +92,29 @@ def _extract_variables_from_properties(properties_json) -> List[str]:
 
 
 def convert_csv_paths_to_absolute(dataset_path: str) -> str:
-    """
-    Convert a CSV file path to an absolute path using the configured data directory.
+    """Anchor a stored CSV path at the configured data directory.
 
-    This function addresses the scenario where a CSV file's path stored in the database may be relative,
-    rather than absolute. By leveraging the base directory defined in `worker_config.data_path`, it constructs
-    a complete, absolute path for the CSV file. The function does this by splitting the provided `dataset_path`
-    by the base directory string, then taking the last part (which represents the relative path) and concatenating
-    it with the base directory.
-
-    Parameters:
-        dataset_path (str): The CSV file path as imported by the database. This path may be relative or partially
-                            include the base directory.
-
-    Returns:
-        str: The absolute path to the CSV file, formed by combining `worker_config.data_path` and the relative portion
-             of `dataset_path`.
+    ``~`` in the data directory or the stored path is expanded, and the
+    result is resolved. An absolute path already inside that directory is
+    kept. A relative path is joined onto it. ``pathlib`` decides whether
+    the stored path is inside the data directory, so a directory such as
+    ``/data`` does not match the same text inside ``data.csv``. A trailing
+    slash on the data directory does not change the result.
 
     Example:
-        Assuming `worker_config.data_path` is "/data/datasets", then:
+        Assuming ``worker_config.data_path`` is "/opt/csvs":
 
-        >>> convert_csv_paths_to_absolute("/data/datasets/my_folder/data.csv")
-        '/data/datasets/my_folder/data.csv'
+        >>> convert_csv_paths_to_absolute("/opt/csvs/my_folder/data.csv")
+        '/opt/csvs/my_folder/data.csv'
 
         >>> convert_csv_paths_to_absolute("my_folder/data.csv")
-        '/data/datasets/my_folder/data.csv'
-
-    Note:
-        The function splits the original path by the base directory string. The resulting list's last element is treated
-        as the relative path. This ensures that even if the CSV path is stored in a relative format, it is transformed
-        into an absolute path using the current configuration.
+        '/opt/csvs/my_folder/data.csv'
     """
-    relative_path = dataset_path.split(str(worker_config.data_path))[-1]
-    return f"{worker_config.data_path}/{relative_path}"
+    base = Path(worker_config.data_path).expanduser().resolve()
+    path = Path(dataset_path).expanduser()
+    if path.is_absolute() and path.resolve().is_relative_to(base):
+        return str(path.resolve())
+    return str((base / path).resolve())
 
 
 def get_dataset_csv_paths(data_model, datasets: List[str]) -> List[str]:
