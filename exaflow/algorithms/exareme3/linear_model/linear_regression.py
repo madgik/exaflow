@@ -12,6 +12,7 @@ from exaflow.algorithms.federated.compose.column_transformer import (
 from exaflow.algorithms.federated.feature_engineering import FederatedOneHotEncoder
 from exaflow.algorithms.federated.linear_model.ols import FederatedOLS
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
+from exaflow.datatypes import CATEGORICAL_CDE_TYPES
 
 
 class LinearRegressionResult(BaseModel):
@@ -135,10 +136,12 @@ class LinearRegression(Algorithm):
         y_var = self.y[0]
         x_vars = list(self.x)
         categorical_vars = [
-            var for var in x_vars if self.metadata[var]["is_categorical"]
+            var for var in x_vars if self.metadata[var]["type"] in CATEGORICAL_CDE_TYPES
         ]
         numerical_vars = [
-            var for var in x_vars if not self.metadata[var]["is_categorical"]
+            var
+            for var in x_vars
+            if self.metadata[var]["type"] not in CATEGORICAL_CDE_TYPES
         ]
 
         model_stats = self.run_local_udf(

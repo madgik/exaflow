@@ -1,9 +1,7 @@
 {
   "variables": [
     {
-      "isCategorical": true,
       "code": "dataset",
-      "sql_type": "text",
       "description": "",
       "enumerations": [
         {
@@ -63,30 +61,24 @@
     {
       "variables": [
         {
-            "isCategorical": false,
             "label": "subjectcode",
             "code": "subjectcode",
-            "sql_type": "text",
             "description": "",
             "methodology": "",
             "type": "nominal"
         },
         {
-          "isCategorical": false,
           "minValue": 0,
           "code": "age_value",
           "maxValue": 130,
-          "sql_type": "int",
           "description": "",
           "label": "Age",
           "units": "years",
-          "type": "integer",
+          "type": "discrete",
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "gender_type",
-          "sql_type": "text",
           "description": "",
           "enumerations": [
             {
@@ -110,9 +102,7 @@
     {
       "variables": [
         {
-          "isCategorical": true,
           "code": "gcs_eye_response_scale",
-          "sql_type": "text",
           "description": "Glasgow Coma Scale (GCS) - eye response scale",
           "enumerations": [
             {
@@ -146,9 +136,7 @@
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "gcs_motor_response_scale",
-          "sql_type": "text",
           "description": "Glasgow Coma Scale (GCS) - motor response scale",
           "enumerations": [
             {
@@ -190,9 +178,7 @@
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "gcs_verbal_response_scale",
-          "sql_type": "text",
           "description": "Glasgow Coma Scale (GCS) - verbal response scale",
           "enumerations": [
             {
@@ -230,9 +216,7 @@
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "pupil_reactivity_right_eye_result",
-          "sql_type": "text",
           "description": "Pupil reactivity light right eye",
           "enumerations": [
             {
@@ -262,9 +246,7 @@
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "pupil_reactivity_left_eye_result",
-          "sql_type": "text",
           "description": "Pupil reactivity light left eye ",
           "enumerations": [
             {
@@ -294,9 +276,7 @@
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "gcs_total_score",
-          "sql_type": "text",
           "description": "Glasgow Coma Scale (GCS) - total score",
           "enumerations": [
             {
@@ -372,9 +352,7 @@
     {
       "variables": [
         {
-          "isCategorical": true,
           "code": "cisternal_compression_status",
-          "sql_type": "text",
           "description": "Cisternal compression status",
           "enumerations": [
             {
@@ -396,9 +374,7 @@
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "epidural_hematoma_anatomic_status",
-          "sql_type": "text",
           "description": "Epidural hematoma status",
           "enumerations": [
             {
@@ -420,9 +396,7 @@
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "midline_shift_supratentorial_indicator",
-          "sql_type": "text",
           "description": "Midline shift supratentorial indicator",
           "enumerations": [
             {
@@ -444,9 +418,7 @@
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "marshall_ct_classification_code",
-          "sql_type": "text",
           "description": "Marshall CT classification code",
           "enumerations": [
             {
@@ -482,9 +454,7 @@
     {
       "variables": [
         {
-          "isCategorical": true,
           "code": "hypoxic_episode_indicator",
-          "sql_type": "text",
           "description": "Hypoxic episode indicator",
           "enumerations": [
             {
@@ -510,9 +480,7 @@
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "hypotensive_episode_indicator",
-          "sql_type": "text",
           "description": "Hypotensive episode indicator",
           "enumerations": [
             {
@@ -544,9 +512,7 @@
     {
       "variables": [
         {
-          "isCategorical": true,
           "code": "gose_score",
-          "sql_type": "text",
           "description": "Glasgow Outcome Scale Extended (GOS-E) - score",
           "enumerations": [
             {
@@ -588,19 +554,15 @@
           "methodology": ""
         },
         {
-          "isCategorical": false,
           "code": "mortality_core",
-          "sql_type": "real",
           "description": "6 month predicted mortality; LPcore, mortality = −2.55 + 0.275 × sum score core",
           "label": "Mortality - Core Impact",
           "units": "",
-          "type": "real",
+          "type": "continuous",
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "mortality_gose",
-          "sql_type": "text",
           "description": "Observed mortality by Glasgow output score",
           "enumerations": [
             {
@@ -624,29 +586,23 @@
     {
       "variables": [
         {
-          "isCategorical": false,
           "minValue": 1.54,
           "code": "laboratory_procedure_glucose_value",
           "maxValue": 36.00,
-          "sql_type": "real",
           "description": "Laboratory procedure glucose value",
-          "enumerations": [],
           "label": "Glucose",
           "units": "mmol/L",
-          "type": "real",
+          "type": "continuous",
           "methodology": ""
         },
         {
-          "isCategorical": false,
           "minValue": 3.40,
           "code": "laboratory_procedure_hemoglobin_value",
           "maxValue": 18.00,
-          "sql_type": "real",
           "description": "Laboratory procedure hemoglobin value ",
-          "enumerations": [],
           "label": "Hemoglobin",
           "units": "g/dL",
-          "type": "real",
+          "type": "continuous",
           "methodology": ""
         }
       ],

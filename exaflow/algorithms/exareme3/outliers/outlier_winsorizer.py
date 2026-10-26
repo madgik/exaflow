@@ -7,7 +7,9 @@ from typing import Optional
 import pandas as pd
 
 from exaflow.algorithms import specifications as specs
-from exaflow.algorithms.exareme3.utils.metadata import promote_int_variables_to_real
+from exaflow.algorithms.exareme3.utils.metadata import (
+    promote_discrete_variables_to_continuous,
+)
 from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
 from exaflow.algorithms.federated.outliers.outlier_report import DEFAULT_FOLDS
 from exaflow.algorithms.federated.outliers.outlier_report import OutlierBounds
@@ -16,6 +18,7 @@ from exaflow.algorithms.federated.outliers.outlier_report import OutlierStrategy
 from exaflow.algorithms.federated.outliers.outlier_report import OutlierTail
 from exaflow.algorithms.federated.outliers.outlier_report import WinsorizationHelper
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
+from exaflow.datatypes import CATEGORICAL_CDE_TYPES
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import InsufficientDataError
 
@@ -145,7 +148,7 @@ class OutlierWinsorizer(PreprocessingStep):
     ) -> None:
         for variable, strategy_value in strategies.items():
             strategy = str(strategy_value)
-            if metadata.get(variable, {}).get("is_categorical"):
+            if metadata.get(variable, {}).get("type") in CATEGORICAL_CDE_TYPES:
                 raise BadUserInput(
                     f"{parameter_label} '{strategy}' can only be used for "
                     f"numerical variables. Variable '{variable}' is categorical."
@@ -175,7 +178,7 @@ class OutlierWinsorizer(PreprocessingStep):
         *,
         metadata: Dict[str, dict],
     ) -> Dict[str, dict]:
-        transformed_metadata = promote_int_variables_to_real(
+        transformed_metadata = promote_discrete_variables_to_continuous(
             metadata=metadata,
             variables=self._strategies,
         )

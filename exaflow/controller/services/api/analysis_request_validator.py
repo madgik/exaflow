@@ -27,6 +27,7 @@ from exaflow.controller.services.worker_landscape_aggregator.worker_landscape_ag
     WorkerLandscapeAggregator,
 )
 from exaflow.data_filters import validate_filter
+from exaflow.datatypes import CDEType
 from exaflow.smpc_cluster_communication import validate_smpc_usage
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import CommonDataElement
@@ -490,12 +491,20 @@ def _get_cde_metadata(cde, data_model_cdes):
     return data_model_cdes[cde]
 
 
+_INPUT_DATA_TYPE_PER_CDE_TYPE = {
+    CDEType.CONTINUOUS: InputDataType.REAL,
+    CDEType.DISCRETE: InputDataType.INT,
+}
+
+
 def _validate_inputdata_types(
     inputdata_value: str,
     inputdata_specs: InputDataSpecification,
     inputdata_value_metadata: CommonDataElement,
 ):
-    dtype = InputDataType(inputdata_value_metadata.sql_type)
+    dtype = _INPUT_DATA_TYPE_PER_CDE_TYPE.get(
+        inputdata_value_metadata.type, InputDataType.TEXT
+    )
     dtypes = inputdata_specs.types
     if dtype in dtypes:
         return
@@ -527,6 +536,14 @@ def _validate_inputdata_stattypes(
         raise BadUserInput(
             f"The CDE '{inputdata_value}', of algorithm input '{inputdata_specs.label}', "
             f"should NOT be categorical."
+        )
+    if (
+        inputdata_value_metadata.is_categorical
+        and not inputdata_value_metadata.enumerations
+    ):
+        raise BadUserInput(
+            f"The CDE '{inputdata_value}', of algorithm input '{inputdata_specs.label}', "
+            f"is categorical without enumerations and cannot be analysed."
         )
 
 

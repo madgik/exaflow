@@ -13,6 +13,8 @@ from exaflow.algorithms.federated.statistics.descriptive_stats import (
     FederatedDescriptiveStatistics,
 )
 from exaflow.column_names import DATASET_COL
+from exaflow.datatypes import CATEGORICAL_CDE_TYPES
+from exaflow.datatypes import CDEType
 
 DATASET_VAR_NAME = DATASET_COL
 
@@ -136,10 +138,14 @@ class Describe(Algorithm):
         y_vars = self.y or []
         variable_names = [v for v in (x_vars + y_vars) if v != DATASET_VAR_NAME]
         numerical_vars = [
-            var for var in variable_names if not self.metadata[var]["is_categorical"]
+            var
+            for var in variable_names
+            if self.metadata[var]["type"] not in CATEGORICAL_CDE_TYPES
         ]
         nominal_vars = [
-            var for var in variable_names if self.metadata[var]["is_categorical"]
+            var
+            for var in variable_names
+            if self.metadata[var]["type"] in CATEGORICAL_CDE_TYPES
         ]
         nominal_levels = {}
         for var in nominal_vars:
@@ -149,8 +155,7 @@ class Describe(Algorithm):
         integer_vars = [
             var
             for var in numerical_vars
-            if self.metadata.get(var, {}).get("sql_type")
-            == specs.InputDataType.INT.value
+            if self.metadata.get(var, {}).get("type") == CDEType.DISCRETE
         ]
 
         local_results = self.run_local_udf(

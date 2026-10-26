@@ -85,8 +85,9 @@ message CommonDataElements {
 message CommonDataElement {
   string code = 1;
   string label = 2;
-  string sql_type = 3;
-  bool is_categorical = 4;
+  string type = 3;
+  reserved 4;
+  reserved "sql_type", "is_categorical";
   map<string, string> enumerations = 5;
   google.protobuf.DoubleValue min = 6;
   google.protobuf.DoubleValue max = 7;

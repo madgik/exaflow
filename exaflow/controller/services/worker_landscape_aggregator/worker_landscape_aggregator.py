@@ -875,8 +875,7 @@ def _aggregate_data_models_cdes(
             new_dataset_cde = CommonDataElement(
                 code=dataset_cde.code,
                 label=dataset_cde.label,
-                sql_type=dataset_cde.sql_type,
-                is_categorical=dataset_cde.is_categorical,
+                type=dataset_cde.type,
                 enumerations=data_models_dataset_enumerations[data_model],
                 min=dataset_cde.min,
                 max=dataset_cde.max,

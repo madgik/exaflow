@@ -117,8 +117,8 @@ def test_creator_can_fit_kmeans_without_a_reusable_recipe():
     creator.validate_params(
         inputdata=inputdata,
         metadata={
-            "x": {"is_categorical": False, "sql_type": "real"},
-            "y": {"is_categorical": False, "sql_type": "real"},
+            "x": {"type": "continuous"},
+            "y": {"type": "continuous"},
         },
     )
 
@@ -233,7 +233,7 @@ def test_creator_metadata_contains_all_fitted_clusters():
 
     metadata = creator.transform_metadata(metadata={})
 
-    assert metadata["cluster"]["is_categorical"]
+    assert metadata["cluster"]["type"] == "nominal"
     assert metadata["cluster"]["enumerations"] == {
         "cluster_1": "cluster_1",
         "cluster_2": "cluster_2",

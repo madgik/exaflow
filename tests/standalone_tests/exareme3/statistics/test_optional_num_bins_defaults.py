@@ -23,7 +23,7 @@ def _quartiles(parameters):
         logger=Mock(),
         inputdata=_inputdata(),
         y=["age"],
-        metadata={"age": {"sql_type": "int"}},
+        metadata={"age": {"type": "discrete"}},
         parameters=parameters,
     )
 

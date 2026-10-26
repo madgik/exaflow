@@ -20,11 +20,11 @@ STRATEGY_SECOND = LongitudinalStrategy.SECOND.value
 STRATEGY_DIFF = LongitudinalStrategy.DIFF.value
 
 BASE_METADATA = {
-    "age": {"is_categorical": False, "label": "Age"},
-    "weight": {"is_categorical": False, "label": "Weight"},
-    "sex": {"is_categorical": True, "label": "Sex"},
-    "score": {"is_categorical": False, "label": "Score"},
-    "group": {"is_categorical": True, "label": "Group"},
+    "age": {"type": "continuous", "label": "Age"},
+    "weight": {"type": "continuous", "label": "Weight"},
+    "sex": {"type": "nominal", "label": "Sex"},
+    "score": {"type": "continuous", "label": "Score"},
+    "group": {"type": "nominal", "label": "Group"},
 }
 
 
@@ -209,40 +209,40 @@ def test_transform_variables_keeps_original_column_names(
             {"age": STRATEGY_DIFF},
             BASE_METADATA,
             {
-                "weight": {"is_categorical": False, "label": "Weight"},
-                "sex": {"is_categorical": True, "label": "Sex"},
-                "score": {"is_categorical": False, "label": "Score"},
-                "group": {"is_categorical": True, "label": "Group"},
-                "age": {"is_categorical": False, "label": "Age"},
+                "weight": {"type": "continuous", "label": "Weight"},
+                "sex": {"type": "nominal", "label": "Sex"},
+                "score": {"type": "continuous", "label": "Score"},
+                "group": {"type": "nominal", "label": "Group"},
+                "age": {"type": "continuous", "label": "Age"},
             },
         ),
         (
             {"age": STRATEGY_DIFF, "sex": STRATEGY_FIRST},
             BASE_METADATA,
             {
-                "weight": {"is_categorical": False, "label": "Weight"},
-                "sex": {"is_categorical": True, "label": "Sex"},
-                "score": {"is_categorical": False, "label": "Score"},
-                "group": {"is_categorical": True, "label": "Group"},
-                "age": {"is_categorical": False, "label": "Age"},
+                "weight": {"type": "continuous", "label": "Weight"},
+                "sex": {"type": "nominal", "label": "Sex"},
+                "score": {"type": "continuous", "label": "Score"},
+                "group": {"type": "nominal", "label": "Group"},
+                "age": {"type": "continuous", "label": "Age"},
             },
         ),
         (
             {"age": STRATEGY_DIFF, "weight": STRATEGY_DIFF},
             BASE_METADATA,
             {
-                "sex": {"is_categorical": True, "label": "Sex"},
-                "score": {"is_categorical": False, "label": "Score"},
-                "group": {"is_categorical": True, "label": "Group"},
-                "age": {"is_categorical": False, "label": "Age"},
-                "weight": {"is_categorical": False, "label": "Weight"},
+                "sex": {"type": "nominal", "label": "Sex"},
+                "score": {"type": "continuous", "label": "Score"},
+                "group": {"type": "nominal", "label": "Group"},
+                "age": {"type": "continuous", "label": "Age"},
+                "weight": {"type": "continuous", "label": "Weight"},
             },
         ),
         ({"unknown": STRATEGY_DIFF}, BASE_METADATA, BASE_METADATA),
         (
             {"score": STRATEGY_FIRST},
-            {**BASE_METADATA, "extra": {"is_categorical": False, "label": "Extra"}},
-            {**BASE_METADATA, "extra": {"is_categorical": False, "label": "Extra"}},
+            {**BASE_METADATA, "extra": {"type": "continuous", "label": "Extra"}},
+            {**BASE_METADATA, "extra": {"type": "continuous", "label": "Extra"}},
         ),
         ({"age": STRATEGY_DIFF}, {}, {}),
         ({}, BASE_METADATA, BASE_METADATA),
@@ -250,11 +250,11 @@ def test_transform_variables_keeps_original_column_names(
             {"group": STRATEGY_SECOND, "score": STRATEGY_DIFF},
             BASE_METADATA,
             {
-                "age": {"is_categorical": False, "label": "Age"},
-                "weight": {"is_categorical": False, "label": "Weight"},
-                "sex": {"is_categorical": True, "label": "Sex"},
-                "group": {"is_categorical": True, "label": "Group"},
-                "score": {"is_categorical": False, "label": "Score"},
+                "age": {"type": "continuous", "label": "Age"},
+                "weight": {"type": "continuous", "label": "Weight"},
+                "sex": {"type": "nominal", "label": "Sex"},
+                "group": {"type": "nominal", "label": "Group"},
+                "score": {"type": "continuous", "label": "Score"},
             },
         ),
     ],
@@ -268,7 +268,7 @@ def test_transform_metadata_10_cases(strategies, metadata, expected):
 
 
 def test_transform_metadata_returns_deepcopy():
-    metadata = {"age": {"is_categorical": False, "label": "Age"}}
+    metadata = {"age": {"type": "continuous", "label": "Age"}}
     transformer = _make_transformer(strategies={})
 
     transformed = transformer.transform_metadata(metadata=metadata)
@@ -456,7 +456,7 @@ def test_transform_data_raises_when_required_columns_are_missing():
 def test_transform_data_and_metadata_combines_both_transformations():
     transformer = _make_transformer(strategies={"age": STRATEGY_DIFF})
     data = _base_longitudinal_df(include_dataset=True)
-    metadata = {"age": {"is_categorical": False, "label": "Age"}}
+    metadata = {"age": {"type": "continuous", "label": "Age"}}
 
     transformed_data, transformed_metadata = transformer.transform_data_and_metadata(
         data=data,
@@ -470,7 +470,7 @@ def test_transform_data_and_metadata_combines_both_transformations():
             {SUBJECT_ID_COL: "s1", DATASET_COL: "d2", "age": 1},
         ]
     )
-    expected_metadata = {"age": {"is_categorical": False, "label": "Age"}}
+    expected_metadata = {"age": {"type": "continuous", "label": "Age"}}
 
     _assert_frames_equal(transformed_data, expected_data)
     assert transformed_metadata == expected_metadata

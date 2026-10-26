@@ -90,7 +90,7 @@ def test_cv_matches_reference_with_identical_local_folds(n_workers, categorical)
         reference = generator.compute_expected_output(
             (data[["y"]], data[["group", "x"]] if categorical else data[["x"]]),
             {"n_splits": 5},
-            [{"code": "group", "isCategorical": True}],
+            [{"code": "group", "type": "nominal"}],
         )
         for metric, field in [
             ("rmse", "root_mean_sq_error"),
@@ -130,7 +130,7 @@ def test_response_renames_rmse_and_preserves_other_metric_summaries(
         ),
         x=["x"],
         y=["y"],
-        metadata={"x": {"is_categorical": False}},
+        metadata={"x": {"type": "continuous"}},
         parameters={"n_splits": 5},
     )
     result = json.loads(algorithm.run().model_dump_json())

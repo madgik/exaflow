@@ -66,8 +66,7 @@ def _proto_common_data_elements(
         values[code] = CommonDataElement(
             code=element.code,
             label=element.label,
-            sql_type=element.sql_type,
-            is_categorical=element.is_categorical,
+            type=element.type,
             enumerations=enumerations or None,
             min=element.min.value if element.HasField("min") else None,
             max=element.max.value if element.HasField("max") else None,

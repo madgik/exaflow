@@ -55,10 +55,10 @@ def test_get_group_ids_composite_key_does_not_merge_delimiter_values():
 
 def test_split_grouping_var_removes_all_grouping_vars_from_fixed_effects():
     metadata = {
-        "lefthippocampus": {"is_categorical": False},
-        "agegroup": {"is_categorical": True},
-        "dataset": {"is_categorical": True},
-        "gender": {"is_categorical": True},
+        "lefthippocampus": {"type": "continuous"},
+        "agegroup": {"type": "nominal"},
+        "dataset": {"type": "nominal"},
+        "gender": {"type": "nominal"},
     }
 
     categorical_vars, numerical_vars = split_grouping_var(
@@ -73,8 +73,8 @@ def test_split_grouping_var_removes_all_grouping_vars_from_fixed_effects():
 
 def test_split_grouping_var_rejects_no_fixed_effects():
     metadata = {
-        "dataset": {"is_categorical": True},
-        "gender": {"is_categorical": True},
+        "dataset": {"type": "nominal"},
+        "gender": {"type": "nominal"},
     }
 
     with pytest.raises(BadUserInput):

@@ -20,22 +20,21 @@ METADATA = {
     "variables": [
         {
             "code": "dataset",
-            "isCategorical": True,
-            "sql_type": "text",
+            "type": "nominal",
             "enumerations": [
                 {"code": "full", "label": "full"},
                 {"code": "partial_a", "label": "partial_a"},
                 {"code": "partial_b", "label": "partial_b"},
             ],
         },
-        {"code": "gender", "isCategorical": True, "sql_type": "text"},
+        {"code": "gender", "type": "nominal"},
     ],
     "groups": [
         {
             "code": "measurements",
             "variables": [
-                {"code": "age", "isCategorical": False, "sql_type": "int"},
-                {"code": "score", "isCategorical": False, "sql_type": "real"},
+                {"code": "age", "type": "discrete"},
+                {"code": "score", "type": "continuous"},
             ],
         }
     ],
