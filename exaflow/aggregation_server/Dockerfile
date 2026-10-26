@@ -22,6 +22,7 @@ COPY --from=builder /app/.venv /app/.venv
 
 COPY exaflow/aggregation_server ./exaflow/aggregation_server
 COPY exaflow/aggregation_serialization.py ./exaflow/aggregation_serialization.py
+COPY exaflow/grpc_options.py ./exaflow/grpc_options.py
 COPY exaflow/protos ./exaflow/protos
 
 EXPOSE 50051
