@@ -134,9 +134,9 @@ Example:
 | --- | --- | --- | --- |
 | `label` | `string` | UI label for the input slot. | Use in form labels and validation messages. |
 | `desc` | `string` | Short input description. | Use as helper text. |
-| `types` | `string[]` | Allowed value/CDE types. | Variable slots use `real`, `int`, or `text`; filter specs use `jsonObject`. A slot that allows `real` also accepts `int` CDEs. |
+| `types` | `string[]` | Allowed value/CDE types. | Variable slots use `real`, `int`, or `text`; filter specs use `jsonObject`. CDE `type` maps to these as `continuous` → `real`, `discrete` → `int`, and `nominal`/`ordinal`/`binary` → `text`. A slot that allows `real` also accepts `discrete` CDEs. |
 | `required` | `boolean` | Whether the slot is required when `min_count` is not set. | Effective minimum is `min_count` if present, otherwise `1` when required and `0` when optional. |
-| `stattypes` | `string[] \| null` | Allowed statistical types for variable slots. | `numerical` means non-categorical CDEs; `nominal` means categorical CDEs. Engine fields use `null`. |
+| `stattypes` | `string[] \| null` | Allowed statistical types for variable slots. | `numerical` means `continuous`/`discrete` CDEs; `nominal` means categorical (`nominal`, `ordinal`, `binary`) CDEs. Categorical CDEs without enumerations are rejected. Engine fields use `null`. |
 | `min_count` | `integer \| null` | Minimum number of selected values. | Must be non-negative. |
 | `max_count` | `integer \| null` | Maximum number of selected values. | `null` means no explicit maximum; when set, must be non-negative and not less than `min_count`. |
 
@@ -219,10 +219,10 @@ Enum types:
 | `new_column_names_param` | `string` | Name of a required text-list parameter containing new column names. |
 | `columns` | `array` | Nonempty ordered list of column specifications. |
 
-Each column declares `type` (`text`, `int`, or `real`) and `stattype`
-(`nominal` or `numerical`). Nominal outputs support text/integer types and require
-`enumerations`; numerical outputs support integer/real types and serialize
-`enumerations: null`. A missing or null `column_count_param` describes one output
+Each column declares the CDE `type` of the generated column: `continuous`,
+`discrete`, `nominal`, `ordinal`, or `binary`. Categorical outputs (`nominal`,
+`ordinal`, `binary`) require `enumerations`; numerical outputs (`continuous`,
+`discrete`) serialize `enumerations: null`. A missing or null `column_count_param` describes one output
 column. When non-null, `column_count_param` references a required, single-valued integer
 request parameter and repeats that definition by its supplied value. The
 referenced parameter may declare `min` to guide clients, but `min` is not
@@ -236,7 +236,7 @@ collide with existing or earlier generated columns. There is no literal
 `column_count` field and no automatic backend naming. Unset optional output and
 enumeration-source fields are serialized as `null`, consistent with other
 optional specification fields. For example, a fixed numerical column is returned
-as `{"type": "real", "stattype": "numerical", "column_count_param": null, "enumerations": null}`. Examples below may omit unused optional fields for
+as `{"type": "continuous", "column_count_param": null, "enumerations": null}`. Examples below may omit unused optional fields for
 brevity; clients must accept their null representation. Removing null filtering
 changes the JSON shape but does not change validation or output resolution.
 
@@ -286,11 +286,10 @@ fixed numerical column followed by a dynamic block is:
   "outputs": {
     "new_column_names_param": "new_column_names",
     "columns": [
-      {"type": "real", "stattype": "numerical"},
+      {"type": "continuous"},
       {
         "column_count_param": "n_components",
-        "type": "real",
-        "stattype": "numerical"
+        "type": "continuous"
       }
     ]
   }
@@ -318,8 +317,7 @@ A rule-based nominal column declares:
 
 ```json
 {
-  "type": "text",
-  "stattype": "nominal",
+  "type": "nominal",
   "enumerations": {
     "source_parameter_name": "rules",
     "source_type": "dict_keys",
@@ -352,7 +350,7 @@ ______________________________________________________________________
 | --- | --- |
 | `GET /datasets` | Map keyed by data model; use the selected `inputdata.data_model` key to get valid dataset names. |
 | `GET /datasets_variables` | Map keyed by data model and dataset; use it to inspect variable availability. |
-| `GET /cdes_metadata` | Map keyed by data model; use the selected `inputdata.data_model` key to get CDE `sql_type`, categorical status, and enumerations. |
+| `GET /cdes_metadata` | Map keyed by data model; use the selected `inputdata.data_model` key to get CDE `type`, enumerations, and `min`/`max`. |
 | `GET /data_models_attributes` | Data-model-level display metadata. |
 | `GET /datasets_locations` | Optional dataset location/diagnostic information. |
 
@@ -362,8 +360,13 @@ the endpoint once, then index the returned map by the selected
 
 `GET /cdes_metadata` is the key endpoint for avoiding validator errors on
 variable selections and filter values, because request validation checks CDE
-existence, SQL type compatibility, categorical status, and enum-derived
-parameter values against metadata.
+existence, CDE `type` compatibility, and enum-derived parameter values against
+metadata.
+
+Each CDE is returned as `{"code", "label", "type", "enumerations", "min", "max"}`.
+`type` is one of `continuous`, `discrete` (numerical, may carry `min`/`max`),
+`nominal`, `ordinal`, or `binary` (categorical, carry `enumerations`). There is
+no `sql_type` or `is_categorical` field.
 
 ______________________________________________________________________
 
@@ -468,9 +471,11 @@ Inputdata checks:
 - Reject duplicates inside `algorithm.x` or inside `algorithm.y`.
 - Reject variables that appear in both `algorithm.x` and `algorithm.y`.
 - Only allow CDEs present in the `GET /cdes_metadata` response for the selected `data_model`.
-- Check each CDE `sql_type` against the slot `types`.
-- Allow `int` CDEs for slots that allow `real`.
-- Check categorical status against `stattypes`.
+- Check each CDE `type` against the slot `types` (`continuous` → `real`,
+  `discrete` → `int`, categorical → `text`).
+- Allow `discrete` CDEs for slots that allow `real`.
+- Check categorical status (`nominal`, `ordinal`, `binary`) against `stattypes`.
+- Do not offer categorical CDEs without enumerations; the validator rejects them.
 - Include `validation_datasets` only when the selected algorithm has `requires_validation_datasets=true`.
 - Require `validation_datasets` when the selected algorithm has `requires_validation_datasets=true`.
 

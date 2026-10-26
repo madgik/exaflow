@@ -69,8 +69,7 @@ def test_preprocessing_specifications_include_kmeans_cluster_creator():
         "new_column_names_param": "new_column_names",
         "columns": [
             {
-                "type": "text",
-                "stattype": "nominal",
+                "type": "nominal",
                 "column_count_param": None,
                 "enumerations": {
                     "source_parameter_name": "k",

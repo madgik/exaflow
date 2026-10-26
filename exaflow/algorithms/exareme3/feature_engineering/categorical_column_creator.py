@@ -11,6 +11,7 @@ from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.algorithms.utils.output_specifications import resolve_output_metadata
+from exaflow.datatypes import CDEType
 from exaflow.worker_communication import BadUserInput
 
 FILTER_RULES_STRATEGY = "filter_rules"
@@ -89,8 +90,7 @@ class CategoricalColumnCreator(PreprocessingStep):
                 new_column_names_param="new_column_names",
                 columns=[
                     specs.PreprocessingOutputColumnSpecification(
-                        type=specs.InputDataType.TEXT,
-                        stattype=specs.InputDataStatType.NOMINAL,
+                        type=CDEType.NOMINAL,
                         enumerations=specs.PreprocessingOutputEnumerationsSpecification(
                             source_parameter_name="rules",
                             source_type=specs.PreprocessingOutputEnumerationSource.DICT_KEYS,

@@ -11,6 +11,7 @@ from exaflow.algorithms.exareme3.linear_model.linear_regression_cv import (
 from exaflow.algorithms.exareme3.linear_model.linear_regression_cv import (
     LinearRegressionCVResult,
 )
+from tests.testcase_generators.testcase_generator import NUMERICAL_CDE_TYPES
 from tests.testcase_generators.testcase_generator import TestCaseGenerator
 
 
@@ -30,7 +31,7 @@ class LinearRegressionTestCaseGenerator(TestCaseGenerator):
         categorical = [
             cde["code"]
             for cde in metadata
-            if cde["code"] in X.columns and cde["isCategorical"]
+            if cde["code"] in X.columns and cde["type"] not in NUMERICAL_CDE_TYPES
         ]
         numerical = [name for name in X.columns if name not in categorical]
 
