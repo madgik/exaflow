@@ -85,6 +85,8 @@ spec:
           value: "5672"
         - name: GRPC_MAX_WORKERS
           value: "20"
+        - name: GRPC_MAX_MESSAGE_MB
+          value: {{ quote .Values.grpc_max_message_mb }}
         - name: AGGREGATION_SERVER_ENABLED
           value: {{ quote .Values.aggregation_server.enabled }}
         - name: AGGREGATION_SERVER_DNS

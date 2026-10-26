@@ -49,6 +49,8 @@ spec:
           value: {{ quote .Values.flower.server_port }}
         - name: WORKER_TASKS_TIMEOUT
           value: {{ quote .Values.controller.worker_tasks_timeout }}
+        - name: GRPC_MAX_MESSAGE_MB
+          value: {{ quote .Values.grpc_max_message_mb }}
         - name: AGGREGATION_SERVER_ENABLED
           value: {{ quote .Values.aggregation_server.enabled }}
         - name: AGGREGATION_SERVER_DNS
