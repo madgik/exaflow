@@ -10,9 +10,12 @@ import pandas as pd
 from sklearn.impute import SimpleImputer
 
 from exaflow.algorithms import specifications as specs
-from exaflow.algorithms.exareme3.utils.metadata import promote_int_variables_to_real
+from exaflow.algorithms.exareme3.utils.metadata import (
+    promote_discrete_variables_to_continuous,
+)
 from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
+from exaflow.datatypes import CATEGORICAL_CDE_TYPES
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import InsufficientDataError
 
@@ -138,10 +141,14 @@ class MissingValuesHandler(PreprocessingStep):
         for var, strategy in self._strategies.items():
             if var not in metadata:
                 raise BadUserInput(f"Variable '{var}' is missing from metadata.")
-            if strategy in (
-                MissingValueStrategy.MEAN.value,
-                MissingValueStrategy.MEDIAN.value,
-            ) and metadata.get(var, {}).get("is_categorical"):
+            if (
+                strategy
+                in (
+                    MissingValueStrategy.MEAN.value,
+                    MissingValueStrategy.MEDIAN.value,
+                )
+                and metadata.get(var, {}).get("type") in CATEGORICAL_CDE_TYPES
+            ):
                 raise BadUserInput(
                     f"Strategy '{strategy}' can only be used for numerical variables. "
                     f"Variable '{var}' is categorical."
@@ -173,9 +180,9 @@ class MissingValuesHandler(PreprocessingStep):
         *,
         metadata: Dict[str, dict],
     ) -> Dict[str, dict]:
-        return promote_int_variables_to_real(
+        return promote_discrete_variables_to_continuous(
             metadata=metadata,
-            variables=self._variables_promoted_to_real(),
+            variables=self._variables_promoted_to_continuous(),
         )
 
     def transform_data(
@@ -275,7 +282,7 @@ class MissingValuesHandler(PreprocessingStep):
 
         return transformed
 
-    def _variables_promoted_to_real(self) -> List[str]:
+    def _variables_promoted_to_continuous(self) -> List[str]:
         promoted_variables = []
         for variable, strategy in self._strategies.items():
             if strategy in (
@@ -297,7 +304,7 @@ class MissingValuesHandler(PreprocessingStep):
         for var, strategy in self._strategies.items():
             if (
                 strategy == MissingValueStrategy.CONSTANT.value
-                and metadata.get(var, {}).get("is_categorical")
+                and metadata.get(var, {}).get("type") in CATEGORICAL_CDE_TYPES
                 and var not in self._fill_values
             ):
                 raise BadUserInput(
@@ -307,7 +314,7 @@ class MissingValuesHandler(PreprocessingStep):
                 )
 
         for var, fill_value in self._fill_values.items():
-            if not metadata.get(var, {}).get("is_categorical"):
+            if metadata.get(var, {}).get("type") not in CATEGORICAL_CDE_TYPES:
                 continue
             allowed_enum_codes = _get_allowed_categorical_codes(metadata, var)
             if not isinstance(fill_value, str):

@@ -15,8 +15,7 @@ def data_models():
             "test_age_value": CommonDataElement(
                 code="test_age_value",
                 label="test test_age_value",
-                sql_type="int",
-                is_categorical=False,
+                type="discrete",
                 enumerations=None,
                 min=0,
                 max=130,
@@ -24,8 +23,7 @@ def data_models():
             "test_pupil_reactivity_right_eye_result": CommonDataElement(
                 code="test_pupil_reactivity_right_eye_result",
                 label="test test_pupil_reactivity_right_eye_result",
-                sql_type="text",
-                is_categorical=True,
+                type="nominal",
                 enumerations={
                     "Sluggish": "Sluggish",
                     "Nonreactive": "Nonreactive",
@@ -39,8 +37,7 @@ def data_models():
             "test_mortality_core": CommonDataElement(
                 code="test_mortality_core",
                 label="test_mortality_core",
-                sql_type="real",
-                is_categorical=False,
+                type="continuous",
                 enumerations=None,
                 min=None,
                 max=None,
@@ -48,8 +45,7 @@ def data_models():
             "test_gose_score": CommonDataElement(
                 code="test_gose_score",
                 label="test_gose_score",
-                sql_type="text",
-                is_categorical=True,
+                type="nominal",
                 enumerations={
                     "1": "Dead",
                     "2": "Vegetative State",
@@ -66,8 +62,7 @@ def data_models():
             "test_gcs_total_score": CommonDataElement(
                 code="test_gcs_total_score",
                 label="test_gcs_total_score",
-                sql_type="text",
-                is_categorical=True,
+                type="nominal",
                 enumerations={
                     "3": "3",
                     "4": "4",
@@ -91,8 +86,7 @@ def data_models():
             "test_gender_type": CommonDataElement(
                 code="test_gender_type",
                 label="test_gender_type",
-                sql_type="text",
-                is_categorical=True,
+                type="nominal",
                 enumerations={
                     "M": "Male",
                     "F": "Female",
@@ -619,8 +613,7 @@ def _text_column_cdes():
         "s": CommonDataElement(
             code="s",
             label="s",
-            sql_type="text",
-            is_categorical=False,
+            type="nominal",
             enumerations=None,
         )
     }

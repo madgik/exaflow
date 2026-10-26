@@ -4,27 +4,21 @@
         "version": "1.0",
         "variables": [
             {
-                "isCategorical": false,
                 "code": "var1",
-                "sql_type": "text",
                 "description": "",
                 "label": "Variable 1",
                 "methodology": "",
                 "type": "nominal"
             },
             {
-                "isCategorical": false,
                 "label": "subjectcode",
                 "code": "subjectcode",
-                "sql_type": "text",
                 "description": "",
                 "methodology": "",
                 "type": "nominal"
             },
             {
-                "isCategorical": true,
                 "code": "var2",
-                "sql_type": "text",
                 "description": "",
                 "enumerations": [
                     {"code": "1", "label": "Leve1"},
@@ -35,9 +29,7 @@
                 "type": "nominal"
             },
             {
-                "isCategorical": true,
                 "code": "dataset",
-                "sql_type": "text",
                 "description": "",
                 "enumerations": [
                     {"code": "dataset", "label": "Dataset"},
@@ -56,15 +48,13 @@
                 "label": "The Group",
                 "variables": [
                     {
-                        "isCategorical": false,
                         "code": "var3",
-                        "sql_type": "real",
                         "minValue": 0,
                         "maxValue": 100,
                         "description": "",
                         "label": "Variable 3",
                         "methodology": "",
-                        "type": "nominal"
+                        "type": "continuous"
                     }
                 ],
                 "groups": [
@@ -73,14 +63,12 @@
                         "label": "The Inner Group",
                         "variables": [
                             {
-                                "isCategorical": false,
                                 "code": "var4",
-                                "sql_type": "int",
                                 "units": "years",
                                 "description": "",
                                 "label": "Variable 4",
                                 "methodology": "",
-                                "type": "nominal"
+                                "type": "discrete"
                             }
                         ]
                     }

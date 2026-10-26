@@ -30,6 +30,7 @@ from exaflow.algorithms.federated.model_selection.cross_validation.splitter_kfol
     FederatedKFoldSplitter,
 )
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
+from exaflow.datatypes import CATEGORICAL_CDE_TYPES
 
 
 class ConfusionMatrix(BaseModel):
@@ -164,10 +165,12 @@ class LogisticRegressionCV(Algorithm):
         y_var = self.y[0]
         x_vars = list(self.x)
         categorical_vars = [
-            var for var in x_vars if self.metadata[var]["is_categorical"]
+            var for var in x_vars if self.metadata[var]["type"] in CATEGORICAL_CDE_TYPES
         ]
         numerical_vars = [
-            var for var in x_vars if not self.metadata[var]["is_categorical"]
+            var
+            for var in x_vars
+            if self.metadata[var]["type"] not in CATEGORICAL_CDE_TYPES
         ]
 
         # Run distributed logistic CV

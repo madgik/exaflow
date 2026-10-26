@@ -67,8 +67,7 @@ def _build_dataset_cde(
     return CommonDataElement(
         code="dataset",
         label="Dataset",
-        sql_type="text",
-        is_categorical=True,
+        type="nominal",
         enumerations=enumerations,
         min=min_value,
         max=max_value,
@@ -161,15 +160,13 @@ def mocked_data_models_cdes():
                     "dataset": CommonDataElement(
                         code="dataset",
                         label="Dataset",
-                        sql_type="text",
-                        is_categorical=True,
+                        type="nominal",
                         enumerations=dementia_enums,
                     ),
                     "alzheimerbroadcategory": CommonDataElement(
                         code="alzheimerbroadcategory",
                         label="Alzheimer Broad Category",
-                        sql_type="text",
-                        is_categorical=True,
+                        type="nominal",
                         enumerations={
                             "AD": "Alzheimer’s disease",
                             "CN": "Cognitively Normal",
@@ -180,8 +177,7 @@ def mocked_data_models_cdes():
                     "minimentalstate": CommonDataElement(
                         code="minimentalstate",
                         label="MMSE Total scores",
-                        sql_type="int",
-                        is_categorical=False,
+                        type="discrete",
                         min=0,
                         max=30,
                     ),
@@ -192,15 +188,13 @@ def mocked_data_models_cdes():
                     "dataset": CommonDataElement(
                         code="dataset",
                         label="Dataset",
-                        sql_type="text",
-                        is_categorical=True,
+                        type="nominal",
                         enumerations=tbi_enums,
                     ),
                     "gender_type": CommonDataElement(
                         code="gender_type",
                         label="Gender",
-                        sql_type="text",
-                        is_categorical=True,
+                        type="nominal",
                         enumerations={
                             "M": "Male",
                             "F": "Female",
@@ -557,8 +551,7 @@ def get_parametrization_cases():
                             "age": CommonDataElement(
                                 code="age",
                                 label="Age",
-                                sql_type="int",
-                                is_categorical=False,
+                                type="discrete",
                                 min=0,
                                 max=130,
                             )
@@ -575,8 +568,7 @@ def get_parametrization_cases():
                             "age": CommonDataElement(
                                 code="age",
                                 label="Age",
-                                sql_type="int",
-                                is_categorical=False,
+                                type="discrete",
                                 min=1,
                                 max=130,
                             )
@@ -882,14 +874,12 @@ def test_crunch_data_model_registry_data_includes_datasets_variables(
                                 "var1": CommonDataElement(
                                     code="var1",
                                     label="Variable 1",
-                                    sql_type="text",
-                                    is_categorical=False,
+                                    type="nominal",
                                 ),
                                 "var2": CommonDataElement(
                                     code="var2",
                                     label="Variable 2",
-                                    sql_type="text",
-                                    is_categorical=False,
+                                    type="nominal",
                                 ),
                             }
                         ),
@@ -936,8 +926,7 @@ def test_crunch_data_model_registry_data_omits_datasets_without_variables(
                                 "var1": CommonDataElement(
                                     code="var1",
                                     label="Variable 1",
-                                    sql_type="text",
-                                    is_categorical=False,
+                                    type="nominal",
                                 ),
                             }
                         ),
