@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import Any
 
 import grpc
@@ -12,12 +13,57 @@ from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import InsufficientDataError
 
 LOGGER = logging.getLogger(__name__)
+_GRPC_SIZE_RE = re.compile(r"\((\d+)\s+vs\.?\s+(\d+)\)")
+
+
+def _format_mib(num_bytes: int) -> str:
+    mib = num_bytes / (1024 * 1024)
+    if abs(mib - round(mib)) < 0.05:
+        return f"{round(mib):.0f} MiB"
+    return f"{mib:.1f} MiB"
+
+
+def _message_too_large_text(error_details: str, max_message_bytes: int) -> str:
+    details = error_details or ""
+    details_lower = details.lower()
+    # The controller is the gRPC client: what it sends, or the worker receives,
+    # is the request; what the worker sends, or the controller receives, is the
+    # result.
+    if "sent message larger" in details_lower:
+        kind = "request" if "client:" in details_lower else "result"
+    elif "received message larger" in details_lower:
+        kind = "result" if "client:" in details_lower else "request"
+    else:
+        kind = "result"
+    match = _GRPC_SIZE_RE.search(details)
+    if match:
+        sent = int(match.group(1))
+        limit = int(match.group(2))
+        return (
+            f"{kind} too large ({sent} bytes / {_format_mib(sent)} > "
+            f"{limit} bytes / {_format_mib(limit)}); reduce variables/levels"
+        )
+    return (
+        f"{kind} too large (>{max_message_bytes} bytes / "
+        f"{_format_mib(max_message_bytes)}); reduce variables/levels"
+    )
 
 
 class WorkerClientConnectionError(Exception):
     def __init__(self, connection_address: str, error_details: str):
         message = f"Connection Error: connection_address={connection_address} error_details={error_details}"
         super().__init__(message)
+
+
+class WorkerMessageTooLargeError(Exception):
+    def __init__(
+        self, connection_address: str, error_details: str, max_message_bytes: int
+    ):
+        self.connection_address = connection_address
+        self.error_details = error_details
+        self.max_message_bytes = max_message_bytes
+        self.message = _message_too_large_text(error_details, max_message_bytes)
+        super().__init__(self.message)
 
 
 class WorkerClientTimeoutException(Exception):
@@ -52,6 +98,13 @@ class WorkerClient:
 
         if status_code == grpc.StatusCode.FAILED_PRECONDITION:
             raise InsufficientDataError(details)
+
+        if status_code == grpc.StatusCode.RESOURCE_EXHAUSTED:
+            raise WorkerMessageTooLargeError(
+                connection_address=self._socket_addr,
+                error_details=details or str(status_code),
+                max_message_bytes=self._max_message_bytes,
+            ) from exc
 
         raise WorkerClientConnectionError(
             connection_address=self._socket_addr,

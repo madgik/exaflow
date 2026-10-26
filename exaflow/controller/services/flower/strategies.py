@@ -10,6 +10,7 @@ from exaflow.controller.services.flower.tasks_handler import FlowerTasksHandler
 from exaflow.controller.services.strategy_interface import AlgorithmExecutionStrategyI
 from exaflow.controller.worker_client.app import WorkerClientConnectionError
 from exaflow.controller.worker_client.app import WorkerClientTimeoutException
+from exaflow.controller.worker_client.app import WorkerMessageTooLargeError
 
 
 class FlowerStrategy(AlgorithmExecutionStrategyI):
@@ -96,6 +97,14 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
     def _safe_worker_call(self, action_desc, func, *args, **kwargs):
         try:
             func(*args, **kwargs)
+        except WorkerMessageTooLargeError as exc:
+            self._logger.error(
+                "Worker is reachable but the gRPC message exceeded the "
+                "configured size limit while trying to %s. This is not a "
+                "connection failure. %s",
+                action_desc,
+                exc,
+            )
         except (WorkerClientTimeoutException, WorkerClientConnectionError) as exc:
             self._logger.warning("Failed to %s: %s", action_desc, exc)
         except Exception as exc:  # noqa: BLE001
