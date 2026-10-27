@@ -86,7 +86,7 @@ refactor does not rename those core tests or manufacture expected fixtures.
 CI runs:
 
 ```bash
-uv run pytest -s -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests --verbosity=4
+uv run pytest -q -n auto --dist worksteal -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests
 ```
 
 SMPC standalone tests are present but skipped in CI comments because they are

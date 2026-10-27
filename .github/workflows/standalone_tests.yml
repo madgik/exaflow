@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [master]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   run_tests:
     runs-on: ubuntu-latest
@@ -29,7 +33,7 @@ jobs:
 
       - name: Run all standalone tests except the SMPC
         id: non_smpc_tests
-        run: uv run --no-sync pytest -s -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests --verbosity=4
+        run: uv run --no-sync pytest -q -n auto --dist worksteal -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests
         env:
           PYTHONPATH: ${{ github.workspace }}/exaflow:${{ github.workspace }}
           PULL_DOCKER_IMAGES: false
