@@ -112,8 +112,9 @@ spec:
               - python
               - -m
               - exaflow.worker.healthcheck
-          initialDelaySeconds: 30
-          periodSeconds: 30
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 30
           timeoutSeconds: 10
         livenessProbe:
           exec:

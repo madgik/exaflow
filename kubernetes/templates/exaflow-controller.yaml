@@ -79,8 +79,9 @@ spec:
           httpGet:
             path: /healthcheck
             port: 5000
-          initialDelaySeconds: 60
-          periodSeconds: 30
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 30
           timeoutSeconds: {{ .Values.controller.worker_tasks_timeout }}
         livenessProbe:
           httpGet:

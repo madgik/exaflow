@@ -113,10 +113,10 @@ spec:
               - python
               - -m
               - exaflow.worker.healthcheck
-          initialDelaySeconds: 30
-          periodSeconds: 30
+          initialDelaySeconds: 5
+          periodSeconds: 5
           timeoutSeconds: 30
-          failureThreshold: 10
+          failureThreshold: 66
         livenessProbe:
           exec:
             command:
@@ -132,9 +132,9 @@ spec:
               - python
               - -m
               - exaflow.worker.healthcheck
-          periodSeconds: 30
+          periodSeconds: 10
           timeoutSeconds: 30
-          failureThreshold: 5
+          failureThreshold: 15
 
       {{ if .Values.smpc.enabled }}
       - name: smpc-client

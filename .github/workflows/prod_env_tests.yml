@@ -50,21 +50,51 @@ jobs:
         with:
           driver-opts: network=host
 
+      - name: Load Docker buildx cache
+        uses: actions/cache@v6
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ hashFiles('exaflow/**') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      # The registry is started by hand (not by kind-action) so images can be
+      # built and pushed while the Kind cluster is being created.
+      - name: Start local image registry
+        run: |
+          docker run -d --restart=always --name kind-registry \
+            -e REGISTRY_HTTP_ADDR=0.0.0.0:5001 \
+            -p 127.0.0.1:5001:5001 registry:2
+
+      - name: Build and push images in the background
+        run: |
+          nohup bash -c '
+            docker buildx bake -f .github/workflows/docker-bake.hcl default --push \
+              --set worker.cache-from=type=local,src=/tmp/.buildx-cache/worker \
+              --set worker.cache-to=type=local,dest=/tmp/.buildx-cache-new/worker,mode=max \
+              --set controller.cache-from=type=local,src=/tmp/.buildx-cache/controller \
+              --set controller.cache-to=type=local,dest=/tmp/.buildx-cache-new/controller,mode=max \
+              --set aggregation_server.cache-from=type=local,src=/tmp/.buildx-cache/aggregation_server \
+              --set aggregation_server.cache-to=type=local,dest=/tmp/.buildx-cache-new/aggregation_server,mode=max
+            echo $? > /tmp/bake.exit
+          ' > /tmp/bake.log 2>&1 &
+        env:
+          REGISTRY: localhost:5001
+          # bake-action sets this too; local cache dirs under /tmp need fs write access.
+          BUILDX_BAKE_ENTITLEMENTS_FS: 0
+
       - name: Create k8s Kind Cluster
         id: kind
         uses: helm/kind-action@v1.15.1
         with:
           cluster_name: kind
           config: tests/prod_env_tests/deployment_configs/kind_configuration/kind_cluster.yaml
-          registry: true
-          registry_name: kind-registry
-          registry_port: 5001
+          registry: false
 
       - name: Configure Kind registry on nodes
         run: |
           REG_HOST="localhost:5001"
-          # kind-action >= v1.14 runs the registry container on registry_port (5001)
-          # inside the kind network too, not on 5000.
+          docker network connect kind kind-registry
           # Wire the local registry into Kind: map runner localhost to the in-network registry
           # so containerd on each node can pull freshly built images without a remote registry.
           for node in $(kind get nodes --name kind); do
@@ -75,35 +105,14 @@ jobs:
           EOF
           done
 
-      - name: Load Docker buildx cache
-        uses: actions/cache@v6
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ hashFiles('exaflow/**') }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
-
-      - name: Build and push images with bake
-        uses: docker/bake-action@v7
-        with:
-          files: .github/workflows/docker-bake.hcl
-          targets: default
-          push: true
-          set: |
-            worker.cache-from=type=local,src=/tmp/.buildx-cache/worker
-            worker.cache-to=type=local,dest=/tmp/.buildx-cache-new/worker,mode=max
-            controller.cache-from=type=local,src=/tmp/.buildx-cache/controller
-            controller.cache-to=type=local,dest=/tmp/.buildx-cache-new/controller,mode=max
-            aggregation_server.cache-from=type=local,src=/tmp/.buildx-cache/aggregation_server
-            aggregation_server.cache-to=type=local,dest=/tmp/.buildx-cache-new/aggregation_server,mode=max
-        env:
-          REGISTRY: localhost:5001
-
-        # Temp fix
-        # https://github.com/docker/build-push-action/issues/252
-        # https://github.com/moby/buildkit/issues/1896
-      - name: Move Docker buildx cache
+      - name: Wait for image build
         run: |
+          while [ ! -f /tmp/bake.exit ]; do sleep 2; done
+          cat /tmp/bake.log
+          [ "$(cat /tmp/bake.exit)" = 0 ]
+          # Temp fix
+          # https://github.com/docker/build-push-action/issues/252
+          # https://github.com/moby/buildkit/issues/1896
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
@@ -173,7 +182,7 @@ jobs:
                 exit 1
               fi
 
-              sleep 5
+              sleep 2
             fi
           done
           '
