@@ -97,7 +97,7 @@ CI runs the full standalone suite with coverage (reference only — agents shoul
 use the focused `-q` commands above unless explicitly asked to reproduce CI):
 
 ```bash
-uv run pytest -s -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests --verbosity=4
+uv run pytest -q -n auto --dist worksteal -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests
 ```
 
 ## Lint / Format / Typecheck

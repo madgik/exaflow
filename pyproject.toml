@@ -79,7 +79,6 @@ norecursedirs = ["tests/testcase_generators"]
 
 [tool.coverage.run]
 source_pkgs = ['exaflow']
-dynamic_context = 'test_function'
 omit = [
     "exaflow/protos/*",
 ]

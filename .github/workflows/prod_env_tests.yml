@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [master]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   run_tests:
     runs-on: ubuntu-latest
@@ -13,6 +17,10 @@ jobs:
       CI_FREE_UP_SPACE: "true"
 
     steps:
+      - name: Free up space in the background, by removing dotnet, android and haskell unused libs.
+        if: env.CI_FREE_UP_SPACE == 'true'
+        run: nohup sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android >/dev/null 2>&1 &
+
       - name: Check out repository
         uses: actions/checkout@v7
 
@@ -112,17 +120,6 @@ jobs:
           kubectl label node localworker1 worker=true
           kubectl label node localworker2 worker=true
           kubectl label node localworker3 worker=true
-
-      - name: Get container disk space
-        run: df -h
-
-      - name: Free up space, by removing dotnet, android and haskell unused libs.
-        if: env.CI_FREE_UP_SPACE == 'true'
-        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android
-
-      - name: Get container disk space
-        if: env.CI_FREE_UP_SPACE == 'true'
-        run: df -h
 
       - name: Copy prod_env_tests values.yaml
         run: cp -r tests/prod_env_tests/deployment_configs/kubernetes_values.yaml kubernetes/values.yaml

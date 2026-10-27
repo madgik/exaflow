@@ -127,7 +127,7 @@ uv run pytest -q tests/standalone_tests
 CI standalone suite:
 
 ```bash
-uv run pytest -s -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests --verbosity=4
+uv run pytest -q -n auto --dist worksteal -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests
 ```
 
 Focused federated algorithm test:
