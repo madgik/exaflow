@@ -82,7 +82,7 @@ def _wait_for_payloads(servicer, request_id, timeout=5.0):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         ctx = servicer.aggregation_contexts.get(request_id)
-        if ctx is not None and ctx.batch_payloads:
+        if ctx is not None and ctx.steps:
             return
         time.sleep(0.01)
     raise AssertionError("worker_a payload never arrived before cleanup")
