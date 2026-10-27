@@ -36,6 +36,11 @@ from .constants import AggregationType
 logger = logging.getLogger("AggregationServer")
 
 NUMERIC_KINDS = {"i", "u", "f"}
+# Contexts with no Aggregate or Unregister call for this long are treated as
+# abandoned (their Cleanup never arrived) and evicted on the next Configure.
+# A running request never idles near this: each aggregation wait is capped at
+# max_wait_for_aggregation_inputs and each UDF call at the worker tasks timeout.
+STALE_CONTEXT_TTL_SECONDS = 24 * 60 * 60
 """
 Aggregation server, threading model, and data flow
 --------------------------------------------------
@@ -71,6 +76,11 @@ timeout. The controller calls `Cleanup` in a `finally` block, so when one worker
 fails the others are released as soon as the controller sees the failure.
 Late Aggregate/Unregister calls after Cleanup get ABORTED with a cleanup-specific
 message, not INVALID_ARGUMENT (which is reserved for never-configured ids).
+
+If `Cleanup` never arrives (for example the controller crashed), the context
+would stay in memory with any inputs it collected. `Configure` therefore evicts
+contexts with no `Aggregate` or `Unregister` call for
+`STALE_CONTEXT_TTL_SECONDS`.
 
 Error handling
 ~~~~~~~~~~~~~~
@@ -113,6 +123,7 @@ class AggregationContext:
         self.batch_vector_lengths: Optional[List[Optional[int]]] = None
         self.batch_result: Optional[List[np.ndarray]] = None
         self.cancelled = False
+        self.last_activity = time.monotonic()
         self.condition = threading.Condition()
 
     def reset_step(self) -> None:
@@ -274,8 +285,8 @@ class AggregationContext:
 class AggregationServer(AggregationServerServicer):
     def __init__(self):
         self.aggregation_contexts: Dict[str, AggregationContext] = {}
-        # request_id -> monotonic time of Cleanup. Lets late Aggregate/Unregister
-        # calls get ABORTED instead of looking unconfigured.
+        # request_id -> monotonic time of Cleanup (or stale eviction). Lets late
+        # Aggregate/Unregister calls get ABORTED instead of looking unconfigured.
         self.cleaned_up_request_ids: Dict[str, float] = {}
         self.global_lock = threading.Lock()
 
@@ -396,8 +407,33 @@ class AggregationServer(AggregationServerServicer):
 
         raise ValueError(f"Unhandled aggregation type '{aggregation_type}'")
 
+    def _evict_stale_contexts(self) -> None:
+        cutoff = time.monotonic() - STALE_CONTEXT_TTL_SECONDS
+        stale_request_ids = [
+            request_id
+            for request_id, agg_ctx in self.aggregation_contexts.items()
+            if agg_ctx.last_activity < cutoff
+        ]
+        for request_id in stale_request_ids:
+            agg_ctx = self.aggregation_contexts.pop(request_id)
+            self.cleaned_up_request_ids[request_id] = time.monotonic()
+            with agg_ctx.condition:
+                agg_ctx.cancel()
+            logger.warning(
+                f"[CONFIGURE] Evicted stale AggregationContext for request_id='{request_id}' "
+                f"(no activity for {STALE_CONTEXT_TTL_SECONDS}s and no Cleanup received)"
+            )
+        stale_cleaned = [
+            request_id
+            for request_id, cleaned_at in self.cleaned_up_request_ids.items()
+            if cleaned_at < cutoff
+        ]
+        for request_id in stale_cleaned:
+            del self.cleaned_up_request_ids[request_id]
+
     def Configure(self, request, context):
         with self.global_lock:
+            self._evict_stale_contexts()
             if request.request_id in self.aggregation_contexts:
                 logger.warning(
                     f"[CONFIGURE] Request context already exists for request_id='{request.request_id}'"
@@ -420,6 +456,7 @@ class AggregationServer(AggregationServerServicer):
 
     def Unregister(self, request, context):
         agg_ctx = self._get_aggregation_context(request.request_id, context)
+        agg_ctx.last_activity = time.monotonic()
         with agg_ctx.condition:
             if agg_ctx.expected_workers <= 1:
                 msg = (
@@ -462,6 +499,7 @@ class AggregationServer(AggregationServerServicer):
 
     def Aggregate(self, request, context):
         agg_ctx = self._get_aggregation_context(request.request_id, context)
+        agg_ctx.last_activity = time.monotonic()
 
         with agg_ctx.condition:
             try:
