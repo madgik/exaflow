@@ -15,6 +15,7 @@ from exaflow.algorithms.federated.cluster.kmeans import FederatedKMeans
 from exaflow.algorithms.federated.cluster.kmeans import assign_clusters
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.algorithms.utils.output_specifications import resolve_output_metadata
+from exaflow.datatypes import CDEType
 from exaflow.worker_communication import BadUserInput
 
 
@@ -144,8 +145,7 @@ class KMeansClusterCreator(PreprocessingStep):
                 new_column_names_param="new_column_names",
                 columns=[
                     specs.PreprocessingOutputColumnSpecification(
-                        type=specs.InputDataType.TEXT,
-                        stattype=specs.InputDataStatType.NOMINAL,
+                        type=CDEType.NOMINAL,
                         enumerations=specs.PreprocessingOutputEnumerationsSpecification(
                             source_parameter_name="k",
                             source_type=specs.PreprocessingOutputEnumerationSource.PREFIXED_RANGE,

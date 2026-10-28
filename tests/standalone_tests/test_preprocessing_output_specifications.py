@@ -53,8 +53,8 @@ def _spec(columns=None, **parameters):
             "columns": columns
             if columns is not None
             else [
-                {"type": "real", "stattype": "numerical"},
-                {"type": "real", "stattype": "numerical"},
+                {"type": "continuous"},
+                {"type": "continuous"},
             ],
         },
     )
@@ -64,8 +64,7 @@ def _range_spec():
     return _spec(
         [
             {
-                "type": "text",
-                "stattype": "nominal",
+                "type": "nominal",
                 "enumerations": {
                     "source_parameter_name": "count",
                     "source_type": "prefixed_range",
@@ -129,7 +128,7 @@ def test_two_numerical_outputs_controller_and_worker_contract(monkeypatch):
     assert inputdata.variables[-2:] == ["pca_1", "pca_2"]
     assert transformed[["pca_1", "pca_2"]].values.tolist() == [[10, 40], [20, 80]]
     for name in params["new_column_names"]:
-        assert cdes[name].sql_type == metadata[name]["sql_type"] == "real"
+        assert cdes[name].type == metadata[name]["type"] == "continuous"
         assert not cdes[name].is_categorical
         assert cdes[name].enumerations is None
     serialized = _convert_transformer_specification_to_dto(_spec()).model_dump(
@@ -137,14 +136,12 @@ def test_two_numerical_outputs_controller_and_worker_contract(monkeypatch):
     )
     assert serialized["outputs"]["columns"] == [
         {
-            "type": "real",
-            "stattype": "numerical",
+            "type": "continuous",
             "column_count_param": None,
             "enumerations": None,
         },
         {
-            "type": "real",
-            "stattype": "numerical",
+            "type": "continuous",
             "column_count_param": None,
             "enumerations": None,
         },
@@ -212,13 +209,11 @@ def test_rejects_invalid_names(names):
 @pytest.mark.parametrize(
     "column",
     [
-        {"type": "text", "stattype": "nominal"},
-        {"type": "text", "stattype": "numerical"},
-        {"type": "real", "stattype": "nominal"},
-        {"type": "jsonObject", "stattype": "numerical"},
+        {"type": "nominal"},
+        {"type": "real"},
+        {"type": "jsonObject"},
         {
-            "type": "real",
-            "stattype": "numerical",
+            "type": "continuous",
             "enumerations": {
                 "source_parameter_name": "count",
                 "source_type": "prefixed_range",
@@ -274,8 +269,7 @@ def test_rejects_empty_columns_and_invalid_parameter_references():
         _spec(
             [
                 {
-                    "type": "text",
-                    "stattype": "nominal",
+                    "type": "nominal",
                     "enumerations": {
                         "source_parameter_name": "missing",
                         "source_type": "dict_keys",
@@ -305,13 +299,12 @@ def test_rejects_invalid_range_parameter_references(name, parameter):
         specs.PreprocessingStepSpecification.model_validate(specification)
 
 
-def test_accepts_integer_numerical_and_nominal_columns():
+def test_accepts_discrete_and_ordinal_columns():
     specification = _spec(
         [
-            {"type": "int", "stattype": "numerical"},
+            {"type": "discrete"},
             {
-                "type": "int",
-                "stattype": "nominal",
+                "type": "ordinal",
                 "enumerations": {
                     "source_parameter_name": "rules",
                     "source_type": "dict_keys",
@@ -328,8 +321,8 @@ def test_accepts_integer_numerical_and_nominal_columns():
         },
         {},
     )
-    assert resolved["count"]["sql_type"] == resolved["category"]["sql_type"] == "int"
-    assert not resolved["count"]["is_categorical"]
+    assert resolved["count"]["type"] == "discrete"
+    assert resolved["category"]["type"] == "ordinal"
     assert resolved["category"]["enumerations"] == {"1": "1", "2": "2"}
 
 
@@ -353,8 +346,7 @@ def test_independent_categories_and_mixed_outputs():
     specification = _spec(
         [
             {
-                "type": "text",
-                "stattype": "nominal",
+                "type": "nominal",
                 "enumerations": {
                     "source_parameter_name": "rules",
                     "source_type": "dict_keys",
@@ -362,14 +354,13 @@ def test_independent_categories_and_mixed_outputs():
                 },
             },
             {
-                "type": "text",
-                "stattype": "nominal",
+                "type": "nominal",
                 "enumerations": {
                     "source_parameter_name": "other_rules",
                     "source_type": "dict_keys",
                 },
             },
-            {"type": "real", "stattype": "numerical"},
+            {"type": "continuous"},
         ],
         rules=_parameter(specs.ParameterType.DICT),
         other_rules=_parameter(specs.ParameterType.DICT),

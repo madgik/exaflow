@@ -22,6 +22,7 @@ from exaflow.algorithms.federated.linear_model.logistic_regression import (
     FederatedLogisticRegression,
 )
 from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.datatypes import CATEGORICAL_CDE_TYPES
 
 
 class StackedCoxRegressionSummary(BaseModel):
@@ -191,10 +192,14 @@ class StackedCoxRegression(Algorithm):
             )
 
         categorical_vars = [
-            var for var in covariate_vars if self.metadata[var]["is_categorical"]
+            var
+            for var in covariate_vars
+            if self.metadata[var]["type"] in CATEGORICAL_CDE_TYPES
         ]
         numerical_vars = [
-            var for var in covariate_vars if not self.metadata[var]["is_categorical"]
+            var
+            for var in covariate_vars
+            if self.metadata[var]["type"] not in CATEGORICAL_CDE_TYPES
         ]
 
         model_stats = self.run_local_udf(

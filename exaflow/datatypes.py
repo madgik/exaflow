@@ -3,6 +3,19 @@ from enum import Enum
 VARCHAR_SIZE = 500
 
 
+class CDEType(str, Enum):
+    """Variable type of a common data element (CDE)."""
+
+    CONTINUOUS = "continuous"
+    DISCRETE = "discrete"
+    NOMINAL = "nominal"
+    ORDINAL = "ordinal"
+    BINARY = "binary"
+
+
+CATEGORICAL_CDE_TYPES = frozenset({CDEType.NOMINAL, CDEType.ORDINAL, CDEType.BINARY})
+
+
 class DType(Enum):
     """Members of DType represent data types in any language (python or sql).
     Each member has methods to_py and to_sql to convert its value to a concrete
@@ -36,11 +49,12 @@ class DType(Enum):
 
     @classmethod
     def from_cde(cls, cde_type):
-        """Creates a DType from a common data element sql type."""
+        """Creates a DType from a common data element type."""
+        if cde_type in CATEGORICAL_CDE_TYPES:
+            return cls.STR
         mapping = {
-            "int": cls.INT,
-            "real": cls.FLOAT,
-            "text": cls.STR,
+            CDEType.CONTINUOUS: cls.FLOAT,
+            CDEType.DISCRETE: cls.INT,
         }
         return mapping[cde_type]
 

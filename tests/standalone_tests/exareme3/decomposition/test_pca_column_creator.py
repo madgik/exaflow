@@ -38,10 +38,7 @@ def _inputdata():
 
 
 def _metadata():
-    return {
-        variable: {"is_categorical": False, "sql_type": "real"}
-        for variable in VARIABLES
-    }
+    return {variable: {"type": "continuous"} for variable in VARIABLES}
 
 
 def _data():
@@ -112,8 +109,7 @@ def test_creator_supports_one_two_and_more_dynamic_components(count):
 
     assert list(data.columns[-count:]) == names
     assert list(metadata)[-count:] == names
-    assert all(metadata[name]["sql_type"] == "real" for name in names)
-    assert all(not metadata[name]["is_categorical"] for name in names)
+    assert all(metadata[name]["type"] == "continuous" for name in names)
     assert np.isfinite(data[names].to_numpy()).all()
 
 
@@ -215,6 +211,6 @@ def test_creator_declares_dynamic_numerical_output_contract():
     assert specification.outputs.new_column_names_param == "new_column_names"
     assert len(specification.outputs.columns) == 1
     assert specification.outputs.columns[0].column_count_param == "n_components"
-    assert specification.outputs.columns[0].stattype.value == "numerical"
+    assert specification.outputs.columns[0].type == "continuous"
     assert specification.parameters["reusable_preprocessing"].required is False
     assert specification.parameters["variables"].multiple is True

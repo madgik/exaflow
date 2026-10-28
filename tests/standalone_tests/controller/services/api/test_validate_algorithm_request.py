@@ -44,43 +44,41 @@ class FakeWorkerLandscapeAggregator:
         return _cdes()
 
 
-def _cde(code, sql_type, *, categorical=False, enumerations=None):
+def _cde(code, cde_type, *, enumerations=None):
     return CommonDataElement(
         code=code,
         label=code,
-        sql_type=sql_type,
-        is_categorical=categorical,
+        type=cde_type,
         enumerations=enumerations,
     )
 
 
 def _cdes():
     return {
-        "age": _cde("age", "int"),
+        "age": _cde("age", "discrete"),
         "gender": _cde(
             "gender",
-            "text",
-            categorical=True,
+            "nominal",
             enumerations={"M": "M", "F": "F"},
         ),
         "diagnosis": _cde(
             "diagnosis",
-            "text",
-            categorical=True,
+            "nominal",
             enumerations={"AD": "AD", "CN": "CN"},
         ),
         "outcome": _cde(
             "outcome",
-            "text",
-            categorical=True,
+            "nominal",
             enumerations={"yes": "yes", "no": "no"},
         ),
         "visitid": _cde(
             "visitid",
-            "text",
-            categorical=True,
+            "nominal",
             enumerations={"BL": "BL", "FL1": "FL1"},
         ),
+        "stage": _cde("stage", "ordinal", enumerations={"I": "I", "II": "II"}),
+        "smoker": _cde("smoker", "binary", enumerations={"y": "y", "n": "n"}),
+        "notes": _cde("notes", "nominal"),
     }
 
 
@@ -224,6 +222,15 @@ def test_valid_analysis_request_uses_inputdata_variables_and_algorithm_xy():
     _validate(_request())
 
 
+def test_ordinal_and_binary_cdes_are_categorical_inputs():
+    _validate(_request(x=["stage"], y=["smoker"], variables=["stage", "smoker"]))
+
+
+def test_rejects_categorical_cde_without_enumerations():
+    with pytest.raises(BadUserInput, match="without enumerations"):
+        _validate(_request(y=["notes"], variables=["gender", "notes"]))
+
+
 def test_old_inputdata_xy_shape_fails_dto_validation():
     with pytest.raises(ValidationError):
         AnalysisRequestDTO.model_validate(
@@ -331,8 +338,7 @@ def test_derived_categorical_cde_contains_rule_and_default_enumerations():
     assert transformed_cdes["risk_group"].model_dump() == {
         "code": "risk_group",
         "label": "risk_group",
-        "sql_type": "text",
-        "is_categorical": True,
+        "type": "nominal",
         "enumerations": {"high": "high", "medium": "medium", "low": "low"},
         "min": None,
         "max": None,
@@ -369,7 +375,7 @@ def test_preprocessing_filter_rejects_numeric_strings_for_numeric_cdes():
         }
     }
 
-    with pytest.raises(FilterError, match="age's type: int"):
+    with pytest.raises(FilterError, match="age's type: discrete"):
         _validate(_request(preprocessing=[_risk_group_step(rules=rules)]))
 
 

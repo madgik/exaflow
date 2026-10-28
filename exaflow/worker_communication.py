@@ -16,6 +16,8 @@ from pydantic import field_validator
 from exaflow import DType
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.column_names import DATASET_COL
+from exaflow.datatypes import CATEGORICAL_CDE_TYPES
+from exaflow.datatypes import CDEType
 
 
 class RequestIDNotFound(Exception):
@@ -140,21 +142,25 @@ class DatasetsInfoPerDataModel(ImmutableBaseModel):
 
 
 class CommonDataElement(ImmutableBaseModel):
+    model_config = ConfigDict(frozen=True, use_enum_values=True)
+
     code: str
     label: str
-    sql_type: str
-    is_categorical: bool
+    type: CDEType
     enumerations: Optional[Dict[str, str]] = None
     min: Optional[float] = None
     max: Optional[float] = None
+
+    @property
+    def is_categorical(self) -> bool:
+        return self.type in CATEGORICAL_CDE_TYPES
 
     def __eq__(self, other):
         return (
             isinstance(other, CommonDataElement)
             and self.code == other.code
             and self.label == other.label
-            and self.sql_type == other.sql_type
-            and self.is_categorical == other.is_categorical
+            and self.type == other.type
             and self.enumerations == other.enumerations
             and self.max == other.max
             and self.min == other.min
@@ -188,8 +194,7 @@ class CommonDataElements(BaseModel):
 
         if (
             cde1.label != cde2.label
-            or cde1.sql_type != cde2.sql_type
-            or cde1.is_categorical != cde2.is_categorical
+            or cde1.type != cde2.type
             or cde1.max != cde2.max
             or cde1.min != cde2.min
         ):

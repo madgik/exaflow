@@ -25,6 +25,38 @@ Date:
 
 ## Accepted Decisions
 
+### Decision: CDE Metadata Carries a Single Variable Type
+
+Status: Accepted
+
+Context: The MIP variable-type refactor drops `sql_type` and `isCategorical`
+from `CDEsMetadata.json`; `type` alone carries the classification.
+
+Decision: CDEs carry `type` in `continuous`, `discrete`, `nominal`, `ordinal`,
+`binary` (`exaflow.datatypes.CDEType`). Storage and categorical status are
+derived from it: `continuous` is DOUBLE, `discrete` is INTEGER, categorical types
+are VARCHAR (`CATEGORICAL_CDE_TYPES`). Metadata dicts, the worker proto,
+`GET /cdes_metadata`, and preprocessing output columns use `type` only.
+Algorithm input specifications keep `types`/`stattypes`; the controller maps CDE
+types onto them. Categorical CDEs without enumerations (former free-text `text`
+columns) are rejected as algorithm inputs. `exadata-validator` rejects
+numerical CDEs with enumerations, categorical CDEs with `minValue`/`maxValue`,
+fractional `discrete` bounds, and `binary` CDEs without exactly two
+enumerations.
+
+Consequences: Not backwards compatible. Old data models must be migrated
+(`real` → `continuous`, `integer` → `discrete`, `nominal`/`text` → `nominal`,
+drop `sql_type`/`isCategorical`, drop empty enumerations). Controller and
+workers must be upgraded together. Platform backend/UI consumers of
+`sql_type`/`is_categorical` must switch to `type`.
+
+Files affected: `exaflow/datatypes.py`, `exaflow/worker_communication.py`,
+`exaflow/protos/worker/worker.proto`, `exaflow/worker/utils/duck_db_csv_loader.py`,
+`exaflow/controller/services/api/analysis_request_validator.py`,
+`exaflow/algorithms/specifications.py`, `exadata-validator/validator/dataelements.py`.
+
+Date: 2026-10-26
+
 ### Decision: Organize Federated Implementations by Domain
 
 Status: Accepted

@@ -347,7 +347,7 @@ The migrated flows share a small set of helpers to keep `run()` methods tidy:
   meaningful error message.
 - `metadata_utils.validate_metadata_vars` and
   `validate_metadata_enumerations` assert that the `metadata` dictionary
-  contains the keys needed by the algorithm (primarily `is_categorical` and
+  contains the keys needed by the algorithm (primarily the CDE `type` and
   category enumerations).
 - `preprocessing.get_dummy_categories` runs a helper UDF (usually something
   like `logistic_collect_categorical_levels`) on every worker to discover the

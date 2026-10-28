@@ -157,7 +157,8 @@ supported. Optional output fields and enumeration-source references serialize as
 `null` when unset, using standard Pydantic serialization without omission-only
 serializers. Null `column_count_param` means one column; null `enumerations` is
 valid only for numerical columns.
-Each column has `type`/`stattype`; nominal columns require enumeration instructions.
+Each column has a CDE `type`; categorical columns (`nominal`, `ordinal`,
+`binary`) require enumeration instructions.
 `DICT_KEYS` reads a required dictionary parameter and optionally a default
 category parameter. `PREFIXED_RANGE` reads a positive count and required prefix
 parameter and generates categories starting at 1. There is no nested source path.

@@ -20,6 +20,8 @@ from exaflow.algorithms.federated.validation import check_dataframe
 from exaflow.algorithms.federated.validation import check_dimensions
 from exaflow.algorithms.federated.validation import check_interval
 from exaflow.algorithms.federated.validation import check_scalar
+from exaflow.datatypes import CATEGORICAL_CDE_TYPES
+from exaflow.datatypes import CDEType
 
 HistogramBin = Union[float, str]
 
@@ -301,9 +303,7 @@ class FederatedGroupedHistogram:
     ) -> HistogramResult:
         check_dataframe(data, [y_var] + list(x_vars))
         y_meta = metadata.get(y_var, {})
-        is_categorical = y_meta.get("is_categorical", False)
-
-        if is_categorical:
+        if y_meta.get("type") in CATEGORICAL_CDE_TYPES:
             return self._categorical_histogram(
                 data=data,
                 y_var=y_var,
@@ -398,7 +398,9 @@ class FederatedGroupedHistogram:
         values = data[y_var].to_numpy(dtype=float, copy=False)
         bins = max(1, int(round(bins)))
 
-        is_integer = is_integer or metadata.get(y_var, {}).get("sql_type") == "int"
+        is_integer = (
+            is_integer or metadata.get(y_var, {}).get("type") == CDEType.DISCRETE
+        )
 
         check_choice(histogram_type, ("wilkinson", "simple"), name="histogram_type")
         if histogram_type == "wilkinson":

@@ -24,10 +24,10 @@ def _validate(winsorizer):
             variables=["x1", "x2", "x_cat", "y1"],
         ),
         metadata={
-            "x1": {"is_categorical": False, "min": -100.0, "max": 100.0},
-            "x2": {"is_categorical": False},
-            "x_cat": {"is_categorical": True},
-            "y1": {"is_categorical": False},
+            "x1": {"type": "continuous", "min": -100.0, "max": 100.0},
+            "x2": {"type": "continuous"},
+            "x_cat": {"type": "nominal"},
+            "y1": {"type": "continuous"},
         },
     )
 
@@ -103,27 +103,27 @@ def test_transform_variables_returns_identity():
 
 
 def test_transform_metadata_returns_copy():
-    metadata = {"x1": {"is_categorical": False}}
+    metadata = {"x1": {"type": "continuous"}}
     winsorizer = _make_winsorizer({"strategies": {"x1": "iqr"}})
 
     transformed = winsorizer.transform_metadata(metadata=metadata)
-    transformed["x1"]["is_categorical"] = True
+    transformed["x1"]["type"] = "nominal"
 
-    assert metadata["x1"]["is_categorical"] is False
+    assert metadata["x1"]["type"] == "continuous"
 
 
 def test_transform_metadata_promotes_configured_int_variable_to_real():
     metadata = {
-        "x1": {"is_categorical": False, "sql_type": "int"},
-        "x2": {"is_categorical": False, "sql_type": "int"},
+        "x1": {"type": "discrete"},
+        "x2": {"type": "discrete"},
     }
     winsorizer = _make_winsorizer({"strategies": {"x1": "iqr"}})
 
     transformed = winsorizer.transform_metadata(metadata=metadata)
 
-    assert transformed["x1"]["sql_type"] == "real"
-    assert transformed["x2"]["sql_type"] == "int"
-    assert metadata["x1"]["sql_type"] == "int"
+    assert transformed["x1"]["type"] == "continuous"
+    assert transformed["x2"]["type"] == "discrete"
+    assert metadata["x1"]["type"] == "discrete"
 
 
 def test_clip_data_returns_same_dataframe_when_no_rules():
@@ -237,8 +237,7 @@ def test_transform_data_and_metadata_updates_metadata_from_bounds(monkeypatch):
     )
     metadata = {
         "x1": {
-            "is_categorical": False,
-            "sql_type": "int",
+            "type": "discrete",
             "min": -100.0,
             "max": 100.0,
         }
@@ -254,5 +253,5 @@ def test_transform_data_and_metadata_updates_metadata_from_bounds(monkeypatch):
     assert transformed["x1"].max() == 17.5
     assert transformed_metadata["x1"]["min"] == 7.5
     assert transformed_metadata["x1"]["max"] == 17.5
-    assert transformed_metadata["x1"]["sql_type"] == "real"
+    assert transformed_metadata["x1"]["type"] == "continuous"
     assert metadata["x1"]["min"] == -100.0

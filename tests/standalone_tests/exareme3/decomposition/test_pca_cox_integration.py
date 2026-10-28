@@ -105,8 +105,7 @@ def _metadata():
         variable: {
             "code": variable,
             "label": variable,
-            "sql_type": "real",
-            "is_categorical": False,
+            "type": "continuous",
             "enumerations": None,
         }
         for variable in PCA_VARIABLES + [TIME_VARIABLE]
@@ -114,8 +113,7 @@ def _metadata():
     metadata[EVENT_VARIABLE] = {
         "code": EVENT_VARIABLE,
         "label": EVENT_VARIABLE,
-        "sql_type": "text",
-        "is_categorical": True,
+        "type": "nominal",
         "enumerations": {"yes": "yes", "no": "no"},
     }
     return metadata
@@ -187,8 +185,7 @@ def test_pca_pc1_is_consumed_by_classical_cox():
     assert transformed_metadata["pca_PC1"] == {
         "code": "pca_PC1",
         "label": "pca_PC1",
-        "sql_type": "real",
-        "is_categorical": False,
+        "type": "continuous",
     }
     assert {TIME_VARIABLE, EVENT_VARIABLE, *PCA_VARIABLES}.issubset(transformed.columns)
 

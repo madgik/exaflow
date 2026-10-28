@@ -17,7 +17,7 @@ def test_validate_csv_success(success_metadata):
 def test_validate_csv_invalid_type(fail_metadata):
     csv_path = DATA_DIR / "fail" / "data_model_v_1_0" / "invalid_type1.csv"
     with pytest.raises(
-        InvalidDatasetError, match="Column 'var3' has invalid real values"
+        InvalidDatasetError, match="Column 'var3' has invalid continuous values"
     ):
         DuckDBDatasetValidator(fail_metadata).validate_csv(csv_path)
 

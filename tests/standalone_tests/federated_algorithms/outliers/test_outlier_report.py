@@ -26,9 +26,9 @@ def _make_algorithm(params):
         x=["x1", "x_cat"],
         y=["y1"],
         metadata={
-            "x1": {"is_categorical": False},
-            "x_cat": {"is_categorical": True},
-            "y1": {"is_categorical": False},
+            "x1": {"type": "continuous"},
+            "x_cat": {"type": "nominal"},
+            "y1": {"type": "continuous"},
         },
         parameters=params,
     )

@@ -49,8 +49,7 @@ def _metadata():
         variable: {
             "code": variable,
             "label": variable,
-            "sql_type": "real",
-            "is_categorical": False,
+            "type": "continuous",
             "enumerations": None,
         }
         for variable in PCA_VARIABLES + [RESPONSE]
@@ -58,8 +57,7 @@ def _metadata():
     metadata[GROUP] = {
         "code": GROUP,
         "label": GROUP,
-        "sql_type": "text",
-        "is_categorical": True,
+        "type": "nominal",
         "enumerations": {f"group_{index}": f"group_{index}" for index in range(8)},
     }
     return metadata
@@ -134,8 +132,7 @@ def test_pca_pc1_is_consumed_by_lmm_as_a_fixed_effect():
     assert transformed_metadata["pca_PC1"] == {
         "code": "pca_PC1",
         "label": "pca_PC1",
-        "sql_type": "real",
-        "is_categorical": False,
+        "type": "continuous",
     }
 
     result = udf_service._execute_udf(
