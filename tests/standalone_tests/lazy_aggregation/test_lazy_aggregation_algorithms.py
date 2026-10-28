@@ -257,11 +257,25 @@ class _InlineGrpcContext:
         raise _InlineRpcError(code, details)
 
 
+def _link_used_test_data(target: Path) -> Path:
+    """Links only the metadata and CSVs the cases use; loading every CSV is slow."""
+    used_datasets = {
+        "dementia_v_0_1": DATASETS,
+        "longitudinal_dementia_v_0_1": LONGITUDINAL_DATASETS,
+    }
+    for folder, datasets in used_datasets.items():
+        (target / folder).mkdir(parents=True)
+        for name in ["CDEsMetadata.json", *(f"{code}.csv" for code in datasets)]:
+            (target / folder / name).symlink_to(TEST_DATA_PATH / folder / name)
+    return target
+
+
 @pytest.fixture(scope="module")
 def worker_duckdb(tmp_path_factory):
     duckdb_path = tmp_path_factory.mktemp("lazy_agg_duckdb") / "data_models.duckdb"
+    data_path = _link_used_test_data(tmp_path_factory.mktemp("lazy_agg_data"))
     with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(worker_config, "data_path", str(TEST_DATA_PATH))
+        mp.setattr(worker_config, "data_path", str(data_path))
         mp.setattr(worker_config.duckdb, "path", str(duckdb_path))
         mp.setattr(duckdb_adapter, "_duckdb_path", duckdb_path)
         load_all_csvs_from_data_folder("lazy-aggregation-tests")

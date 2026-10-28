@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+from functools import lru_cache
 
 import numpy as np
 import pytest
@@ -131,6 +132,17 @@ def _assert_behavior(case: GLMMCase, fed, *, X: np.ndarray, y: np.ndarray):
         assert fed.params.shape[0] == case.n_features
 
 
+@lru_cache(maxsize=None)
+def _centralized_fit_for_case(case: GLMMCase):
+    X, y, center_ids = synth_glmm_ordinal_case(case)
+    coordinator = AggregationCoordinator(n_workers=1)
+    agg_client = SimulatedAggClient(worker_id=0, coordinator=coordinator)
+    model = FederatedGLMMOrdinal(
+        **build_ordinal_model_kwargs(fit_intercept=case.fit_intercept, K=case.K)
+    )
+    return model.fit(X, y, center_ids=center_ids, agg_client=agg_client)
+
+
 class TestFederatedGLMMOrdinal(FederatedAlgorithmTest):
     def _split_inputs(self, X, y, n_workers: int):
         x_mat = np.asarray(X["X"], dtype=float)
@@ -144,15 +156,9 @@ class TestFederatedGLMMOrdinal(FederatedAlgorithmTest):
         return x_parts, y_parts, X, y_vec
 
     def compute_centralized_result(self, X, y, **kwargs):
-        coordinator = AggregationCoordinator(n_workers=1)
-        agg_client = SimulatedAggClient(worker_id=0, coordinator=coordinator)
-        model = FederatedGLMMOrdinal(**kwargs["model_kwargs"])
-        return model.fit(
-            np.asarray(X["X"], dtype=float),
-            np.asarray(y, dtype=int),
-            center_ids=np.asarray(X["center_ids"]),
-            agg_client=agg_client,
-        )
+        # Both worker-count tests of a case share the same data and model, so the
+        # (slow) centralized fit is computed once per case.
+        return _centralized_fit_for_case(kwargs["case"])
 
     def compute_federated_result(self, X, y, *, agg_client, **kwargs):
         model = FederatedGLMMOrdinal(**kwargs["model_kwargs"])
