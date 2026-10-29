@@ -4,7 +4,7 @@
 
 ### Python and Formatting
 
-- Python target is 3.10.
+- Python target is 3.11.
 - Line length is 88.
 - Formatting uses double quotes and spaces.
 - Imports are organized as single-line imports.

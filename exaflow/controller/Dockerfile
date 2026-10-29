@@ -1,4 +1,4 @@
-FROM python:3.10.22-slim-trixie AS builder
+FROM python:3.11.18-slim-trixie AS builder
 
 ENV UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never \
@@ -12,7 +12,7 @@ COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-project --no-default-groups --group controller
 
-FROM python:3.10.22-slim-trixie
+FROM python:3.11.18-slim-trixie
 LABEL maintainer="Thanasis Karampatsis <tkarabatsis@athenarc.gr>"
 
 #######################################################

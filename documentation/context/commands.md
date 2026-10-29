@@ -260,7 +260,7 @@ uv run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorit
 ## CI
 
 - `.github/workflows/lint.yml` runs import-order lint and format checks.
-- `.github/workflows/standalone_tests.yml` installs Python 3.10 and uv,
+- `.github/workflows/standalone_tests.yml` installs Python 3.11 and uv,
   then runs standalone tests excluding SMPC.
 - `.github/workflows/algorithm_validation_tests.yml` deploys local services and
   runs Exareme3 algorithm validation tests.

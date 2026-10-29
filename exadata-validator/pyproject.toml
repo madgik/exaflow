@@ -6,10 +6,10 @@ readme = "README.md"
 authors = [
     { name = "Exaflow Team" },
 ]
-requires-python = ">=3.10,<3.11"
+requires-python = ">=3.11,<3.12"
 dependencies = [
     "click>=8.5.0,<8.6.0",
-    "duckdb>=1.5.6,<1.6.0",
+    "duckdb>=2.0.0,<2.1.0",
 ]
 
 [project.scripts]

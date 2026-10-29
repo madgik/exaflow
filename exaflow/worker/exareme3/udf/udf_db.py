@@ -75,11 +75,8 @@ def _fetch_with_duckdb(inputdata: Inputdata, required_columns: Set[str]) -> pa.T
     query = f"SELECT {select_columns} FROM {table_name}{where_sql}"
 
     with duckdb.connect(worker_config.duckdb.path, read_only=True) as conn:
-        # Use fetch_arrow_table for zero-copy loading
-        if params:
-            arrow_table = conn.execute(query, params).fetch_arrow_table()
-        else:
-            arrow_table = conn.execute(query).fetch_arrow_table()
+        # A relation exports to Arrow directly; execute() results would copy rows.
+        arrow_table = conn.sql(query, params=params).to_arrow_table()
 
     # Drop duplicate column names if any (Arrow tables enforce unique names usually, but good to be safe)
     # Note: Arrow handles duplicates differently than Pandas, usually by appending suffixes or erroring.

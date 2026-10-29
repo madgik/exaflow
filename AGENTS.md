@@ -13,7 +13,7 @@ for full command lists, architecture detail, and validation matrices.
 
 Exaflow is the execution engine behind the Medical Informatics Platform. It
 orchestrates federated classical algorithms across multiple workers that hold
-DuckDB-backed datasets. The main runtime is a Python 3.10 backend/service system
+DuckDB-backed datasets. The main runtime is a Python 3.11 backend/service system
 with a Quart/Hypercorn controller, gRPC workers, optional aggregation server,
 algorithm implementations, Kubernetes deployment manifests, and a nested
 `exadata-validator` Python package.
@@ -49,7 +49,7 @@ separate config, markers, and review requirements — see
 
 ## Stack
 
-- Language/runtime: Python `>=3.10,<3.11`.
+- Language/runtime: Python `>=3.11,<3.12`.
 - Package manager: uv; root lockfile is `uv.lock`.
 - Controller: Quart and Hypercorn.
 - Worker/API transport: gRPC, protobuf, grpcio health checks.
