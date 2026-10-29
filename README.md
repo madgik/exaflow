@@ -9,7 +9,7 @@ commands, testing matrix, risk register, and review checklists).
 
 ### Prerequisites
 
-1. Install [python3.10](https://www.python.org/downloads/ "python3.10")
+1. Install [python3.11](https://www.python.org/downloads/ "python3.11")
 
 1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/ "uv")
 
