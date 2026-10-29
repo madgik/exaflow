@@ -5,6 +5,7 @@ from exaflow import flower_algorithm_folder_paths
 from exaflow.controller import config as ctrl_config
 from exaflow.controller.federation_info_logs import log_experiment_execution
 from exaflow.controller.services.analysis_execution import run_blocking
+from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.controller.services.errors import WorkerTaskTimeoutError
 from exaflow.controller.services.flower import FlowerController
 from exaflow.controller.services.flower.tasks_handler import FlowerTasksHandler
@@ -20,6 +21,9 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
     _global_worker_tasks_handler: FlowerTasksHandler
 
     async def execute(self) -> str:
+        # Flower runs its server on the global worker.
+        if self._global_worker_tasks_handler is None:
+            raise GlobalWorkerUnavailableError()
         async with self._controller.algorithm_execution_lock:
             data_model = self._analysis_request_dto.inputdata.data_model
             datasets = self._analysis_request_dto.inputdata.datasets + (
@@ -50,7 +54,10 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
             # Pids are recorded inside the thread so cancellation after the
             # worker call returns still stops the processes it started.
             started = {}
-            server_address = f"{self._controller.worker_landscape_aggregator.get_global_worker().ip}:{ctrl_config.flower.server_port}"
+            global_worker = (
+                self._controller.worker_landscape_aggregator.require_global_worker()
+            )
+            server_address = f"{global_worker.ip}:{ctrl_config.flower.server_port}"
             algorithm_folder_path = flower_algorithm_folder_paths[self._algorithm_name]
 
             def _start_server():

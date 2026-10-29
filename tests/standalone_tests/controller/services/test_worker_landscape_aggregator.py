@@ -9,6 +9,7 @@ import pytest
 from exaflow import AttrDict
 from exaflow.controller import DeploymentType
 from exaflow.controller import workers_addresses as workers_addresses_module
+from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.controller.services.worker_landscape_aggregator import (
     worker_landscape_aggregator as wla_module,
 )
@@ -972,6 +973,44 @@ def test_get_training_and_validation_datasets(mocked_wla):
     training, validation = mocked_wla.get_training_and_validation_datasets("tbi:0.1")
     assert set(training) == {"dummy_tbi0", "dummy_tbi1", "dummy_tbi3"}
     assert not validation
+
+
+@pytest.fixture
+def wla_without_global_worker(
+    worker_landscape_aggregator,
+    mocked_worker_infos,
+    mocked_data_model_registry,
+):
+    local_workers = [
+        info for info in mocked_worker_infos if info.role == WorkerRole.LOCALWORKER
+    ]
+    worker_landscape_aggregator._set_new_registries(
+        worker_registry=WorkerRegistry(workers_info=local_workers),
+        data_model_registry=mocked_data_model_registry,
+    )
+    return worker_landscape_aggregator
+
+
+def test_get_training_and_validation_datasets_without_global_worker(
+    wla_without_global_worker,
+):
+    training, validation = (
+        wla_without_global_worker.get_training_and_validation_datasets("tbi:0.1")
+    )
+    assert set(training) == {"dummy_tbi0", "dummy_tbi1", "dummy_tbi3"}
+    assert validation == []
+
+
+def test_require_global_worker_returns_the_global_worker(mocked_wla):
+    assert mocked_wla.require_global_worker().id == "globalworker"
+
+
+def test_require_global_worker_raises_when_it_left_the_federation(
+    wla_without_global_worker,
+):
+    with pytest.raises(GlobalWorkerUnavailableError) as error:
+        wla_without_global_worker.require_global_worker()
+    assert "global worker" in error.value.message
 
 
 def test_get_training_and_validation_datasets_unknown_model(mocked_wla):
