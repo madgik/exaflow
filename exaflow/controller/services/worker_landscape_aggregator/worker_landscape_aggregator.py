@@ -23,6 +23,7 @@ from exaflow.controller.federation_info_logs import log_dataset_added
 from exaflow.controller.federation_info_logs import log_dataset_removed
 from exaflow.controller.federation_info_logs import log_worker_joined_federation
 from exaflow.controller.federation_info_logs import log_worker_left_federation
+from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.controller.services.worker_landscape_aggregator.worker_info_tasks_handler import (
     WorkerInfoTasksHandler,
 )
@@ -515,6 +516,12 @@ class WorkerLandscapeAggregator:
             return None
         return self._registries.worker_registry.global_workers[0]
 
+    def require_global_worker(self) -> WorkerInfo:
+        global_worker = self.get_global_worker()
+        if global_worker is None:
+            raise GlobalWorkerUnavailableError()
+        return global_worker
+
     def get_all_local_workers(self) -> List[WorkerInfo]:
         return self._registries.worker_registry.local_workers
 
@@ -567,8 +574,12 @@ class WorkerLandscapeAggregator:
             data_model
         ]
 
+        # Without a global worker no dataset can live on it, so every
+        # available dataset is a training dataset.
+        global_worker = self.get_global_worker()
+        global_worker_id = global_worker.id if global_worker else None
         for dataset, worker_id in datasets_locations.items():
-            if worker_id == self.get_global_worker().id:
+            if worker_id == global_worker_id:
                 validation_datasets.append(dataset)
             else:
                 training_datasets.append(dataset)

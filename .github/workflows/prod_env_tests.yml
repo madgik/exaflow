@@ -251,3 +251,11 @@ jobs:
 
       - name: Run production env tests
         run: uv run --no-sync pytest tests/prod_env_tests --verbosity=4
+
+      - name: Pod restarts and probe failures
+        if: always()
+        run: |
+          kubectl get pods -o custom-columns='POD:.metadata.name,RESTARTS:.status.containerStatuses[*].restartCount,LAST_TERMINATION:.status.containerStatuses[*].lastState.terminated.reason,EXIT_CODE:.status.containerStatuses[*].lastState.terminated.exitCode'
+          kubectl get events --field-selector type=Warning --sort-by=.lastTimestamp
+          kubectl get events --field-selector reason=Killing --sort-by=.lastTimestamp
+          kubectl logs -l nodeType=globalworker -c worker --previous --tail 50 || true
