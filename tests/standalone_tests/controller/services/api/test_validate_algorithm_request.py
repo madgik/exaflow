@@ -29,14 +29,22 @@ from exaflow.controller.services.api.analysis_request_dtos import (
     AnalysisPreprocessingStepDTO,
 )
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisRequestDTO
+from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.data_filters import FilterError
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import CommonDataElement
 
 DATA_MODEL = "dementia:0.1"
+_AVAILABLE_GLOBAL_WORKER = object()
 
 
 class FakeWorkerLandscapeAggregator:
+    def __init__(self, global_worker=_AVAILABLE_GLOBAL_WORKER):
+        self._global_worker = global_worker
+
+    def get_global_worker(self):
+        return self._global_worker
+
     def get_training_and_validation_datasets(self, data_model):
         return ["dataset_a"], ["validation_a"]
 
@@ -582,4 +590,38 @@ def test_preprocessing_parameter_rejects_zero_below_minimum():
     assert (
         str(exc_info.value)
         == "Parameter 'Number of clusters' values should be at least 1 ."
+    )
+
+
+def test_validation_datasets_without_global_worker_report_it_unavailable():
+    request = _request()
+    request = request.model_copy(
+        update={
+            "inputdata": request.inputdata.model_copy(
+                update={"validation_datasets": ["validation_a"]}
+            )
+        }
+    )
+
+    with pytest.raises(GlobalWorkerUnavailableError):
+        analysis_request_validator.validate_analysis_request(
+            analysis_request_dto=request,
+            algorithms_specs={"sample_algorithm": _algorithm_spec()},
+            preprocessing_steps_specs=_default_preprocessing_specs(),
+            worker_landscape_aggregator=FakeWorkerLandscapeAggregator(
+                global_worker=None
+            ),
+            smpc_enabled=False,
+            smpc_optional=False,
+        )
+
+
+def test_training_only_request_runs_without_global_worker():
+    analysis_request_validator.validate_analysis_request(
+        analysis_request_dto=_request(),
+        algorithms_specs={"sample_algorithm": _algorithm_spec()},
+        preprocessing_steps_specs=_default_preprocessing_specs(),
+        worker_landscape_aggregator=FakeWorkerLandscapeAggregator(global_worker=None),
+        smpc_enabled=False,
+        smpc_optional=False,
     )

@@ -159,9 +159,9 @@ def _flower_strategy(monkeypatch, blocked_call, started, release):
     strategy._controller.flower_execution_info.set_inputdata = lambda inputdata: None
     strategy._controller.flower_execution_info.get_result_with_timeout = get_result
     strategy._controller.flower_execution_info.reset = reset
-    strategy._controller.worker_landscape_aggregator.get_global_worker = lambda: type(
-        "Worker", (), {"ip": "127.0.0.1"}
-    )()
+    strategy._controller.worker_landscape_aggregator.require_global_worker = lambda: (
+        type("Worker", (), {"ip": "127.0.0.1"})()
+    )
     return strategy
 
 

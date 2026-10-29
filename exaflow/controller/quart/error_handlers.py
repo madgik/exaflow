@@ -5,6 +5,7 @@ from quart import Blueprint
 from exaflow.controller.logger import get_background_service_logger
 from exaflow.controller.services.analysis_execution import AnalysisCapacityExceeded
 from exaflow.controller.services.api.analysis_request_validator import BadRequest
+from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.controller.services.errors import WorkerTaskTimeoutError
 from exaflow.controller.services.errors import WorkerUnresponsiveError
 from exaflow.controller.worker_client.app import WorkerMessageTooLargeError
@@ -39,6 +40,14 @@ class HTTPStatusCode(enum.IntEnum):
 @error_handlers.app_errorhandler(AnalysisCapacityExceeded)
 def handle_analysis_capacity_exceeded(error: AnalysisCapacityExceeded):
     get_background_service_logger().info(
+        f"Request Error. Type: '{type(error).__name__}' Message: '{error}'"
+    )
+    return error.message, HTTPStatusCode.SERVICE_UNAVAILABLE
+
+
+@error_handlers.app_errorhandler(GlobalWorkerUnavailableError)
+def handle_global_worker_unavailable(error: GlobalWorkerUnavailableError):
+    get_background_service_logger().error(
         f"Request Error. Type: '{type(error).__name__}' Message: '{error}'"
     )
     return error.message, HTTPStatusCode.SERVICE_UNAVAILABLE

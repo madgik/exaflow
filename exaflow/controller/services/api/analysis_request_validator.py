@@ -23,6 +23,7 @@ from exaflow.controller.services.api.analysis_request_dtos import AnalysisReques
 from exaflow.controller.services.api.analysis_request_dtos import (
     AnalysisRequestSystemFlags,
 )
+from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.controller.services.worker_landscape_aggregator.worker_landscape_aggregator import (
     WorkerLandscapeAggregator,
 )
@@ -48,6 +49,14 @@ def validate_analysis_request(
 ):
     algorithm_name = analysis_request_dto.algorithm.name
     algorithm_specs = _get_algorithm_specs(algorithm_name, algorithms_specs)
+
+    # Validation datasets live on the global worker; without it they look
+    # missing, which would blame the request instead of the federation.
+    if (
+        analysis_request_dto.inputdata.validation_datasets
+        and worker_landscape_aggregator.get_global_worker() is None
+    ):
+        raise GlobalWorkerUnavailableError()
 
     (
         training_datasets,

@@ -17,3 +17,13 @@ class WorkerTaskTimeoutError(Exception):
         )
         super().__init__(message)
         self.message = message
+
+
+class GlobalWorkerUnavailableError(Exception):
+    def __init__(self):
+        message = (
+            "The global worker is not part of the federation right now, so "
+            "this analysis cannot run. Please try again in a few minutes."
+        )
+        super().__init__(message)
+        self.message = message
