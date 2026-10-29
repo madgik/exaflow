@@ -1,9 +1,8 @@
 # aggregation_server/__init__.py
 import os
+import tomllib
 from importlib.resources import open_binary
 from types import SimpleNamespace
-
-import tomli
 
 from exaflow.grpc_options import DEFAULT_GRPC_MAX_MESSAGE_MB
 from exaflow.grpc_options import grpc_max_message_mb
@@ -26,10 +25,10 @@ def _load_config():
     cfg_path = os.getenv("AGG_SERVER_CONFIG_FILE")
     if cfg_path:
         with open(cfg_path, "rb") as f:
-            raw = tomli.load(f)
+            raw = tomllib.load(f)
     else:
         with open_binary(__package__, "config.toml") as f:
-            raw = tomli.load(f)
+            raw = tomllib.load(f)
 
     cfg = {}
     for key, val in raw.items():
