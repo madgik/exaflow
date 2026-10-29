@@ -82,8 +82,10 @@ spec:
               fieldPath: status.podIP
         - name: GRPC_PORT
           value: "5672"
+        # One thread per concurrent analysis plus spare threads for metadata,
+        # health and Flower calls (WORKER_GRPC_SPARE_THREADS in tasks.py).
         - name: GRPC_MAX_WORKERS
-          value: "20"
+          value: {{ .Values.max_concurrent_experiments | int | add 4 | quote }}
         - name: GRPC_MAX_MESSAGE_MB
           value: {{ quote .Values.grpc_max_message_mb }}
         - name: DUCKDB_PATH
@@ -114,16 +116,17 @@ spec:
               - exaflow.worker.healthcheck
           initialDelaySeconds: 5
           periodSeconds: 5
+          timeoutSeconds: 30
           failureThreshold: 30
-          timeoutSeconds: 10
         livenessProbe:
           exec:
             command:
               - python
               - -m
               - exaflow.worker.healthcheck
-          periodSeconds: 30
-          timeoutSeconds: 10
+          periodSeconds: 60
+          timeoutSeconds: 30
+          failureThreshold: 5
         readinessProbe:
           exec:
             command:
@@ -131,7 +134,8 @@ spec:
               - -m
               - exaflow.worker.healthcheck
           periodSeconds: 10
-          timeoutSeconds: 10
+          timeoutSeconds: 30
+          failureThreshold: 15
   {{- if .Values.managed_cluster }}
   volumeClaimTemplates:
   - metadata:
