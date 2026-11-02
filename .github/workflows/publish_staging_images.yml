@@ -1,0 +1,180 @@
+name: Publish staging images
+
+on:
+  push:
+    branches: [staging-a, staging-b]
+  workflow_dispatch:
+
+concurrency: staging-${{ github.ref_name }}
+
+permissions:
+  contents: write
+
+env:
+  DOCKER_BUILDKIT: 1
+
+jobs:
+  build_and_push_controller:
+    name: Build CONTROLLER image and push to Docker Hub
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Cache Controller layers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: /tmp/.buildx-cache/controller
+          key: ${{ runner.os }}-buildx-controller-${{ hashFiles('exaflow/**') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-controller-
+
+      - name: Build CONTROLLER service docker image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
+        with:
+          context: .
+          file: exaflow/controller/Dockerfile
+          push: true
+          tags: madgik/exaflow_controller:${{ github.ref_name }}-${{ github.sha }}
+          cache-from: type=local,src=/tmp/.buildx-cache/controller
+          cache-to: type=local,dest=/tmp/.buildx-cache-new/controller
+
+      - name: Move Docker images cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+  build_and_push_worker:
+    name: Build WORKER image and push to Docker Hub
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Cache Worker layers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: /tmp/.buildx-cache/worker
+          key: ${{ runner.os }}-buildx-worker-${{ hashFiles('exaflow/**') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-worker-
+
+      - name: Build WORKER service docker image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
+        with:
+          context: .
+          file: exaflow/worker/Dockerfile
+          push: true
+          tags: madgik/exaflow_worker:${{ github.ref_name }}-${{ github.sha }}
+          cache-from: type=local,src=/tmp/.buildx-cache/worker
+          cache-to: type=local,dest=/tmp/.buildx-cache-new/worker
+
+      - name: Move Docker images cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+  build_and_push_aggregation_server:
+    name: Build AGGREGATION SERVER image and push to Docker Hub
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Cache Aggregation server layers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: /tmp/.buildx-cache/aggregation-server
+          key: ${{ runner.os }}-buildx-aggregation-server-${{ hashFiles('exaflow/**') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-aggregation-server-
+
+      - name: Build AGGREGATION SERVER service docker image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
+        with:
+          context: .
+          file: exaflow/aggregation_server/Dockerfile
+          push: true
+          tags: madgik/exaflow_aggregation_server:${{ github.ref_name }}-${{ github.sha }}
+          cache-from: type=local,src=/tmp/.buildx-cache/aggregation-server
+          cache-to: type=local,dest=/tmp/.buildx-cache-new/aggregation-server
+
+      - name: Move Docker images cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+  update_chart_version:
+    name: Commit chart version to the same branch
+    needs:
+      - build_and_push_controller
+      - build_and_push_worker
+      - build_and_push_aggregation_server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Set tag
+        id: tag
+        shell: bash
+        run: |
+          echo "TAG=${{ github.ref_name }}-${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Update chart image version
+        shell: bash
+        run: |
+          curl -sL https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64 -o /usr/local/bin/yq
+          chmod +x /usr/local/bin/yq
+          yq -i '.exaflow_images.version = strenv(TAG)' kubernetes/values.yaml
+          cat kubernetes/values.yaml | head -n 8
+
+      - name: Commit and push chart version (retry on rejection)
+        shell: bash
+        env:
+          TAG: ${{ steps.tag.outputs.TAG }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add kubernetes/values.yaml
+          git commit -m "chore(${GITHUB_REF_NAME}): exaflow images ${TAG}" || {
+            echo "Nothing to commit; values.yaml already pinned to ${TAG}."
+            exit 0
+          }
+          for attempt in $(seq 1 5); do
+            echo "Push attempt ${attempt}/5..."
+            if git push origin HEAD; then
+              exit 0
+            fi
+            git fetch origin "${GITHUB_REF_NAME}"
+            git rebase "origin/${GITHUB_REF_NAME}"
+          done
+          echo "Push rejected after 5 attempts." >&2
+          exit 1
