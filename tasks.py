@@ -748,9 +748,7 @@ def start_aggregation_server(c, detached: bool = False):
 
 def _pids_still_alive(c, pid_list: list[str]) -> list[str]:
     return [
-        pid
-        for pid in pid_list
-        if run(c, f"kill -0 {pid}", warn=True, show_ok=False).ok
+        pid for pid in pid_list if run(c, f"kill -0 {pid}", warn=True, show_ok=False).ok
     ]
 
 
