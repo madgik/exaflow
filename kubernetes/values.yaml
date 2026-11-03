@@ -1,10 +1,9 @@
 namespace: default
 managed_cluster: false
 localnodes: 2
-
 exaflow_images:
   repository: madgik
-  version: 1.0.0
+  version: ""
   # Per-image tags; each falls back to version when empty. Argo CD Image Updater sets these
   # to "<moving tag>@sha256:<digest>" on the staging Applications.
   controller_tag: ""
@@ -12,21 +11,16 @@ exaflow_images:
   aggregation_server_tag: ""
 
 federation: dementia
-
 log_level: INFO
 framework_log_level: ERROR
-
 # Send and receive limit, in mebibytes, for every gRPC message on the
 # controller, workers, and aggregation server.
 grpc_max_message_mb: 100
-
 max_concurrent_experiments: 32
-
 flower:
   enabled: true
   execution_timeout: 30
   server_port: 8080
-
 controller:
   workers_dns: "exaflow-workers-service"
   worker_landscape_aggregator_update_interval: 30
@@ -45,12 +39,10 @@ controller:
   shutdown_grace_margin: 20
 
 globalworker_identifier: globalworker
-
 aggregation_server:
   enabled: true
   max_wait_for_aggregation_inputs: 60
   dns: "exaflow-aggregation-service"
-
 smpc:
   enabled: false
   optional: false
@@ -59,21 +51,16 @@ smpc:
   queue_image: redis:alpine3.15
   get_result_interval: 5
   get_result_max_retries: 100
-
 storage:
   type: hostPath
-
   hostPath:
     db:
       localworker: "/opt/exaflow/localworker"
       globalworker: "/opt/exaflow/globalworker"
-
   cephfs:
     storageClassName: ceph-corbo-cephfs-retain
-
     controller:
       size: 1Gi
-
     localworker:
       db:
         size: 4Gi
@@ -87,7 +74,6 @@ storage:
         size: 100Mi
         accessModes:
           - ReadWriteMany
-
     globalworker:
       db:
         size: 4Gi
