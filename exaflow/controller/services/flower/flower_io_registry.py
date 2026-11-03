@@ -49,12 +49,25 @@ class FlowerIORegistry:
         self._reset_sync()
         self._logger.debug("Asynchronous reset complete")
 
-    async def set_result(self, result: Dict[str, Any]):
-        """Sets the execution result and updates the status based on the presence of an error."""
+    async def set_result(self, result: Dict[str, Any], request_id: str | None) -> bool:
+        """Store the result when request_id is still the running analysis.
+
+        There is no await between the check and ``result_ready.set()``, so a
+        reset that happened while the body was being read cannot land in
+        between. Returns False when the id is no longer current.
+        """
+        if not self.is_current(request_id):
+            self._logger.debug(
+                "Ignoring Flower result for request_id=%s; running id is %s",
+                request_id,
+                self._request_id,
+            )
+            return False
         status = Status.FAILURE if "error" in result else Status.SUCCESS
         self._result = Result(content=result, status=status)
         self._logger.debug(f"Result set with status: {status}, content: {result}")
         self.result_ready.set()
+        return True
 
     async def get_result(self) -> Dict[str, Any]:
         await self.result_ready.wait()

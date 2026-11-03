@@ -49,11 +49,11 @@ def test_set_result_status_still_follows_the_error_key():
     registry = _registry()
     registry.set_inputdata({}, "abc")
 
-    asyncio.run(registry.set_result({"value": 1}))
+    assert asyncio.run(registry.set_result({"value": 1}, "abc")) is True
     assert registry.get_status() == Status.SUCCESS
 
     registry.set_inputdata({}, "abc")
-    asyncio.run(registry.set_result({"error": "failed"}))
+    assert asyncio.run(registry.set_result({"error": "failed"}, "abc")) is True
     assert registry.get_status() == Status.FAILURE
 
 
