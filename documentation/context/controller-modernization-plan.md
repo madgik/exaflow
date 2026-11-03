@@ -1,15 +1,13 @@
 # Controller modernization plan
 
-Status: In progress. D1, D2, and D5 confirmed as proposed. D4 revised:
-`terminationGracePeriodSeconds` is `worker_tasks_timeout` + 200 s (500 s at
-the Helm default of 300 s) so an in-flight worker call finishes inside the
-pod. Wave 1 (T1, T2, T3, T4, T5, T7, T8) is
-[madgik/exaflow#663](https://github.com/madgik/exaflow/pull/663); not merged.
-Wave 2 (T6, T9, T10, and the D4 revision) is implemented on
-`fix/controller-modernization-wave2`, stacked on #663; not merged.
-Updated: 2026-11-03. Revises commit `ba2978cd` ("Initial
-plan", branch `fix/controller-off-event-loop-and-liveness`), reviewed against
-`master`. Implementation tickets:
+Status: In progress. Wave 1 (T1, T2, T3, T4, T5, T7, T8) is open as
+[madgik/exaflow#663](https://github.com/madgik/exaflow/pull/663) with the
+review fixes. Wave 2 (T6, T9, T10) is open as draft
+[madgik/exaflow#664](https://github.com/madgik/exaflow/pull/664), stacked on
+#663. Phase C is not started, pending D6. Updated: 2026-11-03. Revises commit
+`ba2978cd` ("Initial plan", branch
+`fix/controller-off-event-loop-and-liveness`), reviewed against `master`.
+Implementation tickets:
 [controller-modernization-tasks.md](controller-modernization-tasks.md).
 
 ## Summary
@@ -69,10 +67,12 @@ Phase B, robustness:
 | T7 | Container receives SIGTERM and drains before exit | P1 |
 | T8 | Local `kill-controller` sends SIGTERM before SIGKILL | P3 |
 | T9 | Worker selection reads one WLA snapshot | P3 |
+| T10 | Worker process receives SIGTERM and stops within 10 s | P1 |
 
-Phase C, optional: C1 table-driven error responses, C2 analysis service
-function, C3 FastAPI adapter served by Hypercorn, C4 Uvicorn. Gate: the T1
-contract tests pass unchanged except for the client fixture.
+Phase C, optional and not started, pending D6: C1 table-driven error
+responses, C2 analysis service function, C3 FastAPI adapter served by
+Hypercorn, C4 Uvicorn. Gate: the T1 contract tests pass unchanged except for
+the client fixture.
 
 Execution waves (tickets in one wave edit disjoint files):
 
@@ -92,8 +92,8 @@ change them first.
 | D1 | T4 | Configure and Cleanup deadline = `worker_tasks_timeout` (Helm default 300 s). No new config key. |
 | D2 | T5 | 503 message: "The controller is already running a Flower analysis." |
 | D3 | T6 | Header `X-Request-Id`. Mismatch returns 409 with "Flower callback does not belong to the running analysis." Callback HTTP timeout 30 s. |
-| D4 | T7 | Hypercorn runs in-process (`workers = 0`) with `graceful_timeout = 120` s and `shutdown_timeout = 60` s. On SIGTERM the app marks shutdown, so when Hypercorn then cancels in-flight requests it can cancel their worker and aggregation RPCs within `shutdown_rpc_cancel_timeout` (5 s) and run aggregation cleanup within `shutdown_cleanup_timeout` (10 s) instead of waiting out `worker_tasks_timeout`. A call that would otherwise still be running near t=420 is cancelled at the end of the drain; the pod does not stay up for that call's full per-call timeout. The WLA join on shutdown uses that same 10 s bound. `terminationGracePeriodSeconds` is `graceful_timeout + shutdown_rpc_cancel_timeout + shutdown_cleanup_timeout + shutdown_timeout + shutdown_grace_margin` (20 s) = 215 s. The per-call worker timeout is unchanged for calls that are not being shut down. `/livez` stops answering once the listen socket closes; kubelet 1.25+ stops liveness and startup probes in `SyncTerminatingPod` before `killPod` (`StopLivenessAndStartup`), so that does not restart the container. The chart does not set a probe-level `terminationGracePeriodSeconds`. |
-| D5 | T8 | After SIGTERM, wait for the controller shutdown budget (`graceful_timeout + shutdown_rpc_cancel_timeout + shutdown_cleanup_timeout + shutdown_timeout`, 195 s at the defaults) before SIGKILL. `inv kill-controller --stop-timeout <seconds>` or `CONTROLLER_STOP_TIMEOUT` shortens that for a local restart. An idle process still returns as soon as it exits. |
+| D4 | T7 | Hypercorn runs in-process (`workers = 0`) with `graceful_timeout = 120` s and `shutdown_timeout = 60` s. On SIGTERM the app marks shutdown, so when Hypercorn then cancels in-flight requests it can cancel their worker and aggregation RPCs within `shutdown_rpc_cancel_timeout` (5 s) and run aggregation cleanup within `shutdown_cleanup_timeout` (10 s). The WLA join on shutdown uses that same 10 s bound. `terminationGracePeriodSeconds` is 120 s drain + 5 s RPC cancel + 10 s cleanup + 60 s shutdown hooks + 20 s margin = 215 s. The budget intentionally excludes `worker_tasks_timeout` because in-flight worker and aggregation calls are cancelled at shutdown. `/livez` stops answering once the listen socket closes; kubelet 1.25+ stops liveness and startup probes in `SyncTerminatingPod` before `killPod` (`StopLivenessAndStartup`), so that does not restart the container. The chart does not set a probe-level `terminationGracePeriodSeconds`. |
+| D5 | T8 | `kill-controller` waits the 195 s shutdown budget by default (`graceful_timeout` + `shutdown_rpc_cancel_timeout` + `shutdown_cleanup_timeout` + `shutdown_timeout`) before SIGKILL. `--stop-timeout` or `CONTROLLER_STOP_TIMEOUT` overrides that wait. An idle process still returns as soon as it exits. |
 | D6 | C | Whether to run phase C at all. If yes, whether FastAPI's `/docs`, `/redoc`, and `/openapi.json` routes stay enabled. |
 
 ## Invariants kept from the initial plan
@@ -103,7 +103,9 @@ change them first.
 - `POST /analysis` stays synchronous and returns 503 at capacity.
 - An analysis thread owns its lifetime: cleanup waits for the thread
   (`run_blocking`), also on client disconnect.
-- Per-call worker timeouts stay. There is no overall analysis deadline.
+- Per-call worker timeouts stay for calls that are not shutting down. During
+  shutdown, in-flight worker and aggregation calls are cancelled. There is no
+  overall analysis deadline.
 - Worker and aggregation protocols, protobufs, and algorithm code stay
   unchanged.
 
@@ -123,9 +125,10 @@ change them first.
 
 ## Follow-ups outside this plan
 
-- Worker SIGTERM delivery is T10. The worker command is exec form,
-  `bootstrap.sh` replaces itself with the gRPC server, and that server
-  installs a SIGTERM handler. Container PID 1 would otherwise ignore it.
+- Done by T10. The worker command is exec form and `bootstrap.sh` replaces
+  itself with the gRPC server. The server installs SIGTERM and SIGINT handlers
+  that call `server.stop(10)`. The worker chart keeps Kubernetes' default 30 s
+  termination grace.
 
 ## Validation
 
