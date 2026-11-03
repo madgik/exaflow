@@ -8,11 +8,17 @@ the default executor.
 
 import asyncio
 import contextlib
+import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 
 from exaflow.controller import config as ctrl_config
+from exaflow.controller.quart.hypercorn_config import shutdown_rpc_cancel_timeout
+from exaflow.controller.services.controller_shutdown import cancel_inflight_rpcs
+from exaflow.controller.services.controller_shutdown import controller_is_shutting_down
+
+_LOGGER = logging.getLogger(__name__)
 
 _DEFAULT_MAX_CONCURRENT_EXPERIMENTS = 32
 _THREAD_NAME_PREFIX = "exaflow-analysis"
@@ -101,18 +107,52 @@ async def analysis_slot():
         semaphore.release()
 
 
+async def _wait_for_executor_future(future, timeout: float) -> None:
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
+    while not future.done():
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            break
+        try:
+            await asyncio.wait_for(asyncio.shield(future), remaining)
+        except asyncio.CancelledError:
+            continue
+        except Exception:
+            # The thread finished by failing, including a cancelled RPC.
+            return
+    if future.done():
+        # The thread may have failed because its RPC was cancelled. Retrieve
+        # that exception so asyncio does not warn about it.
+        future.exception()
+
+
 async def run_blocking(func, *args):
     """Run func on the analysis pool and wait for it, even if cancelled.
 
     Cancellation (client disconnect) must not abandon the thread. The caller
     waits until func returns before running cleanup that the thread still needs,
     also when it is cancelled again while waiting.
+
+    Process shutdown is different: in-flight RPCs are cancelled and the wait
+    is bounded by shutdown_rpc_cancel_timeout, so the pod grace period does
+    not have to cover worker_tasks_timeout.
     """
     loop = asyncio.get_running_loop()
     future = loop.run_in_executor(_ensure_executor(), func, *args)
     try:
         return await asyncio.shield(future)
     except asyncio.CancelledError:
+        if controller_is_shutting_down():
+            cancel_inflight_rpcs()
+            await _wait_for_executor_future(future, shutdown_rpc_cancel_timeout)
+            if not future.done():
+                _LOGGER.warning(
+                    "Analysis thread still running %s seconds after shutdown "
+                    "cancelled its RPCs",
+                    shutdown_rpc_cancel_timeout,
+                )
+            raise
         while not future.done():
             with contextlib.suppress(asyncio.CancelledError):
                 await asyncio.wait([future])

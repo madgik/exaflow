@@ -30,6 +30,9 @@ from exaflow.controller.services.api.analysis_request_validator import BadReques
 from exaflow.controller.services.api.analysis_request_validator import (
     validate_analysis_request,
 )
+from exaflow.controller.services.controller_shutdown import (
+    install_shutdown_signal_handlers,
+)
 from exaflow.controller.services.flower import get_flower_controller
 from exaflow.controller.services.flower.flower_io_registry import (
     FLOWER_CALLBACK_MISMATCH_MESSAGE,
@@ -42,6 +45,7 @@ algorithms = Blueprint("algorithms_endpoint", __name__)
 
 @algorithms.before_app_serving
 async def startup():
+    install_shutdown_signal_handlers()
     configure_loggers()
     start_background_services()
     start_analysis_execution()
@@ -49,8 +53,11 @@ async def startup():
 
 @algorithms.after_app_serving
 async def shutdown():
-    await asyncio.to_thread(stop_background_services)
-    await asyncio.to_thread(shutdown_analysis_execution, True)
+    try:
+        await asyncio.to_thread(stop_background_services)
+    finally:
+        # A landscape stop that fails must not leave the analysis pool running.
+        await asyncio.to_thread(shutdown_analysis_execution, True)
 
 
 @algorithms.route("/datasets", methods=["GET"])

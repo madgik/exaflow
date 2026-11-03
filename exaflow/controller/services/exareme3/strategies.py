@@ -11,7 +11,9 @@ from exaflow.aggregation_clients.controller_aggregation_client import (
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.controller import config as controller_config
 from exaflow.controller.federation_info_logs import log_experiment_execution
+from exaflow.controller.quart.hypercorn_config import shutdown_cleanup_timeout
 from exaflow.controller.services.analysis_execution import run_blocking
+from exaflow.controller.services.controller_shutdown import controller_is_shutting_down
 from exaflow.controller.services.exareme3 import Exareme3Controller
 from exaflow.controller.services.exareme3.algorithm_flow_engine_interface import (
     Exareme3AlgorithmFlowEngineInterface,
@@ -149,6 +151,12 @@ class Exareme3WithAggregationServerStrategy(Exareme3Strategy):
                         num_workers=len(self._local_worker_tasks_handlers),
                         timeout=deadline,
                     )
+                except grpc.FutureCancelledError:
+                    # Shutdown cancels the RPC. The server may already have
+                    # configured, so cleanup still has to run.
+                    if controller_is_shutting_down():
+                        configured = True
+                    raise
                 except grpc.RpcError as exc:
                     if _deadline_exceeded(exc):
                         configured = True
@@ -171,7 +179,14 @@ class Exareme3WithAggregationServerStrategy(Exareme3Strategy):
                 # when the request task was cancelled while algorithm.run was
                 # still in flight.
                 if configured:
-                    cleanup_status = await run_blocking(agg_client.cleanup, deadline)
+                    cleanup_timeout = (
+                        shutdown_cleanup_timeout
+                        if controller_is_shutting_down()
+                        else deadline
+                    )
+                    cleanup_status = await run_blocking(
+                        agg_client.cleanup, cleanup_timeout
+                    )
                     self._logger.debug(
                         f"Aggregation cleanup response: {cleanup_status}"
                     )
