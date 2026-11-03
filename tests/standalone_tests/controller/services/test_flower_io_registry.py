@@ -6,6 +6,8 @@ import json
 import logging
 from pathlib import Path
 
+from quart.wrappers.request import Request
+
 from exaflow.controller.quart import endpoints
 from exaflow.controller.quart.app import app
 from exaflow.controller.services.flower.flower_io_registry import FlowerIORegistry
@@ -128,6 +130,45 @@ def test_result_after_reset_is_ignored(monkeypatch):
 
     assert status == 409
     assert body == MISMATCH
+    assert not registry.result_ready.is_set()
+
+
+def test_reset_during_body_read_does_not_store_the_old_result(monkeypatch):
+    """A's body is still being read when the running request becomes B.
+
+    The id check before ``await request.json`` is not enough: set_result has
+    to reject A once B is current, and B's result event stays unset.
+    """
+    registry = _registry()
+    registry.set_inputdata({"inputdata": "a"}, "A")
+    monkeypatch.setattr(
+        endpoints,
+        "get_flower_controller",
+        lambda: type("Controller", (), {"flower_execution_info": registry})(),
+    )
+
+    async def get_json(self, force=False, silent=False, cache=True):
+        await registry.reset()
+        registry.set_inputdata({"inputdata": "b"}, "B")
+        return {"from": "A"}
+
+    monkeypatch.setattr(Request, "get_json", get_json)
+
+    async def scenario():
+        async with app.test_client() as client:
+            response = await client.post(
+                "/flower/result",
+                data=b"{}",
+                headers={"X-Request-Id": "A", "Content-Type": "application/json"},
+            )
+            return response.status_code, await response.get_data(as_text=True)
+
+    status, body = asyncio.run(scenario())
+
+    assert status == 409
+    assert body == MISMATCH
+    assert registry.is_current("B")
+    assert registry.get_status() == Status.RUNNING
     assert not registry.result_ready.is_set()
 
 
