@@ -26,6 +26,13 @@ controller:
   workers_dns: "exaflow-workers-service"
   worker_landscape_aggregator_update_interval: 30
   worker_tasks_timeout: 300
+  # Shutdown budget. Keep equal to exaflow/controller/quart/hypercorn_config.py.
+  # The pod grace period is the sum. It does not include worker_tasks_timeout.
+  graceful_timeout: 120
+  shutdown_rpc_cancel_timeout: 5
+  shutdown_cleanup_timeout: 10
+  shutdown_timeout: 60
+  shutdown_grace_margin: 20
 
 globalworker_identifier: globalworker
 

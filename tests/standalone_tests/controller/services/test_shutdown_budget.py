@@ -2,12 +2,19 @@
 
 import asyncio
 import logging
+import signal
 import threading
+from types import SimpleNamespace
 
 import grpc
 import pytest
 
+from exaflow.aggregation_clients.controller_aggregation_client import (
+    ControllerAggregationClient,
+)
 from exaflow.controller import DeploymentType
+from exaflow.controller.quart import hypercorn_config as hc
+from exaflow.controller.services import controller_shutdown as shutdown
 from exaflow.controller.services.analysis_execution import reset_analysis_execution
 from exaflow.controller.services.analysis_execution import run_blocking
 from exaflow.controller.services.exareme3 import strategies
@@ -18,19 +25,12 @@ from exaflow.controller.services.startup import stop_background_services
 from exaflow.controller.services.worker_landscape_aggregator.worker_landscape_aggregator import (
     WorkerLandscapeAggregator,
 )
+from exaflow.controller.worker_client.app import WorkerClient
 from exaflow.protos.aggregation_server import aggregation_server_pb2 as agg_pb2
 from exaflow.utils import AttrDict
 from tests.standalone_tests.controller.analysis_support import ResultModel
 from tests.standalone_tests.controller.analysis_support import build_strategy
 from tests.standalone_tests.controller.analysis_support import patch_algorithm
-
-
-def _shutdown():
-    try:
-        from exaflow.controller.services import controller_shutdown as shutdown
-    except ImportError:
-        pytest.fail("in-flight RPCs are not cancelled on controller shutdown")
-    return shutdown
 
 
 class _BlockingCall:
@@ -86,7 +86,6 @@ def test_client_disconnect_still_waits_for_the_analysis_thread():
 
 
 def test_shutdown_cancel_aborts_an_inflight_rpc():
-    shutdown = _shutdown()
     shutdown.reset_controller_shutdown()
     call = _BlockingCall()
     shutdown.register_inflight_rpc(call)
@@ -115,9 +114,7 @@ def test_shutdown_cancel_aborts_an_inflight_rpc():
 
 
 def test_shutdown_cleanup_uses_the_short_deadline(monkeypatch):
-    shutdown = _shutdown()
     shutdown.reset_controller_shutdown()
-    from exaflow.controller.quart import hypercorn_config as hc
 
     timeouts = []
 
@@ -145,7 +142,9 @@ def test_shutdown_cleanup_uses_the_short_deadline(monkeypatch):
         def run(self):
             return ResultModel(thread_name="analysis")
 
-    monkeypatch.setattr(strategies, "ControllerAggregationClient", FakeAggregationClient)
+    monkeypatch.setattr(
+        strategies, "ControllerAggregationClient", FakeAggregationClient
+    )
     patch_algorithm(monkeypatch, strategies, FastAlgorithm)
     strategy = build_strategy(Exareme3WithAggregationServerStrategy)
 
@@ -160,8 +159,6 @@ def test_shutdown_cleanup_uses_the_short_deadline(monkeypatch):
 
 
 def test_background_stop_bounds_the_wla_join(monkeypatch):
-    from exaflow.controller.quart import hypercorn_config as hc
-
     seen = {}
 
     class Aggregator:
@@ -219,10 +216,61 @@ def test_wla_stop_join_timeout_returns_while_a_refresh_is_blocked(monkeypatch):
         stop_thread.join(2)
 
 
-def test_sigterm_marks_shutdown_and_keeps_the_server_handler():
-    import signal
+def test_worker_rpc_is_registered_for_shutdown_cancel():
+    shutdown.reset_controller_shutdown()
+    client = WorkerClient("127.0.0.1:1")
+    call = _BlockingCall()
 
-    shutdown = _shutdown()
+    def future(request, timeout=None):
+        return call
+
+    client._stub = SimpleNamespace(RunUdf=SimpleNamespace(future=future))
+    try:
+        client.start_call("RunUdf", object(), 1)
+        shutdown.cancel_inflight_rpcs()
+        assert call.cancelled
+    finally:
+        client.close()
+        shutdown.reset_controller_shutdown()
+
+
+def test_aggregation_configure_unblocks_when_its_rpc_is_cancelled():
+    shutdown.reset_controller_shutdown()
+    client = ControllerAggregationClient("req-shutdown")
+    call = _BlockingCall()
+
+    def future(request, timeout=None):
+        return call
+
+    client._stub = SimpleNamespace(Configure=SimpleNamespace(future=future))
+    errors = []
+
+    def run():
+        try:
+            client.configure(1, timeout=30)
+        except grpc.FutureCancelledError:
+            errors.append("cancelled")
+
+    thread = threading.Thread(target=run)
+    thread.start()
+    try:
+        for _ in range(50):
+            if call._callbacks:
+                break
+            threading.Event().wait(0.01)
+        shutdown.cancel_inflight_rpcs()
+        thread.join(1)
+        assert call.cancelled
+        assert not thread.is_alive()
+        assert errors == ["cancelled"]
+    finally:
+        call.cancel()
+        thread.join(1)
+        client.close()
+        shutdown.reset_controller_shutdown()
+
+
+def test_sigterm_marks_shutdown_and_keeps_the_server_handler():
     shutdown.reset_controller_shutdown()
     called = []
 
@@ -238,8 +286,7 @@ def test_sigterm_marks_shutdown_and_keeps_the_server_handler():
 
     try:
         asyncio.run(scenario())
+        assert called == ["hypercorn"]
+        assert shutdown.controller_is_shutting_down()
     finally:
         shutdown.reset_controller_shutdown()
-
-    assert called == ["hypercorn"]
-    assert shutdown.controller_is_shutting_down()

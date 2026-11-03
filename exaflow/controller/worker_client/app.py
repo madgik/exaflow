@@ -6,6 +6,7 @@ from typing import Any
 import grpc
 
 from exaflow.controller import config as ctrl_config
+from exaflow.controller.services.controller_shutdown import register_inflight_rpc
 from exaflow.grpc_options import grpc_max_message_size
 from exaflow.grpc_options import grpc_message_options
 from exaflow.protos.worker import worker_pb2_grpc
@@ -114,7 +115,9 @@ class WorkerClient:
 
     def start_call(self, rpc_name: str, request: Any, timeout: int) -> grpc.Future:
         rpc = getattr(self._stub, rpc_name)
-        return rpc.future(request, timeout=timeout)
+        future = rpc.future(request, timeout=timeout)
+        register_inflight_rpc(future)
+        return future
 
     def finish_call(self, rpc_name: str, future: grpc.Future) -> Any:
         try:

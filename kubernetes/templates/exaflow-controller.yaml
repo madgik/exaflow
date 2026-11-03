@@ -15,10 +15,13 @@ spec:
       labels:
         app: exaflow-controller
     spec:
-      # Let Kubernetes stop the controller gracefully: Hypercorn drains in-flight
-      # requests for up to graceful_timeout (120 s) and runs shutdown hooks within
-      # its shutdown_timeout (60 s default). 200 s > 120 s + 60 s.
-      terminationGracePeriodSeconds: 200
+      # Shutdown budget, matching exaflow/controller/quart/hypercorn_config.py:
+      # graceful drain + cancel in-flight RPCs + aggregation cleanup + Hypercorn
+      # shutdown hooks + margin. Shutdown cancels worker RPCs, so this does not
+      # add worker_tasks_timeout. Kubelet 1.25+ stops liveness probes before
+      # SIGTERM (SyncTerminatingPod calls StopLivenessAndStartup, then killPod),
+      # so /livez failing after the listen socket closes does not restart the pod.
+      terminationGracePeriodSeconds: {{ add .Values.controller.graceful_timeout .Values.controller.shutdown_rpc_cancel_timeout .Values.controller.shutdown_cleanup_timeout .Values.controller.shutdown_timeout .Values.controller.shutdown_grace_margin }}
       {{- if not .Values.managed_cluster }}
       nodeSelector:
         master: "true"

@@ -30,10 +30,10 @@ from exaflow.controller.services.api.analysis_request_validator import BadReques
 from exaflow.controller.services.api.analysis_request_validator import (
     validate_analysis_request,
 )
-from exaflow.controller.services.flower import get_flower_controller
 from exaflow.controller.services.controller_shutdown import (
     install_shutdown_signal_handlers,
 )
+from exaflow.controller.services.flower import get_flower_controller
 from exaflow.controller.services.startup import start_background_services
 from exaflow.controller.services.startup import stop_background_services
 

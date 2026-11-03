@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 from hypercorn.config import Config
 
+from exaflow.controller.quart import hypercorn_config as hc
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -78,8 +80,6 @@ def _shutdown_budget_seconds() -> int:
     and bounds aggregation cleanup (shutdown_cleanup_timeout) instead of waiting
     out worker_tasks_timeout. after_serving then has shutdown_timeout.
     """
-    from exaflow.controller.quart import hypercorn_config as hc
-
     worker_tasks_timeout = 300
     assert hc.shutdown_rpc_cancel_timeout + hc.shutdown_cleanup_timeout < (
         worker_tasks_timeout
@@ -108,8 +108,6 @@ def test_hypercorn_serves_in_process_so_the_app_observes_sigterm():
     shutdown flag installed in the worker never sees SIGTERM and in-flight
     RPCs keep running until worker_tasks_timeout.
     """
-    from exaflow.controller.quart import hypercorn_config as hc
-
     config = Config.from_object("exaflow.controller.quart.hypercorn_config")
     assert hc.workers == 0
     assert config.workers == 0
