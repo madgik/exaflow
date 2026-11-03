@@ -60,8 +60,11 @@ class _RecordingHandler:
 
 
 class _FakeFlowerExecutionInfo:
-    def set_inputdata(self, inputdata):
-        return None
+    def __init__(self):
+        self.request_id = None
+
+    def set_inputdata(self, inputdata, request_id):
+        self.request_id = request_id
 
     async def reset(self):
         return None
@@ -150,6 +153,7 @@ def test_flower_runs_when_lock_is_free(monkeypatch):
     result, locked_after = asyncio.run(scenario())
 
     assert result == "{}"
+    assert controller.flower_execution_info.request_id == "req"
     assert "gc" in calls and "server" in calls and "client" in calls
     # The lock is released on completion, freeing the single Flower slot.
     assert not locked_after
