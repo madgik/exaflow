@@ -262,3 +262,17 @@ class WorkerTasksHandler:
                 f"Unsupported RunUdfResponse result format: {response.result_format!r}"
             )
         return decode_udf_result(response.result)
+
+    def run_udf(
+        self,
+        request_id: str,
+        udf_registry_key: str,
+        kw_args: dict,
+        system_args: dict,
+        timeout: int,
+    ):
+        return self.finish_run_udf(
+            self.start_run_udf(
+                request_id, udf_registry_key, kw_args, system_args, timeout
+            )
+        )
