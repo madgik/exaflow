@@ -164,7 +164,7 @@ def test_app_shutdown_stops_the_registered_aggregator(monkeypatch):
     order = []
 
     class Aggregator:
-        def stop(self):
+        def stop(self, join_timeout=None):
             order.append("wla")
 
     monkeypatch.setattr(
@@ -180,6 +180,27 @@ def test_app_shutdown_stops_the_registered_aggregator(monkeypatch):
     asyncio.run(endpoints.shutdown())
 
     assert order == ["wla", "analysis_pool"]
+
+
+def test_shutdown_stops_the_analysis_pool_when_wla_stop_fails(monkeypatch):
+    """A failing landscape stop must not skip shutting down the analysis pool."""
+    calls = []
+
+    def boom():
+        calls.append("wla")
+        raise RuntimeError("wla down")
+
+    monkeypatch.setattr(endpoints, "stop_background_services", boom)
+    monkeypatch.setattr(
+        endpoints,
+        "shutdown_analysis_execution",
+        lambda *_args: calls.append("analysis_pool"),
+    )
+
+    with pytest.raises(RuntimeError, match="wla down"):
+        asyncio.run(endpoints.shutdown())
+
+    assert calls == ["wla", "analysis_pool"]
 
 
 def test_get_exareme3_controller_raises_when_uninitialized(monkeypatch):
