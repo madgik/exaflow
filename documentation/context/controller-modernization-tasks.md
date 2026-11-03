@@ -8,7 +8,7 @@ ticket_markdown=...)` unchanged. Confirm decisions D1 to D6 in the plan first.
 Waves (tickets in one wave edit disjoint files and can run in parallel):
 
 - Wave 1: T1, T2, T3, T4, T5, T7, T8.
-- Wave 2: T6 (after T1, T2, T5) and T9 (after T2).
+- Wave 2: T6 (after T1, T2, T5), T9 (after T2), and T10.
 - Wave 3, optional: C1, C2, C3, C4 in order.
 
 ## Review focus
