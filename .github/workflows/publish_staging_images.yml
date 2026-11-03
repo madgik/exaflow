@@ -2,7 +2,7 @@ name: Publish staging images
 
 on:
   push:
-    branches: [staging-a, staging-b]
+    branches: [staging-b, staging-c]
   workflow_dispatch:
 
 concurrency: staging-${{ github.ref_name }}
