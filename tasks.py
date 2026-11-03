@@ -107,6 +107,10 @@ WORKER_STARTUP_TIMEOUT_SECONDS = 120
 # health and Flower calls. Keep in sync with the Helm worker templates.
 WORKER_GRPC_SPARE_THREADS = 4
 UV_RUN_NO_SYNC = "uv run --no-sync"
+# kill-controller sends SIGTERM so Hypercorn runs its shutdown hooks, then
+# SIGKILL to processes still alive after the timeout.
+CONTROLLER_TERMINATE_TIMEOUT_SECONDS = 10
+CONTROLLER_TERMINATE_POLL_INTERVAL_SECONDS = 0.5
 
 
 def _expand_path(path_value) -> Path:
@@ -720,6 +724,27 @@ def start_aggregation_server(c, detached: bool = False):
         c.run(run_cmd, env=env, pty=True)
 
 
+def _terminate_pids(c, pids: str) -> None:
+    """Send SIGTERM to pids, then SIGKILL the ones alive after the timeout."""
+    pid_list = pids.split()
+    # Polite request to terminate: runs the shutdown hooks.
+    run(c, f"kill {pids}", warn=True, show_ok=False)
+    deadline = time.monotonic() + CONTROLLER_TERMINATE_TIMEOUT_SECONDS
+    alive = list(pid_list)
+    while time.monotonic() < deadline:
+        alive = [
+            pid
+            for pid in pid_list
+            if run(c, f"kill -0 {pid}", warn=True, show_ok=False).ok
+        ]
+        if not alive:
+            return
+        sleep(CONTROLLER_TERMINATE_POLL_INTERVAL_SECONDS)
+    # Force-kill whatever survived the grace period.
+    if alive:
+        run(c, f"kill -9 {' '.join(alive)}", warn=True, show_ok=False)
+
+
 @task
 def kill_controller(c):
     """Kill the controller service."""
@@ -745,10 +770,9 @@ def kill_controller(c):
                 non_controller_listeners.append((parts[0], pid))
 
     if pids_to_kill:
-        message("Killing previous Hypercorn instances...", Level.HEADER)
+        message("Stopping previous Hypercorn instances...", Level.HEADER)
         pids = " ".join(sorted(pids_to_kill))
-        cmd = f"kill -9 {pids} && sleep 1"
-        run(c, cmd, warn=True)
+        _terminate_pids(c, pids)
         return
 
     # Fallback for controllers that may not expose a listening socket yet.
@@ -760,9 +784,8 @@ def kill_controller(c):
         res = run(c, f"pgrep -f '{process_pattern}'", warn=True, show_ok=False)
         if res.ok and res.stdout.strip():
             pids = " ".join(res.stdout.strip().splitlines())
-            message("Killing previous Hypercorn instances...", Level.HEADER)
-            cmd = f"kill -9 {pids} && sleep 1"
-            run(c, cmd, warn=True)
+            message("Stopping previous Hypercorn instances...", Level.HEADER)
+            _terminate_pids(c, pids)
             return
 
     if non_controller_listeners:
