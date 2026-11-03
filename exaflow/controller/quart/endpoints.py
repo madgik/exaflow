@@ -32,6 +32,7 @@ from exaflow.controller.services.api.analysis_request_validator import (
 )
 from exaflow.controller.services.flower import get_flower_controller
 from exaflow.controller.services.startup import start_background_services
+from exaflow.controller.services.startup import stop_background_services
 
 algorithms = Blueprint("algorithms_endpoint", __name__)
 
@@ -45,6 +46,7 @@ async def startup():
 
 @algorithms.after_app_serving
 async def shutdown():
+    await asyncio.to_thread(stop_background_services)
     await asyncio.to_thread(shutdown_analysis_execution, True)
 
 
