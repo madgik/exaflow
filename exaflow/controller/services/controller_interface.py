@@ -36,16 +36,12 @@ class ControllerI(ABC):
         datasets: List[str],
         request_id: str,
     ) -> List[TasksHandlerI]:
-        worker_ids = (
-            self.worker_landscape_aggregator.get_worker_ids_with_any_of_datasets(
+        workers_info = (
+            self.worker_landscape_aggregator.get_workers_info_with_any_of_datasets(
                 data_model,
                 datasets,
             )
         )
-        workers_info = [
-            self.worker_landscape_aggregator.get_worker_info(w_id)
-            for w_id in worker_ids
-        ]
 
         task_handlers = [
             self.create_worker_tasks_handler(request_id, info) for info in workers_info

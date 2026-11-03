@@ -9,6 +9,7 @@ import pytest
 from exaflow import AttrDict
 from exaflow.controller import DeploymentType
 from exaflow.controller import workers_addresses as workers_addresses_module
+from exaflow.controller.services.controller_interface import ControllerI
 from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.controller.services.worker_landscape_aggregator import (
     worker_landscape_aggregator as wla_module,
@@ -1188,3 +1189,87 @@ def test_update_does_not_prune_clients_when_dns_resolution_fails(
 
     for addr, client in kept.items():
         assert factory.get_client(addr) is client
+
+
+def test_get_workers_info_with_any_of_datasets(mocked_wla):
+    workers = mocked_wla.get_workers_info_with_any_of_datasets(
+        "dementia:0.1", ["ppmi0", "ppmi1", "missing"]
+    )
+
+    assert {worker.id for worker in workers} == {"localworker1", "localworker2"}
+
+
+def test_get_workers_info_with_any_of_datasets_is_empty_when_none_match(mocked_wla):
+    assert (
+        mocked_wla.get_workers_info_with_any_of_datasets(
+            "dementia:0.1", ["not-a-dataset"]
+        )
+        == []
+    )
+    assert (
+        mocked_wla.get_workers_info_with_any_of_datasets("missing-model", ["ppmi0"])
+        == []
+    )
+
+
+def test_get_workers_info_keeps_the_snapshot_from_its_first_read(mocked_wla):
+    original = mocked_wla._registries
+
+    class _EmptyRegistries:
+        def __init__(self):
+            self.worker_registry = WorkerRegistry()
+            self.data_model_registry = self
+
+        def get_worker_ids_with_any_of_datasets(self, data_model, datasets):
+            return []
+
+    class _FirstRead:
+        def __init__(self):
+            self.worker_registry = original.worker_registry
+            self.data_model_registry = self
+
+        def get_worker_ids_with_any_of_datasets(self, data_model, datasets):
+            mocked_wla._registries = _EmptyRegistries()
+            return original.data_model_registry.get_worker_ids_with_any_of_datasets(
+                data_model, datasets
+            )
+
+    mocked_wla._registries = _FirstRead()
+    workers = mocked_wla.get_workers_info_with_any_of_datasets(
+        "tbi:0.1", ["dummy_tbi0", "dummy_tbi1"]
+    )
+
+    assert {worker.id for worker in workers} == {"localworker1", "localworker2"}
+
+
+def test_local_worker_task_handlers_come_from_one_snapshot():
+    seen = {}
+
+    class _Aggregator:
+        def get_workers_info_with_any_of_datasets(self, data_model, datasets):
+            seen["call"] = (data_model, list(datasets))
+            return [
+                WorkerInfo(
+                    id="localworker1",
+                    role=WorkerRole.LOCALWORKER,
+                    ip=ipaddress.ip_address("127.0.0.2"),
+                    port=50001,
+                )
+            ]
+
+        def get_worker_ids_with_any_of_datasets(self, *args):
+            raise AssertionError("worker ids must come from the snapshot method")
+
+        def get_worker_info(self, *args):
+            raise AssertionError("worker info must come from the snapshot method")
+
+    class _Controller(ControllerI):
+        def create_worker_tasks_handler(self, request_id, worker_info):
+            return (request_id, worker_info.id)
+
+    handlers = _Controller(_Aggregator(), 30).get_local_worker_tasks_handlers(
+        "dementia:0.1", ["ppmi0"], "req-1"
+    )
+
+    assert handlers == [("req-1", "localworker1")]
+    assert seen["call"] == ("dementia:0.1", ["ppmi0"])
