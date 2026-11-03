@@ -104,8 +104,22 @@ def test_terminate_pids_sigkills_after_timeout():
     assert calls.index("kill 4242") < calls.index("kill -9 4242")
 
 
-def test_terminate_pids_waits_full_grace_period():
-    """It polls for the full 10 s (0.5 s interval => 20 polls) before SIGKILL."""
+def test_terminate_pids_waits_for_the_hypercorn_drain():
+    """The default wait covers the drain, RPC cancel, cleanup, and hooks.
+
+    A fixed 10 s SIGKILL lands while Hypercorn is still inside graceful_timeout
+    (T8). The wait is a maximum: a process that exits early returns immediately.
+    """
+    from exaflow.controller.quart import hypercorn_config as hc
+
+    budget = (
+        hc.graceful_timeout
+        + hc.shutdown_rpc_cancel_timeout
+        + hc.shutdown_cleanup_timeout
+        + hc.shutdown_timeout
+    )
+    assert tasks.CONTROLLER_TERMINATE_TIMEOUT_SECONDS >= budget
+
     fake_run, calls = _run_recorder(alive_sequence=[True])
     monotonic, sleep = _advance_clock()
     with (
@@ -116,8 +130,74 @@ def test_terminate_pids_waits_full_grace_period():
         tasks._terminate_pids(None, "4242")
 
     poll_count = sum(1 for cmd in calls if cmd.startswith("kill -0"))
-    # 10 s / 0.5 s = 20 polls before the deadline stops the loop.
-    assert poll_count == 20
+    interval = tasks.CONTROLLER_TERMINATE_POLL_INTERVAL_SECONDS
+    assert poll_count == int(tasks.CONTROLLER_TERMINATE_TIMEOUT_SECONDS / interval)
+
+
+def test_kill_controller_stop_timeout_can_be_shorter_for_local_dev():
+    """``--stop-timeout`` bounds the wait. The default stays long enough to drain."""
+    lsof_out = (
+        "COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME\n"
+        "hypercorn 222 user 5u IPv4 0x123 0t0 TCP *:5000 (LISTEN)\n"
+    )
+    calls = []
+    sleeps = []
+    state = {"t": 0.0}
+
+    def fake_run(c, cmd, **kwargs):
+        calls.append(cmd)
+        if cmd.startswith("lsof"):
+            return _Res(ok=True, stdout=lsof_out)
+        if cmd.startswith("kill -0"):
+            return _Res(ok=True)
+        return _Res(ok=True)
+
+    def sleep(seconds):
+        sleeps.append(seconds)
+        state["t"] += seconds
+
+    with (
+        mock.patch.object(tasks, "run", side_effect=fake_run),
+        mock.patch.object(tasks, "sleep", side_effect=sleep),
+        mock.patch("tasks.time.monotonic", side_effect=lambda: state["t"]),
+        mock.patch.object(tasks, "get_controller_port", return_value=5000),
+    ):
+        tasks.kill_controller(_CTX, stop_timeout=1)
+
+    assert "kill -9 222" in calls
+    assert sum(sleeps) == 1
+    assert sum(sleeps) < tasks.CONTROLLER_TERMINATE_TIMEOUT_SECONDS
+
+
+def test_controller_stop_timeout_env_overrides_the_default(monkeypatch):
+    lsof_out = (
+        "COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME\n"
+        "hypercorn 222 user 5u IPv4 0x123 0t0 TCP *:5000 (LISTEN)\n"
+    )
+    sleeps = []
+    state = {"t": 0.0}
+
+    def fake_run(c, cmd, **kwargs):
+        if cmd.startswith("lsof"):
+            return _Res(ok=True, stdout=lsof_out)
+        if cmd.startswith("kill -0"):
+            return _Res(ok=True)
+        return _Res(ok=True)
+
+    def sleep(seconds):
+        sleeps.append(seconds)
+        state["t"] += seconds
+
+    monkeypatch.setenv("CONTROLLER_STOP_TIMEOUT", "1")
+    with (
+        mock.patch.object(tasks, "run", side_effect=fake_run),
+        mock.patch.object(tasks, "sleep", side_effect=sleep),
+        mock.patch("tasks.time.monotonic", side_effect=lambda: state["t"]),
+        mock.patch.object(tasks, "get_controller_port", return_value=5000),
+    ):
+        tasks.kill_controller(_CTX)
+
+    assert sum(sleeps) == 1
 
 
 def test_terminate_pids_multiple_pids_sigkill_only_alive():
