@@ -1,3 +1,4 @@
+import concurrent.futures
 import logging
 import math
 
@@ -16,11 +17,17 @@ class _FakeWorkerClient:
         self.response = response
         self.request = None
 
-    def call(self, rpc_name, request, timeout):
-        self.request = request
+    def start_call(self, rpc_name, request, timeout):
         assert rpc_name == "RunUdf"
         assert timeout == 10
-        return self.response
+        self.request = request
+        future = concurrent.futures.Future()
+        future.set_result(self.response)
+        return future
+
+    def finish_call(self, rpc_name, future):
+        assert rpc_name == "RunUdf"
+        return future.result()
 
 
 class _DummyRunUdfSystemArgs:
