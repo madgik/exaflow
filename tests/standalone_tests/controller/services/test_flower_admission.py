@@ -14,7 +14,7 @@ import types
 import pytest
 from pydantic import BaseModel
 
-from exaflow.controller.quart.app import app
+from exaflow.controller.http.app import app
 from exaflow.controller.services.analysis_execution import AnalysisCapacityExceeded
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisAlgorithmDTO
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisInputDataDTO
@@ -162,7 +162,7 @@ def test_flower_runs_when_lock_is_free(monkeypatch):
 def test_rejected_flower_releases_its_analysis_slot(monkeypatch):
     """The endpoint hands out an analysis slot before execute(); a rejected
     Flower request must give it back so the next analysis can run."""
-    from exaflow.controller.quart import endpoints
+    from exaflow.controller.http import endpoints
     from exaflow.controller.services.exareme3.strategies import Exareme3Strategy
     from tests.standalone_tests.controller.analysis_support import build_strategy
 

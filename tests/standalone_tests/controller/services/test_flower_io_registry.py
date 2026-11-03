@@ -6,10 +6,10 @@ import json
 import logging
 from pathlib import Path
 
-from quart.wrappers.request import Request
+from starlette.requests import Request
 
-from exaflow.controller.quart import endpoints
-from exaflow.controller.quart.app import app
+from exaflow.controller.http import endpoints
+from exaflow.controller.http.app import app
 from exaflow.controller.services.flower.flower_io_registry import FlowerIORegistry
 from exaflow.controller.services.flower.flower_io_registry import Status
 
@@ -147,12 +147,12 @@ def test_reset_during_body_read_does_not_store_the_old_result(monkeypatch):
         lambda: type("Controller", (), {"flower_execution_info": registry})(),
     )
 
-    async def get_json(self, force=False, silent=False, cache=True):
+    async def read_json(self):
         await registry.reset()
         registry.set_inputdata({"inputdata": "b"}, "B")
         return {"from": "A"}
 
-    monkeypatch.setattr(Request, "get_json", get_json)
+    monkeypatch.setattr(Request, "json", read_json)
 
     async def scenario():
         async with app.test_client() as client:

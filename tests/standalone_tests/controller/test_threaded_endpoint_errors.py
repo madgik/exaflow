@@ -2,8 +2,8 @@ import asyncio
 
 import pytest
 
-from exaflow.controller.quart import endpoints
-from exaflow.controller.quart.app import app
+from exaflow.controller.http import endpoints
+from exaflow.controller.http.app import app
 from exaflow.controller.services.api.analysis_request_validator import BadRequest
 from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.controller.services.errors import WorkerTaskTimeoutError

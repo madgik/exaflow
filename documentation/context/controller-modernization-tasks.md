@@ -259,11 +259,11 @@ Title: fix(worker): deliver SIGTERM to the worker process
 
 ______________________________________________________________________
 
-## Optional phase C: FastAPI and Uvicorn
+## Phase C: FastAPI and Uvicorn
 
-Run only if decision D6 is yes. These are outlines: expand each into a full
-ticket with the same template when the phase starts. Gate: the T1 contract tests
-pass unchanged against the new app; only the client fixture changes.
+D6 is yes. `/docs`, `/redoc`, and `/openapi.json` stay disabled. Gate: the T1
+contract tests pass unchanged against the new app; only the client fixture
+(the app import) changes. C1, C2, and C3 are done. C4 is next.
 
 - C1 `refactor(controller): table-driven error responses`. In `error_handlers.py`, replace the eleven handler functions with one mapping from exception type to (status, log level) and register one handler per entry. `InsufficientDataError` keeps its fixed message. Delete the commented-out generic handler and the unused `HTTPStatusCode.UNEXPECTED_ERROR` member. Pure refactor; T1 is the regression net.
 - C2 `refactor(controller): move analysis orchestration out of the route`. New `async def run_analysis(request_body: Any) -> str` in `exaflow/controller/services/analysis_service.py` holds DTO parsing, `validate_analysis_request`, strategy creation, `analysis_slot()`, and `strategy.execute()`. The `/analysis` route becomes one call.

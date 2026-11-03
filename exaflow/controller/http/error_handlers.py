@@ -1,8 +1,10 @@
 import enum
 import logging
 
-from quart import Blueprint
+from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 
+from exaflow.controller.http.responses import html_response
 from exaflow.controller.logger import get_background_service_logger
 from exaflow.controller.services.analysis_execution import AnalysisCapacityExceeded
 from exaflow.controller.services.api.analysis_request_validator import BadRequest
@@ -16,8 +18,6 @@ from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import DataModelUnavailable
 from exaflow.worker_communication import DatasetUnavailable
 from exaflow.worker_communication import InsufficientDataError
-
-error_handlers = Blueprint("error_handlers", __name__)
 
 INSUFFICIENT_DATA_ERROR_MESSAGE = (
     "The algorithm could not run with the input "
@@ -82,19 +82,34 @@ def _log_prefix(error_type: type[Exception]) -> str:
     return "Request Error"
 
 
-def _register_error_response(
-    error_type: type[Exception], status: HTTPStatusCode, level: int
+def _bind_error_handler(
+    app: FastAPI, error_type: type[Exception], status: HTTPStatusCode, level: int
 ) -> None:
     prefix = _log_prefix(error_type)
 
-    @error_handlers.app_errorhandler(error_type)
-    def _handle(error: Exception, status=status, level=level, prefix=prefix):
+    async def handler(
+        _request, error: Exception, status=status, level=level, prefix=prefix
+    ):
         get_background_service_logger().log(
             level,
             f"{prefix}. Type: '{type(error).__name__}' Message: '{error}'",
         )
-        return http_error_body(error), status
+        return html_response(http_error_body(error), status_code=int(status))
+
+    app.add_exception_handler(error_type, handler)
 
 
-for _error_type, (_status, _level) in ERROR_RESPONSES.items():
-    _register_error_response(_error_type, _status, _level)
+async def request_validation_error(_request, error: RequestValidationError):
+    """Keep the historical 400 text body. FastAPI's default for this is 422 JSON."""
+    message = (
+        f"Analysis execution request malformed:"
+        f"\nrequest received:{error.body}"
+        f"\nerror:{error}"
+    )
+    return html_response(message, status_code=HTTPStatusCode.BAD_REQUEST)
+
+
+def register_error_handlers(app: FastAPI) -> None:
+    for error_type, (status, level) in ERROR_RESPONSES.items():
+        _bind_error_handler(app, error_type, status, level)
+    app.add_exception_handler(RequestValidationError, request_validation_error)

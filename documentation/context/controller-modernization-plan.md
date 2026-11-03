@@ -4,7 +4,10 @@ Status: In progress. Wave 1 (T1, T2, T3, T4, T5, T7, T8) is open as
 [madgik/exaflow#663](https://github.com/madgik/exaflow/pull/663) with the
 review fixes. Wave 2 (T6, T9, T10) is open as draft
 [madgik/exaflow#664](https://github.com/madgik/exaflow/pull/664), stacked on
-#663. Phase C is not started, pending D6. Updated: 2026-11-03. Revises commit
+#663. Phase C is in progress on `fix/controller-modernization-wave3`.
+D6 is decided: run phase C, and FastAPI's `/docs`, `/redoc`, and
+`/openapi.json` stay disabled. C1, C2, and C3 are done; C4 (Uvicorn) is
+next. Updated: 2026-11-03. Revises commit
 `ba2978cd` ("Initial plan", branch
 `fix/controller-off-event-loop-and-liveness`), reviewed against `master`.
 Implementation tickets:
@@ -69,10 +72,12 @@ Phase B, robustness:
 | T9 | Worker selection reads one WLA snapshot | P3 |
 | T10 | Worker process receives SIGTERM and stops within 10 s | P1 |
 
-Phase C, optional and not started, pending D6: C1 table-driven error
-responses, C2 analysis service function, C3 FastAPI adapter served by
-Hypercorn, C4 Uvicorn. Gate: the T1 contract tests pass unchanged except for
-the client fixture.
+Phase C, in progress (D6 yes): C1 table-driven error responses, C2 analysis
+service function, and C3 FastAPI adapter served by Hypercorn are done. C4
+Uvicorn is next. FastAPI's `/docs`, `/redoc`, and `/openapi.json` are
+disabled. Gate: the T1 contract tests pass unchanged except for the client
+fixture (the app import). String bodies stay `text/html; charset=utf-8` and
+are not JSON-quoted. `RequestValidationError` is served as 400 text, not 422.
 
 Execution waves (tickets in one wave edit disjoint files):
 
@@ -94,7 +99,7 @@ change them first.
 | D3 | T6 | Header `X-Request-Id`. Mismatch returns 409 with "Flower callback does not belong to the running analysis." Callback HTTP timeout 30 s. |
 | D4 | T7 | Hypercorn runs in-process (`workers = 0`) with `graceful_timeout = 120` s and `shutdown_timeout = 60` s. On SIGTERM the app marks shutdown, so when Hypercorn then cancels in-flight requests it can cancel their worker and aggregation RPCs within `shutdown_rpc_cancel_timeout` (5 s) and run aggregation cleanup within `shutdown_cleanup_timeout` (10 s). The WLA join on shutdown uses that same 10 s bound. `terminationGracePeriodSeconds` is 120 s drain + 5 s RPC cancel + 10 s cleanup + 60 s shutdown hooks + 20 s margin = 215 s. The budget intentionally excludes `worker_tasks_timeout` because in-flight worker and aggregation calls are cancelled at shutdown. `/livez` stops answering once the listen socket closes; kubelet 1.25+ stops liveness and startup probes in `SyncTerminatingPod` before `killPod` (`StopLivenessAndStartup`), so that does not restart the container. The chart does not set a probe-level `terminationGracePeriodSeconds`. |
 | D5 | T8 | `kill-controller` waits the 195 s shutdown budget by default (`graceful_timeout` + `shutdown_rpc_cancel_timeout` + `shutdown_cleanup_timeout` + `shutdown_timeout`) before SIGKILL. `--stop-timeout` or `CONTROLLER_STOP_TIMEOUT` overrides that wait. An idle process still returns as soon as it exits. |
-| D6 | C | Whether to run phase C at all. If yes, whether FastAPI's `/docs`, `/redoc`, and `/openapi.json` routes stay enabled. |
+| D6 | C | Run phase C. FastAPI's `/docs`, `/redoc`, and `/openapi.json` are disabled (`docs_url=None`, `redoc_url=None`, `openapi_url=None`). A test asserts those paths return 404. |
 
 ## Invariants kept from the initial plan
 

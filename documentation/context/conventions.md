@@ -29,7 +29,7 @@
 
 ### API and DTOs
 
-- Quart endpoint handlers live in `exaflow/controller/quart/endpoints.py`.
+- FastAPI endpoint handlers live in `exaflow/controller/http/endpoints.py`.
 - Request DTOs and validators live under `exaflow/controller/services/api`.
 - Public analysis form shape is defined by common inputdata, preprocessing, and
   algorithm specifications exposed under `GET /specifications/*`.

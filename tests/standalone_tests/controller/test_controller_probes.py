@@ -167,5 +167,5 @@ def test_controller_image_command_is_exec_form_without_shell():
         "python:exaflow.controller.quart.hypercorn_config",
         "-b",
         "0.0.0.0:5000",
-        "exaflow/controller/quart/app:app",
+        "exaflow.controller.http.app:app",
     ]
