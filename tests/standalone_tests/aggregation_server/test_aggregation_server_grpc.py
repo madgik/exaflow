@@ -43,7 +43,7 @@ def target(monkeypatch) -> Iterator[Tuple[str, AggregationServer]]:
 
 def _configure(target: str, request_id: str, num_workers: int):
     controller = ControllerAggregationClient(request_id, aggregator_dns=target)
-    controller.configure(num_workers)
+    controller.configure(num_workers, timeout=300)
     return controller
 
 
@@ -103,7 +103,7 @@ def test_cleanup_aborts_workers_still_waiting(target):
             worker_b._aggregate_batch_request, [(AggregationType.SUM, [1.0])], step=2
         )
         _wait_for_payloads(servicer, "cleanup-waiters")
-        controller.cleanup()
+        controller.cleanup(timeout=300)
 
         # The server waits up to 5s for inputs; Cleanup must release both at once.
         for future in (future_a, future_b):
@@ -116,7 +116,7 @@ def test_cleanup_aborts_workers_still_waiting(target):
 def test_aggregate_after_cleanup_is_aborted_not_invalid_argument(target):
     endpoint, _ = target
     controller = _configure(endpoint, "late-after-cleanup", 1)
-    controller.cleanup()
+    controller.cleanup(timeout=300)
     worker = Exareme3UDFAggregationClient("late-after-cleanup", aggregator_dns=endpoint)
 
     with pytest.raises(grpc.RpcError) as exc:
