@@ -1,4 +1,5 @@
 import enum
+import logging
 
 from quart import Blueprint
 
@@ -23,6 +24,8 @@ INSUFFICIENT_DATA_ERROR_MESSAGE = (
     "provided because there are insufficient data."
 )
 
+_INTERNAL_SERVER_ERROR_TYPES = (WorkerUnresponsiveError, WorkerTaskTimeoutError)
+
 
 class HTTPStatusCode(enum.IntEnum):
     OK = 200
@@ -34,120 +37,64 @@ class HTTPStatusCode(enum.IntEnum):
     SERVICE_UNAVAILABLE = 503
     WORKER_UNRESPONSIVE_ALGORITHM_EXECUTION_ERROR = 512
     WORKER_TASK_TIMEOUT_ALGORITHM_EXECUTION_ERROR = 513
-    UNEXPECTED_ERROR = 500
 
 
-@error_handlers.app_errorhandler(AnalysisCapacityExceeded)
-def handle_analysis_capacity_exceeded(error: AnalysisCapacityExceeded):
-    get_background_service_logger().info(
-        f"Request Error. Type: '{type(error).__name__}' Message: '{error}'"
-    )
-    return error.message, HTTPStatusCode.SERVICE_UNAVAILABLE
-
-
-@error_handlers.app_errorhandler(GlobalWorkerUnavailableError)
-def handle_global_worker_unavailable(error: GlobalWorkerUnavailableError):
-    get_background_service_logger().error(
-        f"Request Error. Type: '{type(error).__name__}' Message: '{error}'"
-    )
-    return error.message, HTTPStatusCode.SERVICE_UNAVAILABLE
-
-
-@error_handlers.app_errorhandler(BadRequest)
-def handle_bad_request(error: BadRequest):
-    get_background_service_logger().info(
-        f"Request Error. Type: '{type(error).__name__}' Message: '{error}'"
-    )
-    return error.message, HTTPStatusCode.BAD_REQUEST
-
-
-@error_handlers.app_errorhandler(FilterError)
-def handle_bad_request(error: FilterError):
-    get_background_service_logger().info(
-        f"Request Error. Type: '{type(error).__name__}' Message: '{error}'"
-    )
-    return error.message, HTTPStatusCode.BAD_REQUEST
-
-
-@error_handlers.app_errorhandler(BadUserInput)
-def handle_bad_user_input(error: BadUserInput):
-    get_background_service_logger().info(
-        f"Request Error. Type: '{type(error).__name__}' Message: '{error}'"
-    )
-    return error.message, HTTPStatusCode.BAD_USER_INPUT
-
-
-@error_handlers.app_errorhandler(DataModelUnavailable)
-def handle_bad_user_input(error: DataModelUnavailable):
-    get_background_service_logger().info(
-        f"Request Error. Type: '{type(error).__name__}' Message: '{error}'"
-    )
-    return error.message, HTTPStatusCode.BAD_USER_INPUT
-
-
-@error_handlers.app_errorhandler(DatasetUnavailable)
-def handle_bad_user_input(error: DatasetUnavailable):
-    get_background_service_logger().info(
-        f"Request Error. Type: '{type(error).__name__}' Message: '{error}'"
-    )
-    return error.message, HTTPStatusCode.BAD_USER_INPUT
-
-
-@error_handlers.app_errorhandler(InsufficientDataError)
-def handle_privacy_error(error: InsufficientDataError):
-    get_background_service_logger().info(
-        f"Request Error. Type: '{type(error).__name__}' Message: '{error}'"
-    )
-    return INSUFFICIENT_DATA_ERROR_MESSAGE, HTTPStatusCode.INSUFFICIENT_DATA_ERROR
-
-
-@error_handlers.app_errorhandler(SMPCUsageError)
-def handle_smpc_error(error: SMPCUsageError):
-    get_background_service_logger().info(
-        f"Request Error. Type: '{type(error).__name__}' Message: '{error}'"
-    )
-    return error.message, HTTPStatusCode.SMPC_USAGE_ERROR
-
-
-@error_handlers.app_errorhandler(WorkerMessageTooLargeError)
-def handle_worker_message_too_large(error: WorkerMessageTooLargeError):
-    get_background_service_logger().error(
-        f"Request Error. Type: '{type(error).__name__}' Message: '{error}'"
-    )
-    return error.message, HTTPStatusCode.WORKER_MESSAGE_TOO_LARGE
-
-
-@error_handlers.app_errorhandler(WorkerUnresponsiveError)
-def handle_worker_unresponsive_algorithm_excecution_exception(
-    error: WorkerUnresponsiveError,
-):
-    get_background_service_logger().error(
-        f"Internal Server Error. Type: '{type(error).__name__}' Message: '{error}'"
-    )
-    return (
-        error.message,
+ERROR_RESPONSES = {
+    AnalysisCapacityExceeded: (HTTPStatusCode.SERVICE_UNAVAILABLE, logging.INFO),
+    GlobalWorkerUnavailableError: (
+        HTTPStatusCode.SERVICE_UNAVAILABLE,
+        logging.ERROR,
+    ),
+    BadRequest: (HTTPStatusCode.BAD_REQUEST, logging.INFO),
+    FilterError: (HTTPStatusCode.BAD_REQUEST, logging.INFO),
+    BadUserInput: (HTTPStatusCode.BAD_USER_INPUT, logging.INFO),
+    DataModelUnavailable: (HTTPStatusCode.BAD_USER_INPUT, logging.INFO),
+    DatasetUnavailable: (HTTPStatusCode.BAD_USER_INPUT, logging.INFO),
+    InsufficientDataError: (
+        HTTPStatusCode.INSUFFICIENT_DATA_ERROR,
+        logging.INFO,
+    ),
+    SMPCUsageError: (HTTPStatusCode.SMPC_USAGE_ERROR, logging.INFO),
+    WorkerMessageTooLargeError: (
+        HTTPStatusCode.WORKER_MESSAGE_TOO_LARGE,
+        logging.ERROR,
+    ),
+    WorkerUnresponsiveError: (
         HTTPStatusCode.WORKER_UNRESPONSIVE_ALGORITHM_EXECUTION_ERROR,
-    )
-
-
-@error_handlers.app_errorhandler(WorkerTaskTimeoutError)
-def handle_worker_task_timeout_algorithm_execution_exception(
-    error: WorkerTaskTimeoutError,
-):
-    get_background_service_logger().error(
-        f"Internal Server Error. Type: '{type(error).__name__}' Message: '{error}'"
-    )
-    return (
-        error.message,
+        logging.ERROR,
+    ),
+    WorkerTaskTimeoutError: (
         HTTPStatusCode.WORKER_TASK_TIMEOUT_ALGORITHM_EXECUTION_ERROR,
-    )
+        logging.ERROR,
+    ),
+}
 
 
-#
-# @error_handlers.app_errorhandler(Exception)
-# def handle_unexpected_exception(error: Exception):
-#     get_background_service_logger().error(
-#         f"Internal Server Error. Type: '{type(error).__name__}' Message: '{error}'"
-#     )
-#     traceback.print_tb(error.__traceback__)
-#     return "", HTTPStatusCode.UNEXPECTED_ERROR
+def http_error_body(error: Exception) -> str:
+    if isinstance(error, InsufficientDataError):
+        return INSUFFICIENT_DATA_ERROR_MESSAGE
+    return error.message
+
+
+def _log_prefix(error_type: type[Exception]) -> str:
+    if error_type in _INTERNAL_SERVER_ERROR_TYPES:
+        return "Internal Server Error"
+    return "Request Error"
+
+
+def _register_error_response(
+    error_type: type[Exception], status: HTTPStatusCode, level: int
+) -> None:
+    prefix = _log_prefix(error_type)
+
+    @error_handlers.app_errorhandler(error_type)
+    def _handle(error: Exception, status=status, level=level, prefix=prefix):
+        get_background_service_logger().log(
+            level,
+            f"{prefix}. Type: '{type(error).__name__}' Message: '{error}'",
+        )
+        return http_error_body(error), status
+
+
+for _error_type, (_status, _level) in ERROR_RESPONSES.items():
+    _register_error_response(_error_type, _status, _level)
