@@ -24,14 +24,14 @@ def _validate(handler):
             variables=["x1", "x2", "x3", "x_cat", "y1"],
         ),
         metadata={
-            "x1": {"is_categorical": False},
-            "x2": {"is_categorical": False},
-            "x3": {"is_categorical": False},
+            "x1": {"type": "continuous"},
+            "x2": {"type": "continuous"},
+            "x3": {"type": "continuous"},
             "x_cat": {
-                "is_categorical": True,
+                "type": "nominal",
                 "enumerations": {"A": "Category A", "B": "Category B"},
             },
-            "y1": {"is_categorical": False},
+            "y1": {"type": "continuous"},
         },
     )
 
@@ -185,7 +185,7 @@ def test_validate_params_rejects_non_string_fill_value_for_categorical_enums():
             ),
             metadata={
                 "x_cat": {
-                    "is_categorical": True,
+                    "type": "nominal",
                     "enumerations": {"1": "One", "2": "Two"},
                 },
             },
@@ -205,15 +205,15 @@ def test_transform_variables_returns_identity():
 
 
 def test_transform_metadata_returns_copy():
-    metadata = {"x1": {"is_categorical": False}}
+    metadata = {"x1": {"type": "continuous"}}
     handler = _make_handler(
         params={"strategies": {"x1": MissingValueStrategy.DROP.value}}
     )
 
     transformed = handler.transform_metadata(metadata=metadata)
-    transformed["x1"]["is_categorical"] = True
+    transformed["x1"]["type"] = "nominal"
 
-    assert metadata["x1"]["is_categorical"] is False
+    assert metadata["x1"]["type"] == "continuous"
 
 
 @pytest.mark.parametrize(
@@ -225,32 +225,32 @@ def test_transform_metadata_returns_copy():
 )
 def test_transform_metadata_promotes_int_to_real_for_float_imputation(strategy):
     metadata = {
-        "x1": {"is_categorical": False, "sql_type": "int"},
-        "x2": {"is_categorical": False, "sql_type": "real"},
+        "x1": {"type": "discrete"},
+        "x2": {"type": "continuous"},
     }
     handler = _make_handler(params={"strategies": {"x1": strategy}})
 
     transformed = handler.transform_metadata(metadata=metadata)
 
-    assert transformed["x1"]["sql_type"] == "real"
-    assert transformed["x2"]["sql_type"] == "real"
-    assert metadata["x1"]["sql_type"] == "int"
+    assert transformed["x1"]["type"] == "continuous"
+    assert transformed["x2"]["type"] == "continuous"
+    assert metadata["x1"]["type"] == "discrete"
 
 
 def test_transform_metadata_keeps_int_for_most_frequent_imputation():
-    metadata = {"x1": {"is_categorical": False, "sql_type": "int"}}
+    metadata = {"x1": {"type": "discrete"}}
     handler = _make_handler(
         params={"strategies": {"x1": MissingValueStrategy.MOST_FREQUENT.value}}
     )
 
     transformed = handler.transform_metadata(metadata=metadata)
 
-    assert transformed["x1"]["sql_type"] == "int"
+    assert transformed["x1"]["type"] == "discrete"
 
 
 def test_transform_data_and_metadata_promotes_float_constant_fill_to_real():
     data = pd.DataFrame({"x1": [1, None, 3]})
-    metadata = {"x1": {"is_categorical": False, "sql_type": "int"}}
+    metadata = {"x1": {"type": "discrete"}}
     handler = _make_handler(
         params={
             "strategies": {"x1": MissingValueStrategy.CONSTANT.value},
@@ -264,12 +264,12 @@ def test_transform_data_and_metadata_promotes_float_constant_fill_to_real():
     )
 
     assert transformed["x1"].tolist() == [1.0, 1.5, 3.0]
-    assert transformed_metadata["x1"]["sql_type"] == "real"
-    assert metadata["x1"]["sql_type"] == "int"
+    assert transformed_metadata["x1"]["type"] == "continuous"
+    assert metadata["x1"]["type"] == "discrete"
 
 
 def test_transform_metadata_keeps_int_for_integer_constant_fill():
-    metadata = {"x1": {"is_categorical": False, "sql_type": "int"}}
+    metadata = {"x1": {"type": "discrete"}}
     handler = _make_handler(
         params={
             "strategies": {"x1": MissingValueStrategy.CONSTANT.value},
@@ -279,11 +279,11 @@ def test_transform_metadata_keeps_int_for_integer_constant_fill():
 
     transformed = handler.transform_metadata(metadata=metadata)
 
-    assert transformed["x1"]["sql_type"] == "int"
+    assert transformed["x1"]["type"] == "discrete"
 
 
 def test_transform_metadata_keeps_int_for_string_constant_fill():
-    metadata = {"x1": {"is_categorical": False, "sql_type": "int"}}
+    metadata = {"x1": {"type": "discrete"}}
     handler = _make_handler(
         params={
             "strategies": {"x1": MissingValueStrategy.CONSTANT.value},
@@ -293,7 +293,7 @@ def test_transform_metadata_keeps_int_for_string_constant_fill():
 
     transformed = handler.transform_metadata(metadata=metadata)
 
-    assert transformed["x1"]["sql_type"] == "int"
+    assert transformed["x1"]["type"] == "discrete"
 
 
 def test_transform_data_per_variable_drop_only_selected_columns():

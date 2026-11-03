@@ -7,6 +7,7 @@ import numpy
 import pandas as pd
 from pydantic import BaseModel
 
+from tests.testcase_generators.testcase_generator import NUMERICAL_CDE_TYPES
 from tests.testcase_generators.testcase_generator import TestCaseGenerator
 
 MIN_ROW_COUNT = 1
@@ -117,11 +118,13 @@ class HistogramTestcaseGenerator(TestCaseGenerator):
     dropna = True
 
     def compute_expected_output(self, input_data, parameters, metadata: dict):
-        numerical_vars = [md["code"] for md in metadata if not md["isCategorical"]]
+        numerical_vars = [
+            md["code"] for md in metadata if md["type"] in NUMERICAL_CDE_TYPES
+        ]
         nominal_vars = [
             md["code"]
             for md in metadata
-            if md["isCategorical"] and md["code"] != "dataset"
+            if md["type"] not in NUMERICAL_CDE_TYPES and md["code"] != "dataset"
         ]
         vars = numerical_vars + nominal_vars
         enums = {

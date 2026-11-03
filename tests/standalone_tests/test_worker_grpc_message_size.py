@@ -174,7 +174,7 @@ def test_large_kw_args_and_result_round_trip_through_run_udf(monkeypatch):
                     "datasets": ["ppmi0"],
                     "variables": ["x"],
                 },
-                "metadata": {"x": {"is_categorical": False}},
+                "metadata": {"x": {"type": "continuous"}},
                 "check_min_rows": False,
                 "add_dataset_variable": False,
             },

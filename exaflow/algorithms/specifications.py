@@ -10,6 +10,9 @@ from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import model_validator
 
+from exaflow.datatypes import CATEGORICAL_CDE_TYPES
+from exaflow.datatypes import CDEType
+
 
 @unique
 class AlgorithmType(Enum):
@@ -201,23 +204,15 @@ class PreprocessingOutputEnumerationsSpecification(ImmutableBaseModel):
 class PreprocessingOutputColumnSpecification(ImmutableBaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    type: InputDataType
-    stattype: InputDataStatType
+    type: CDEType
     column_count_param: Optional[str] = Field(default=None, min_length=1, pattern=r"\S")
     enumerations: Optional[PreprocessingOutputEnumerationsSpecification] = None
 
     @model_validator(mode="after")
     def validate_column_type(self):
-        nominal = self.stattype == InputDataStatType.NOMINAL
-        allowed = (
-            (InputDataType.TEXT, InputDataType.INT)
-            if nominal
-            else (InputDataType.INT, InputDataType.REAL)
-        )
-        if self.type not in allowed:
-            raise ValueError("Unsupported output type and stattype combination.")
-        if nominal != (self.enumerations is not None):
-            raise ValueError("Only nominal outputs require enumerations.")
+        categorical = self.type in CATEGORICAL_CDE_TYPES
+        if categorical != (self.enumerations is not None):
+            raise ValueError("Only categorical outputs require enumerations.")
         return self
 
 

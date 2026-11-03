@@ -9,6 +9,7 @@ from typing import NamedTuple
 import duckdb
 
 from exaflow.column_names import DATASET_COL
+from exaflow.datatypes import CDEType
 from exaflow.worker import config as worker_config
 from exaflow.worker.utils.logger import init_logger
 
@@ -65,30 +66,27 @@ def _collect_all_variables(metadata: dict) -> list[dict]:
     return _walk(metadata)
 
 
-_SQL_TYPE_TO_DUCKDB = {
-    "text": "VARCHAR",
-    "int": "INTEGER",
-    "real": "DOUBLE",
+_NUMERICAL_CDE_TYPE_TO_DUCKDB = {
+    CDEType.CONTINUOUS: "DOUBLE",
+    CDEType.DISCRETE: "INTEGER",
 }
 
 
 def _build_column_types(metadata: dict) -> dict[str, str]:
     """Map each variable code to its DuckDB column type.
 
-    Categorical variables are always stored as VARCHAR regardless of their
-    declared ``sql_type`` so that nominal codes are never silently cast to
-    integers or floats by DuckDB's type inference.
+    Categorical variables (nominal, ordinal, binary) are stored as VARCHAR so
+    that their codes are never silently cast to integers or floats by DuckDB's
+    type inference.
     """
     column_types: dict[str, str] = {}
     for var in _collect_all_variables(metadata):
         code = var.get("code")
         if not code:
             continue
-        if var.get("isCategorical"):
-            column_types[code] = "VARCHAR"
-        else:
-            sql_type = var.get("sql_type", "text")
-            column_types[code] = _SQL_TYPE_TO_DUCKDB.get(sql_type, "VARCHAR")
+        column_types[code] = _NUMERICAL_CDE_TYPE_TO_DUCKDB.get(
+            var.get("type"), "VARCHAR"
+        )
     return column_types
 
 
@@ -114,7 +112,6 @@ def _build_dataset_properties(csv_columns: list[str], cde_codes: set[str]) -> di
 
 def _reformat_metadata(metadata: dict) -> dict:
     new_key_assign = {
-        "isCategorical": "is_categorical",
         "minValue": "min",
         "maxValue": "max",
     }
