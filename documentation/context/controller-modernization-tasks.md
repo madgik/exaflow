@@ -157,7 +157,7 @@ Title: fix(flower): accept Flower callbacks only from the running request
 1. Keys — Header `X-Request-Id` (decision D3). Environment variable `REQUEST_ID` (existing).
 1. Strings — 409 body: `Flower callback does not belong to the running analysis.` (decision D3).
 1. Numbers — HTTP 409. Every `requests` call in the script gets `timeout=30` seconds (input, result, error result, `/cdes_metadata`).
-1. Edge cases — No Flower execution running (`_request_id is None`): 409. Missing header: 409. Matching header: today's behavior. A result after `reset()`: 409, and the result is ignored.
+1. Edge cases — No Flower execution running (`_request_id is None`): 409. Missing header: 409. Matching header: today's behavior. A result after `reset()`: 409, and the result is ignored. A reset plus a new request id while `await request.json` is in progress: 409, and the new execution's `result_ready` stays unset. `set_result(result, request_id)` re-checks `is_current` and does not await before `result_ready.set()`.
 1. Behavior — Before: any POST to `/flower/result` completes the current execution, including a late post from a timed-out run. After: only a post that carries the running request id does. Running id `abc`: POST with `X-Request-Id: old` returns 409 and `result_ready` stays unset; POST with `X-Request-Id: abc` returns 200 `{"message": "Result set successfully"}`.
 1. Unchanged — `set_result` status logic (an `"error"` key means FAILURE), valid-callback response bodies, `/cdes_metadata`, worker RPCs, protobufs.
 1. Verify — `uv run pytest -q tests/standalone_tests/controller`. State the callback contract change in the PR body.
@@ -168,6 +168,7 @@ Title: fix(flower): accept Flower callbacks only from the running request
    - callback while no flower execution runs returns 409
    - input with the running request id returns the inputdata
    - flower script sends the request id header and a timeout on every controller call
+   - a result whose body is read after the running request changes returns 409 and does not complete the new execution
 
 ______________________________________________________________________
 

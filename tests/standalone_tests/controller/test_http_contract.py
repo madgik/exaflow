@@ -121,8 +121,11 @@ def _flower_controller(inputdata, request_id="req"):
             self.input_reads += 1
             return inputdata
 
-        async def set_result(self, result):
+        async def set_result(self, result, request_id):
+            if not self.is_current(request_id):
+                return False
             self.result = result
+            return True
 
     registry = _FlowerIORegistry()
 

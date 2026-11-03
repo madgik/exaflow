@@ -180,10 +180,14 @@ async def get_flower_input():
 @algorithms.route("/flower/result", methods=["POST"])
 async def set_flower_result():
     registry = get_flower_controller().flower_execution_info
-    if not registry.is_current(request.headers.get("X-Request-Id")):
+    request_id = request.headers.get("X-Request-Id")
+    if not registry.is_current(request_id):
         return FLOWER_CALLBACK_MISMATCH_MESSAGE, 409
     request_body = await request.json
-    await registry.set_result(result=request_body)
+    # Re-check inside set_result. The running id can change while the body
+    # is read, and nothing awaits between that check and result_ready.set().
+    if not await registry.set_result(result=request_body, request_id=request_id):
+        return FLOWER_CALLBACK_MISMATCH_MESSAGE, 409
 
     return jsonify({"message": "Result set successfully"}), 200
 
