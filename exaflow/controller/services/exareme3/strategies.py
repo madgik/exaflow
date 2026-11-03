@@ -1,6 +1,8 @@
 from typing import Any
 from typing import List
 
+import grpc
+
 from exaflow import exareme3_algorithm_classes
 from exaflow import exareme3_preprocessing_step_classes
 from exaflow.aggregation_clients.controller_aggregation_client import (
@@ -116,6 +118,11 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
         return result.model_dump_json()
 
 
+def _deadline_exceeded(exc: grpc.RpcError) -> bool:
+    code = getattr(exc, "code", None)
+    return callable(code) and code() == grpc.StatusCode.DEADLINE_EXCEEDED
+
+
 class Exareme3WithAggregationServerStrategy(Exareme3Strategy):
     async def execute(self) -> str:
         agg_dns = (
@@ -128,16 +135,24 @@ class Exareme3WithAggregationServerStrategy(Exareme3Strategy):
             max_message_mb=controller_config.grpc.max_message_mb,
         ) as agg_client:
             # Set inside the thread so a cancel during configure still cleans up.
+            # A client deadline can fire after the server has already configured,
+            # so that case has to clean up too. A returned non-OK status, such as
+            # ALREADY_CONFIGURED, still means this request does not own the context.
             configured = False
 
             deadline = self._controller.task_timeout
 
             def _configure():
                 nonlocal configured
-                status = agg_client.configure(
-                    num_workers=len(self._local_worker_tasks_handlers),
-                    timeout=deadline,
-                )
+                try:
+                    status = agg_client.configure(
+                        num_workers=len(self._local_worker_tasks_handlers),
+                        timeout=deadline,
+                    )
+                except grpc.RpcError as exc:
+                    if _deadline_exceeded(exc):
+                        configured = True
+                    raise
                 configured = status == agg_pb2.Status.OK
                 return status
 

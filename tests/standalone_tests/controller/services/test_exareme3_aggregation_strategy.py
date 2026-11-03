@@ -201,3 +201,39 @@ def test_configure_past_deadline_releases_slot_without_cleanup(monkeypatch):
         asyncio.run(strategy.execute())
 
     assert calls == ["configure", "close"]
+
+
+def test_configure_deadline_after_success_still_cleans_up(monkeypatch):
+    """The server can apply Configure and the client can still see a deadline.
+
+    Cleanup must run, or that context stays until the server's stale eviction.
+    """
+    calls = []
+
+    class DeadlineAfterSuccess:
+        def __init__(self, request_id, aggregator_dns=None, max_message_mb=None):
+            pass
+
+        def configure(self, num_workers, timeout=None):
+            calls.append("configure")
+            raise _DeadlineRpcError(
+                grpc.StatusCode.DEADLINE_EXCEEDED, "deadline exceeded"
+            )
+
+        def cleanup(self, timeout=None):
+            calls.append("cleanup")
+            return agg_pb2.Status.OK
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            calls.append("close")
+
+    monkeypatch.setattr(strategies, "ControllerAggregationClient", DeadlineAfterSuccess)
+    strategy = _make_strategy(task_timeout=1)
+
+    with pytest.raises(_DeadlineRpcError):
+        asyncio.run(strategy.execute())
+
+    assert calls == ["configure", "cleanup", "close"]
