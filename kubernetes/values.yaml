@@ -3,7 +3,7 @@ managed_cluster: false
 localnodes: 2
 exaflow_images:
   repository: madgik
-  version: ""
+  version: "staging-b-7fa706f09905c520d217c2b3d4eef12c0d52a5e6"
 federation: dementia
 log_level: INFO
 framework_log_level: ERROR
