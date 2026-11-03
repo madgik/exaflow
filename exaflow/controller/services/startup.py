@@ -1,6 +1,6 @@
 from exaflow.controller import config as ctrl_config
 from exaflow.controller import logger as ctrl_logger
-from exaflow.controller.quart.hypercorn_config import shutdown_cleanup_timeout
+from exaflow.controller.http.server_config import shutdown_cleanup_timeout
 from exaflow.controller.services import get_worker_landscape_aggregator
 from exaflow.controller.services import set_worker_landscape_aggregator
 from exaflow.controller.services.exareme3 import Exareme3Controller

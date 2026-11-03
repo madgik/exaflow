@@ -141,7 +141,7 @@ aggregation wait times out.
 Kubernetes probes: startup and liveness both call `/livez` with a 5 second
 timeout (liveness `failureThreshold` 3). Readiness calls `/healthcheck`, which
 can take as long as `worker_tasks_timeout`. A worker that is down does not
-restart the controller. Hypercorn closes the listen socket at SIGTERM, so
+restart the controller. Uvicorn closes the listen socket at SIGTERM, so
 `/livez` fails during the drain. Kubernetes 1.25 and newer stops liveness and
 startup probes before it signals the container (`SyncTerminatingPod` calls
 `StopLivenessAndStartup`, then `killPod`), so that failure does not restart

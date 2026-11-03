@@ -5,8 +5,8 @@ from fastapi import APIRouter
 from fastapi import Request
 from starlette.responses import JSONResponse
 
+from exaflow.controller.http.loggers import loggers
 from exaflow.controller.http.responses import html_response
-from exaflow.controller.quart.loggers import loggers
 from exaflow.controller.services import get_worker_landscape_aggregator
 from exaflow.controller.services.algorithm_execution_strategy_factory import (
     get_algorithm_execution_strategy,

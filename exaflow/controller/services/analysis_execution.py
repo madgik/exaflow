@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 
 from exaflow.controller import config as ctrl_config
-from exaflow.controller.quart.hypercorn_config import shutdown_rpc_cancel_timeout
+from exaflow.controller.http.server_config import shutdown_rpc_cancel_timeout
 from exaflow.controller.services.controller_shutdown import cancel_inflight_rpcs
 from exaflow.controller.services.controller_shutdown import controller_is_shutting_down
 

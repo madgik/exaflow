@@ -27,7 +27,7 @@ separate config, markers, and review requirements — see
 
 | Path | Purpose |
 | --- | --- |
-| `exaflow/controller/http` | HTTP API endpoints; FastAPI routes in `endpoints.py`, served by Hypercorn. |
+| `exaflow/controller/http` | HTTP API endpoints; FastAPI routes in `endpoints.py`, served by Uvicorn. |
 | `exaflow/controller/services` | Controller-side validation, worker landscape aggregation, execution strategies, and task handlers. |
 | `exaflow/worker` | Worker gRPC service, DuckDB loading, UDF execution, and worker metadata services. |
 | `exaflow/aggregation_server` | Optional gRPC aggregation service for federated vector operations. |

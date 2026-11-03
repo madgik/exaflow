@@ -11,7 +11,7 @@ from exaflow.aggregation_clients.controller_aggregation_client import (
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.controller import config as controller_config
 from exaflow.controller.federation_info_logs import log_experiment_execution
-from exaflow.controller.quart.hypercorn_config import shutdown_cleanup_timeout
+from exaflow.controller.http.server_config import shutdown_cleanup_timeout
 from exaflow.controller.services.analysis_execution import run_blocking
 from exaflow.controller.services.controller_shutdown import controller_is_shutting_down
 from exaflow.controller.services.exareme3 import Exareme3Controller

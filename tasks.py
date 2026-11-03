@@ -71,10 +71,11 @@ from invoke import UnexpectedExit
 from invoke import task
 from termcolor import colored
 
-from exaflow.controller.quart.hypercorn_config import graceful_timeout
-from exaflow.controller.quart.hypercorn_config import shutdown_cleanup_timeout
-from exaflow.controller.quart.hypercorn_config import shutdown_rpc_cancel_timeout
-from exaflow.controller.quart.hypercorn_config import shutdown_timeout
+from exaflow.controller.http.server_config import graceful_timeout
+from exaflow.controller.http.server_config import shutdown_cleanup_timeout
+from exaflow.controller.http.server_config import shutdown_rpc_cancel_timeout
+from exaflow.controller.http.server_config import shutdown_timeout
+from exaflow.controller.http.server_config import workers as uvicorn_workers
 
 PROJECT_ROOT = Path(__file__).parent
 DEPLOYMENT_CONFIG_FILE = PROJECT_ROOT / ".deployment.toml"
@@ -778,7 +779,7 @@ def _terminate_pids(c, pids: str, timeout: float | None = None) -> None:
 def kill_controller(c, stop_timeout=None):
     """Stop the controller. ``stop_timeout`` is seconds before SIGKILL.
 
-    The default waits out Hypercorn's drain and shutdown hooks. Pass
+    The default waits out Uvicorn's drain and shutdown hooks. Pass
     ``--stop-timeout`` or set ``CONTROLLER_STOP_TIMEOUT`` to cut that short.
     """
     timeout = _controller_stop_timeout(stop_timeout)
@@ -801,27 +802,27 @@ def kill_controller(c, stop_timeout=None):
             # lsof's default command field is 9 characters, so python3.11 is
             # python3.1. +c 0 asks for the full name; the prefix match covers
             # a truncated name if that flag is ignored.
-            if command == "hypercorn" or command.startswith("python"):
+            if command == "uvicorn" or command.startswith("python"):
                 pids_to_kill.add(pid)
             else:
                 non_controller_listeners.append((parts[0], pid))
 
     if pids_to_kill:
-        message("Stopping previous Hypercorn instances...", Level.HEADER)
+        message("Stopping previous Uvicorn instances...", Level.HEADER)
         pids = " ".join(sorted(pids_to_kill))
         _terminate_pids(c, pids, timeout=timeout)
         return
 
     # Fallback for controllers that may not expose a listening socket yet.
-    hypercorn_process_patterns = (
-        "hypercorn --config python:exaflow.controller.quart.hypercorn_config",
+    uvicorn_process_patterns = (
+        "uvicorn exaflow.controller.http.app:app",
         "exaflow.controller.http.app:app",
     )
-    for process_pattern in hypercorn_process_patterns:
+    for process_pattern in uvicorn_process_patterns:
         res = run(c, f"pgrep -f '{process_pattern}'", warn=True, show_ok=False)
         if res.ok and res.stdout.strip():
             pids = " ".join(res.stdout.strip().splitlines())
-            message("Stopping previous Hypercorn instances...", Level.HEADER)
+            message("Stopping previous Uvicorn instances...", Level.HEADER)
             _terminate_pids(c, pids, timeout=timeout)
             return
 
@@ -835,7 +836,7 @@ def kill_controller(c, stop_timeout=None):
         )
         return
 
-    message("No hypercorn instance found", Level.HEADER)
+    message("No uvicorn instance found", Level.HEADER)
 
 
 @task
@@ -874,19 +875,23 @@ def start_controller(
         outpath = OUTDIR / "controller.out"
         if detached:
             cmd = (
-                f"PYTHONPATH={PROJECT_ROOT} {UV_RUN_NO_SYNC} hypercorn "
-                "--config python:exaflow.controller.quart.hypercorn_config "
-                f"-b 0.0.0.0:{controller_port} "
+                f"PYTHONPATH={PROJECT_ROOT} {UV_RUN_NO_SYNC} uvicorn "
                 "exaflow.controller.http.app:app "
+                f"--host 0.0.0.0 --port {controller_port} "
+                f"--workers {uvicorn_workers} "
+                f"--timeout-graceful-shutdown {graceful_timeout} "
+                "--log-config exaflow/controller/http/log_config.json "
                 f">> {outpath} 2>&1"
             )
             run(c, cmd, wait=False)
         else:
             cmd = (
-                f"PYTHONPATH={PROJECT_ROOT} {UV_RUN_NO_SYNC} hypercorn "
-                "--config python:exaflow.controller.quart.hypercorn_config "
-                f"-b 0.0.0.0:{controller_port} "
-                "exaflow.controller.http.app:app"
+                f"PYTHONPATH={PROJECT_ROOT} {UV_RUN_NO_SYNC} uvicorn "
+                "exaflow.controller.http.app:app "
+                f"--host 0.0.0.0 --port {controller_port} "
+                f"--workers {uvicorn_workers} "
+                f"--timeout-graceful-shutdown {graceful_timeout} "
+                "--log-config exaflow/controller/http/log_config.json"
             )
             run(c, cmd, attach_=True)
 

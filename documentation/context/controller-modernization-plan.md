@@ -4,10 +4,9 @@ Status: In progress. Wave 1 (T1, T2, T3, T4, T5, T7, T8) is open as
 [madgik/exaflow#663](https://github.com/madgik/exaflow/pull/663) with the
 review fixes. Wave 2 (T6, T9, T10) is open as draft
 [madgik/exaflow#664](https://github.com/madgik/exaflow/pull/664), stacked on
-#663. Phase C is in progress on `fix/controller-modernization-wave3`.
+#663. Phase C (C1–C4) is on `fix/controller-modernization-wave3`.
 D6 is decided: run phase C, and FastAPI's `/docs`, `/redoc`, and
-`/openapi.json` stay disabled. C1, C2, and C3 are done; C4 (Uvicorn) is
-next. Updated: 2026-11-03. Revises commit
+`/openapi.json` stay disabled. Updated: 2026-11-03. Revises commit
 `ba2978cd` ("Initial plan", branch
 `fix/controller-off-event-loop-and-liveness`), reviewed against `master`.
 Implementation tickets:
@@ -72,12 +71,16 @@ Phase B, robustness:
 | T9 | Worker selection reads one WLA snapshot | P3 |
 | T10 | Worker process receives SIGTERM and stops within 10 s | P1 |
 
-Phase C, in progress (D6 yes): C1 table-driven error responses, C2 analysis
-service function, and C3 FastAPI adapter served by Hypercorn are done. C4
-Uvicorn is next. FastAPI's `/docs`, `/redoc`, and `/openapi.json` are
-disabled. Gate: the T1 contract tests pass unchanged except for the client
-fixture (the app import). String bodies stay `text/html; charset=utf-8` and
-are not JSON-quoted. `RequestValidationError` is served as 400 text, not 422.
+Phase C is done (D6 yes): C1 table-driven error responses, C2 analysis
+service function, C3 FastAPI adapter, and C4 Uvicorn. FastAPI's `/docs`,
+`/redoc`, and `/openapi.json` are disabled. Gate: the T1 contract tests pass
+unchanged except for the client fixture (the app import). String bodies stay
+`text/html; charset=utf-8` and are not JSON-quoted. `RequestValidationError`
+is served as 400 text, not 422. Uvicorn `--workers 1` serves in-process
+(a supervisor starts only when workers > 1). `--timeout-graceful-shutdown 120` is the drain. Uvicorn has no separate hook timeout; lifespan shutdown
+runs after the drain and `shutdown_timeout` (60 s) stays in the 215 s pod
+grace. SIGTERM is chained from `signal.signal`, which is how Uvicorn
+registers it.
 
 Execution waves (tickets in one wave edit disjoint files):
 
@@ -85,7 +88,7 @@ Execution waves (tickets in one wave edit disjoint files):
 | --- | --- | --- |
 | 1 | T1, T2, T3, T4, T5, T7, T8 | None |
 | 2 | T6, T9, T10 | T6: T1, T2, T5. T9: T2. T10: none. |
-| 3 (optional) | C1, then C2, then C3, then C4 | Wave 2 |
+| 3 | C1, then C2, then C3, then C4 | Wave 2 |
 
 ## Decisions needed before delegation
 
@@ -119,11 +122,12 @@ change them first.
 - T6 changes the Flower callback contract: `/flower/input` and
   `/flower/result` require `X-Request-Id`. The bundled Flower scripts change
   in the same commit. Roll back the controller and scripts together.
-- T7 changes the controller image command, runs Hypercorn in-process, and
+- T7 changes the controller image command, runs the server in-process, and
   sets the Helm pod grace period to 215 s at the chart defaults (the shutdown
-  budget above, not `worker_tasks_timeout`). Render the chart and get the
-  deployment review required by `kubernetes/AGENTS.md`. Roll back with the
-  previous image and chart.
+  budget above, not `worker_tasks_timeout`). C4 replaces that command with
+  Uvicorn (`--workers 1`, `--timeout-graceful-shutdown 120`) and keeps the
+  same grace. Render the chart and get the deployment review required by
+  `kubernetes/AGENTS.md`. Roll back with the previous image and chart.
 - T10 changes the worker image command. Roll back with the previous image.
 - Other tickets change no public route, request or response shape, protobuf,
   or Helm value. Roll back by reverting the commit.

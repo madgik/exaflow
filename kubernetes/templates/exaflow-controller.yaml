@@ -15,9 +15,9 @@ spec:
       labels:
         app: exaflow-controller
     spec:
-      # Shutdown budget, matching exaflow/controller/quart/hypercorn_config.py:
-      # graceful drain + cancel in-flight RPCs + aggregation cleanup + Hypercorn
-      # shutdown hooks + margin. Shutdown cancels worker RPCs, so this does not
+      # Shutdown budget, matching exaflow/controller/http/server_config.py:
+      # graceful drain + cancel in-flight RPCs + aggregation cleanup + Uvicorn
+      # lifespan hooks + margin. Shutdown cancels worker RPCs, so this does not
       # add worker_tasks_timeout. Kubelet 1.25+ stops liveness probes before
       # SIGTERM (SyncTerminatingPod calls StopLivenessAndStartup, then killPod),
       # so /livez failing after the listen socket closes does not restart the pod.

@@ -57,7 +57,9 @@ def test_sigterm_chains_a_signal_module_handler():
     def server_handler(signum, _frame):
         called.append(signum)
 
-    previous = signal.signal(signal.SIGTERM, server_handler)
+    previous = {sig: signal.getsignal(sig) for sig in (signal.SIGTERM, signal.SIGINT)}
+    signal.signal(signal.SIGTERM, server_handler)
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
     try:
 
         async def scenario():
@@ -69,5 +71,6 @@ def test_sigterm_chains_a_signal_module_handler():
         assert called == [signal.SIGTERM]
         assert controller_shutdown.controller_is_shutting_down()
     finally:
-        signal.signal(signal.SIGTERM, previous)
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
         controller_shutdown.reset_controller_shutdown()
