@@ -27,7 +27,7 @@ separate config, markers, and review requirements — see
 
 | Path | Purpose |
 | --- | --- |
-| `exaflow/controller/quart` | HTTP API endpoints; `endpoints.py` drives `/algorithms` and metadata routes. |
+| `exaflow/controller/http` | HTTP API endpoints; FastAPI routes in `endpoints.py`, served by Uvicorn. |
 | `exaflow/controller/services` | Controller-side validation, worker landscape aggregation, execution strategies, and task handlers. |
 | `exaflow/worker` | Worker gRPC service, DuckDB loading, UDF execution, and worker metadata services. |
 | `exaflow/aggregation_server` | Optional gRPC aggregation service for federated vector operations. |
@@ -136,7 +136,7 @@ See `documentation/context/architecture.md` and
 `documentation/context/module-index.md` for full flow diagrams and module
 ownership. Non-negotiable boundaries:
 
-- HTTP routes in `exaflow/controller/quart`; DTOs/validation in
+- HTTP routes in `exaflow/controller/http`; DTOs/validation in
   `exaflow/controller/services/api`.
 - Controller orchestration in `exaflow/controller/services` (strategies, task
   handlers).
@@ -323,8 +323,9 @@ The pipeline below is what you usually need to reference or debug.
 1. **HTTP Request Intake**
 
    - `run_analysis` posts to `POST /analysis`.
-   - Quart wiring lives in `exaflow/controller/quart/endpoints.py`. It parses
-     JSON into `AnalysisRequestDTO`, validates it against enabled specs, and
+   - FastAPI wiring lives in `exaflow/controller/http/endpoints.py`. It reads
+     the JSON body, and `analysis_service.run_analysis` parses it into
+     `AnalysisRequestDTO`, validates it against enabled specs, and
      instantiates a strategy via `get_algorithm_execution_strategy`.
 
 1. **Strategy Selection and Metadata Prep**

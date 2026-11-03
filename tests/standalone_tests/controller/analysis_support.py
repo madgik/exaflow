@@ -9,7 +9,7 @@ import types
 
 from pydantic import BaseModel
 
-from exaflow.controller.quart.app import app
+from exaflow.controller.http.app import app
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisAlgorithmDTO
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisInputDataDTO
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisRequestDTO

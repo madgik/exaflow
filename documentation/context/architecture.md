@@ -36,7 +36,8 @@ flowchart TD
    `/datasets_variables`, and `/cdes_metadata`.
 1. Clients submit `POST /analysis` with an `AnalysisRequestDTO` payload. The
    selected algorithm name is carried in `algorithm.name`.
-1. `exaflow/controller/quart/endpoints.py` validates request shape and delegates
+1. `exaflow/controller/http/endpoints.py` reads the body and
+   `analysis_service.run_analysis` validates request shape and delegates
    to `validate_analysis_request`.
 1. `get_algorithm_execution_strategy` selects an Exareme3 or Flower strategy.
 1. Exareme3 strategy gets worker metadata, applies preprocessing metadata
@@ -52,7 +53,7 @@ flowchart TD
 
 ## Module Boundaries
 
-- Controller HTTP routing should stay in `exaflow/controller/quart`.
+- Controller HTTP routing should stay in `exaflow/controller/http`.
 - Controller DTOs and request/spec validation should stay in
   `exaflow/controller/services/api`.
 - Worker landscape aggregation and task orchestration should stay in
@@ -140,7 +141,7 @@ aggregation wait times out.
 Kubernetes probes: startup and liveness both call `/livez` with a 5 second
 timeout (liveness `failureThreshold` 3). Readiness calls `/healthcheck`, which
 can take as long as `worker_tasks_timeout`. A worker that is down does not
-restart the controller. Hypercorn closes the listen socket at SIGTERM, so
+restart the controller. Uvicorn closes the listen socket at SIGTERM, so
 `/livez` fails during the drain. Kubernetes 1.25 and newer stops liveness and
 startup probes before it signals the container (`SyncTerminatingPod` calls
 `StopLivenessAndStartup`, then `killPod`), so that failure does not restart

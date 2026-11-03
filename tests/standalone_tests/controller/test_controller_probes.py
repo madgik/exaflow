@@ -5,9 +5,8 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from hypercorn.config import Config
 
-from exaflow.controller.quart import hypercorn_config as hc
+from exaflow.controller.http import server_config as hc
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -75,8 +74,8 @@ def _helm_grace(*extra: str) -> tuple[int, str]:
 def _shutdown_budget_seconds() -> int:
     """Pod grace must cover the real shutdown path, not worker_tasks_timeout.
 
-    After graceful_timeout Hypercorn cancels in-flight requests and then waits
-    for them to finish. Shutdown cancels those RPCs (shutdown_rpc_cancel_timeout)
+    After graceful_timeout Uvicorn cancels in-flight requests. Shutdown cancels
+    those RPCs (shutdown_rpc_cancel_timeout)
     and bounds aggregation cleanup (shutdown_cleanup_timeout) instead of waiting
     out worker_tasks_timeout. A call started near the end of the drain would
     otherwise still be running near t=420. after_serving then has shutdown_timeout.
@@ -95,26 +94,23 @@ def _shutdown_budget_seconds() -> int:
     )
 
 
-def test_hypercorn_graceful_timeout_is_120_seconds():
-    config = Config.from_object("exaflow.controller.quart.hypercorn_config")
-    assert config.graceful_timeout == 120
-    assert config.shutdown_timeout == 60
+def test_graceful_timeout_is_120_seconds():
+    assert hc.graceful_timeout == 120
+    assert hc.shutdown_timeout == 60
 
 
-def test_hypercorn_serves_in_process_so_the_app_observes_sigterm():
-    """workers >= 1 puts Hypercorn's supervisor in front of the app process.
+def test_uvicorn_serves_in_process_so_the_app_observes_sigterm():
+    """Uvicorn's supervisor starts only when workers > 1.
 
     Kubernetes signals PID 1. The app has to be that process, otherwise a
-    shutdown flag installed in the worker never sees SIGTERM and in-flight
+    shutdown flag installed in a child never sees SIGTERM and in-flight
     RPCs keep running until worker_tasks_timeout.
     """
-    config = Config.from_object("exaflow.controller.quart.hypercorn_config")
-    assert hc.workers == 0
-    assert config.workers == 0
+    assert hc.workers == 1
 
 
 @pytest.mark.skipif(shutil.which("helm") is None, reason="helm is not installed")
-def test_controller_pod_grace_period_covers_hypercorn_shutdown():
+def test_controller_pod_grace_period_covers_uvicorn_shutdown():
     grace, block = _helm_grace()
     timeout_at = block.index("name: WORKER_TASKS_TIMEOUT")
     worker_tasks_timeout = int(
@@ -158,14 +154,20 @@ def test_controller_image_command_is_exec_form_without_shell():
     dockerfile = (REPO_ROOT / "exaflow" / "controller" / "Dockerfile").read_text()
     cmd_line = next(line for line in dockerfile.splitlines() if line.startswith("CMD"))
 
-    # A shell as PID 1 does not forward SIGTERM to Hypercorn.
+    # A shell as PID 1 does not forward SIGTERM to Uvicorn.
     assert json.loads(cmd_line[len("CMD") :]) == [
         "python",
         "-m",
-        "hypercorn",
-        "--config",
-        "python:exaflow.controller.quart.hypercorn_config",
-        "-b",
-        "0.0.0.0:5000",
-        "exaflow/controller/quart/app:app",
+        "uvicorn",
+        "exaflow.controller.http.app:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "5000",
+        "--workers",
+        "1",
+        "--timeout-graceful-shutdown",
+        "120",
+        "--log-config",
+        "exaflow/controller/http/log_config.json",
     ]

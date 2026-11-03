@@ -13,7 +13,7 @@ from exaflow.aggregation_clients.controller_aggregation_client import (
     ControllerAggregationClient,
 )
 from exaflow.controller import DeploymentType
-from exaflow.controller.quart import hypercorn_config as hc
+from exaflow.controller.http import server_config as hc
 from exaflow.controller.services import controller_shutdown as shutdown
 from exaflow.controller.services.analysis_execution import reset_analysis_execution
 from exaflow.controller.services.analysis_execution import run_blocking

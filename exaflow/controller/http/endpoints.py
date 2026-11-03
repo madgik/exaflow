@@ -1,20 +1,21 @@
 import asyncio
 from logging.config import dictConfig
 
-import pydantic
-from quart import Blueprint
-from quart import jsonify
-from quart import request
+from fastapi import APIRouter
+from fastapi import Request
+from starlette.responses import JSONResponse
 
-from exaflow.controller import config as ctrl_config
-from exaflow.controller.quart.loggers import loggers
+from exaflow.controller.http.loggers import loggers
+from exaflow.controller.http.responses import html_response
 from exaflow.controller.services import get_worker_landscape_aggregator
 from exaflow.controller.services.algorithm_execution_strategy_factory import (
     get_algorithm_execution_strategy,
 )
-from exaflow.controller.services.analysis_execution import analysis_slot
 from exaflow.controller.services.analysis_execution import shutdown_analysis_execution
 from exaflow.controller.services.analysis_execution import start_analysis_execution
+from exaflow.controller.services.analysis_service import (
+    run_analysis as execute_analysis,
+)
 from exaflow.controller.services.api.algorithm_spec_dtos import (
     algorithm_specifications_dtos,
 )
@@ -24,9 +25,6 @@ from exaflow.controller.services.api.algorithm_spec_dtos import (
 from exaflow.controller.services.api.algorithm_spec_dtos import (
     preprocessing_step_specifications_dtos,
 )
-from exaflow.controller.services.api.algorithm_spec_dtos import specifications
-from exaflow.controller.services.api.analysis_request_dtos import AnalysisRequestDTO
-from exaflow.controller.services.api.analysis_request_validator import BadRequest
 from exaflow.controller.services.api.analysis_request_validator import (
     validate_analysis_request,
 )
@@ -40,10 +38,9 @@ from exaflow.controller.services.flower.flower_io_registry import (
 from exaflow.controller.services.startup import start_background_services
 from exaflow.controller.services.startup import stop_background_services
 
-algorithms = Blueprint("algorithms_endpoint", __name__)
+router = APIRouter()
 
 
-@algorithms.before_app_serving
 async def startup():
     install_shutdown_signal_handlers()
     configure_loggers()
@@ -51,7 +48,6 @@ async def startup():
     start_analysis_execution()
 
 
-@algorithms.after_app_serving
 async def shutdown():
     try:
         await asyncio.to_thread(stop_background_services)
@@ -60,13 +56,13 @@ async def shutdown():
         await asyncio.to_thread(shutdown_analysis_execution, True)
 
 
-@algorithms.route("/datasets", methods=["GET"])
-async def get_datasets() -> dict:
+@router.get("/datasets")
+async def get_datasets():
     return get_worker_landscape_aggregator().get_all_available_datasets_per_data_model()
 
 
-@algorithms.route("/datasets_locations", methods=["GET"])
-async def get_datasets_locations() -> dict:
+@router.get("/datasets_locations")
+async def get_datasets_locations():
     return {
         data_model: {
             dataset: worker_id for dataset, worker_id in datasets_location.items()
@@ -77,8 +73,8 @@ async def get_datasets_locations() -> dict:
     }
 
 
-@algorithms.route("/datasets_variables", methods=["GET"])
-async def get_datasets_variables() -> dict:
+@router.get("/datasets_variables")
+async def get_datasets_variables():
     return {
         data_model: {
             dataset: variables for dataset, variables in datasets_variables.items()
@@ -89,8 +85,8 @@ async def get_datasets_variables() -> dict:
     }
 
 
-@algorithms.route("/cdes_metadata", methods=["GET"])
-async def get_cdes_metadata() -> dict:
+@router.get("/cdes_metadata")
+async def get_cdes_metadata():
     cdes_per_data_model = get_worker_landscape_aggregator().get_cdes_per_data_model()
     return {
         data_model: {
@@ -100,8 +96,8 @@ async def get_cdes_metadata() -> dict:
     }
 
 
-@algorithms.route("/data_models_attributes", methods=["GET"])
-async def get_data_models_attributes() -> dict:
+@router.get("/data_models_attributes")
+async def get_data_models_attributes():
     data_model_attrs = get_worker_landscape_aggregator().get_data_models_attributes()
     return {
         data_model: data_model_metadata.model_dump()
@@ -109,87 +105,73 @@ async def get_data_models_attributes() -> dict:
     }
 
 
-@algorithms.route("/specifications/inputdata", methods=["GET"])
-async def get_inputdata_specification() -> str:
-    return inputdata_specification_dto.model_dump_json()
+@router.get("/specifications/inputdata")
+async def get_inputdata_specification():
+    return html_response(inputdata_specification_dto.model_dump_json())
 
 
-@algorithms.route("/specifications/preprocessing", methods=["GET"])
-async def get_preprocessing_specifications() -> str:
-    return preprocessing_step_specifications_dtos.model_dump_json()
+@router.get("/specifications/preprocessing")
+async def get_preprocessing_specifications():
+    return html_response(preprocessing_step_specifications_dtos.model_dump_json())
 
 
-@algorithms.route("/specifications/algorithms", methods=["GET"])
-async def get_algorithm_specifications() -> str:
-    return algorithm_specifications_dtos.model_dump_json()
+@router.get("/specifications/algorithms")
+async def get_algorithm_specifications():
+    return html_response(algorithm_specifications_dtos.model_dump_json())
 
 
-@algorithms.route("/wla", methods=["POST"])
-async def update_wla() -> str:
+@router.post("/wla")
+async def update_wla():
     await asyncio.to_thread(get_worker_landscape_aggregator().update)
-    return ""
+    return html_response("")
 
 
-@algorithms.route("/healthcheck", methods=["GET"])
-async def healthcheck() -> str:
+@router.get("/healthcheck")
+async def healthcheck():
     await asyncio.to_thread(get_worker_landscape_aggregator().healthcheck)
-    return ""
+    return html_response("")
 
 
-@algorithms.route("/livez", methods=["GET"])
-async def livez() -> str:
+@router.get("/livez")
+async def livez():
     # Liveness only: unlike /healthcheck, it does not depend on worker health.
-    return ""
+    return html_response("")
 
 
-@algorithms.route("/analysis", methods=["POST"])
-async def run_analysis() -> str:
-    request_body = await request.json
-    try:
-        analysis_request_dto = AnalysisRequestDTO.model_validate(request_body)
-    except pydantic.ValidationError as pydantic_error:
-        error_msg = (
-            f"Analysis execution request malformed:"
-            f"\nrequest received:{request_body}"
-            f"\nerror:{pydantic_error}"
+@router.post("/analysis")
+async def run_analysis(request: Request):
+    # No Pydantic body parameter: FastAPI would answer 422 for a bad body.
+    return html_response(
+        await execute_analysis(
+            await request.json(),
+            validate_analysis_request=validate_analysis_request,
+            get_algorithm_execution_strategy=get_algorithm_execution_strategy,
+            get_worker_landscape_aggregator=get_worker_landscape_aggregator,
         )
-        raise BadRequest(error_msg)
-
-    validate_analysis_request(
-        analysis_request_dto=analysis_request_dto,
-        algorithms_specs=specifications.enabled_algorithms,
-        preprocessing_steps_specs=specifications.enabled_preprocessing_steps,
-        worker_landscape_aggregator=get_worker_landscape_aggregator(),
-        smpc_enabled=ctrl_config.smpc.enabled,
-        smpc_optional=ctrl_config.smpc.optional,
     )
 
-    strategy = get_algorithm_execution_strategy(analysis_request_dto)
-    async with analysis_slot():
-        return await strategy.execute()
 
-
-@algorithms.route("/flower/input", methods=["GET"])
-async def get_flower_input():
+@router.get("/flower/input")
+async def get_flower_input(request: Request):
     registry = get_flower_controller().flower_execution_info
     if not registry.is_current(request.headers.get("X-Request-Id")):
-        return FLOWER_CALLBACK_MISMATCH_MESSAGE, 409
+        return html_response(FLOWER_CALLBACK_MISMATCH_MESSAGE, status_code=409)
     return registry.get_inputdata()
 
 
-@algorithms.route("/flower/result", methods=["POST"])
-async def set_flower_result():
+@router.post("/flower/result")
+async def set_flower_result(request: Request):
     registry = get_flower_controller().flower_execution_info
     request_id = request.headers.get("X-Request-Id")
     if not registry.is_current(request_id):
-        return FLOWER_CALLBACK_MISMATCH_MESSAGE, 409
-    request_body = await request.json
+        return html_response(FLOWER_CALLBACK_MISMATCH_MESSAGE, status_code=409)
+    request_body = await request.json()
     # Re-check inside set_result. The running id can change while the body
     # is read, and nothing awaits between that check and result_ready.set().
     if not await registry.set_result(result=request_body, request_id=request_id):
-        return FLOWER_CALLBACK_MISMATCH_MESSAGE, 409
+        return html_response(FLOWER_CALLBACK_MISMATCH_MESSAGE, status_code=409)
 
-    return jsonify({"message": "Result set successfully"}), 200
+    return JSONResponse({"message": "Result set successfully"})
 
 
 def configure_loggers():

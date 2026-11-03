@@ -3,8 +3,8 @@ import os
 import threading
 import time
 
-from exaflow.controller.quart import endpoints
-from exaflow.controller.quart.app import app
+from exaflow.controller.http import endpoints
+from exaflow.controller.http.app import app
 from exaflow.controller.services.exareme3 import strategies
 from exaflow.controller.services.exareme3.strategies import Exareme3Strategy
 from tests.standalone_tests.controller.analysis_support import ANALYSIS_BODY

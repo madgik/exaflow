@@ -5,14 +5,14 @@
 Purpose: HTTP API, runtime config, worker discovery, execution strategies, and
 controller-side task orchestration.
 
-Key files: `quart/endpoints.py`, `services/api/*`,
+Key files: `http/endpoints.py`, `http/app.py`, `services/api/*`,
 `services/analysis_execution.py`, `services/exareme3/strategies.py`,
 `services/exareme3/algorithm_flow_engine_interface.py`.
 
 Used by: `run_analysis`, prod tests, algorithm validation tests, workers, and
 deployment manifests.
 
-Rules: Keep route parsing in Quart, validation in API service modules, and
+Rules: Keep route parsing in the FastAPI app, validation in API service modules, and
 execution orchestration in strategy/task-handler modules.
 
 Tests: `tests/standalone_tests/controller`, `tests/prod_env_tests`.

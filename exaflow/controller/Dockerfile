@@ -42,8 +42,9 @@ COPY --chown=10001:10001 exaflow/ ./exaflow/
 RUN rm -rf exaflow/worker
 
 #######################################################
-# Define Hypercorn needed env variables and start hypercorn
+# Uvicorn in-process. workers 1 is the server itself (a higher value is a
+# supervisor at PID 1). 120 matches server_config.graceful_timeout.
 #######################################################
 ENV PYTHONPATH=$CODE_PATH
 USER appuser
-CMD ["python", "-m", "hypercorn", "--config", "python:exaflow.controller.quart.hypercorn_config", "-b", "0.0.0.0:5000", "exaflow/controller/quart/app:app"]
+CMD ["python", "-m", "uvicorn", "exaflow.controller.http.app:app", "--host", "0.0.0.0", "--port", "5000", "--workers", "1", "--timeout-graceful-shutdown", "120", "--log-config", "exaflow/controller/http/log_config.json"]

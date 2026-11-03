@@ -1,10 +1,9 @@
 """Tell in-flight controller work that the process is shutting down.
 
-Hypercorn closes the listen socket on SIGTERM, waits graceful_timeout, then
-cancels request tasks and still waits for them to finish. A client disconnect
-cancels the request task too. The flag set here is how those two differ:
-shutdown cancels registered gRPC futures and waits only
-``shutdown_rpc_cancel_timeout`` for the analysis thread.
+Uvicorn closes the listen socket on SIGTERM, waits timeout_graceful_shutdown,
+then cancels request tasks. A client disconnect cancels the request task too.
+The flag set here is how those two differ: shutdown cancels registered gRPC
+futures and waits only ``shutdown_rpc_cancel_timeout`` for the analysis thread.
 """
 
 import asyncio
@@ -56,10 +55,10 @@ def cancel_inflight_rpcs() -> None:
 def install_shutdown_signal_handlers() -> None:
     """Chain the process SIGTERM/SIGINT handlers so shutdown is visible.
 
-    Hypercorn installs those handlers before the app starts, and only one
-    handler can be registered per signal. The serving process has to be the
-    one that receives SIGTERM (``workers = 0``); a supervisor child never
-    sees the signal Kubernetes sends to PID 1.
+    The serving process has to be PID 1. Uvicorn does that when ``workers``
+    is 1; a supervisor (``workers`` > 1) never sees the signal Kubernetes
+    sends. Uvicorn registers the handler with ``signal.signal``, not the
+    event loop, so both styles are chained.
     """
     global _signals_installed
     if _signals_installed:
@@ -68,16 +67,27 @@ def install_shutdown_signal_handlers() -> None:
     installed = False
     for sig in (signal.SIGTERM, signal.SIGINT):
         handle = getattr(loop, "_signal_handlers", {}).get(sig)
-        if handle is None or getattr(handle, "_cancelled", True):
+        if handle is not None and not getattr(handle, "_cancelled", True):
+            previous = (handle._callback, tuple(handle._args))
+            loop.remove_signal_handler(sig)
+
+            def _loop_handler(previous=previous) -> None:
+                begin_controller_shutdown()
+                callback, args = previous
+                callback(*args)
+
+            loop.add_signal_handler(sig, _loop_handler)
+            installed = True
             continue
-        previous = (handle._callback, tuple(handle._args))
-        loop.remove_signal_handler(sig)
 
-        def _handler(previous=previous) -> None:
+        previous_signal = signal.getsignal(sig)
+        if not callable(previous_signal):
+            continue
+
+        def _signal_handler(signum, frame, previous=previous_signal) -> None:
             begin_controller_shutdown()
-            callback, args = previous
-            callback(*args)
+            previous(signum, frame)
 
-        loop.add_signal_handler(sig, _handler)
+        signal.signal(sig, _signal_handler)
         installed = True
     _signals_installed = installed

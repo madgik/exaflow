@@ -2,8 +2,7 @@
 
 Tickets for [controller-modernization-plan.md](controller-modernization-plan.md).
 Each ticket is one reviewable change with its own tests. Tickets use the Ornith
-template, so a ticket body can go to `ornith_start(repo="exaflow",
-ticket_markdown=...)` unchanged. Confirm decisions D1 to D6 in the plan first.
+template, so a ticket body can go to `ornith_start(repo="exaflow", ticket_markdown=...)` unchanged. Confirm decisions D1 to D6 in the plan first.
 
 Waves (tickets in one wave edit disjoint files and can run in parallel):
 
@@ -259,13 +258,15 @@ Title: fix(worker): deliver SIGTERM to the worker process
 
 ______________________________________________________________________
 
-## Optional phase C: FastAPI and Uvicorn
+## Phase C: FastAPI and Uvicorn
 
-Run only if decision D6 is yes. These are outlines: expand each into a full
-ticket with the same template when the phase starts. Gate: the T1 contract tests
-pass unchanged against the new app; only the client fixture changes.
+D6 is yes. `/docs`, `/redoc`, and `/openapi.json` stay disabled. Gate: the T1
+contract tests pass unchanged against the new app; only the client fixture
+(the app import) changes. C1, C2, C3, and C4 are done. Uvicorn `--workers 1`
+is in-process. `--timeout-graceful-shutdown 120` is the drain. The 60 s hook
+budget stays in the pod grace because Uvicorn has no separate hook timeout.
 
 - C1 `refactor(controller): table-driven error responses`. In `error_handlers.py`, replace the eleven handler functions with one mapping from exception type to (status, log level) and register one handler per entry. `InsufficientDataError` keeps its fixed message. Delete the commented-out generic handler and the unused `HTTPStatusCode.UNEXPECTED_ERROR` member. Pure refactor; T1 is the regression net.
 - C2 `refactor(controller): move analysis orchestration out of the route`. New `async def run_analysis(request_body: Any) -> str` in `exaflow/controller/services/analysis_service.py` holds DTO parsing, `validate_analysis_request`, strategy creation, `analysis_slot()`, and `strategy.execute()`. The `/analysis` route becomes one call.
 - C3 `feat(controller): serve the controller API with FastAPI`. Add `exaflow/controller/http/app.py` with a lifespan that calls `start_background_services`, `start_analysis_execution`, and the T2 shutdown order. Return `PlainTextResponse` wherever Quart returned a `str` today, so bodies are not JSON-quoted. Read `/analysis` with `await request.json()` and no Pydantic body parameter, so FastAPI never answers 422. Register C1's table as exception handlers. Keep Hypercorn. Add `fastapi` to the `controller` group and `httpx` to `dev`, run `uv lock`, delete `exaflow/controller/quart/` except `hypercorn_config.py` and `loggers.py`, and update `AGENTS.md`, `architecture.md`, and `module-index.md`.
-- C4 `chore(controller): run the controller with Uvicorn`. Use exec form: `uvicorn exaflow.controller.http.app:app --host 0.0.0.0 --port 5000 --workers 1 --timeout-graceful-shutdown 120 --log-config <file>`. Uvicorn waits forever by default, so the flag is required, and it must stay aligned with the T7 grace period. Translate `loggers.py` into the log config. Update `tasks.py` process patterns, the Dockerfile, and docs. Remove `hypercorn` and `hypercorn_config.py`.
+- C4 `chore(controller): run the controller with Uvicorn`. Done. Exec form: `uvicorn exaflow.controller.http.app:app --host 0.0.0.0 --port 5000 --workers 1 --timeout-graceful-shutdown 120 --log-config exaflow/controller/http/log_config.json`. `--workers 1` is in-process. Startup `dictConfig` still applies the federation-aware format from `loggers.py` after Uvicorn loads the JSON file. `hypercorn` and `hypercorn_config.py` are removed. The budget constants live in `exaflow/controller/http/server_config.py`.
