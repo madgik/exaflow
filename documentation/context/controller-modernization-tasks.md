@@ -242,18 +242,19 @@ ______________________________________________________________________
 
 Title: fix(worker): deliver SIGTERM to the worker process
 
-1. Files — `exaflow/worker/Dockerfile`, `exaflow/worker/bootstrap.sh`. Tests: `tests/standalone_tests/test_worker_image.py`.
-1. Names — Dockerfile `CMD ["/home/bootstrap.sh"]`. `bootstrap.sh` runs `exec python -m exaflow.worker.grpc_server`.
+1. Files — `exaflow/worker/Dockerfile`, `exaflow/worker/bootstrap.sh`, `exaflow/worker/grpc_server.py`. Tests: `tests/standalone_tests/test_worker_image.py`, `tests/standalone_tests/test_worker_sigterm.py`.
+1. Names — Dockerfile `CMD ["/home/bootstrap.sh"]`. `bootstrap.sh` runs `exec python -m exaflow.worker.grpc_server`. `serve` installs SIGTERM and SIGINT handlers that call `server.stop(SHUTDOWN_GRACE_SECONDS)` before `wait_for_termination`.
 1. Keys — n/a.
 1. Strings — n/a.
-1. Numbers — n/a.
-1. Edge cases — The script is PID 1 through its shebang. `exec` replaces that shell with the gRPC server, so SIGTERM reaches the server. There is no extra `sh -c` shell.
-1. Behavior — Before: `CMD ["sh", "-c", "/home/bootstrap.sh"]` leaves a shell as PID 1, and `bootstrap.sh` starts the server without `exec`, so SIGTERM never reaches the worker. After: the command is exec form and the script replaces itself with the server.
+1. Numbers — `SHUTDOWN_GRACE_SECONDS = 10`. The worker chart does not set `terminationGracePeriodSeconds`, so this fits Kubernetes' default 30 s grace.
+1. Edge cases — The script is PID 1 through its shebang. `exec` replaces that shell with the gRPC server, so SIGTERM reaches the server. There is no extra `sh -c` shell. Python as PID 1 still ignores SIGTERM until `serve` installs a handler; the handler is installed after `start` and before the ready log. SIGINT uses the same grace.
+1. Behavior — Before: `CMD ["sh", "-c", "/home/bootstrap.sh"]` leaves a shell as PID 1, and `bootstrap.sh` starts the server without `exec`, so SIGTERM never reaches the worker. Even with exec form, `wait_for_termination` installs no SIGTERM handler, so container PID 1 stays up until SIGKILL. After: the command is exec form, the script replaces itself with the server, and the server stops within the grace period.
 1. Unchanged — Image user, bootstrap path `/home/bootstrap.sh`, server module, environment, and the copied codebase.
-1. Verify — `uv run pytest -q tests/standalone_tests/test_worker_image.py`.
+1. Verify — `uv run pytest -q tests/standalone_tests/test_worker_image.py tests/standalone_tests/test_worker_sigterm.py`.
 1. Acceptance criteria —
    - worker image command is exec form without a shell
    - bootstrap.sh execs the gRPC server
+   - a worker process that starts with SIGTERM ignored still exits when SIGTERM arrives
 
 ______________________________________________________________________
 

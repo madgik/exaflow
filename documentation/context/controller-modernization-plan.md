@@ -123,8 +123,9 @@ change them first.
 
 ## Follow-ups outside this plan
 
-- Worker SIGTERM delivery is T10. The worker command is exec form and
-  `bootstrap.sh` replaces itself with the gRPC server.
+- Worker SIGTERM delivery is T10. The worker command is exec form,
+  `bootstrap.sh` replaces itself with the gRPC server, and that server
+  installs a SIGTERM handler. Container PID 1 would otherwise ignore it.
 
 ## Validation
 
