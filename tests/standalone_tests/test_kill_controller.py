@@ -201,6 +201,39 @@ def test_controller_stop_timeout_env_overrides_the_default(monkeypatch):
     assert sum(sleeps) == 1
 
 
+def test_terminate_pids_rechecks_before_sigkill():
+    """A pid that exits during the last sleep must not be SIGKILLed.
+
+    The in-loop poll can still see the process, and it can exit before
+    ``kill -9``. SIGKILL only the pids that are alive at that moment (T8).
+    """
+    polls_in_loop = int(
+        tasks.CONTROLLER_TERMINATE_TIMEOUT_SECONDS
+        / tasks.CONTROLLER_TERMINATE_POLL_INTERVAL_SECONDS
+    )
+    state = {"checks": 0}
+    calls = []
+
+    def fake_run(c, cmd, **kwargs):
+        calls.append(cmd)
+        if cmd.startswith("kill -0"):
+            state["checks"] += 1
+            # Alive for every poll inside the wait, gone on the re-check.
+            return _Res(ok=state["checks"] <= polls_in_loop)
+        return _Res(ok=True)
+
+    monotonic, sleep = _advance_clock()
+    with (
+        mock.patch.object(tasks, "run", side_effect=fake_run),
+        mock.patch.object(tasks, "sleep", side_effect=sleep),
+        mock.patch("tasks.time.monotonic", side_effect=monotonic),
+    ):
+        tasks._terminate_pids(None, "4242")
+
+    assert not any(cmd.startswith("kill -9") for cmd in calls), calls
+    assert state["checks"] == polls_in_loop + 1
+
+
 def test_terminate_pids_multiple_pids_sigkill_only_alive():
     """Only the still-alive pids receive SIGKILL after the grace period."""
     state = {"t": 0.0}
