@@ -132,7 +132,9 @@ def test_terminate_pids_waits_for_the_hypercorn_drain():
 
     poll_count = sum(1 for cmd in calls if cmd.startswith("kill -0"))
     interval = tasks.CONTROLLER_TERMINATE_POLL_INTERVAL_SECONDS
-    assert poll_count == int(tasks.CONTROLLER_TERMINATE_TIMEOUT_SECONDS / interval)
+    polls_in_the_wait = int(tasks.CONTROLLER_TERMINATE_TIMEOUT_SECONDS / interval)
+    # One more kill -0 after the wait, immediately before SIGKILL.
+    assert poll_count == polls_in_the_wait + 1
 
 
 def test_kill_controller_stop_timeout_can_be_shorter_for_local_dev():

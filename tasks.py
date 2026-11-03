@@ -746,26 +746,28 @@ def start_aggregation_server(c, detached: bool = False):
         c.run(run_cmd, env=env, pty=True)
 
 
+def _pids_still_alive(c, pid_list: list[str]) -> list[str]:
+    return [
+        pid
+        for pid in pid_list
+        if run(c, f"kill -0 {pid}", warn=True, show_ok=False).ok
+    ]
+
+
 def _terminate_pids(c, pids: str, timeout: float | None = None) -> None:
     """Send SIGTERM to pids, then SIGKILL the ones alive after the timeout."""
     pid_list = pids.split()
-    limit = (
-        CONTROLLER_TERMINATE_TIMEOUT_SECONDS if timeout is None else timeout
-    )
+    limit = CONTROLLER_TERMINATE_TIMEOUT_SECONDS if timeout is None else timeout
     # Polite request to terminate: runs the shutdown hooks.
     run(c, f"kill {pids}", warn=True, show_ok=False)
     deadline = time.monotonic() + limit
-    alive = list(pid_list)
     while time.monotonic() < deadline:
-        alive = [
-            pid
-            for pid in pid_list
-            if run(c, f"kill -0 {pid}", warn=True, show_ok=False).ok
-        ]
-        if not alive:
+        if not _pids_still_alive(c, pid_list):
             return
         sleep(CONTROLLER_TERMINATE_POLL_INTERVAL_SECONDS)
-    # Force-kill whatever survived the grace period.
+    # The last poll can be a sleep old. A pid that exited in that window
+    # must not be SIGKILLed.
+    alive = _pids_still_alive(c, pid_list)
     if alive:
         run(c, f"kill -9 {' '.join(alive)}", warn=True, show_ok=False)
 
