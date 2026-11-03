@@ -71,6 +71,11 @@ from invoke import UnexpectedExit
 from invoke import task
 from termcolor import colored
 
+from exaflow.controller.quart.hypercorn_config import graceful_timeout
+from exaflow.controller.quart.hypercorn_config import shutdown_cleanup_timeout
+from exaflow.controller.quart.hypercorn_config import shutdown_rpc_cancel_timeout
+from exaflow.controller.quart.hypercorn_config import shutdown_timeout
+
 PROJECT_ROOT = Path(__file__).parent
 DEPLOYMENT_CONFIG_FILE = PROJECT_ROOT / ".deployment.toml"
 WORKERS_CONFIG_DIR = PROJECT_ROOT / "configs" / "workers"
@@ -108,9 +113,26 @@ WORKER_STARTUP_TIMEOUT_SECONDS = 120
 WORKER_GRPC_SPARE_THREADS = 4
 UV_RUN_NO_SYNC = "uv run --no-sync"
 # kill-controller sends SIGTERM so Hypercorn runs its shutdown hooks, then
-# SIGKILL to processes still alive after the timeout.
-CONTROLLER_TERMINATE_TIMEOUT_SECONDS = 10
+# SIGKILL to processes still alive after the timeout. The default covers the
+# drain plus the bounded cancel, cleanup, and shutdown hooks. An idle process
+# still returns as soon as it exits. CONTROLLER_STOP_TIMEOUT or --stop-timeout
+# shortens this for a local restart that should not wait out the drain.
+CONTROLLER_TERMINATE_TIMEOUT_SECONDS = (
+    graceful_timeout
+    + shutdown_rpc_cancel_timeout
+    + shutdown_cleanup_timeout
+    + shutdown_timeout
+)
 CONTROLLER_TERMINATE_POLL_INTERVAL_SECONDS = 0.5
+
+
+def _controller_stop_timeout(stop_timeout) -> float:
+    if stop_timeout is not None and stop_timeout != "":
+        return float(stop_timeout)
+    raw = os.environ.get("CONTROLLER_STOP_TIMEOUT")
+    if raw:
+        return float(raw)
+    return CONTROLLER_TERMINATE_TIMEOUT_SECONDS
 
 
 def _expand_path(path_value) -> Path:
@@ -724,12 +746,15 @@ def start_aggregation_server(c, detached: bool = False):
         c.run(run_cmd, env=env, pty=True)
 
 
-def _terminate_pids(c, pids: str) -> None:
+def _terminate_pids(c, pids: str, timeout: float | None = None) -> None:
     """Send SIGTERM to pids, then SIGKILL the ones alive after the timeout."""
     pid_list = pids.split()
+    limit = (
+        CONTROLLER_TERMINATE_TIMEOUT_SECONDS if timeout is None else timeout
+    )
     # Polite request to terminate: runs the shutdown hooks.
     run(c, f"kill {pids}", warn=True, show_ok=False)
-    deadline = time.monotonic() + CONTROLLER_TERMINATE_TIMEOUT_SECONDS
+    deadline = time.monotonic() + limit
     alive = list(pid_list)
     while time.monotonic() < deadline:
         alive = [
@@ -746,8 +771,13 @@ def _terminate_pids(c, pids: str) -> None:
 
 
 @task
-def kill_controller(c):
-    """Kill the controller service."""
+def kill_controller(c, stop_timeout=None):
+    """Stop the controller. ``stop_timeout`` is seconds before SIGKILL.
+
+    The default waits out Hypercorn's drain and shutdown hooks. Pass
+    ``--stop-timeout`` or set ``CONTROLLER_STOP_TIMEOUT`` to cut that short.
+    """
+    timeout = _controller_stop_timeout(stop_timeout)
     controller_port = get_controller_port()
     lsof_res = run(
         c,
@@ -772,7 +802,7 @@ def kill_controller(c):
     if pids_to_kill:
         message("Stopping previous Hypercorn instances...", Level.HEADER)
         pids = " ".join(sorted(pids_to_kill))
-        _terminate_pids(c, pids)
+        _terminate_pids(c, pids, timeout=timeout)
         return
 
     # Fallback for controllers that may not expose a listening socket yet.
@@ -785,7 +815,7 @@ def kill_controller(c):
         if res.ok and res.stdout.strip():
             pids = " ".join(res.stdout.strip().splitlines())
             message("Stopping previous Hypercorn instances...", Level.HEADER)
-            _terminate_pids(c, pids)
+            _terminate_pids(c, pids, timeout=timeout)
             return
 
     if non_controller_listeners:

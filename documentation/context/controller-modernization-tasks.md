@@ -176,19 +176,23 @@ ______________________________________________________________________
 Title: fix(controller): let Kubernetes stop the controller gracefully
 
 1. Files — `exaflow/controller/Dockerfile`, `exaflow/controller/quart/hypercorn_config.py`, `kubernetes/templates/exaflow-controller.yaml`. Tests: extend `tests/standalone_tests/controller/test_controller_probes.py`.
-1. Names — Dockerfile: `CMD ["python", "-m", "hypercorn", "--config", "python:exaflow.controller.quart.hypercorn_config", "-b", "0.0.0.0:5000", "exaflow/controller/quart/app:app"]`. `hypercorn_config.py`: `graceful_timeout = 120`, with a comment that the Helm grace period must exceed it plus Hypercorn's `shutdown_timeout` (60 s default). Template: `terminationGracePeriodSeconds: 200` in the controller pod spec.
-1. Keys — Hypercorn config `graceful_timeout`. Pod spec `terminationGracePeriodSeconds`.
+1. Names — Dockerfile: `CMD ["python", "-m", "hypercorn", "--config", "python:exaflow.controller.quart.hypercorn_config", "-b", "0.0.0.0:5000", "exaflow/controller/quart/app:app"]`. `hypercorn_config.py`: `workers = 0`, `graceful_timeout = 120`, `shutdown_timeout = 60`, `shutdown_rpc_cancel_timeout = 5`, `shutdown_cleanup_timeout = 10`, `shutdown_grace_margin = 20`. Template: `terminationGracePeriodSeconds` is the sum of those five values.
+1. Keys — Hypercorn config `workers`, `graceful_timeout`, `shutdown_timeout`, `shutdown_rpc_cancel_timeout`, `shutdown_cleanup_timeout`, `shutdown_grace_margin`. The same five numbers are Helm values under `controller`. Pod spec `terminationGracePeriodSeconds`.
 1. Strings — n/a.
-1. Numbers — `graceful_timeout = 120` (Hypercorn default 3). `terminationGracePeriodSeconds: 200` (Kubernetes default 30). Decision D4.
-1. Edge cases — No request in flight: the process exits right after SIGTERM. An analysis longer than 120 s is cancelled; `run_blocking` still waits for its thread before aggregation cleanup; `after_serving` then has up to 60 s.
-1. Behavior — Before: `sh -c` is PID 1 and does not forward SIGTERM (dash 0.5.12 keeps the `sh` process for `sh -c "<cmd>"`), so Kubernetes sends SIGKILL after 30 s and `after_serving` never runs. After: Hypercorn receives SIGTERM, drains for up to 120 s, runs the shutdown hooks, and exits inside the 200 s grace period.
-1. Unchanged — Bind address and port 5000, one worker, access-log settings, probes, image user, `PYTHONPATH`.
-1. Verify — `uv run pytest -q tests/standalone_tests/controller/test_controller_probes.py` and `helm template kubernetes/`. `kubernetes/AGENTS.md` requires a rendered chart and human review for deployment changes.
+1. Numbers — `graceful_timeout = 120` (Hypercorn default 3). `shutdown_timeout = 60`. `shutdown_rpc_cancel_timeout = 5`. `shutdown_cleanup_timeout = 10`. `shutdown_grace_margin = 20`. `terminationGracePeriodSeconds` = 215 at the chart defaults (Kubernetes default grace is 30). Decision D4, corrected: a flat 200 s grace ends while a cancelled request is still inside `run_blocking` (up to `worker_tasks_timeout`) and a second cleanup of the same length, and `after_serving` only has `shutdown_timeout`.
+1. Edge cases — No request in flight: the process exits right after SIGTERM. An analysis still running when the drain ends has its worker and aggregation RPCs cancelled; `run_blocking` waits at most `shutdown_rpc_cancel_timeout`, then aggregation cleanup uses `shutdown_cleanup_timeout`. A client disconnect while the process is not shutting down still waits for the analysis thread. WLA `stop()` from `start()` still joins without a timeout; shutdown passes `join_timeout=shutdown_cleanup_timeout`. `/livez` fails once the listen socket closes. On Kubernetes 1.25 and newer, `SyncTerminatingPod` calls `StopLivenessAndStartup` before `killPod` (see `kubelet.go` in v1.25.0 and v1.32.0), so liveness does not restart the container for that failure. The probe does not set its own `terminationGracePeriodSeconds`.
+1. Behavior — Before: `sh -c` is PID 1 and does not forward SIGTERM (dash 0.5.12 keeps the `sh` process for `sh -c "<cmd>"`), so Kubernetes sends SIGKILL after 30 s and `after_serving` never runs. A later 200 s grace still loses the race with `worker_tasks_timeout`. After: Hypercorn is the serving process, receives SIGTERM, drains for up to 120 s, cancels leftover RPCs, runs a short cleanup and the shutdown hooks, and the pod stays up for that budget.
+1. Unchanged — Bind address and port 5000, access-log settings, probe paths and thresholds, image user, `PYTHONPATH`, per-call `worker_tasks_timeout` on calls that are not being shut down.
+1. Verify — `uv run pytest -q tests/standalone_tests/controller/test_controller_probes.py tests/standalone_tests/controller/services/test_shutdown_budget.py` and `helm template kubernetes/`. `kubernetes/AGENTS.md` requires a rendered chart and human review for deployment changes.
 1. Acceptance criteria —
    - controller image command is exec form without a shell
-   - hypercorn graceful timeout is 120 seconds
-   - rendered controller pod sets terminationGracePeriodSeconds to 200
-   - termination grace period exceeds graceful timeout plus hypercorn shutdown timeout
+   - hypercorn graceful timeout is 120 seconds and shutdown timeout is 60 seconds
+   - hypercorn serves in-process so the app observes SIGTERM
+   - rendered controller pod grace period equals graceful timeout plus rpc-cancel bound plus cleanup bound plus shutdown timeout plus 20 seconds
+   - at the chart default that grace period is 215 seconds
+   - overriding the cleanup bound changes the rendered grace; overriding worker_tasks_timeout does not
+   - a shutdown cancel aborts an in-flight RPC instead of waiting out worker_tasks_timeout
+   - a client disconnect still waits for the analysis thread
 
 ______________________________________________________________________
 
@@ -197,18 +201,19 @@ ______________________________________________________________________
 Title: chore(tasks): stop the local controller with SIGTERM before SIGKILL
 
 1. Files — `tasks.py` (`kill_controller`).
-1. Names — New helper `_terminate_pids(c, pids: str) -> None`: run `kill <pids>`, poll `kill -0` every 0.5 s for up to 10 s, then `kill -9` the pids still alive. Both the `lsof` path and the `pgrep` fallback of `kill_controller` call it instead of `kill -9 {pids} && sleep 1`.
-1. Keys — n/a.
+1. Names — New helper `_terminate_pids(c, pids: str, timeout: float | None = None) -> None`: run `kill <pids>`, poll `kill -0` every 0.5 s until `timeout` (default the T7 shutdown budget), then `kill -9` the pids still alive. Both the `lsof` path and the `pgrep` fallback of `kill_controller` call it instead of `kill -9 {pids} && sleep 1`. `kill_controller` takes `stop_timeout`.
+1. Keys — Invoke flag `--stop-timeout`. Environment variable `CONTROLLER_STOP_TIMEOUT`. The flag wins when both are set.
 1. Strings — Replace `Killing previous Hypercorn instances...` with `Stopping previous Hypercorn instances...`. Keep `No hypercorn instance found` and the non-controller listener warning.
-1. Numbers — 10 s maximum wait, 0.5 s poll interval (decision D5).
-1. Edge cases — Process already gone: no error. Process ignoring SIGTERM: SIGKILL after 10 s. Port held by a non-controller process: warning only (unchanged).
-1. Behavior — Before: `kill -9` skips Hypercorn's shutdown hooks. After: SIGTERM comes first, so `after_serving` runs locally as it does in Kubernetes after T7.
+1. Numbers — Default maximum wait is `graceful_timeout + shutdown_rpc_cancel_timeout + shutdown_cleanup_timeout + shutdown_timeout` (195 s at the T7 defaults). Poll interval 0.5 s (decision D5, corrected: 10 s SIGKILL interrupted the 120 s drain).
+1. Edge cases — Process already gone: no error, and the wait returns immediately. Process ignoring SIGTERM: SIGKILL after the timeout. `--stop-timeout 1` or `CONTROLLER_STOP_TIMEOUT=1` SIGKILLs after 1 s. Port held by a non-controller process: warning only (unchanged).
+1. Behavior — Before: `kill -9` skips Hypercorn's shutdown hooks. A 10 s cap still SIGKILLs during the drain. After: SIGTERM comes first and the default wait covers the drain and the shutdown hooks, so `after_serving` can finish locally as it does in Kubernetes after T7. A local restart can pass a shorter timeout.
 1. Unchanged — Process matching (`python` or `hypercorn` listening on the controller port; the two `pgrep -f` patterns), worker and aggregation-server kill tasks.
 1. Verify — `uv run inv start-controller --detached`, then `uv run inv kill-controller`. The controller log shows Hypercorn shutdown lines and the port is free.
 1. Acceptance criteria —
    - kill-controller sends SIGTERM before SIGKILL
    - kill-controller returns once the controller exits on SIGTERM
-   - kill-controller sends SIGKILL to a controller still alive after 10 seconds
+   - kill-controller sends SIGKILL to a controller still alive after the shutdown budget
+   - `--stop-timeout` and `CONTROLLER_STOP_TIMEOUT` shorten that wait
 
 ______________________________________________________________________
 

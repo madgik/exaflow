@@ -1,7 +1,8 @@
 """Tests for the graceful controller shutdown in ``tasks.kill_controller``.
 
 ``kill_controller`` (the ``kill-controller`` invoke task) must stop Hypercorn
-gracefully: it sends SIGTERM first so that shutdown hooks run, waits up to 10 s
+gracefully: it sends SIGTERM first so that shutdown hooks run, waits out the
+controller shutdown budget (or ``--stop-timeout`` / ``CONTROLLER_STOP_TIMEOUT``)
 polling every 0.5 s, and only SIGKILLs whatever is still alive afterwards.
 """
 

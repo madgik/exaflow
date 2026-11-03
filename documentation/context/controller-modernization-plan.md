@@ -88,8 +88,8 @@ change them first.
 | D1 | T4 | Configure and Cleanup deadline = `worker_tasks_timeout` (Helm default 300 s). No new config key. |
 | D2 | T5 | 503 message: "The controller is already running a Flower analysis." |
 | D3 | T6 | Header `X-Request-Id`. Mismatch returns 409 with "Flower callback does not belong to the running analysis." Callback HTTP timeout 30 s. |
-| D4 | T7 | Hypercorn `graceful_timeout = 120` s. `terminationGracePeriodSeconds: 200` (120 s drain + 60 s Hypercorn `shutdown_timeout` + 20 s margin). |
-| D5 | T8 | Wait 10 s after SIGTERM before SIGKILL. |
+| D4 | T7 | Hypercorn runs in-process (`workers = 0`) with `graceful_timeout = 120` s and `shutdown_timeout = 60` s. On SIGTERM the app marks shutdown, so when Hypercorn then cancels in-flight requests it can cancel their worker and aggregation RPCs within `shutdown_rpc_cancel_timeout` (5 s) and run aggregation cleanup within `shutdown_cleanup_timeout` (10 s) instead of waiting out `worker_tasks_timeout`. The WLA join on shutdown uses that same 10 s bound. `terminationGracePeriodSeconds` is `graceful_timeout + shutdown_rpc_cancel_timeout + shutdown_cleanup_timeout + shutdown_timeout + shutdown_grace_margin` (20 s) = 215 s. The per-call worker timeout is unchanged for calls that are not being shut down. `/livez` stops answering once the listen socket closes; kubelet 1.25+ stops liveness and startup probes in `SyncTerminatingPod` before `killPod` (`StopLivenessAndStartup`), so that does not restart the container. The chart does not set a probe-level `terminationGracePeriodSeconds`. |
+| D5 | T8 | After SIGTERM, wait for the controller shutdown budget (`graceful_timeout + shutdown_rpc_cancel_timeout + shutdown_cleanup_timeout + shutdown_timeout`, 195 s at the defaults) before SIGKILL. `inv kill-controller --stop-timeout <seconds>` or `CONTROLLER_STOP_TIMEOUT` shortens that for a local restart. An idle process still returns as soon as it exits. |
 | D6 | C | Whether to run phase C at all. If yes, whether FastAPI's `/docs`, `/redoc`, and `/openapi.json` routes stay enabled. |
 
 ## Invariants kept from the initial plan
@@ -108,9 +108,11 @@ change them first.
 - T6 changes the Flower callback contract: `/flower/input` and
   `/flower/result` require `X-Request-Id`. The bundled Flower scripts change
   in the same commit. Roll back the controller and scripts together.
-- T7 changes the controller image command and the Helm pod spec. Render the
-  chart and get the deployment review required by `kubernetes/AGENTS.md`.
-  Roll back with the previous image and chart.
+- T7 changes the controller image command, runs Hypercorn in-process, and
+  sets the Helm pod grace period to 215 s at the chart defaults (the shutdown
+  budget above, not `worker_tasks_timeout`). Render the chart and get the
+  deployment review required by `kubernetes/AGENTS.md`. Roll back with the
+  previous image and chart.
 - Other tickets change no public route, request or response shape, protobuf,
   or Helm value. Roll back by reverting the commit.
 
