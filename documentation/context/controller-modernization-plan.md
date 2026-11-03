@@ -75,7 +75,7 @@ Execution waves (tickets in one wave edit disjoint files):
 | Wave | Tickets | Depends on |
 | --- | --- | --- |
 | 1 | T1, T2, T3, T4, T5, T7, T8 | None |
-| 2 | T6, T9 | T6: T1, T2, T5. T9: T2. |
+| 2 | T6, T9, T10 | T6: T1, T2, T5. T9: T2. T10: none. |
 | 3 (optional) | C1, then C2, then C3, then C4 | Wave 2 |
 
 ## Decisions needed before delegation
@@ -111,13 +111,14 @@ change them first.
 - T7 changes the controller image command and the Helm pod spec. Render the
   chart and get the deployment review required by `kubernetes/AGENTS.md`.
   Roll back with the previous image and chart.
+- T10 changes the worker image command. Roll back with the previous image.
 - Other tickets change no public route, request or response shape, protobuf,
   or Helm value. Roll back by reverting the commit.
 
 ## Follow-ups outside this plan
 
-- The worker image also uses `CMD ["sh", "-c", "/home/bootstrap.sh"]`. Check
-  that `bootstrap.sh` ends with `exec`, or SIGTERM never reaches the worker.
+- Worker SIGTERM delivery is T10. The worker command is exec form and
+  `bootstrap.sh` replaces itself with the gRPC server.
 
 ## Validation
 

@@ -8,7 +8,7 @@ ticket_markdown=...)` unchanged. Confirm decisions D1 to D6 in the plan first.
 Waves (tickets in one wave edit disjoint files and can run in parallel):
 
 - Wave 1: T1, T2, T3, T4, T5, T7, T8.
-- Wave 2: T6 (after T1, T2, T5) and T9 (after T2).
+- Wave 2: T6 (after T1, T2, T5), T9 (after T2), and T10.
 - Wave 3, optional: C1, C2, C3, C4 in order.
 
 ## Review focus
@@ -230,6 +230,25 @@ Title: fix(controller): select an analysis's workers from one WLA snapshot
    - returns an empty list when no worker holds the datasets
    - result stays consistent when registries are replaced after the first read
    - local worker task handlers are built from one snapshot
+
+______________________________________________________________________
+
+## T10
+
+Title: fix(worker): deliver SIGTERM to the worker process
+
+1. Files — `exaflow/worker/Dockerfile`, `exaflow/worker/bootstrap.sh`. Tests: `tests/standalone_tests/test_worker_image.py`.
+1. Names — Dockerfile `CMD ["/home/bootstrap.sh"]`. `bootstrap.sh` runs `exec python -m exaflow.worker.grpc_server`.
+1. Keys — n/a.
+1. Strings — n/a.
+1. Numbers — n/a.
+1. Edge cases — The script is PID 1 through its shebang. `exec` replaces that shell with the gRPC server, so SIGTERM reaches the server. There is no extra `sh -c` shell.
+1. Behavior — Before: `CMD ["sh", "-c", "/home/bootstrap.sh"]` leaves a shell as PID 1, and `bootstrap.sh` starts the server without `exec`, so SIGTERM never reaches the worker. After: the command is exec form and the script replaces itself with the server.
+1. Unchanged — Image user, bootstrap path `/home/bootstrap.sh`, server module, environment, and the copied codebase.
+1. Verify — `uv run pytest -q tests/standalone_tests/test_worker_image.py`.
+1. Acceptance criteria —
+   - worker image command is exec form without a shell
+   - bootstrap.sh execs the gRPC server
 
 ______________________________________________________________________
 
