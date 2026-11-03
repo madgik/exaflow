@@ -52,7 +52,8 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
                     **self._analysis_request_dto.inputdata.model_dump(),
                     "x": self._analysis_request_dto.algorithm.x,
                     "y": self._analysis_request_dto.algorithm.y,
-                }
+                },
+                request_id=self._request_id,
             )
             server_pid = None
             clients_pids = {}

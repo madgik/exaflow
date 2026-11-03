@@ -156,7 +156,9 @@ def _flower_strategy(monkeypatch, blocked_call, started, release):
 
     strategy._controller.algorithm_execution_lock = asyncio.Lock()
     strategy._controller.flower_execution_info = type("Info", (), {})()
-    strategy._controller.flower_execution_info.set_inputdata = lambda inputdata: None
+    strategy._controller.flower_execution_info.set_inputdata = (
+        lambda inputdata, request_id: None
+    )
     strategy._controller.flower_execution_info.get_result_with_timeout = get_result
     strategy._controller.flower_execution_info.reset = reset
     strategy._controller.worker_landscape_aggregator.require_global_worker = lambda: (

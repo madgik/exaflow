@@ -15,10 +15,15 @@ from exaflow.algorithms.utils.inputdata_utils import Inputdata
 # Constants for project directories and environment configurations
 CONTROLLER_IP = os.getenv("CONTROLLER_IP", "127.0.0.1")
 CONTROLLER_PORT = os.getenv("CONTROLLER_PORT", 5000)
+REQUEST_ID = os.getenv("REQUEST_ID")
 RESULT_URL = f"http://{CONTROLLER_IP}:{CONTROLLER_PORT}/flower/result"
 INPUT_URL = f"http://{CONTROLLER_IP}:{CONTROLLER_PORT}/flower/input"
 CDES_URL = f"http://{CONTROLLER_IP}:{CONTROLLER_PORT}/cdes_metadata"
-HEADERS = {"Content-type": "application/json", "Accept": "text/plain"}
+HEADERS = {
+    "Content-type": "application/json",
+    "Accept": "text/plain",
+    "X-Request-Id": REQUEST_ID,
+}
 
 
 def preprocess_data(inputdata, full_data):
@@ -43,19 +48,21 @@ def error_handling(error):
     FLOWER_LOGGER.error(
         f"Error will try to save error message: {error_msg}! Running: {RESULT_URL}..."
     )
-    requests.post(RESULT_URL, data=json.dumps(error_msg), headers=HEADERS)
+    requests.post(RESULT_URL, data=json.dumps(error_msg), headers=HEADERS, timeout=30)
 
 
 def post_result(result: dict) -> None:
     FLOWER_LOGGER.debug(f"Posting result at: {RESULT_URL} ...")
-    response = requests.post(RESULT_URL, data=json.dumps(result), headers=HEADERS)
+    response = requests.post(
+        RESULT_URL, data=json.dumps(result), headers=HEADERS, timeout=30
+    )
     if response.status_code != 200:
         error_handling(response.text)
 
 
 def get_input() -> Inputdata:
     FLOWER_LOGGER.debug(f"Getting inputdata from: {INPUT_URL} ...")
-    response = requests.get(INPUT_URL)
+    response = requests.get(INPUT_URL, headers=HEADERS, timeout=30)
     if response.status_code != 200:
         error_handling(response.text)
     inputdata = Inputdata.model_validate_json(response.text)
@@ -65,7 +72,7 @@ def get_input() -> Inputdata:
 def get_enumerations(data_model: str, variable_name: str) -> Optional[list]:
     try:
         FLOWER_LOGGER.debug(f"Getting enumerations from: {CDES_URL} ...")
-        response = requests.get(CDES_URL)
+        response = requests.get(CDES_URL, timeout=30)
         if response.status_code != 200:
             error_handling(response.text)
         cdes_metadata = response.json()

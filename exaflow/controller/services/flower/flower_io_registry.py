@@ -22,6 +22,11 @@ class Result:
         return f"Result(status={self.status}, content={self.content})"
 
 
+FLOWER_CALLBACK_MISMATCH_MESSAGE = (
+    "Flower callback does not belong to the running analysis."
+)
+
+
 class FlowerIORegistry:
     def __init__(self, timeout, logger):
         self._inputdata: Optional[dict] = None
@@ -34,6 +39,7 @@ class FlowerIORegistry:
     def _reset_sync(self):
         """Synchronously resets the algorithm execution info to initial state."""
         self._inputdata = {}
+        self._request_id = None
         self._result = Result(content={}, status=Status.RUNNING)
         self.result_ready = asyncio.Event()
         self._logger.debug("Algorithm reset: input data cleared, status set to RUNNING")
@@ -72,12 +78,17 @@ class FlowerIORegistry:
         self._logger.debug(f"Status retrieved: {status}")
         return status
 
-    def set_inputdata(self, inputdata: dict):
+    def set_inputdata(self, inputdata: dict, request_id: str):
         """Sets new input data for the algorithm and resets status and result."""
         self._inputdata = inputdata
+        self._request_id = request_id
         self._result = Result(content={}, status=Status.RUNNING)
         self.result_ready.clear()
         self._logger.debug(f"Input data updated: {inputdata}, status reset to RUNNING")
+
+    def is_current(self, request_id: str | None) -> bool:
+        """True when this callback id is the request that is running."""
+        return self._request_id is not None and request_id == self._request_id
 
     def get_inputdata(self) -> dict:
         """Returns the current input data."""

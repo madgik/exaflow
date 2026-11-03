@@ -33,6 +33,9 @@ from exaflow.controller.services.api.analysis_request_validator import (
 from exaflow.controller.services.controller_shutdown import SHUTDOWN_RPC_CANCEL_TIMEOUT
 from exaflow.controller.services.controller_shutdown import begin_controller_shutdown
 from exaflow.controller.services.flower import get_flower_controller
+from exaflow.controller.services.flower.flower_io_registry import (
+    FLOWER_CALLBACK_MISMATCH_MESSAGE,
+)
 from exaflow.controller.services.startup import start_background_services
 from exaflow.controller.services.startup import stop_background_services
 
@@ -170,14 +173,20 @@ async def run_analysis() -> str:
 
 
 @algorithms.route("/flower/input", methods=["GET"])
-async def get_flower_input() -> dict:
-    return get_flower_controller().flower_execution_info.get_inputdata()
+async def get_flower_input():
+    registry = get_flower_controller().flower_execution_info
+    if not registry.is_current(request.headers.get("X-Request-Id")):
+        return FLOWER_CALLBACK_MISMATCH_MESSAGE, 409
+    return registry.get_inputdata()
 
 
 @algorithms.route("/flower/result", methods=["POST"])
 async def set_flower_result():
+    registry = get_flower_controller().flower_execution_info
+    if not registry.is_current(request.headers.get("X-Request-Id")):
+        return FLOWER_CALLBACK_MISMATCH_MESSAGE, 409
     request_body = await request.json
-    await get_flower_controller().flower_execution_info.set_result(result=request_body)
+    await registry.set_result(result=request_body)
 
     return jsonify({"message": "Result set successfully"}), 200
 
