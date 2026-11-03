@@ -1,9 +1,13 @@
 # Controller modernization plan
 
-Status: In progress. D1, D2, D4, D5 confirmed as proposed. Wave 1 (T1, T2,
-T3, T4, T5, T7, T8) accepted and opened as
+Status: In progress. D1, D2, and D5 confirmed as proposed. D4 revised:
+`terminationGracePeriodSeconds` is `worker_tasks_timeout` + 200 s (500 s at
+the Helm default of 300 s) so an in-flight worker call finishes inside the
+pod. Wave 1 (T1, T2, T3, T4, T5, T7, T8) is
 [madgik/exaflow#663](https://github.com/madgik/exaflow/pull/663); not merged.
-Wave 2 (T6, T9) not started. Updated: 2026-11-02. Revises commit `ba2978cd` ("Initial
+Wave 2 (T6, T9, T10, and the D4 revision) is implemented on
+`fix/controller-modernization-wave2`, stacked on #663; not merged.
+Updated: 2026-11-03. Revises commit `ba2978cd` ("Initial
 plan", branch `fix/controller-off-event-loop-and-liveness`), reviewed against
 `master`. Implementation tickets:
 [controller-modernization-tasks.md](controller-modernization-tasks.md).
@@ -88,7 +92,7 @@ change them first.
 | D1 | T4 | Configure and Cleanup deadline = `worker_tasks_timeout` (Helm default 300 s). No new config key. |
 | D2 | T5 | 503 message: "The controller is already running a Flower analysis." |
 | D3 | T6 | Header `X-Request-Id`. Mismatch returns 409 with "Flower callback does not belong to the running analysis." Callback HTTP timeout 30 s. |
-| D4 | T7 | Hypercorn `graceful_timeout = 120` s. `terminationGracePeriodSeconds: 200` (120 s drain + 60 s Hypercorn `shutdown_timeout` + 20 s margin). |
+| D4 | T7 | Hypercorn `graceful_timeout = 120` s and `shutdown_timeout = 60` s. `terminationGracePeriodSeconds` = `worker_tasks_timeout` + 200 (120 s drain + 60 s shutdown + 20 s margin; 500 s at the Helm default of 300 s). The per-call worker timeout stays. The pod grace period is sized from it so a call that starts near the end of the drain can finish before SIGKILL. |
 | D5 | T8 | Wait 10 s after SIGTERM before SIGKILL. |
 | D6 | C | Whether to run phase C at all. If yes, whether FastAPI's `/docs`, `/redoc`, and `/openapi.json` routes stay enabled. |
 
@@ -108,9 +112,10 @@ change them first.
 - T6 changes the Flower callback contract: `/flower/input` and
   `/flower/result` require `X-Request-Id`. The bundled Flower scripts change
   in the same commit. Roll back the controller and scripts together.
-- T7 changes the controller image command and the Helm pod spec. Render the
-  chart and get the deployment review required by `kubernetes/AGENTS.md`.
-  Roll back with the previous image and chart.
+- T7 changes the controller image command and the Helm pod grace period.
+  The grace period is `worker_tasks_timeout + 200` seconds (500 at the
+  default). Render the chart and get the deployment review required by
+  `kubernetes/AGENTS.md`. Roll back with the previous image and chart.
 - T10 changes the worker image command. Roll back with the previous image.
 - Other tickets change no public route, request or response shape, protobuf,
   or Helm value. Roll back by reverting the commit.

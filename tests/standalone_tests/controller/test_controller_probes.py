@@ -74,12 +74,25 @@ def test_controller_pod_grace_period_covers_hypercorn_shutdown():
     )
     block = _controller_deployment_block(rendered)
     grace = int(re.search(r"terminationGracePeriodSeconds: (\d+)", block).group(1))
+    timeout_at = block.index("name: WORKER_TASKS_TIMEOUT")
+    worker_tasks_timeout = int(
+        re.search(r'value: "(\d+)"', block[timeout_at : timeout_at + 80]).group(1)
+    )
     config = Config.from_object("exaflow.controller.quart.hypercorn_config")
+    margin = 20
 
-    assert grace == 200
-    # Hypercorn drains for graceful_timeout, then gives the shutdown hooks
-    # shutdown_timeout; Kubernetes must not send SIGKILL before both end.
-    assert grace > config.graceful_timeout + config.shutdown_timeout
+    # A worker RPC can start near the end of the drain and still run for the
+    # full per-call timeout. The pod must stay up through that call, the
+    # drain, the shutdown hooks, and a small margin.
+    assert worker_tasks_timeout == 300
+    assert config.graceful_timeout == 120
+    assert config.shutdown_timeout == 60
+    assert grace == (
+        worker_tasks_timeout
+        + config.graceful_timeout
+        + config.shutdown_timeout
+        + margin
+    )
 
 
 def test_controller_image_command_is_exec_form_without_shell():

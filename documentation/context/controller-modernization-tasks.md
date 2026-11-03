@@ -176,19 +176,20 @@ ______________________________________________________________________
 Title: fix(controller): let Kubernetes stop the controller gracefully
 
 1. Files — `exaflow/controller/Dockerfile`, `exaflow/controller/quart/hypercorn_config.py`, `kubernetes/templates/exaflow-controller.yaml`. Tests: extend `tests/standalone_tests/controller/test_controller_probes.py`.
-1. Names — Dockerfile: `CMD ["python", "-m", "hypercorn", "--config", "python:exaflow.controller.quart.hypercorn_config", "-b", "0.0.0.0:5000", "exaflow/controller/quart/app:app"]`. `hypercorn_config.py`: `graceful_timeout = 120`, with a comment that the Helm grace period must exceed it plus Hypercorn's `shutdown_timeout` (60 s default). Template: `terminationGracePeriodSeconds: 200` in the controller pod spec.
-1. Keys — Hypercorn config `graceful_timeout`. Pod spec `terminationGracePeriodSeconds`.
+1. Names — Dockerfile: `CMD ["python", "-m", "hypercorn", "--config", "python:exaflow.controller.quart.hypercorn_config", "-b", "0.0.0.0:5000", "exaflow/controller/quart/app:app"]`. `hypercorn_config.py`: `graceful_timeout = 120` and `shutdown_timeout = 60`. Template: `terminationGracePeriodSeconds` is `worker_tasks_timeout + 200` in the controller pod spec.
+1. Keys — Hypercorn config `graceful_timeout` and `shutdown_timeout`. Pod spec `terminationGracePeriodSeconds`. Values key `controller.worker_tasks_timeout`.
 1. Strings — n/a.
-1. Numbers — `graceful_timeout = 120` (Hypercorn default 3). `terminationGracePeriodSeconds: 200` (Kubernetes default 30). Decision D4.
-1. Edge cases — No request in flight: the process exits right after SIGTERM. An analysis longer than 120 s is cancelled; `run_blocking` still waits for its thread before aggregation cleanup; `after_serving` then has up to 60 s.
-1. Behavior — Before: `sh -c` is PID 1 and does not forward SIGTERM (dash 0.5.12 keeps the `sh` process for `sh -c "<cmd>"`), so Kubernetes sends SIGKILL after 30 s and `after_serving` never runs. After: Hypercorn receives SIGTERM, drains for up to 120 s, runs the shutdown hooks, and exits inside the 200 s grace period.
+1. Numbers — `graceful_timeout = 120` (Hypercorn default 3). `shutdown_timeout = 60`. `terminationGracePeriodSeconds` = `worker_tasks_timeout` + 200, which is 500 at the Helm default of 300 (Kubernetes default grace is 30). Decision D4, revised in wave 2: a fixed 200 s grace can end while a worker call that started during the drain still has its per-call timeout left. The per-call timeout stays; the grace period grows to cover it.
+1. Edge cases — No request in flight: the process exits right after SIGTERM. An analysis longer than 120 s is cancelled; `run_blocking` still waits for its thread before aggregation cleanup; `after_serving` then has up to 60 s. A worker RPC started just before cancellation can still run for `worker_tasks_timeout`.
+1. Behavior — Before: `sh -c` is PID 1 and does not forward SIGTERM (dash 0.5.12 keeps the `sh` process for `sh -c "<cmd>"`), so Kubernetes sends SIGKILL after 30 s and `after_serving` never runs. After: Hypercorn receives SIGTERM, drains for up to 120 s, runs the shutdown hooks, and the pod stays up long enough for an in-flight worker call to finish.
 1. Unchanged — Bind address and port 5000, one worker, access-log settings, probes, image user, `PYTHONPATH`.
 1. Verify — `uv run pytest -q tests/standalone_tests/controller/test_controller_probes.py` and `helm template kubernetes/`. `kubernetes/AGENTS.md` requires a rendered chart and human review for deployment changes.
 1. Acceptance criteria —
    - controller image command is exec form without a shell
    - hypercorn graceful timeout is 120 seconds
-   - rendered controller pod sets terminationGracePeriodSeconds to 200
-   - termination grace period exceeds graceful timeout plus hypercorn shutdown timeout
+   - hypercorn shutdown timeout is 60 seconds
+   - rendered controller pod grace period equals worker_tasks_timeout plus graceful timeout plus shutdown timeout plus 20 seconds
+   - at the chart default that grace period is 500 seconds
 
 ______________________________________________________________________
 
