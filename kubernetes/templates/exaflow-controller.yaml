@@ -15,6 +15,10 @@ spec:
       labels:
         app: exaflow-controller
     spec:
+      # Let Kubernetes stop the controller gracefully: Hypercorn drains in-flight
+      # requests for up to graceful_timeout (120 s) and runs shutdown hooks within
+      # its shutdown_timeout (60 s default). 200 s > 120 s + 60 s.
+      terminationGracePeriodSeconds: 200
       {{- if not .Values.managed_cluster }}
       nodeSelector:
         master: "true"
