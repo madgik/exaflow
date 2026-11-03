@@ -26,13 +26,11 @@ METADATA = {
     "variables": [
         {
             "code": "dataset",
-            "isCategorical": True,
-            "sql_type": "text",
+            "type": "nominal",
         },
         {
             "code": "category",
-            "isCategorical": True,
-            "sql_type": "text",
+            "type": "nominal",
         },
     ],
     "groups": [
@@ -40,18 +38,15 @@ METADATA = {
             "variables": [
                 {
                     "code": "age",
-                    "isCategorical": False,
-                    "sql_type": "int",
+                    "type": "discrete",
                 },
                 {
                     "code": "score",
-                    "isCategorical": False,
-                    "sql_type": "real",
+                    "type": "continuous",
                 },
                 {
                     "code": "diagnosis",
-                    "isCategorical": True,
-                    "sql_type": "text",
+                    "type": "nominal",
                 },
             ]
         }

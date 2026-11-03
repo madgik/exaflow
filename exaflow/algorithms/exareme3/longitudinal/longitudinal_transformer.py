@@ -14,6 +14,7 @@ from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.column_names import DATASET_COL
 from exaflow.column_names import SUBJECT_ID_COL
 from exaflow.column_names import VISIT_ID_COL
+from exaflow.datatypes import CATEGORICAL_CDE_TYPES
 from exaflow.worker_communication import BadUserInput
 
 
@@ -250,9 +251,10 @@ class LongitudinalTransformer(PreprocessingStep):
         self, *, strategies: Dict[str, str], metadata: Dict[str, dict]
     ) -> None:
         for name, strategy in strategies.items():
-            if strategy == LongitudinalStrategy.DIFF.value and metadata.get(
-                name, {}
-            ).get("is_categorical"):
+            if (
+                strategy == LongitudinalStrategy.DIFF.value
+                and metadata.get(name, {}).get("type") in CATEGORICAL_CDE_TYPES
+            ):
                 raise BadUserInput(
                     f"Cannot take the difference for the nominal variable '{name}'."
                 )

@@ -105,8 +105,7 @@ def test_preprocessing_spec_dto_exposes_output_columns():
         "new_column_names_param": "new_column_names",
         "columns": [
             {
-                "type": "text",
-                "stattype": "nominal",
+                "type": "nominal",
                 "column_count_param": None,
                 "enumerations": {
                     "source_parameter_name": "rules",

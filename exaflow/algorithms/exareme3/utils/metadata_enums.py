@@ -3,6 +3,8 @@ from typing import Any
 from typing import Dict
 from typing import List
 
+from exaflow.datatypes import CATEGORICAL_CDE_TYPES
+
 
 def add_ordered_enums(metadata: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
     """
@@ -14,7 +16,7 @@ def add_ordered_enums(metadata: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str
         if not isinstance(field, dict):
             continue
         enums = field.get("enumerations")
-        if field.get("is_categorical") and isinstance(enums, dict):
+        if field.get("type") in CATEGORICAL_CDE_TYPES and isinstance(enums, dict):
             field["ordered_enums"] = list(enums.keys())
     return metadata_copy
 

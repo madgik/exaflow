@@ -218,11 +218,11 @@ def _check_value_type(column: str, value, cdes):
 
 
 def _check_value_column_same_type(column, value, cdes):
-    column_sql_type = cdes[column].sql_type
-    dtype = DType.from_cde(column_sql_type)
+    column_type = cdes[column].type
+    dtype = DType.from_cde(column_type)
     if not _is_filter_value_compatible_with_dtype(value, dtype):
         raise FilterError(
-            f"{column}'s type: {column_sql_type} was different from the type of the given value:{type(value)}"
+            f"{column}'s type: {column_type} was different from the type of the given value:{type(value)}"
         )
 
 

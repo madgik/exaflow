@@ -13,7 +13,7 @@ from validator.dataelements import flatten_cdes
 from validator.dataelements import get_cdes_with_enumerations
 from validator.dataelements import get_cdes_with_min_max
 from validator.dataelements import get_dataset_enums
-from validator.dataelements import get_sql_type_per_column
+from validator.dataelements import get_type_per_column
 from validator.exceptions import InvalidDatasetError
 from validator.reporting import ValidationIssue
 
@@ -54,7 +54,7 @@ class DuckDBDatasetValidator:
     def __init__(self, data_model_metadata: dict, threads: int | None = None) -> None:
         cdes_list = flatten_cdes(copy.deepcopy(data_model_metadata))
         self._cdes = {cde.code: cde for cde in cdes_list}
-        self._sql_type_per_column = get_sql_type_per_column(self._cdes)
+        self._type_per_column = get_type_per_column(self._cdes)
         self._dataset_enumerations = list(get_dataset_enums(self._cdes).keys())
         self._longitudinal = bool(data_model_metadata.get("longitudinal", False))
         self._threads = threads if threads is not None else (os.cpu_count() or 1)
@@ -124,9 +124,7 @@ class DuckDBDatasetValidator:
                 )
             )
 
-        unknown_columns = (
-            set(columns) - set(self._sql_type_per_column.keys()) - {"row_id"}
-        )
+        unknown_columns = set(columns) - set(self._type_per_column.keys()) - {"row_id"}
         for column in sorted(unknown_columns):
             suggestion = self._get_column_suggestion(column)
             message = f"Column '{column}' is not present in the CDEs."
@@ -160,7 +158,7 @@ class DuckDBDatasetValidator:
 
     def _get_column_suggestion(self, unknown_column: str) -> str | None:
         candidates = [
-            column for column in self._sql_type_per_column.keys() if column != "row_id"
+            column for column in self._type_per_column.keys() if column != "row_id"
         ]
         matches = difflib.get_close_matches(unknown_column, candidates, n=1, cutoff=0.7)
         return matches[0] if matches else None
@@ -168,10 +166,10 @@ class DuckDBDatasetValidator:
     def _build_fused_checks(self, columns: list[str]) -> list[_FusedCheck]:
         checks: list[_FusedCheck] = []
 
-        type_mapping = {"int": "BIGINT", "real": "DOUBLE"}
+        type_mapping = {"discrete": "BIGINT", "continuous": "DOUBLE"}
         for column in columns:
-            sql_type = self._sql_type_per_column.get(column)
-            cast_type = type_mapping.get(sql_type)
+            cde_type = self._type_per_column.get(column)
+            cast_type = type_mapping.get(cde_type)
             if not cast_type:
                 continue
 
@@ -186,7 +184,7 @@ class DuckDBDatasetValidator:
                         f"AND TRY_CAST({quoted_column} AS {cast_type}) IS NULL"
                     ),
                     sample_expression_sql=quoted_column,
-                    message_factory=lambda count, sample, c=column, t=sql_type: (
+                    message_factory=lambda count, sample, c=column, t=cde_type: (
                         f"Column '{c}' has invalid {t} values "
                         f"(count={count}, example={sample!r})."
                     ),

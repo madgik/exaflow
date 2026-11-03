@@ -14,6 +14,7 @@ TESTING_DATAMODEL = "dementia:0.1"
 DATAMODEL_BASEPATH = Path("tests/test_data/dementia_v_0_1/")
 DATAMODEL_CDESPATH = DATAMODEL_BASEPATH / "CDEsMetadata.json"
 TRANSFORMATIONS = ["log", "exp", "center", "standardize"]
+NUMERICAL_CDE_TYPES = ("continuous", "discrete")
 
 random.seed(0)
 
@@ -22,16 +23,12 @@ class _DB:
     @lru_cache
     def get_numerical_variables(self):
         cdes = self._get_cdes()
-        return [
-            cde["code"]
-            for cde in cdes
-            if not cde["isCategorical"] and cde["sql_type"] in ("int", "real")
-        ]
+        return [cde["code"] for cde in cdes if cde["type"] in NUMERICAL_CDE_TYPES]
 
     @lru_cache
     def get_nominal_variables(self):
         cdes = self._get_cdes()
-        return [cde["code"] for cde in cdes if cde["isCategorical"]]
+        return [cde["code"] for cde in cdes if "enumerations" in cde]
 
     @lru_cache
     def get_data_table(self):
@@ -62,7 +59,7 @@ class _DB:
             cdes = json.load(file)
 
         def flatten_cdes(cdes: dict, flat_cdes: list):
-            if "isCategorical" in cdes:  # isCategorical indicates that we reached a var
+            if "type" in cdes:  # only variables have a type
                 flat_cdes.append(cdes)
             elif "variables" in cdes or "groups" in cdes:
                 for elm in cdes.get("variables", []) + cdes.get("groups", []):

@@ -92,8 +92,7 @@ def _common_data_element_to_proto(
     proto_element = worker_pb2.CommonDataElement(
         code=element.code,
         label=element.label,
-        sql_type=element.sql_type,
-        is_categorical=element.is_categorical,
+        type=element.type,
         enumerations=enumerations,
         enumerations_order=enumerations_order,
     )
