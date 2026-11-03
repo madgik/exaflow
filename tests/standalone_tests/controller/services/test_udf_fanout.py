@@ -242,6 +242,13 @@ class _FakeFuture:
     def __init__(self, error):
         self._error = error
 
+    def add_done_callback(self, fn):
+        # The RPC has already failed, matching grpc.Future for a completed call.
+        fn(self)
+
+    def cancel(self):
+        return False
+
     def result(self):
         raise self._error
 
