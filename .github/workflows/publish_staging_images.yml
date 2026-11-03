@@ -150,7 +150,10 @@ jobs:
 
       - name: Update chart image version
         shell: bash
+        env:
+          TAG: ${{ steps.tag.outputs.TAG }}
         run: |
+          [ -n "$TAG" ] || { echo "TAG is empty" >&2; exit 1; }
           curl -sL https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64 -o /usr/local/bin/yq
           chmod +x /usr/local/bin/yq
           yq -i '.exaflow_images.version = strenv(TAG)' kubernetes/values.yaml
