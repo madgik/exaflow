@@ -728,21 +728,23 @@ def _terminate_pids(c, pids: str) -> None:
     """Send SIGTERM to pids, then SIGKILL the ones alive after the timeout."""
     pid_list = pids.split()
     # Polite request to terminate: runs the shutdown hooks.
-    run(c, f"kill {pids}", warn=True, show_ok=False)
+    # spin=False: the invoke spinner sleeps before every command, which would
+    # stretch this 0.5 s poll and eat into the 10 s grace period.
+    run(c, f"kill {pids}", warn=True, show_ok=False, spin=False)
     deadline = time.monotonic() + CONTROLLER_TERMINATE_TIMEOUT_SECONDS
     alive = list(pid_list)
     while time.monotonic() < deadline:
         alive = [
             pid
             for pid in pid_list
-            if run(c, f"kill -0 {pid}", warn=True, show_ok=False).ok
+            if run(c, f"kill -0 {pid}", warn=True, show_ok=False, spin=False).ok
         ]
         if not alive:
             return
         sleep(CONTROLLER_TERMINATE_POLL_INTERVAL_SECONDS)
     # Force-kill whatever survived the grace period.
     if alive:
-        run(c, f"kill -9 {' '.join(alive)}", warn=True, show_ok=False)
+        run(c, f"kill -9 {' '.join(alive)}", warn=True, show_ok=False, spin=False)
 
 
 @task
@@ -751,7 +753,7 @@ def kill_controller(c):
     controller_port = get_controller_port()
     lsof_res = run(
         c,
-        f"lsof -nP -iTCP:{controller_port} -sTCP:LISTEN",
+        f"lsof +c 0 -nP -iTCP:{controller_port} -sTCP:LISTEN",
         warn=True,
         show_ok=False,
     )
@@ -764,7 +766,10 @@ def kill_controller(c):
                 continue
             command = parts[0].lower()
             pid = parts[1]
-            if command in ("python", "hypercorn"):
+            # lsof's default command field is 9 characters, so python3.11 is
+            # python3.1. +c 0 asks for the full name; the prefix match covers
+            # a truncated name if that flag is ignored.
+            if command == "hypercorn" or command.startswith("python"):
                 pids_to_kill.add(pid)
             else:
                 non_controller_listeners.append((parts[0], pid))
@@ -1248,6 +1253,7 @@ def run(
     raise_error=False,
     show_ok=True,
     env=None,
+    spin=True,
 ):
     if attach_:
         c.run(cmd, pty=True, env=env)
@@ -1262,6 +1268,12 @@ def run(
         if show_ok:
             message("Ok", Level.SUCCESS)
         return
+
+    if not spin:
+        result = c.run(cmd, warn=warn, env=env)
+        if show_ok:
+            message("Ok", Level.SUCCESS)
+        return result
 
     # TODO this is supposed to run when wait=True, yet asynchronous=True
     promise = c.run(cmd, asynchronous=True, warn=warn, env=env)
