@@ -277,7 +277,7 @@ work, the canonical path is:
    - `exaflow/algorithms/exareme3/<domain>/<algorithm_id>.py`
    - `exaflow/algorithms/federated/<family>/<algorithm_id>.py`
    - `tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py`
-   - `tests/prod_env_tests/test_<algorithm_id>_validation.py`
+   - `tests/prod_env_tests/test_<algorithm_id>.py`
    - `tests/prod_env_tests/expected/<algorithm_id>_expected.json`
    - `documentation/algorithms/<algorithm_id>.md`
    - `exaflow/algorithms/federated/docs/<algorithm_id>.md`
@@ -480,7 +480,7 @@ See `documentation/context/testing.md` for the full validation matrix. Common
 entrypoints:
 
 - `uv run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py`
-- `uv run pytest -q tests/prod_env_tests/test_<algorithm_id>_validation.py`
+- `uv run pytest -q tests/prod_env_tests/test_<algorithm_id>.py`
 
 Algorithm integration gates:
 

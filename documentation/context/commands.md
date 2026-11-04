@@ -279,4 +279,12 @@ uv run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorit
   deployment, and runs prod environment tests.
 - `.github/workflows/exadata_validator.yml` runs validator tests, builds the
   package, and smoke-tests the installed wheel.
-- Publish workflows build/push Docker images or publish `exadata-validator`.
+- `.github/workflows/publish_images.yml` and
+  `.github/workflows/publish_dev_images.yml` build and push controller, worker,
+  and aggregation-server images (release and dev channels).
+- `.github/workflows/publish_exadata_validator.yml` publishes the validator
+  package to its registry.
+- `.github/workflows/ebrains.yml` runs the subset of validation tied to the
+  EBRAINS integration path.
+- `docker-bake.hcl` defines the multi-image build targets used by the publish
+  workflows.
