@@ -2,6 +2,7 @@ from ipaddress import IPv4Address
 from logging import Logger
 from typing import List
 
+import grpc
 from google.protobuf import json_format
 from google.protobuf import struct_pb2
 
@@ -230,15 +231,15 @@ class WorkerTasksHandler:
             timeout,
         )
 
-    def run_udf(
+    def start_run_udf(
         self,
         request_id: str,
         udf_registry_key: str,
         kw_args: dict,
         system_args: dict,
         timeout: int,
-    ):
-        response = self._client().call(
+    ) -> grpc.Future:
+        return self._client().start_call(
             "RunUdf",
             worker_pb2.RunUdfRequest(
                 request_id=request_id,
@@ -248,8 +249,25 @@ class WorkerTasksHandler:
             ),
             timeout,
         )
+
+    def finish_run_udf(self, future: grpc.Future) -> dict:
+        response = self._client().finish_call("RunUdf", future)
         if response.result_format != UDF_RESULT_FORMAT_JSON_BYTES_V1:
             raise ValueError(
                 f"Unsupported RunUdfResponse result format: {response.result_format!r}"
             )
         return decode_udf_result(response.result)
+
+    def run_udf(
+        self,
+        request_id: str,
+        udf_registry_key: str,
+        kw_args: dict,
+        system_args: dict,
+        timeout: int,
+    ):
+        return self.finish_run_udf(
+            self.start_run_udf(
+                request_id, udf_registry_key, kw_args, system_args, timeout
+            )
+        )
