@@ -140,7 +140,29 @@ aggregation wait times out.
 Kubernetes probes: startup and liveness both call `/livez` with a 5 second
 timeout (liveness `failureThreshold` 3). Readiness calls `/healthcheck`, which
 can take as long as `worker_tasks_timeout`. A worker that is down does not
-restart the controller.
+restart the controller. Hypercorn closes the listen socket at SIGTERM, so
+`/livez` fails during the drain. Kubelet stops the liveness and startup probes
+of a terminating pod (`SyncTerminatingPod` calls `StopLivenessAndStartup`, then
+`killPod`), so that failure does not restart the pod. The liveness probe does
+not set its own grace period.
+
+Shutdown: a `preStop` sleep (5 s) keeps the pod serving until Endpoints stop
+routing to it. After SIGTERM Hypercorn drains in-flight requests for
+`graceful_timeout` (120 s), then cancels the request tasks. Quart does not pass
+that cancellation on to the task running an analysis, so the lifespan hook
+(`endpoints.shutdown`) calls `begin_controller_shutdown()`: it cancels the
+registered `RunUdf` and aggregation `Configure` RPCs, and any registered after
+it. Cleanup and metadata RPCs are never cancelled. The hook then stops the
+worker-landscape thread (join bounded by `shutdown_cleanup_timeout`, 10 s) and
+joins the analysis threads for at most `shutdown_rpc_cancel_timeout` (5 s);
+aggregation cleanup uses `shutdown_cleanup_timeout` once shutdown began. A
+client disconnect during the drain cancels nothing. The pod grace period is
+the sum of the preStop sleep (5 s), `graceful_timeout` (120 s), the RPC cancel
+(5 s), the cleanup (10 s), `shutdown_timeout` (60 s) and a 20 s margin, which is
+220 s at the chart defaults. It does not include `worker_tasks_timeout`. The
+numbers live in `exaflow/controller/services/controller_shutdown.py`. The
+same-named Helm keys only size the grace period, and a test fails when they
+differ.
 
 Workers expose gRPC services and load data at startup. The aggregation server
 keeps request-scoped aggregation contexts until cleanup.
