@@ -130,10 +130,13 @@ class Exareme3WithAggregationServerStrategy(Exareme3Strategy):
             # Set inside the thread so a cancel during configure still cleans up.
             configured = False
 
+            deadline = self._controller.task_timeout
+
             def _configure():
                 nonlocal configured
                 status = agg_client.configure(
-                    num_workers=len(self._local_worker_tasks_handlers)
+                    num_workers=len(self._local_worker_tasks_handlers),
+                    timeout=deadline,
                 )
                 configured = status == agg_pb2.Status.OK
                 return status
@@ -153,7 +156,7 @@ class Exareme3WithAggregationServerStrategy(Exareme3Strategy):
                 # when the request task was cancelled while algorithm.run was
                 # still in flight.
                 if configured:
-                    cleanup_status = await run_blocking(agg_client.cleanup)
+                    cleanup_status = await run_blocking(agg_client.cleanup, deadline)
                     self._logger.debug(
                         f"Aggregation cleanup response: {cleanup_status}"
                     )

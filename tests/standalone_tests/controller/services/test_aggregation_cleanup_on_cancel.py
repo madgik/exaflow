@@ -27,11 +27,11 @@ def test_cancel_during_analysis_cleans_up_only_after_run_finishes(
         def __init__(self, request_id, aggregator_dns=None, max_message_mb=None):
             order.append("init")
 
-        def configure(self, num_workers):
+        def configure(self, num_workers, timeout=None):
             order.append("configure")
             return agg_pb2.Status.OK
 
-        def cleanup(self):
+        def cleanup(self, timeout=None):
             order.append("cleanup")
             return agg_pb2.Status.OK
 
@@ -95,11 +95,11 @@ class _RecordingAggregationClient:
         self.calls = []
         _RecordingAggregationClient.last = self
 
-    def configure(self, num_workers):
+    def configure(self, num_workers, timeout=None):
         self.calls.append("configure")
         return self.configure_status
 
-    def cleanup(self):
+    def cleanup(self, timeout=None):
         self.calls.append("cleanup")
         return agg_pb2.Status.OK
 
@@ -132,10 +132,10 @@ def test_cancel_during_configure_still_cleans_up(monkeypatch):
     release_configure = threading.Event()
 
     class BlockingConfigureClient(_RecordingAggregationClient):
-        def configure(self, num_workers):
+        def configure(self, num_workers, timeout=None):
             configure_started.set()
             release_configure.wait(timeout=5)
-            return super().configure(num_workers)
+            return super().configure(num_workers, timeout=timeout)
 
     monkeypatch.setattr(
         strategies, "ControllerAggregationClient", BlockingConfigureClient
