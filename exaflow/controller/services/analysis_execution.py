@@ -16,6 +16,9 @@ from exaflow.controller import config as ctrl_config
 
 _DEFAULT_MAX_CONCURRENT_EXPERIMENTS = 32
 _THREAD_NAME_PREFIX = "exaflow-analysis"
+DEFAULT_CAPACITY_MESSAGE = (
+    "The controller is already running the maximum number of concurrent analyses."
+)
 
 _executor: ThreadPoolExecutor | None = None
 _semaphore: asyncio.Semaphore | None = None
@@ -24,11 +27,8 @@ _state_guard = threading.Lock()
 
 
 class AnalysisCapacityExceeded(Exception):
-    def __init__(self) -> None:
-        self.message = (
-            "The controller is already running the maximum number of "
-            "concurrent analyses."
-        )
+    def __init__(self, message: str = DEFAULT_CAPACITY_MESSAGE) -> None:
+        self.message = message
         super().__init__(self.message)
 
 
