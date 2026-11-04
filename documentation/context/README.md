@@ -13,11 +13,6 @@ on Exaflow.
 - `conventions.md`: coding patterns and repository norms.
 - `risk-register.md`: fragile, security-sensitive, or high-review areas.
 - `decision-log.md`: lightweight architectural decision log.
-- [Controller modernization plan](controller-modernization-plan.md): reviewed
-  roadmap for controller robustness fixes and an optional FastAPI/Uvicorn
-  phase; not the current architecture.
-- [Controller modernization tasks](controller-modernization-tasks.md):
-  agent-sized tickets that implement the plan.
 - `code-review-checklist.md`: human and AI review checklist.
 - `ai-task-templates.md`: reusable prompts for common agent tasks.
 
