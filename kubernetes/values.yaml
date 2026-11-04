@@ -3,7 +3,12 @@ managed_cluster: false
 localnodes: 2
 exaflow_images:
   repository: madgik
-  version: "staging-c-e39fa97b6e3562e547b283672aa73de15af6aeac"
+  version: "staging-c-ac108c123ee32288410e99774e5bafe2883bd0c2"
+  # Per-image tags; each falls back to version when empty. Argo CD Image Updater sets these
+  # to "<moving tag>@sha256:<digest>" on the staging Applications.
+  controller_tag: ""
+  worker_tag: ""
+  aggregation_server_tag: ""
 federation: dementia
 log_level: INFO
 framework_log_level: ERROR
