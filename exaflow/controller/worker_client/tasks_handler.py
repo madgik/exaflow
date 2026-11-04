@@ -6,6 +6,7 @@ import grpc
 from google.protobuf import json_format
 from google.protobuf import struct_pb2
 
+from exaflow.controller.services.controller_shutdown import register_inflight_rpc
 from exaflow.controller.worker_client.app import WorkerClientFactory
 from exaflow.protos.worker import worker_pb2
 from exaflow.udf_result_serialization import UDF_RESULT_FORMAT_JSON_BYTES_V1
@@ -239,7 +240,7 @@ class WorkerTasksHandler:
         system_args: dict,
         timeout: int,
     ) -> grpc.Future:
-        return self._client().start_call(
+        future = self._client().start_call(
             "RunUdf",
             worker_pb2.RunUdfRequest(
                 request_id=request_id,
@@ -249,6 +250,10 @@ class WorkerTasksHandler:
             ),
             timeout,
         )
+        # RunUdf is the call shutdown cancels. Cleanup and metadata calls are
+        # not registered: they finish on their own deadline.
+        register_inflight_rpc(future)
+        return future
 
     def finish_run_udf(self, future: grpc.Future) -> dict:
         response = self._client().finish_call("RunUdf", future)
@@ -257,17 +262,3 @@ class WorkerTasksHandler:
                 f"Unsupported RunUdfResponse result format: {response.result_format!r}"
             )
         return decode_udf_result(response.result)
-
-    def run_udf(
-        self,
-        request_id: str,
-        udf_registry_key: str,
-        kw_args: dict,
-        system_args: dict,
-        timeout: int,
-    ):
-        return self.finish_run_udf(
-            self.start_run_udf(
-                request_id, udf_registry_key, kw_args, system_args, timeout
-            )
-        )

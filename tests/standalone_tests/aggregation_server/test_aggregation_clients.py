@@ -73,18 +73,47 @@ def inline_grpc_stub(monkeypatch):
     servicer = AggregationServer()
     channel = SimpleNamespace(close=lambda: None)
 
+    class _ImmediateFuture:
+        def __init__(self, response):
+            self._response = response
+
+        def result(self, timeout=None):
+            return self._response
+
+        def add_done_callback(self, callback):
+            callback(self)
+
+        def cancel(self):
+            return False
+
+    class _Unary:
+        def __init__(self, fn):
+            self._fn = fn
+
+        def __call__(self, request, timeout=None):
+            return self._fn(request, timeout)
+
+        def future(self, request, timeout=None):
+            return _ImmediateFuture(self._fn(request, timeout))
+
     class InlineStub:
-        def Configure(self, request, timeout=None):
-            return servicer.Configure(request, InlineGrpcContext())
+        def __init__(self):
+            self.Configure = _Unary(
+                lambda request, timeout=None: servicer.Configure(
+                    request, InlineGrpcContext()
+                )
+            )
+            self.Cleanup = _Unary(
+                lambda request, timeout=None: servicer.Cleanup(
+                    request, InlineGrpcContext()
+                )
+            )
 
         def Unregister(self, request):
             return servicer.Unregister(request, InlineGrpcContext())
 
         def Aggregate(self, request):
             return servicer.Aggregate(request, InlineGrpcContext())
-
-        def Cleanup(self, request, timeout=None):
-            return servicer.Cleanup(request, InlineGrpcContext())
 
     monkeypatch.setattr(
         "exaflow.aggregation_clients.base_aggregation_client.grpc.insecure_channel",

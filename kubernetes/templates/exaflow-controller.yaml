@@ -15,6 +15,14 @@ spec:
       labels:
         app: exaflow-controller
     spec:
+      # Shutdown budget, matching exaflow/controller/services/controller_shutdown.py:
+      # preStop delay + graceful drain + cancel in-flight RPCs + aggregation
+      # cleanup + Hypercorn shutdown hooks + margin. Shutdown cancels worker
+      # RPCs, so this does not add worker_tasks_timeout. Kubelet stops the
+      # liveness and startup probes of a terminating pod (SyncTerminatingPod
+      # calls StopLivenessAndStartup, then killPod), so /livez failing after the
+      # listen socket closes does not restart the pod.
+      terminationGracePeriodSeconds: {{ add .Values.controller.shutdown_prestop_delay .Values.controller.graceful_timeout .Values.controller.shutdown_rpc_cancel_timeout .Values.controller.shutdown_cleanup_timeout .Values.controller.shutdown_timeout .Values.controller.shutdown_grace_margin }}
       {{- if not .Values.managed_cluster }}
       nodeSelector:
         master: "true"
@@ -25,6 +33,13 @@ spec:
         image: {{ .Values.exaflow_images.repository }}/exaflow_controller:{{ .Values.exaflow_images.version }}
         ports:
           - containerPort: 5000
+
+        lifecycle:
+          preStop:
+            # Keep serving while the Endpoints update removes this pod. Hypercorn
+            # closes its listen socket as soon as it gets SIGTERM.
+            exec:
+              command: ["sleep", {{ quote .Values.controller.shutdown_prestop_delay }}]
 
         env:
         - name: NODE_IDENTIFIER

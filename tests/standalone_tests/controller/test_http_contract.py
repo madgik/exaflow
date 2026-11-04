@@ -27,6 +27,7 @@ from exaflow.controller.services.api.algorithm_spec_dtos import (
     preprocessing_step_specifications_dtos,
 )
 from exaflow.controller.services.api.analysis_request_validator import BadRequest
+from exaflow.controller.services.errors import ControllerShuttingDownError
 from exaflow.controller.services.errors import WorkerTaskTimeoutError
 from exaflow.controller.services.errors import WorkerUnresponsiveError
 from exaflow.controller.worker_client.app import WorkerMessageTooLargeError
@@ -364,6 +365,11 @@ def test_analysis_malformed_body_returns_400(monkeypatch):
         ),
         (
             lambda: AnalysisCapacityExceeded(),
+            503,
+            lambda error: error.message,
+        ),
+        (
+            lambda: ControllerShuttingDownError(),
             503,
             lambda error: error.message,
         ),

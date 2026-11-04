@@ -6,6 +6,7 @@ from typing import Any
 import grpc
 
 from exaflow.controller import config as ctrl_config
+from exaflow.controller.services.errors import ControllerShuttingDownError
 from exaflow.grpc_options import grpc_max_message_size
 from exaflow.grpc_options import grpc_message_options
 from exaflow.protos.worker import worker_pb2_grpc
@@ -113,12 +114,14 @@ class WorkerClient:
         ) from exc
 
     def start_call(self, rpc_name: str, request: Any, timeout: int) -> grpc.Future:
-        rpc = getattr(self._stub, rpc_name)
-        return rpc.future(request, timeout=timeout)
+        return getattr(self._stub, rpc_name).future(request, timeout=timeout)
 
     def finish_call(self, rpc_name: str, future: grpc.Future) -> Any:
         try:
             return future.result()
+        except grpc.FutureCancelledError:
+            # Not a grpc.RpcError. Only shutdown cancels a call that is waited on.
+            raise ControllerShuttingDownError() from None
         except grpc.RpcError as exc:  # noqa: BLE001
             LOGGER.debug(
                 "gRPC call %s to %s failed with status %s",

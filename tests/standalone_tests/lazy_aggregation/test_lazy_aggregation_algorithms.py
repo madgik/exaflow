@@ -14,6 +14,7 @@ with lazy aggregation disabled and once enabled, and the test checks that:
 import copy
 import json
 import uuid
+from concurrent.futures import Future
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
@@ -290,6 +291,24 @@ def aggregation_server(monkeypatch):
     return _install_inline_aggregation_server(monkeypatch)
 
 
+class _InlineUnary:
+    """In-process unary stub method: callable and, like a real one, has .future()."""
+
+    def __init__(self, handler):
+        self._handler = handler
+
+    def __call__(self, request, **_kwargs):
+        return self._handler(request)
+
+    def future(self, request, **_kwargs):
+        future = Future()
+        try:
+            future.set_result(self._handler(request))
+        except Exception as exc:  # noqa: BLE001
+            future.set_exception(exc)
+        return future
+
+
 def _install_inline_aggregation_server(monkeypatch) -> set:
     """Routes aggregation clients to an in-process server; returns seen steps."""
     servicer = AggregationServer()
@@ -308,8 +327,8 @@ def _install_inline_aggregation_server(monkeypatch) -> set:
     )
 
     stub = SimpleNamespace(
-        Configure=lambda request, **_kwargs: servicer.Configure(
-            request, _InlineGrpcContext()
+        Configure=_InlineUnary(
+            lambda request: servicer.Configure(request, _InlineGrpcContext())
         ),
         Unregister=lambda request, **_kwargs: servicer.Unregister(
             request, _InlineGrpcContext()

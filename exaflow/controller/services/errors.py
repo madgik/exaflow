@@ -27,3 +27,13 @@ class GlobalWorkerUnavailableError(Exception):
         )
         super().__init__(message)
         self.message = message
+
+
+class ControllerShuttingDownError(Exception):
+    def __init__(self):
+        message = (
+            "The controller is shutting down, so this analysis was stopped. "
+            "Please try again in a few minutes."
+        )
+        super().__init__(message)
+        self.message = message

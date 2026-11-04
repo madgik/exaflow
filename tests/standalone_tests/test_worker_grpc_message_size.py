@@ -15,6 +15,10 @@ ONE_MIB = 1024 * 1024
 OVER_ONE_MIB = ONE_MIB + (200 * 1024)
 
 
+def _run_udf(handler, **kwargs):
+    return handler.finish_run_udf(handler.start_run_udf(**kwargs))
+
+
 class _LargeResultService(worker_pb2_grpc.WorkerServiceServicer):
     def RunUdf(self, request, context):
         assert len(request.udf_registry_key) == FIVE_MIB
@@ -164,7 +168,8 @@ def test_large_kw_args_and_result_round_trip_through_run_udf(monkeypatch):
     address = f"127.0.0.1:{port}"
     handler = WorkerTasksHandler(address, logging.getLogger("grpc-message-size"))
     try:
-        result = handler.run_udf(
+        result = _run_udf(
+            handler,
             request_id="req-large",
             udf_registry_key="size_probe",
             kw_args={"blob": blob},
