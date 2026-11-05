@@ -22,7 +22,7 @@ spec:
       {{- end }}
       containers:
         - name: aggregation-server
-          image: "{{ .Values.exaflow_images.repository }}/exaflow_aggregation_server:{{ .Values.exaflow_images.version }}"
+          image: "{{ .Values.exaflow_images.repository }}/exaflow_aggregation_server:{{ .Values.exaflow_images.aggregation_server_tag | default .Values.exaflow_images.version }}"
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 50051
