@@ -5,6 +5,11 @@ localnodes: 2
 exaflow_images:
   repository: madgik
   version: 1.0.0
+  # Per-image tags; each falls back to version when empty. Argo CD Image Updater sets these
+  # to "<moving tag>@sha256:<digest>" on the staging Applications.
+  controller_tag: ""
+  worker_tag: ""
+  aggregation_server_tag: ""
 
 federation: dementia
 
