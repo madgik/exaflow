@@ -22,7 +22,7 @@ spec:
 
       containers:
       - name: controller
-        image: {{ .Values.exaflow_images.repository }}/exaflow_controller:{{ .Values.exaflow_images.version }}
+        image: {{ .Values.exaflow_images.repository }}/exaflow_controller:{{ .Values.exaflow_images.controller_tag | default .Values.exaflow_images.version }}
         ports:
           - containerPort: 5000
 

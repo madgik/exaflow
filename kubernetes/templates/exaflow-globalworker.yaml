@@ -51,7 +51,7 @@ spec:
       {{- end }}
       containers:
       - name: worker
-        image: {{ .Values.exaflow_images.repository }}/exaflow_worker:{{ .Values.exaflow_images.version }}
+        image: {{ .Values.exaflow_images.repository }}/exaflow_worker:{{ .Values.exaflow_images.worker_tag | default .Values.exaflow_images.version }}
         volumeMounts:
         - mountPath: /opt/data
           name: duckdb-data
