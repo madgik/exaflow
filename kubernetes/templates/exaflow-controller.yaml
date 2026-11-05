@@ -27,6 +27,12 @@ spec:
           - containerPort: 5000
 
         env:
+        - name: EXAFLOW_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: exaflow-api-token
+              key: token
+              optional: true
         - name: NODE_IDENTIFIER
           valueFrom:
             fieldRef:

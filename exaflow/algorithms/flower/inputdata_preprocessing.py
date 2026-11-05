@@ -18,7 +18,13 @@ CONTROLLER_PORT = os.getenv("CONTROLLER_PORT", 5000)
 RESULT_URL = f"http://{CONTROLLER_IP}:{CONTROLLER_PORT}/flower/result"
 INPUT_URL = f"http://{CONTROLLER_IP}:{CONTROLLER_PORT}/flower/input"
 CDES_URL = f"http://{CONTROLLER_IP}:{CONTROLLER_PORT}/cdes_metadata"
-HEADERS = {"Content-type": "application/json", "Accept": "text/plain"}
+# The controller requires this token when its own EXAFLOW_API_TOKEN is set.
+AUTH_HEADERS = (
+    {"Authorization": f"Bearer {os.environ['EXAFLOW_API_TOKEN']}"}
+    if os.getenv("EXAFLOW_API_TOKEN")
+    else {}
+)
+HEADERS = {"Content-type": "application/json", "Accept": "text/plain", **AUTH_HEADERS}
 
 
 def preprocess_data(inputdata, full_data):
@@ -55,7 +61,7 @@ def post_result(result: dict) -> None:
 
 def get_input() -> Inputdata:
     FLOWER_LOGGER.debug(f"Getting inputdata from: {INPUT_URL} ...")
-    response = requests.get(INPUT_URL)
+    response = requests.get(INPUT_URL, headers=AUTH_HEADERS)
     if response.status_code != 200:
         error_handling(response.text)
     inputdata = Inputdata.model_validate_json(response.text)
@@ -65,7 +71,7 @@ def get_input() -> Inputdata:
 def get_enumerations(data_model: str, variable_name: str) -> Optional[list]:
     try:
         FLOWER_LOGGER.debug(f"Getting enumerations from: {CDES_URL} ...")
-        response = requests.get(CDES_URL)
+        response = requests.get(CDES_URL, headers=AUTH_HEADERS)
         if response.status_code != 200:
             error_handling(response.text)
         cdes_metadata = response.json()
