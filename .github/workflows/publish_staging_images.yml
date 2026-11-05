@@ -8,7 +8,7 @@ on:
 concurrency: staging-${{ github.ref_name }}
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   DOCKER_BUILDKIT: 1
@@ -44,7 +44,9 @@ jobs:
           context: .
           file: exaflow/controller/Dockerfile
           push: true
-          tags: madgik/exaflow_controller:${{ github.ref_name }}-${{ github.sha }}
+          tags: |
+            madgik/exaflow_controller:${{ github.ref_name }}-${{ github.sha }}
+            madgik/exaflow_controller:${{ github.ref_name }}
           cache-from: type=local,src=/tmp/.buildx-cache/controller
           cache-to: type=local,dest=/tmp/.buildx-cache-new/controller
 
@@ -83,7 +85,9 @@ jobs:
           context: .
           file: exaflow/worker/Dockerfile
           push: true
-          tags: madgik/exaflow_worker:${{ github.ref_name }}-${{ github.sha }}
+          tags: |
+            madgik/exaflow_worker:${{ github.ref_name }}-${{ github.sha }}
+            madgik/exaflow_worker:${{ github.ref_name }}
           cache-from: type=local,src=/tmp/.buildx-cache/worker
           cache-to: type=local,dest=/tmp/.buildx-cache-new/worker
 
@@ -122,7 +126,9 @@ jobs:
           context: .
           file: exaflow/aggregation_server/Dockerfile
           push: true
-          tags: madgik/exaflow_aggregation_server:${{ github.ref_name }}-${{ github.sha }}
+          tags: |
+            madgik/exaflow_aggregation_server:${{ github.ref_name }}-${{ github.sha }}
+            madgik/exaflow_aggregation_server:${{ github.ref_name }}
           cache-from: type=local,src=/tmp/.buildx-cache/aggregation-server
           cache-to: type=local,dest=/tmp/.buildx-cache-new/aggregation-server
 
@@ -130,54 +136,3 @@ jobs:
         run: |
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-
-  update_chart_version:
-    name: Commit chart version to the same branch
-    needs:
-      - build_and_push_controller
-      - build_and_push_worker
-      - build_and_push_aggregation_server
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-
-      - name: Set tag
-        id: tag
-        shell: bash
-        run: |
-          echo "TAG=${{ github.ref_name }}-${{ github.sha }}" >> "$GITHUB_OUTPUT"
-
-      - name: Update chart image version
-        shell: bash
-        env:
-          TAG: ${{ steps.tag.outputs.TAG }}
-        run: |
-          [ -n "$TAG" ] || { echo "TAG is empty" >&2; exit 1; }
-          curl -sL https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64 -o /usr/local/bin/yq
-          chmod +x /usr/local/bin/yq
-          yq -i '.exaflow_images.version = strenv(TAG)' kubernetes/values.yaml
-          cat kubernetes/values.yaml | head -n 8
-
-      - name: Commit and push chart version (retry on rejection)
-        shell: bash
-        env:
-          TAG: ${{ steps.tag.outputs.TAG }}
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add kubernetes/values.yaml
-          git commit -m "chore(${GITHUB_REF_NAME}): exaflow images ${TAG}" || {
-            echo "Nothing to commit; values.yaml already pinned to ${TAG}."
-            exit 0
-          }
-          for attempt in $(seq 1 5); do
-            echo "Push attempt ${attempt}/5..."
-            if git push origin HEAD; then
-              exit 0
-            fi
-            git fetch origin "${GITHUB_REF_NAME}"
-            git rebase "origin/${GITHUB_REF_NAME}"
-          done
-          echo "Push rejected after 5 attempts." >&2
-          exit 1
