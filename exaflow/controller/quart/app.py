@@ -1,9 +1,11 @@
 from quart import Quart
 
+from exaflow.controller.quart.api_token import require_api_token
 from exaflow.controller.quart.endpoints import algorithms
 from exaflow.controller.quart.error_handlers import error_handlers
 
 app = Quart(__name__)
+app.before_request(require_api_token)
 app.register_blueprint(algorithms)
 app.register_blueprint(error_handlers)
 
