@@ -79,10 +79,25 @@ def test_simple_imputer_median_constant_and_safe_categorical_mode():
     assert categorical.transform(np.array([[None]], dtype=object)).tolist() == [["a"]]
 
 
+def test_simple_imputer_constant_defaults_to_zero_for_numeric_input():
+    data = np.array([[1.0], [np.nan]])
+    imputer = SimpleImputer("constant").fit(data, agg_client=DummyAggClient())
+
+    assert np.array_equal(imputer.transform(data), [[1.0], [0.0]])
+
+
 def test_simple_imputer_rejects_numerical_mode_without_safe_protocol():
     with pytest.raises(BadInputError, match="numeric mode"):
         SimpleImputer("most_frequent").fit(
             np.array([[1.0], [2.0], [np.nan]]), agg_client=DummyAggClient()
+        )
+
+
+def test_simple_imputer_rejects_numeric_values_stored_as_object():
+    with pytest.raises(BadInputError, match="numeric mode"):
+        SimpleImputer("most_frequent").fit(
+            np.array([[1.37], [8.21], [1.37]], dtype=object),
+            agg_client=DummyAggClient(),
         )
 
 
@@ -125,6 +140,17 @@ def test_parameter_transformers_match_numpy_and_do_not_mutate(transformer, expec
     assert np.array_equal(data, original)
 
 
+@pytest.mark.parametrize(
+    "transformer, invalid",
+    [(Log1pTransformer(), np.array([-0.5])), (SqrtTransformer(), np.array([-1.0]))],
+)
+def test_parameter_transformers_validate_transform_domain(transformer, invalid):
+    transformer.fit(np.array([[0.0]]), agg_client=DummyAggClient())
+
+    with pytest.raises(BadInputError, match="requires non-negative"):
+        transformer.transform(invalid)
+
+
 @pytest.mark.parametrize("transformer", [Log1pTransformer(), SqrtTransformer()])
 def test_domain_validation_is_global(transformer):
     parts = [np.array([[1.0], [2.0]]), np.array([[-1.0], [3.0]])]
@@ -145,6 +171,20 @@ def test_standard_scaler_uses_two_pass_global_variance():
         ScalerRecipe.model_validate_json(fitted[0].recipe_.model_dump_json())
     )
     assert np.allclose(replay.transform(pooled), actual)
+
+
+def test_standard_scaler_treats_rounding_only_scale_as_constant():
+    data = np.array([[0.1], [0.1], [0.1]])
+    scaler = StandardScaler().fit(data, agg_client=DummyAggClient())
+
+    assert np.allclose(scaler.transform(data), 0.0)
+
+
+def test_outlier_detector_treats_rounding_only_scale_as_constant():
+    data = np.array([[0.1], [0.1], [0.1]])
+    detector = OutlierDetector().fit(data, agg_client=DummyAggClient())
+
+    assert not detector.transform(data).any()
 
 
 def test_minmax_scaler_matches_sklearn_and_replays_from_json_recipe():
@@ -168,6 +208,16 @@ def test_minmax_and_maxabs_handle_constant_features_deterministically():
     assert np.allclose(minimum.transform(data)[:, 0], 0.0)
     assert np.allclose(maximum.transform(data)[:, 0], 1.0)
     assert np.allclose(maximum.transform(data)[:, 1], [-0.5, 1.0])
+
+
+def test_minmax_preserves_missing_values_in_constant_features():
+    fitted = MinMaxScaler().fit(
+        np.array([[3.0], [3.0], [np.nan]]), agg_client=DummyAggClient()
+    )
+
+    transformed = fitted.transform(np.array([[3.0], [np.nan], [9.0]]))
+
+    assert np.array_equal(transformed, [[0.0], [np.nan], [6.0]], equal_nan=True)
 
 
 def test_maxabs_rejects_feature_without_valid_values():
@@ -228,11 +278,30 @@ def test_yeo_johnson_is_partition_stable_and_matches_scipy_reference():
     assert np.allclose(actual[:, 0], expected, atol=1e-3)
 
 
+def test_yeo_johnson_uses_global_constant_detection_across_partitions():
+    parts = [
+        np.array([[7.0, 1.0], [7.0, 2.0]]),
+        np.array([[1.0, 9.0], [2.0, 9.0]]),
+    ]
+    fitted = _fit_in_workers(YeoJohnsonTransformer, parts)
+
+    assert np.allclose(fitted[0].lambdas_, fitted[1].lambdas_)
+
+
+def test_yeo_johnson_all_missing_local_partition_still_joins_aggregation():
+    fitted = _fit_in_workers(
+        YeoJohnsonTransformer,
+        [np.array([[np.nan], [np.nan]]), np.array([[1.0], [2.0]])],
+    )
+
+    assert np.allclose(fitted[0].lambdas_, fitted[1].lambdas_)
+
+
 def test_quantile_transformer_is_monotone_and_replays_recipe():
     data = np.array([[0.0], [1.0], [2.0], [3.0], [4.0]])
-    transformer = QuantileTransformerApprox(n_quantiles=5).fit(
-        data, agg_client=DummyAggClient()
-    )
+    transformer = QuantileTransformerApprox(
+        n_quantiles=5, min_observations_per_interval=1
+    ).fit(data, agg_client=DummyAggClient())
     transformed = transformer.transform(data)
 
     assert np.all(np.diff(transformed[:, 0]) >= 0)
@@ -261,3 +330,20 @@ def test_quantile_transformer_is_partition_stable():
     assert np.all(np.diff(actual[:, 0]) >= 0)
     assert actual[0, 0] == pytest.approx(0.0)
     assert actual[-1, 0] == pytest.approx(1.0)
+
+
+def test_quantile_transformer_requires_global_observations_per_interval():
+    with pytest.raises(BadInputError, match="global observations"):
+        QuantileTransformerApprox(n_quantiles=5).fit(
+            np.arange(19.0).reshape(-1, 1), agg_client=DummyAggClient()
+        )
+
+
+def test_quantile_transformer_constant_normal_output_is_centered():
+    transformer = QuantileTransformerApprox(
+        n_quantiles=5,
+        output_distribution="normal",
+        min_observations_per_interval=1,
+    ).fit(np.ones((5, 1)), agg_client=DummyAggClient())
+
+    assert np.allclose(transformer.transform(np.ones((2, 1))), 0.0)

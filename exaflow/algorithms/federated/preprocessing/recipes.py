@@ -58,3 +58,4 @@ class QuantileTransformerRecipe(FittedRecipe):
     quantiles: list[list[float]]
     references: list[float]
     output_distribution: str
+    min_observations_per_interval: int = 5

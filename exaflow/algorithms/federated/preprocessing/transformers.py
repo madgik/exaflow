@@ -7,6 +7,7 @@ raw observations never leave a worker.
 
 from __future__ import annotations
 
+from numbers import Number
 from typing import Any
 from typing import Optional
 
@@ -54,6 +55,22 @@ def _require_rows(array: np.ndarray) -> None:
 def _reject_infinite(array: np.ndarray) -> None:
     if np.isinf(array).any():
         raise BadInputError("Input must not contain infinite values.")
+
+
+def _require_fitted(transformer: object, *attributes: str) -> None:
+    if any(not hasattr(transformer, attribute) for attribute in attributes):
+        raise BadInputError("Transformer is not fitted.")
+
+
+def _validate_local_domain(array: np.ndarray, *, predicate, message: str) -> None:
+    invalid = np.isinf(array) | (~np.isnan(array) & ~predicate(array))
+    if invalid.any():
+        raise BadInputError(message)
+
+
+def _stabilize_scale(raw_scale: np.ndarray, location: np.ndarray) -> np.ndarray:
+    tolerance = np.finfo(float).eps * np.maximum(1.0, np.abs(location))
+    return np.where(raw_scale <= tolerance, 1.0, raw_scale)
 
 
 def _global_sum_count(
@@ -126,6 +143,12 @@ class _BaseTransformer:
 
 
 class SimpleImputer(_BaseTransformer):
+    """Impute missing values using globally fitted statistics.
+
+    Constant imputation defaults to ``0`` for numeric input when no fill value
+    is supplied.
+    """
+
     def __init__(self, strategy: str = "mean", fill_value: Any = None):
         if strategy not in {"mean", "median", "constant", "most_frequent"}:
             raise BadInputError("Unsupported imputation strategy.")
@@ -148,6 +171,14 @@ class SimpleImputer(_BaseTransformer):
                 values = values.reshape(-1, 1)
             if values.ndim != 2:
                 raise BadInputError("Input must be one- or two-dimensional.")
+            if self.fill_value is None:
+                try:
+                    _as_2d_numeric(data)
+                except BadInputError:
+                    raise BadInputError(
+                        "fill_value is required for non-numeric constant imputation."
+                    ) from None
+                self.fill_value = 0
             self.statistics_ = np.asarray(
                 [self.fill_value] * values.shape[1], dtype=object
             )
@@ -165,9 +196,6 @@ class SimpleImputer(_BaseTransformer):
                     ]
                 )
         else:
-            raw_values = np.asarray(data)
-            if np.issubdtype(raw_values.dtype, np.number):
-                raise BadInputError("numeric mode requires a safe histogram protocol.")
             values = np.asarray(data, dtype=object)
             if values.ndim == 1:
                 values = values.reshape(-1, 1)
@@ -177,6 +205,14 @@ class SimpleImputer(_BaseTransformer):
             for idx in range(values.shape[1]):
                 column = values[:, idx]
                 observed = [value for value in column if not pd.isna(value)]
+                if any(
+                    isinstance(value, Number)
+                    and not isinstance(value, (bool, np.bool_))
+                    for value in observed
+                ):
+                    raise BadInputError(
+                        "numeric mode requires a safe histogram protocol."
+                    )
                 categories = sorted(
                     set(observed), key=lambda value: (type(value).__name__, str(value))
                 )
@@ -208,6 +244,7 @@ class SimpleImputer(_BaseTransformer):
         return self
 
     def transform(self, data):
+        _require_fitted(self, "statistics_")
         if self.statistics_ is None:
             raise BadInputError("SimpleImputer is not fitted.")
         values = np.asarray(data, dtype=object).copy()
@@ -237,6 +274,7 @@ class MissingIndicator(_BaseTransformer):
         return self
 
     def transform(self, data):
+        _require_fitted(self, "_n_features")
         array, squeezed = _as_2d_numeric(data)
         if getattr(self, "_n_features", None) != array.shape[1]:
             raise BadInputError(
@@ -262,13 +300,18 @@ class Log1pTransformer(_BaseTransformer):
         return self
 
     def transform(self, data):
+        _require_fitted(self, "_shape")
         array, squeezed = _as_2d_numeric(data)
         if array.shape[1] != self._shape:
             raise BadInputError(
                 "Input feature count does not match the fitted transformer."
             )
-        with np.errstate(invalid="raise"):
-            result = np.log1p(array)
+        _validate_local_domain(
+            array,
+            predicate=lambda x: x >= 0,
+            message="log1p requires non-negative values.",
+        )
+        result = np.log1p(array)
         return _restore_shape(result, squeezed)
 
 
@@ -288,11 +331,17 @@ class SqrtTransformer(_BaseTransformer):
         return self
 
     def transform(self, data):
+        _require_fitted(self, "_shape")
         array, squeezed = _as_2d_numeric(data)
         if array.shape[1] != self._shape:
             raise BadInputError(
                 "Input feature count does not match the fitted transformer."
             )
+        _validate_local_domain(
+            array,
+            predicate=lambda x: x >= 0,
+            message="sqrt requires non-negative values.",
+        )
         return _restore_shape(np.sqrt(array), squeezed)
 
 
@@ -306,6 +355,7 @@ class AsinhTransformer(_BaseTransformer):
         return self
 
     def transform(self, data):
+        _require_fitted(self, "_shape")
         array, squeezed = _as_2d_numeric(data)
         if array.shape[1] != self._shape:
             raise BadInputError(
@@ -331,7 +381,7 @@ class StandardScaler(_BaseTransformer):
         _require_rows(array)
         _reject_infinite(array)
         self.mean_, raw_scale = _global_population_scale(array, agg_client)
-        self.scale_ = np.where(raw_scale == 0, 1.0, raw_scale)
+        self.scale_ = _stabilize_scale(raw_scale, self.mean_)
         self._squeezed = squeezed
         self.recipe_ = ScalerRecipe(
             primitive_name="standard_scaler",
@@ -341,6 +391,7 @@ class StandardScaler(_BaseTransformer):
         return self
 
     def transform(self, data):
+        _require_fitted(self, "mean_", "scale_")
         array, squeezed = _as_2d_numeric(data)
         if array.shape[1] != len(self.mean_):
             raise BadInputError("Input feature count does not match the fitted scaler.")
@@ -382,6 +433,7 @@ class RobustScalerApprox(_BaseTransformer):
         return self
 
     def transform(self, data):
+        _require_fitted(self, "center_", "scale_")
         array, squeezed = _as_2d_numeric(data)
         if array.shape[1] != len(self.center_):
             raise BadInputError("Input feature count does not match the fitted scaler.")
@@ -432,13 +484,11 @@ class MinMaxScaler(_BaseTransformer):
         return scaler
 
     def transform(self, data):
+        _require_fitted(self, "data_min_", "data_max_", "_scale")
         array, squeezed = _as_2d_numeric(data)
         if array.shape[1] != len(self.data_min_):
             raise BadInputError("Input feature count does not match the fitted scaler.")
         result = (array - self.data_min_) * self._scale + self.feature_range[0]
-        constant = self.data_max_ == self.data_min_
-        if np.any(constant):
-            result[:, constant] = self.feature_range[0]
         return _restore_shape(result, squeezed)
 
 
@@ -477,6 +527,7 @@ class MaxAbsScaler(_BaseTransformer):
         return self
 
     def transform(self, data):
+        _require_fitted(self, "scale_")
         array, squeezed = _as_2d_numeric(data)
         if array.shape[1] != len(self.scale_):
             raise BadInputError("Input feature count does not match the fitted scaler.")
@@ -527,6 +578,7 @@ class Winsorizer(_BaseTransformer):
         return self
 
     def transform(self, data):
+        _require_fitted(self, "lower_bounds_", "upper_bounds_")
         array, squeezed = _as_2d_numeric(data)
         if array.shape[1] != len(self.lower_bounds_):
             raise BadInputError(
@@ -564,7 +616,7 @@ class OutlierDetector(_BaseTransformer):
         _reject_infinite(array)
         if self.mode == "zscore":
             self.location_, self.scale_ = _global_population_scale(array, agg_client)
-            self.scale_ = np.where(self.scale_ == 0, 1.0, self.scale_)
+            self.scale_ = _stabilize_scale(self.scale_, self.location_)
             parameters = np.column_stack((self.location_, self.scale_)).tolist()
         else:
             self.location_ = np.asarray(
@@ -596,6 +648,7 @@ class OutlierDetector(_BaseTransformer):
         return self
 
     def transform(self, data):
+        _require_fitted(self, "location_", "scale_")
         array, squeezed = _as_2d_numeric(data)
         if array.shape[1] != len(self.location_):
             raise BadInputError(
@@ -638,34 +691,38 @@ class YeoJohnsonTransformer(_BaseTransformer):
         array, squeezed = _as_2d_numeric(data)
         _require_rows(array)
         _reject_infinite(array)
+        global_min, global_max = _global_min_max(array, agg_client)
         lambdas = []
         for idx in range(array.shape[1]):
             values = array[:, idx]
             valid = values[~np.isnan(values)]
-            if valid.size == 0:
-                raise BadInputError("At least one feature has no valid observations.")
-            if np.all(valid == valid[0]):
+            if global_min[idx] == global_max[idx]:
                 lambdas.append(1.0)
                 continue
 
             def objective(lambd):
                 transformed = _yeo_johnson(valid, float(lambd))
-                local_sum = np.array(
-                    [transformed.sum(), np.square(transformed).sum(), len(valid)],
-                    dtype=float,
+                total_sum, total_count = _global_sum_count(
+                    transformed.reshape(-1, 1), agg_client
                 )
-                total_sum, total_sq, total_n = np.asarray(
-                    agg_client.sum(local_sum), dtype=float
+                if total_count[0] <= 0:
+                    return np.inf
+                mean = total_sum[0] / total_count[0]
+                local_squared = np.square(transformed - mean).sum()
+                total_squared = float(
+                    np.asarray(agg_client.sum([local_squared]), dtype=float)[0]
                 )
-                variance = total_sq / total_n - (total_sum / total_n) ** 2
+                variance = total_squared / total_count[0]
                 if variance <= 0 or not np.isfinite(variance):
                     return np.inf
-                jacobian = np.sign(valid) * np.log1p(np.abs(valid))
-                total_jacobian = float(
-                    np.asarray(agg_client.sum([jacobian.sum()]), dtype=float)[0]
+                return (
+                    total_count[0] / 2 * np.log(variance) - (lambd - 1) * total_jacobian
                 )
-                return total_n / 2 * np.log(variance) - (lambd - 1) * total_jacobian
 
+            jacobian = np.sign(valid) * np.log1p(np.abs(valid))
+            total_jacobian = float(
+                np.asarray(agg_client.sum([jacobian.sum()]), dtype=float)[0]
+            )
             result = minimize_scalar(objective, bounds=(-5, 5), method="bounded")
             if not result.success or not np.isfinite(result.x):
                 raise BadInputError("Yeo-Johnson lambda fitting did not converge.")
@@ -676,6 +733,7 @@ class YeoJohnsonTransformer(_BaseTransformer):
         return self
 
     def transform(self, data):
+        _require_fitted(self, "lambdas_")
         array, squeezed = _as_2d_numeric(data)
         if array.shape[1] != len(self.lambdas_):
             raise BadInputError(
@@ -685,20 +743,44 @@ class YeoJohnsonTransformer(_BaseTransformer):
         for idx, lambd in enumerate(self.lambdas_):
             valid = ~np.isnan(array[:, idx])
             result[:, idx] = np.nan
-            result[valid, idx] = _yeo_johnson(array[valid, idx], float(lambd))
+            try:
+                result[valid, idx] = _yeo_johnson(array[valid, idx], float(lambd))
+            except FloatingPointError:
+                raise BadInputError(
+                    "Yeo-Johnson transformation is undefined for the input."
+                ) from None
         return _restore_shape(result, squeezed)
 
 
 class QuantileTransformerApprox(_BaseTransformer):
-    def __init__(self, n_quantiles: int = 100, output_distribution: str = "uniform"):
+    """Map values through approximate global quantiles.
+
+    By default, fitting requires five global observations per quantile interval
+    to avoid exposing fitted order statistics from very small cohorts.
+    """
+
+    def __init__(
+        self,
+        n_quantiles: int = 100,
+        output_distribution: str = "uniform",
+        min_observations_per_interval: int = 5,
+    ):
         if n_quantiles < 2 or int(n_quantiles) != n_quantiles:
             raise BadInputError(
                 "n_quantiles must be an integer greater than or equal to 2."
             )
         if output_distribution not in {"uniform", "normal"}:
             raise BadInputError("output_distribution must be 'uniform' or 'normal'.")
+        if (
+            int(min_observations_per_interval) != min_observations_per_interval
+            or min_observations_per_interval < 1
+        ):
+            raise BadInputError(
+                "min_observations_per_interval must be a positive integer."
+            )
         self.n_quantiles = int(n_quantiles)
         self.output_distribution = output_distribution
+        self.min_observations_per_interval = int(min_observations_per_interval)
 
     @classmethod
     def from_recipe(cls, recipe):
@@ -706,6 +788,7 @@ class QuantileTransformerApprox(_BaseTransformer):
         transformer = cls(
             n_quantiles=len(recipe.references),
             output_distribution=recipe.output_distribution,
+            min_observations_per_interval=recipe.min_observations_per_interval,
         )
         transformer.quantiles_ = np.asarray(recipe.quantiles, dtype=float)
         transformer.references_ = np.asarray(recipe.references, dtype=float)
@@ -716,23 +799,35 @@ class QuantileTransformerApprox(_BaseTransformer):
         array, squeezed = _as_2d_numeric(data)
         _require_rows(array)
         _reject_infinite(array)
+        global_count = np.asarray(
+            agg_client.sum((~np.isnan(array)).sum(axis=0).astype(float)), dtype=float
+        )
+        required_count = self.min_observations_per_interval * (self.n_quantiles - 1)
+        if np.any(global_count < required_count):
+            raise BadInputError(
+                "QuantileTransformer requires more global observations per interval."
+            )
         references = np.linspace(0.0, 1.0, self.n_quantiles)
         quantiles = []
         for idx in range(array.shape[1]):
             quantiles.append(
                 [_percentile(array[:, idx], q, agg_client) for q in references]
             )
-        self.quantiles_ = np.asarray(quantiles, dtype=float)
+        self.quantiles_ = np.maximum.accumulate(
+            np.asarray(quantiles, dtype=float), axis=1
+        )
         self.references_ = references
         self._squeezed = squeezed
         self.recipe_ = QuantileTransformerRecipe(
             quantiles=self.quantiles_.tolist(),
             references=references.tolist(),
             output_distribution=self.output_distribution,
+            min_observations_per_interval=self.min_observations_per_interval,
         )
         return self
 
     def transform(self, data):
+        _require_fitted(self, "quantiles_", "references_")
         array, squeezed = _as_2d_numeric(data)
         if array.shape[1] != self.quantiles_.shape[0]:
             raise BadInputError(
@@ -740,10 +835,21 @@ class QuantileTransformerApprox(_BaseTransformer):
             )
         result = np.empty_like(array, dtype=float)
         for idx in range(array.shape[1]):
-            if np.all(self.quantiles_[idx] == self.quantiles_[idx, 0]):
-                result[:, idx] = np.where(np.isnan(array[:, idx]), np.nan, 0.5)
+            if np.allclose(self.quantiles_[idx], self.quantiles_[idx, 0]):
+                constant_value = 0.5 if self.output_distribution == "uniform" else 0.0
+                result[:, idx] = np.where(
+                    np.isnan(array[:, idx]), np.nan, constant_value
+                )
                 continue
-            mapped = np.interp(array[:, idx], self.quantiles_[idx], self.references_)
+            unique_quantiles, inverse = np.unique(
+                self.quantiles_[idx], return_inverse=True
+            )
+            reference_sum = np.bincount(
+                inverse, weights=self.references_, minlength=len(unique_quantiles)
+            )
+            reference_count = np.bincount(inverse, minlength=len(unique_quantiles))
+            unique_references = reference_sum / reference_count
+            mapped = np.interp(array[:, idx], unique_quantiles, unique_references)
             if self.output_distribution == "normal":
                 mapped = ndtri(np.clip(mapped, 1e-7, 1 - 1e-7))
             result[:, idx] = mapped
