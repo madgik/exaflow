@@ -31,7 +31,7 @@ class _FakeWorkerClient:
 
 
 def _run_udf(handler, **kwargs):
-    return handler.finish_run_udf(handler.start_run_udf(**kwargs))
+    return handler.run_udf(**kwargs).result()
 
 
 class _DummyRunUdfSystemArgs:

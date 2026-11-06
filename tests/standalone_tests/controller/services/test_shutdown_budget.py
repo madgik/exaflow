@@ -309,7 +309,7 @@ def test_run_udf_rpc_is_registered_for_shutdown_cancel(monkeypatch):
     client = SimpleNamespace(start_call=lambda *_args: call)
     monkeypatch.setattr(handler, "_client", lambda: client)
 
-    handler.start_run_udf("req", "udf", {}, {}, 1)
+    handler.run_udf("req", "udf", {}, {}, 1)
     shutdown.begin_controller_shutdown()
 
     assert call.cancelled

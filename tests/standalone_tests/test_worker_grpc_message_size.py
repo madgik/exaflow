@@ -16,7 +16,7 @@ OVER_ONE_MIB = ONE_MIB + (200 * 1024)
 
 
 def _run_udf(handler, **kwargs):
-    return handler.finish_run_udf(handler.start_run_udf(**kwargs))
+    return handler.run_udf(**kwargs).result()
 
 
 class _LargeResultService(worker_pb2_grpc.WorkerServiceServicer):
