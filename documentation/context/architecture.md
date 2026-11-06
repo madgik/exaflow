@@ -152,8 +152,11 @@ routing to it. After SIGTERM Hypercorn drains in-flight requests for
 that cancellation on to the task running an analysis, so the lifespan hook
 (`endpoints.shutdown`) calls `begin_controller_shutdown()`: it cancels the
 registered `RunUdf` and aggregation `Configure` RPCs, and any registered after
-it. Cleanup and metadata RPCs are never cancelled. The hook then stops the
-worker-landscape thread (join bounded by `shutdown_cleanup_timeout`, 10 s) and
+it. Worker-landscape metadata RPCs are cancelled too, because their executor
+threads would otherwise keep the process alive for `worker_tasks_timeout`.
+Cleanup and the metadata calls that release resources are not cancelled. The
+hook then stops the worker-landscape thread (join bounded by
+`shutdown_cleanup_timeout`, 10 s) and
 joins the analysis threads for at most `shutdown_rpc_cancel_timeout` (5 s);
 aggregation cleanup uses `shutdown_cleanup_timeout` once shutdown began. A
 client disconnect during the drain cancels nothing. The pod grace period is

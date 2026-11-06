@@ -6,6 +6,7 @@ from typing import Any
 import grpc
 
 from exaflow.controller import config as ctrl_config
+from exaflow.controller.services.controller_shutdown import register_inflight_rpc
 from exaflow.controller.services.errors import ControllerShuttingDownError
 from exaflow.grpc_options import grpc_max_message_size
 from exaflow.grpc_options import grpc_message_options
@@ -131,8 +132,21 @@ class WorkerClient:
             )
             self._handle_rpc_error(exc)
 
-    def call(self, rpc_name: str, request: Any, timeout: int):
-        return self.finish_call(rpc_name, self.start_call(rpc_name, request, timeout))
+    def call(
+        self,
+        rpc_name: str,
+        request: Any,
+        timeout: int,
+        *,
+        cancel_on_shutdown: bool = False,
+    ):
+        future = self.start_call(rpc_name, request, timeout)
+        # Landscape metadata calls block executor threads that interpreter
+        # shutdown joins. Registering them lets shutdown cancel the RPC.
+        # Callers that release resources leave this off.
+        if cancel_on_shutdown:
+            register_inflight_rpc(future)
+        return self.finish_call(rpc_name, future)
 
 
 class WorkerClientFactory(metaclass=Singleton):

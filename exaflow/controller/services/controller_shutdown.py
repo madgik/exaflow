@@ -8,9 +8,11 @@ are still running when the lifespan shutdown hook starts. That hook calls
 RPCs, and every RPC registered afterwards, so a thread that starts its next
 batch stops too.
 
-Only the RPCs that run an analysis are registered (UDF calls and aggregation
-Configure). Cleanup and metadata RPCs are not, so shutdown cannot abort the
-calls that release resources.
+Analysis RPCs (UDF calls and aggregation Configure) and worker-landscape
+metadata RPCs are registered. Cleanup and the other metadata calls are not,
+so shutdown cannot abort calls that release resources. Landscape metadata
+calls have to be cancelled: their executor threads are joined at process
+exit and would otherwise wait out worker_tasks_timeout.
 """
 
 import threading
