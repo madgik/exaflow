@@ -39,6 +39,12 @@ class InlineRpcError(grpc.RpcError):
 
 
 class InlineGrpcContext:
+    def __init__(self, metadata=()):
+        self._metadata = tuple(metadata or ())
+
+    def invocation_metadata(self):
+        return self._metadata
+
     def abort(self, code, details):
         raise InlineRpcError(code, details)
 
@@ -73,18 +79,47 @@ def inline_grpc_stub(monkeypatch):
     servicer = AggregationServer()
     channel = SimpleNamespace(close=lambda: None)
 
+    class _ImmediateFuture:
+        def __init__(self, response):
+            self._response = response
+
+        def result(self, timeout=None):
+            return self._response
+
+        def add_done_callback(self, callback):
+            callback(self)
+
+        def cancel(self):
+            return False
+
+    class _Unary:
+        def __init__(self, fn):
+            self._fn = fn
+
+        def __call__(self, request, timeout=None, metadata=None):
+            return self._fn(request, timeout, metadata)
+
+        def future(self, request, timeout=None, metadata=None):
+            return _ImmediateFuture(self._fn(request, timeout, metadata))
+
     class InlineStub:
-        def Configure(self, request):
-            return servicer.Configure(request, InlineGrpcContext())
+        def __init__(self):
+            self.Configure = _Unary(
+                lambda request, timeout=None, metadata=None: servicer.Configure(
+                    request, InlineGrpcContext(metadata)
+                )
+            )
+            self.Cleanup = _Unary(
+                lambda request, timeout=None, metadata=None: servicer.Cleanup(
+                    request, InlineGrpcContext(metadata)
+                )
+            )
 
         def Unregister(self, request):
             return servicer.Unregister(request, InlineGrpcContext())
 
         def Aggregate(self, request):
             return servicer.Aggregate(request, InlineGrpcContext())
-
-        def Cleanup(self, request):
-            return servicer.Cleanup(request, InlineGrpcContext())
 
     monkeypatch.setattr(
         "exaflow.aggregation_clients.base_aggregation_client.grpc.insecure_channel",
@@ -129,45 +164,45 @@ def worker_factory():
 
 def test_configure_returns_configured_status(controller_factory):
     controller = controller_factory("cfg-success")
-    assert controller.configure(1) == server_pb2.Status.OK
+    assert controller.configure(1, timeout=300) == server_pb2.Status.OK
 
 
 def test_duplicate_configure_returns_warning(controller_factory):
     controller = controller_factory("cfg-duplicate")
-    controller.configure(1)
-    status = controller.configure(1)
+    controller.configure(1, timeout=300)
+    status = controller.configure(1, timeout=300)
     assert status == server_pb2.Status.ALREADY_CONFIGURED
 
 
 def test_cleanup_without_configuration_returns_no_context(controller_factory):
     controller = controller_factory("cleanup-empty")
-    status = controller.cleanup()
+    status = controller.cleanup(timeout=300)
     assert status == server_pb2.Status.NOT_FOUND
 
 
 def test_cleanup_after_configuration_without_activity(controller_factory):
     controller = controller_factory("cleanup-configured")
-    controller.configure(1)
-    status = controller.cleanup()
+    controller.configure(1, timeout=300)
+    status = controller.cleanup(timeout=300)
     assert status == server_pb2.Status.OK
 
 
 def test_cleanup_twice_reports_missing_context(controller_factory):
     controller = controller_factory("cleanup-twice")
-    controller.configure(1)
-    assert controller.cleanup() == server_pb2.Status.OK
-    assert controller.cleanup() == server_pb2.Status.NOT_FOUND
+    controller.configure(1, timeout=300)
+    assert controller.cleanup(timeout=300) == server_pb2.Status.OK
+    assert controller.cleanup(timeout=300) == server_pb2.Status.NOT_FOUND
 
 
 def test_single_worker_sum_returns_input(controller_factory, worker_factory):
     request_id = "single-worker"
     controller = controller_factory(request_id)
-    controller.configure(1)
+    controller.configure(1, timeout=300)
     worker = worker_factory(request_id)
 
     result = worker.sum([1.0, 2.5, -3.0])
     np.testing.assert_allclose(result, np.array([1.0, 2.5, -3.0]))
-    controller.cleanup()
+    controller.cleanup(timeout=300)
 
 
 @pytest.mark.parametrize("agg_type", [AggregationType.MIN, AggregationType.MAX])
@@ -176,14 +211,14 @@ def test_single_worker_numeric_ops_preserve_integer_dtype(
 ):
     request_id = f"single-worker-int-{agg_type.value.lower()}"
     controller = controller_factory(request_id)
-    controller.configure(1)
+    controller.configure(1, timeout=300)
     worker = worker_factory(request_id)
 
     values = np.array([1, 2, -3], dtype=np.int64)
     result = getattr(worker, agg_type.name.lower())(values)
     assert np.issubdtype(result.dtype, np.integer)
     np.testing.assert_array_equal(result, values)
-    controller.cleanup()
+    controller.cleanup(timeout=300)
 
 
 def test_single_worker_sum_of_integers_preserves_integer_dtype(
@@ -191,20 +226,20 @@ def test_single_worker_sum_of_integers_preserves_integer_dtype(
 ):
     request_id = "single-worker-int-sum-int64"
     controller = controller_factory(request_id)
-    controller.configure(1)
+    controller.configure(1, timeout=300)
     worker = worker_factory(request_id)
 
     values = np.array([1, 2, -3], dtype=np.int64)
     result = worker.sum(values)
     assert np.issubdtype(result.dtype, np.integer)
     np.testing.assert_array_equal(result, values)
-    controller.cleanup()
+    controller.cleanup(timeout=300)
 
 
 def test_multi_worker_sum_combines_vectors(controller_factory, worker_factory):
     request_id = "sum-multi"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     worker_a = worker_factory(request_id)
     worker_b = worker_factory(request_id)
 
@@ -216,7 +251,7 @@ def test_multi_worker_sum_combines_vectors(controller_factory, worker_factory):
     expected = np.add(*vectors)
     for res in results:
         np.testing.assert_allclose(res, expected)
-    controller.cleanup()
+    controller.cleanup(timeout=300)
 
 
 def test_multi_worker_min_selects_elementwise_minimum(
@@ -224,7 +259,7 @@ def test_multi_worker_min_selects_elementwise_minimum(
 ):
     request_id = "min-multi"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     worker_a = worker_factory(request_id)
     worker_b = worker_factory(request_id)
 
@@ -243,7 +278,7 @@ def test_multi_worker_max_selects_elementwise_maximum(
 ):
     request_id = "max-multi"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     worker_a = worker_factory(request_id)
     worker_b = worker_factory(request_id)
 
@@ -262,7 +297,7 @@ def test_multi_worker_sum_preserves_nan_and_infinity(
 ):
     request_id = "sum-non-finite"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     worker_a = worker_factory(request_id)
     worker_b = worker_factory(request_id)
 
@@ -284,7 +319,7 @@ def test_multi_worker_min_max_preserve_infinity(
 ):
     request_id = f"{agg_type.value.lower()}-infinity"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     worker_a = worker_factory(request_id)
     worker_b = worker_factory(request_id)
 
@@ -310,7 +345,7 @@ def test_multi_worker_min_max_propagate_nan(
 ):
     request_id = f"{agg_type.value.lower()}-nan"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     worker_a = worker_factory(request_id)
     worker_b = worker_factory(request_id)
 
@@ -338,7 +373,7 @@ def test_multi_worker_integer_width_mixing_promotes_consistently(
 ):
     request_id = f"dtype-mix-int-width-{agg_type.value.lower()}"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     worker_a = worker_factory(request_id)
     worker_b = worker_factory(request_id)
 
@@ -367,7 +402,7 @@ def test_multi_worker_int_float_mixing_promotes_to_float(
 ):
     request_id = f"dtype-mix-int-float-{agg_type.value.lower()}"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     worker_a = worker_factory(request_id)
     worker_b = worker_factory(request_id)
 
@@ -395,7 +430,7 @@ def test_multi_worker_int_float_mixing_promotes_to_float(
 def test_multi_worker_sum_avoids_int64_wraparound(controller_factory, worker_factory):
     request_id = "sum-int32-widens-to-int64"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     worker_a = worker_factory(request_id)
     worker_b = worker_factory(request_id)
 
@@ -419,7 +454,7 @@ def test_integer_aggregation_rejects_unsafe_signed_unsigned_mix(
 ):
     request_id = f"dtype-unsafe-int-mix-{agg_type.value.lower()}"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     worker_a = worker_factory(request_id)
     worker_b = worker_factory(request_id)
 
@@ -445,7 +480,7 @@ def test_reusing_request_id_supports_multiple_rounds(
 ):
     request_id = "reuse-rounds"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     worker_a = worker_factory(request_id)
     worker_b = worker_factory(request_id)
 
@@ -464,8 +499,8 @@ def test_reusing_request_id_supports_multiple_rounds(
 def test_parallel_request_ids_do_not_conflict(controller_factory, worker_factory):
     controller_a = controller_factory("parallel-a")
     controller_b = controller_factory("parallel-b")
-    controller_a.configure(1)
-    controller_b.configure(1)
+    controller_a.configure(1, timeout=300)
+    controller_b.configure(1, timeout=300)
     worker_a = worker_factory("parallel-a")
     worker_b = worker_factory("parallel-b")
 
@@ -490,7 +525,7 @@ def test_aggregation_type_mismatch_aborts_all_workers(
 ):
     request_id = "type-mismatch"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     worker_a = worker_factory(request_id)
     worker_b = worker_factory(request_id)
 
@@ -512,7 +547,7 @@ def test_worker_times_out_when_not_enough_contributions(
 ):
     request_id = "partial-timeout"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     worker = worker_factory(request_id)
 
     with pytest.raises(InlineRpcError) as exc:
@@ -523,7 +558,7 @@ def test_worker_times_out_when_not_enough_contributions(
 def test_batch_aggregation_sum_and_max(controller_factory, worker_factory):
     request_id = "batch-sum-max"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     worker_a = worker_factory(request_id)
     worker_b = worker_factory(request_id)
 
@@ -551,7 +586,7 @@ def test_batch_aggregation_sum_and_max(controller_factory, worker_factory):
 def test_batch_aggregation_union(controller_factory, worker_factory):
     request_id = "batch-union"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     worker_a = worker_factory(request_id)
     worker_b = worker_factory(request_id)
 
@@ -571,7 +606,7 @@ def test_batch_aggregation_union(controller_factory, worker_factory):
 def test_batch_single_worker_request(controller_factory, worker_factory):
     request_id = "batch-single"
     controller = controller_factory(request_id)
-    controller.configure(1)
+    controller.configure(1, timeout=300)
     worker = worker_factory(request_id)
 
     ops = [
@@ -588,7 +623,7 @@ def test_batch_operation_count_mismatch_aborts(
 ):
     request_id = "batch-count-mismatch"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     worker_a = worker_factory(request_id)
     worker_b = worker_factory(request_id)
 
@@ -615,7 +650,7 @@ def test_batch_operation_type_mismatch_aborts(
 ):
     request_id = "batch-type-mismatch"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     worker_a = worker_factory(request_id)
     worker_b = worker_factory(request_id)
 
@@ -645,7 +680,7 @@ def test_batch_vector_length_mismatch_surfaces_error(
 ):
     request_id = "batch-vector-mismatch"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     worker_a = worker_factory(request_id)
     worker_b = worker_factory(request_id)
 
@@ -672,7 +707,7 @@ def test_batch_vector_length_mismatch_surfaces_error(
 def test_batch_rounds_can_repeat_with_same_request(controller_factory, worker_factory):
     request_id = "batch-repeat"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     worker_a = worker_factory(request_id)
     worker_b = worker_factory(request_id)
 
@@ -706,7 +741,7 @@ def test_batch_call_without_configuration_aborts(worker_factory):
 
 def test_cleanup_handles_offline_server(controller_factory, caplog):
     controller = controller_factory("offline-cleanup")
-    controller.configure(1)
+    controller.configure(1, timeout=300)
 
     def raise_unavailable(*_args, **_kwargs):
         raise InlineRpcError(grpc.StatusCode.UNAVAILABLE, "offline")
@@ -714,7 +749,7 @@ def test_cleanup_handles_offline_server(controller_factory, caplog):
     controller._stub.Cleanup = raise_unavailable  # type: ignore[attr-defined]
 
     with caplog.at_level("WARNING"):
-        status = controller.cleanup()
+        status = controller.cleanup(timeout=300)
     assert status == server_pb2.Status.ERROR
     assert "request_id=offline-cleanup failed" in caplog.text
     assert "UNAVAILABLE offline" in caplog.text
@@ -723,7 +758,7 @@ def test_cleanup_handles_offline_server(controller_factory, caplog):
 def test_unregister_reduces_expected_workers(controller_factory):
     request_id = "udf-unregister"
     controller = controller_factory(request_id)
-    controller.configure(2)
+    controller.configure(2, timeout=300)
     client = Exareme3UDFAggregationClient(request_id)
 
     status, remaining = client.unregister()
@@ -733,16 +768,16 @@ def test_unregister_reduces_expected_workers(controller_factory):
     result = client.sum([1.0, 2.5, -3.0])
     np.testing.assert_allclose(result, np.array([1.0, 2.5, -3.0]))
 
-    controller.cleanup()
+    controller.cleanup(timeout=300)
     client.close()
 
 
 def test_configure_evicts_stale_contexts(inline_grpc_stub, controller_factory):
-    controller_factory("stale").configure(1)
+    controller_factory("stale").configure(1, timeout=300)
     stale_context = inline_grpc_stub.aggregation_contexts["stale"]
     stale_context.last_activity -= STALE_CONTEXT_TTL_SECONDS + 1
 
-    controller_factory("fresh").configure(1)
+    controller_factory("fresh").configure(1, timeout=300)
 
     assert "stale" not in inline_grpc_stub.aggregation_contexts
     assert "fresh" in inline_grpc_stub.aggregation_contexts
@@ -751,12 +786,12 @@ def test_configure_evicts_stale_contexts(inline_grpc_stub, controller_factory):
 def test_aggregate_keeps_context_active(
     inline_grpc_stub, controller_factory, worker_factory
 ):
-    controller_factory("active").configure(1)
+    controller_factory("active").configure(1, timeout=300)
     active_context = inline_grpc_stub.aggregation_contexts["active"]
     active_context.last_activity -= STALE_CONTEXT_TTL_SECONDS + 1
     worker_factory("active").sum([1.0])
 
-    controller_factory("other").configure(1)
+    controller_factory("other").configure(1, timeout=300)
 
     assert "active" in inline_grpc_stub.aggregation_contexts
 
@@ -765,7 +800,7 @@ def test_failed_request_rejects_later_steps_immediately(
     controller_factory, worker_factory
 ):
     request_id = "failed-request"
-    controller_factory(request_id).configure(2)
+    controller_factory(request_id).configure(2, timeout=300)
     worker_a = worker_factory(request_id)
     worker_b = worker_factory(request_id)
     with ThreadPoolExecutor(max_workers=2) as pool:
@@ -783,7 +818,7 @@ def test_failed_request_rejects_later_steps_immediately(
 
 
 def test_unsupported_aggregation_type_is_rejected(inline_grpc_stub, controller_factory):
-    controller_factory("bad-type").configure(1)
+    controller_factory("bad-type").configure(1, timeout=300)
     request = server_pb2.AggregateRequest(
         request_id="bad-type",
         step=1,
@@ -815,12 +850,13 @@ def _sum_request(request_id: str, step: int = 1) -> server_pb2.AggregateRequest:
 def test_cleanup_without_open_steps_still_ends_the_request(
     inline_grpc_stub, controller_factory, caplog
 ):
-    controller_factory("stale-reference").configure(1)
+    controller = controller_factory("stale-reference")
+    controller.configure(1, timeout=300)
     # An Aggregate call that fetched the context just before Cleanup removed it.
     agg_ctx = inline_grpc_stub.aggregation_contexts["stale-reference"]
 
     with caplog.at_level("ERROR"):
-        assert controller_factory("stale-reference").cleanup() == server_pb2.Status.OK
+        assert controller.cleanup(timeout=300) == server_pb2.Status.OK
     assert not caplog.records
 
     with pytest.raises(AggregationCancelledError):

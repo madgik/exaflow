@@ -26,6 +26,18 @@ controller:
   workers_dns: "exaflow-workers-service"
   worker_landscape_aggregator_update_interval: 30
   worker_tasks_timeout: 300
+  # Shutdown budget. The controller does not read these keys: they only size the
+  # pod's terminationGracePeriodSeconds (and the preStop sleep). The values the
+  # controller runs with live in exaflow/controller/services/controller_shutdown.py
+  # and exaflow/controller/quart/hypercorn_config.py. A test fails when these
+  # defaults differ from them, and overriding one here does not change the drain.
+  # The grace period is the sum. It does not include worker_tasks_timeout.
+  shutdown_prestop_delay: 5
+  graceful_timeout: 120
+  shutdown_rpc_cancel_timeout: 5
+  shutdown_cleanup_timeout: 10
+  shutdown_timeout: 60
+  shutdown_grace_margin: 20
 
 globalworker_identifier: globalworker
 
