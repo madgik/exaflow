@@ -39,6 +39,12 @@ class InlineRpcError(grpc.RpcError):
 
 
 class InlineGrpcContext:
+    def __init__(self, metadata=()):
+        self._metadata = tuple(metadata or ())
+
+    def invocation_metadata(self):
+        return self._metadata
+
     def abort(self, code, details):
         raise InlineRpcError(code, details)
 
@@ -90,22 +96,22 @@ def inline_grpc_stub(monkeypatch):
         def __init__(self, fn):
             self._fn = fn
 
-        def __call__(self, request, timeout=None):
-            return self._fn(request, timeout)
+        def __call__(self, request, timeout=None, metadata=None):
+            return self._fn(request, timeout, metadata)
 
-        def future(self, request, timeout=None):
-            return _ImmediateFuture(self._fn(request, timeout))
+        def future(self, request, timeout=None, metadata=None):
+            return _ImmediateFuture(self._fn(request, timeout, metadata))
 
     class InlineStub:
         def __init__(self):
             self.Configure = _Unary(
-                lambda request, timeout=None: servicer.Configure(
-                    request, InlineGrpcContext()
+                lambda request, timeout=None, metadata=None: servicer.Configure(
+                    request, InlineGrpcContext(metadata)
                 )
             )
             self.Cleanup = _Unary(
-                lambda request, timeout=None: servicer.Cleanup(
-                    request, InlineGrpcContext()
+                lambda request, timeout=None, metadata=None: servicer.Cleanup(
+                    request, InlineGrpcContext(metadata)
                 )
             )
 
@@ -844,15 +850,13 @@ def _sum_request(request_id: str, step: int = 1) -> server_pb2.AggregateRequest:
 def test_cleanup_without_open_steps_still_ends_the_request(
     inline_grpc_stub, controller_factory, caplog
 ):
-    controller_factory("stale-reference").configure(1, timeout=300)
+    controller = controller_factory("stale-reference")
+    controller.configure(1, timeout=300)
     # An Aggregate call that fetched the context just before Cleanup removed it.
     agg_ctx = inline_grpc_stub.aggregation_contexts["stale-reference"]
 
     with caplog.at_level("ERROR"):
-        assert (
-            controller_factory("stale-reference").cleanup(timeout=300)
-            == server_pb2.Status.OK
-        )
+        assert controller.cleanup(timeout=300) == server_pb2.Status.OK
     assert not caplog.records
 
     with pytest.raises(AggregationCancelledError):
