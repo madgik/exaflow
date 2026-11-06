@@ -133,6 +133,9 @@ class Exareme3WithAggregationServerStrategy(Exareme3Strategy):
             max_message_mb=controller_config.grpc.max_message_mb,
         ) as agg_client:
             # Set inside the thread so a cancel during configure still cleans up.
+            # A client deadline can fire after the server has already configured,
+            # so that case has to clean up too. A returned non-OK status, such as
+            # ALREADY_CONFIGURED, still means this request does not own the context.
             configured = False
 
             deadline = self._controller.task_timeout

@@ -180,6 +180,60 @@ def test_cleanup_without_configuration_returns_no_context(controller_factory):
     assert status == server_pb2.Status.NOT_FOUND
 
 
+def test_cleanup_before_configure_rejects_the_later_configure(
+    inline_grpc_stub, controller_factory
+):
+    """Cleanup can arrive before Configure. The id stays cancelled, so the
+    later Configure must not create a context that lives until stale eviction.
+    """
+    request_id = "cleanup-first"
+    controller = controller_factory(request_id)
+
+    assert controller.cleanup(timeout=300) == server_pb2.Status.NOT_FOUND
+    assert request_id in inline_grpc_stub.cleaned_up_request_ids
+    assert controller.configure(1, timeout=300) == server_pb2.Status.ERROR
+    assert request_id not in inline_grpc_stub.aggregation_contexts
+
+
+def test_cancelled_request_ids_are_bounded(
+    inline_grpc_stub, controller_factory, monkeypatch
+):
+    monkeypatch.setattr(
+        "exaflow.aggregation_server.server.CANCELLED_REQUEST_ID_LIMIT",
+        2,
+        raising=False,
+    )
+
+    for index in range(3):
+        assert (
+            controller_factory(f"bound-{index}").cleanup(timeout=300)
+            == server_pb2.Status.NOT_FOUND
+        )
+
+    assert set(inline_grpc_stub.cleaned_up_request_ids) == {"bound-1", "bound-2"}
+    assert (
+        controller_factory("bound-0").configure(1, timeout=300) == server_pb2.Status.OK
+    )
+    assert (
+        controller_factory("bound-2").configure(1, timeout=300)
+        == server_pb2.Status.ERROR
+    )
+
+
+def test_expired_cancellation_can_be_configured(inline_grpc_stub, controller_factory):
+    request_id = "cleanup-expired"
+    controller = controller_factory(request_id)
+    assert controller.cleanup(timeout=300) == server_pb2.Status.NOT_FOUND
+    assert request_id in inline_grpc_stub.cleaned_up_request_ids
+
+    inline_grpc_stub.cleaned_up_request_ids[request_id] = (
+        time.monotonic() - STALE_CONTEXT_TTL_SECONDS - 1
+    )
+
+    assert controller.configure(1, timeout=300) == server_pb2.Status.OK
+    assert request_id in inline_grpc_stub.aggregation_contexts
+
+
 def test_cleanup_after_configuration_without_activity(controller_factory):
     controller = controller_factory("cleanup-configured")
     controller.configure(1, timeout=300)

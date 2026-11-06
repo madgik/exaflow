@@ -54,4 +54,4 @@ RUN rm -rf exaflow/controller
 COPY --chown=10001:10001 --chmod=755 exaflow/worker/bootstrap.sh /home/bootstrap.sh
 
 USER appuser
-CMD ["sh", "-c", "/home/bootstrap.sh"]
+CMD ["/home/bootstrap.sh"]

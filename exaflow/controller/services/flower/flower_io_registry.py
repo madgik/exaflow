@@ -22,6 +22,11 @@ class Result:
         return f"Result(status={self.status}, content={self.content})"
 
 
+FLOWER_CALLBACK_MISMATCH_MESSAGE = (
+    "Flower callback does not belong to the running analysis."
+)
+
+
 class FlowerIORegistry:
     def __init__(self, timeout, logger):
         self._inputdata: Optional[dict] = None
@@ -34,6 +39,7 @@ class FlowerIORegistry:
     def _reset_sync(self):
         """Synchronously resets the algorithm execution info to initial state."""
         self._inputdata = {}
+        self._request_id = None
         self._result = Result(content={}, status=Status.RUNNING)
         self.result_ready = asyncio.Event()
         self._logger.debug("Algorithm reset: input data cleared, status set to RUNNING")
@@ -43,12 +49,25 @@ class FlowerIORegistry:
         self._reset_sync()
         self._logger.debug("Asynchronous reset complete")
 
-    async def set_result(self, result: Dict[str, Any]):
-        """Sets the execution result and updates the status based on the presence of an error."""
+    async def set_result(self, result: Dict[str, Any], request_id: str | None) -> bool:
+        """Store the result when request_id is still the running analysis.
+
+        There is no await between the check and ``result_ready.set()``, so a
+        reset that happened while the body was being read cannot land in
+        between. Returns False when the id is no longer current.
+        """
+        if not self.is_current(request_id):
+            self._logger.debug(
+                "Ignoring Flower result for request_id=%s; running id is %s",
+                request_id,
+                self._request_id,
+            )
+            return False
         status = Status.FAILURE if "error" in result else Status.SUCCESS
         self._result = Result(content=result, status=status)
         self._logger.debug(f"Result set with status: {status}, content: {result}")
         self.result_ready.set()
+        return True
 
     async def get_result(self) -> Dict[str, Any]:
         await self.result_ready.wait()
@@ -72,12 +91,17 @@ class FlowerIORegistry:
         self._logger.debug(f"Status retrieved: {status}")
         return status
 
-    def set_inputdata(self, inputdata: dict):
+    def set_inputdata(self, inputdata: dict, request_id: str):
         """Sets new input data for the algorithm and resets status and result."""
         self._inputdata = inputdata
+        self._request_id = request_id
         self._result = Result(content={}, status=Status.RUNNING)
         self.result_ready.clear()
         self._logger.debug(f"Input data updated: {inputdata}, status reset to RUNNING")
+
+    def is_current(self, request_id: str | None) -> bool:
+        """True when this callback id is the request that is running."""
+        return self._request_id is not None and request_id == self._request_id
 
     def get_inputdata(self) -> dict:
         """Returns the current input data."""

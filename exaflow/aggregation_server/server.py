@@ -36,7 +36,10 @@ The controller then ends the request and calls `Cleanup`.
 still waiting on a step, and calls that fetched the context just before it was
 removed, return at once instead of at the timeout. Late Aggregate/Unregister
 calls after Cleanup also get ABORTED (not INVALID_ARGUMENT, which is reserved
-for never-configured ids). If `Cleanup` never arrives (for example the
+for never-configured ids). A `Cleanup` that arrives before `Configure` is
+still recorded. `Configure` for that id returns ERROR until the record expires
+or the cancelled-id set drops it, so it does not create a context that lives
+for `STALE_CONTEXT_TTL_SECONDS`. If `Cleanup` never arrives (for example the
 controller crashed), `Configure` evicts contexts with no `Aggregate` or
 `Unregister` call for `STALE_CONTEXT_TTL_SECONDS`.
 
@@ -97,6 +100,10 @@ REDUCERS = {
 # A running request never idles near this: each aggregation wait is capped at
 # max_wait_for_aggregation_inputs and each UDF call at the worker tasks timeout.
 STALE_CONTEXT_TTL_SECONDS = 24 * 60 * 60
+# Cleanup is remembered even when it arrives before Configure. The set is
+# capped so a stream of unknown ids cannot grow it without bound; the TTL
+# still drops entries that age out first.
+CANCELLED_REQUEST_ID_LIMIT = 1024
 
 
 def _result_dtype(
@@ -383,6 +390,20 @@ class AggregationServer(AggregationServerServicer):
         for request_id in stale_cleaned:
             del self.cleaned_up_request_ids[request_id]
 
+    def _remember_cancelled(self, request_id: str) -> None:
+        """Record a Cleanup, including one that arrived before Configure."""
+        self.cleaned_up_request_ids[request_id] = time.monotonic()
+        self._evict_stale_contexts()
+        overflow = len(self.cleaned_up_request_ids) - CANCELLED_REQUEST_ID_LIMIT
+        if overflow <= 0:
+            return
+        oldest = sorted(
+            self.cleaned_up_request_ids,
+            key=self.cleaned_up_request_ids.__getitem__,
+        )
+        for stale_id in oldest[:overflow]:
+            del self.cleaned_up_request_ids[stale_id]
+
     def Configure(self, request, context):
         with self.global_lock:
             self._evict_stale_contexts()
@@ -395,7 +416,15 @@ class AggregationServer(AggregationServerServicer):
                     status_message="Already configured for this request_id",
                 )
 
-            self.cleaned_up_request_ids.pop(request.request_id, None)
+            if request.request_id in self.cleaned_up_request_ids:
+                logger.warning(
+                    "[CONFIGURE] Refusing request_id='%s': cleanup already cancelled it",
+                    request.request_id,
+                )
+                return ConfigureResponse(
+                    status=Status.ERROR,
+                    status_message="Request was already cancelled",
+                )
             self.aggregation_contexts[request.request_id] = AggregationContext(
                 request.request_id,
                 request.num_of_workers,
@@ -480,8 +509,7 @@ class AggregationServer(AggregationServerServicer):
                     status_message="Aggregation context is owned by another caller",
                 )
             agg_ctx = self.aggregation_contexts.pop(request.request_id, None)
-            if agg_ctx is not None:
-                self.cleaned_up_request_ids[request.request_id] = time.monotonic()
+            self._remember_cancelled(request.request_id)
 
         if not agg_ctx:
             msg = f"[CLEANUP] No aggregation context found for request_id='{request.request_id}'"

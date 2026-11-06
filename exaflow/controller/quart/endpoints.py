@@ -33,6 +33,9 @@ from exaflow.controller.services.api.analysis_request_validator import (
 from exaflow.controller.services.controller_shutdown import SHUTDOWN_RPC_CANCEL_TIMEOUT
 from exaflow.controller.services.controller_shutdown import begin_controller_shutdown
 from exaflow.controller.services.flower import get_flower_controller
+from exaflow.controller.services.flower.flower_io_registry import (
+    FLOWER_CALLBACK_MISMATCH_MESSAGE,
+)
 from exaflow.controller.services.startup import start_background_services
 from exaflow.controller.services.startup import stop_background_services
 
@@ -170,14 +173,24 @@ async def run_analysis() -> str:
 
 
 @algorithms.route("/flower/input", methods=["GET"])
-async def get_flower_input() -> dict:
-    return get_flower_controller().flower_execution_info.get_inputdata()
+async def get_flower_input():
+    registry = get_flower_controller().flower_execution_info
+    if not registry.is_current(request.headers.get("X-Request-Id")):
+        return FLOWER_CALLBACK_MISMATCH_MESSAGE, 409
+    return registry.get_inputdata()
 
 
 @algorithms.route("/flower/result", methods=["POST"])
 async def set_flower_result():
+    registry = get_flower_controller().flower_execution_info
+    request_id = request.headers.get("X-Request-Id")
+    if not registry.is_current(request_id):
+        return FLOWER_CALLBACK_MISMATCH_MESSAGE, 409
     request_body = await request.json
-    await get_flower_controller().flower_execution_info.set_result(result=request_body)
+    # Re-check inside set_result. The running id can change while the body
+    # is read, and nothing awaits between that check and result_ready.set().
+    if not await registry.set_result(result=request_body, request_id=request_id):
+        return FLOWER_CALLBACK_MISMATCH_MESSAGE, 409
 
     return jsonify({"message": "Result set successfully"}), 200
 

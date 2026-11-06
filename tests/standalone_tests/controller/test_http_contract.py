@@ -108,18 +108,34 @@ def _raising_worker_landscape_aggregator(error):
     return _Aggregator()
 
 
-def _flower_controller(inputdata):
+def _flower_controller(inputdata, request_id="req"):
     class _FlowerIORegistry:
+        def __init__(self):
+            self.result = None
+            self.input_reads = 0
+            self._request_id = request_id
+
+        def is_current(self, callback_id):
+            return self._request_id is not None and callback_id == self._request_id
+
         def get_inputdata(self):
+            self.input_reads += 1
             return inputdata
 
-        async def set_result(self, result):
-            return None
+        async def set_result(self, result, request_id):
+            if not self.is_current(request_id):
+                return False
+            self.result = result
+            return True
+
+    registry = _FlowerIORegistry()
 
     class _FlowerController:
-        flower_execution_info = _FlowerIORegistry()
+        flower_execution_info = registry
 
-    return _FlowerController()
+    controller = _FlowerController()
+    controller.registry = registry
+    return controller
 
 
 class _FakeStrategy:
@@ -127,9 +143,9 @@ class _FakeStrategy:
         return ANALYSIS_SUCCESS_BODY
 
 
-async def _get(path):
+async def _get(path, headers=None):
     async with app.test_client() as client:
-        response = await client.get(path)
+        response = await client.get(path, headers=headers)
         return (
             response.status_code,
             response.content_type,
@@ -137,9 +153,9 @@ async def _get(path):
         )
 
 
-async def _post(path, json_body=None):
+async def _post(path, json_body=None, headers=None):
     async with app.test_client() as client:
-        response = await client.post(path, json=json_body)
+        response = await client.post(path, json=json_body, headers=headers)
         return (
             response.status_code,
             response.content_type,
@@ -282,7 +298,9 @@ def test_flower_input_route_contract(monkeypatch):
         lambda: _flower_controller({"inputdata": "value"}),
     )
 
-    status, content_type, body = asyncio.run(_get("/flower/input"))
+    status, content_type, body = asyncio.run(
+        _get("/flower/input", headers={"X-Request-Id": "req"})
+    )
 
     assert status == 200
     assert content_type == JSON_CONTENT_TYPE
@@ -294,12 +312,71 @@ def test_flower_result_route_contract(monkeypatch):
     monkeypatch.setattr(endpoints, "get_flower_controller", lambda: flower)
 
     status, content_type, body = asyncio.run(
-        _post("/flower/result", json_body={"result": 1})
+        _post(
+            "/flower/result",
+            json_body={"result": 1},
+            headers={"X-Request-Id": "req"},
+        )
     )
 
     assert status == 200
     assert content_type == JSON_CONTENT_TYPE
     assert json.loads(body) == {"message": "Result set successfully"}
+    assert flower.registry.result == {"result": 1}
+
+
+FLOWER_CALLBACK_MISMATCH = "Flower callback does not belong to the running analysis."
+
+
+@pytest.mark.parametrize("headers", [None, {"X-Request-Id": "other"}])
+def test_flower_input_rejects_a_callback_for_another_request(monkeypatch, headers):
+    flower = _flower_controller({"inputdata": "value"})
+    monkeypatch.setattr(endpoints, "get_flower_controller", lambda: flower)
+
+    status, content_type, body = asyncio.run(_get("/flower/input", headers=headers))
+
+    assert status == 409
+    assert content_type == HTML_CONTENT_TYPE
+    assert body == FLOWER_CALLBACK_MISMATCH
+    assert flower.registry.input_reads == 0
+
+
+@pytest.mark.parametrize("headers", [None, {"X-Request-Id": "other"}])
+def test_flower_result_rejects_a_callback_for_another_request(monkeypatch, headers):
+    flower = _flower_controller({})
+    monkeypatch.setattr(endpoints, "get_flower_controller", lambda: flower)
+
+    status, content_type, body = asyncio.run(
+        _post("/flower/result", json_body={"result": 1}, headers=headers)
+    )
+
+    assert status == 409
+    assert content_type == HTML_CONTENT_TYPE
+    assert body == FLOWER_CALLBACK_MISMATCH
+    assert flower.registry.result is None
+
+
+def test_flower_callback_rejected_when_no_execution_is_running(monkeypatch):
+    flower = _flower_controller({}, request_id=None)
+    monkeypatch.setattr(endpoints, "get_flower_controller", lambda: flower)
+
+    input_status, _, input_body = asyncio.run(
+        _get("/flower/input", headers={"X-Request-Id": "req"})
+    )
+    result_status, _, result_body = asyncio.run(
+        _post(
+            "/flower/result",
+            json_body={"result": 1},
+            headers={"X-Request-Id": "req"},
+        )
+    )
+
+    assert input_status == 409
+    assert result_status == 409
+    assert input_body == FLOWER_CALLBACK_MISMATCH
+    assert result_body == FLOWER_CALLBACK_MISMATCH
+    assert flower.registry.input_reads == 0
+    assert flower.registry.result is None
 
 
 def test_analysis_success_route_contract(monkeypatch):

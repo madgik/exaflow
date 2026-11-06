@@ -103,6 +103,7 @@ def _shutdown_budget_seconds(prestop_delay: int) -> int:
 
 def test_hypercorn_graceful_timeout_is_120_seconds():
     config = Config.from_object("exaflow.controller.quart.hypercorn_config")
+    margin = 20
 
     assert config.graceful_timeout == 120 == budget.GRACEFUL_TIMEOUT
     assert config.shutdown_timeout == 60 == budget.SHUTDOWN_TIMEOUT
