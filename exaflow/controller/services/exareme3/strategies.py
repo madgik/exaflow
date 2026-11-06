@@ -1,6 +1,8 @@
 from typing import Any
 from typing import List
 
+import grpc
+
 from exaflow import exareme3_algorithm_classes
 from exaflow import exareme3_preprocessing_step_classes
 from exaflow.aggregation_clients.controller_aggregation_client import (
@@ -10,6 +12,9 @@ from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.controller import config as controller_config
 from exaflow.controller.federation_info_logs import log_experiment_execution
 from exaflow.controller.services.analysis_execution import run_blocking
+from exaflow.controller.services.controller_shutdown import SHUTDOWN_CLEANUP_TIMEOUT
+from exaflow.controller.services.controller_shutdown import controller_is_shutting_down
+from exaflow.controller.services.errors import ControllerShuttingDownError
 from exaflow.controller.services.exareme3 import Exareme3Controller
 from exaflow.controller.services.exareme3.algorithm_flow_engine_interface import (
     Exareme3AlgorithmFlowEngineInterface,
@@ -130,11 +135,25 @@ class Exareme3WithAggregationServerStrategy(Exareme3Strategy):
             # Set inside the thread so a cancel during configure still cleans up.
             configured = False
 
+            deadline = self._controller.task_timeout
+            cleanup_deadline = deadline
+
             def _configure():
-                nonlocal configured
-                status = agg_client.configure(
-                    num_workers=len(self._local_worker_tasks_handlers)
-                )
+                nonlocal configured, cleanup_deadline
+                try:
+                    status = agg_client.configure(
+                        num_workers=len(self._local_worker_tasks_handlers),
+                        timeout=deadline,
+                    )
+                except (grpc.RpcError, ControllerShuttingDownError):
+                    # The response was lost. This client may still own the
+                    # context: Cleanup repeats the ownership token sent with
+                    # Configure, and the server deletes only on a match. A
+                    # duplicate request's token does not. The server is already
+                    # slow or gone, so do not wait a second full deadline.
+                    configured = True
+                    cleanup_deadline = SHUTDOWN_CLEANUP_TIMEOUT
+                    raise
                 configured = status == agg_pb2.Status.OK
                 return status
 
@@ -153,7 +172,14 @@ class Exareme3WithAggregationServerStrategy(Exareme3Strategy):
                 # when the request task was cancelled while algorithm.run was
                 # still in flight.
                 if configured:
-                    cleanup_status = await run_blocking(agg_client.cleanup)
+                    cleanup_timeout = (
+                        SHUTDOWN_CLEANUP_TIMEOUT
+                        if controller_is_shutting_down()
+                        else cleanup_deadline
+                    )
+                    cleanup_status = await run_blocking(
+                        agg_client.cleanup, cleanup_timeout
+                    )
                     self._logger.debug(
                         f"Aggregation cleanup response: {cleanup_status}"
                     )

@@ -14,6 +14,7 @@ with lazy aggregation disabled and once enabled, and the test checks that:
 import copy
 import json
 import uuid
+from concurrent.futures import Future
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
@@ -48,6 +49,9 @@ from exaflow.worker_communication import RunUdfSystemArgs
 
 TEST_DATA_PATH = Path(__file__).parents[2] / "test_data"
 N_WORKERS = 3
+# Generous grpc deadline for the in-process aggregation client; the real
+# controller passes its task timeout (see Exareme3WithAggregationServerStrategy).
+AGG_CLIENT_TIMEOUT = 300.0
 DATASETS = [
     "desd-synthdata0",
     "desd-synthdata1",
@@ -287,6 +291,24 @@ def aggregation_server(monkeypatch):
     return _install_inline_aggregation_server(monkeypatch)
 
 
+class _InlineUnary:
+    """In-process unary stub method: callable and, like a real one, has .future()."""
+
+    def __init__(self, handler):
+        self._handler = handler
+
+    def __call__(self, request, **_kwargs):
+        return self._handler(request)
+
+    def future(self, request, **_kwargs):
+        future = Future()
+        try:
+            future.set_result(self._handler(request))
+        except Exception as exc:  # noqa: BLE001
+            future.set_exception(exc)
+        return future
+
+
 def _install_inline_aggregation_server(monkeypatch) -> set:
     """Routes aggregation clients to an in-process server; returns seen steps."""
     servicer = AggregationServer()
@@ -305,9 +327,15 @@ def _install_inline_aggregation_server(monkeypatch) -> set:
     )
 
     stub = SimpleNamespace(
-        Configure=lambda request: servicer.Configure(request, _InlineGrpcContext()),
-        Unregister=lambda request: servicer.Unregister(request, _InlineGrpcContext()),
-        Cleanup=lambda request: servicer.Cleanup(request, _InlineGrpcContext()),
+        Configure=_InlineUnary(
+            lambda request: servicer.Configure(request, _InlineGrpcContext())
+        ),
+        Unregister=lambda request, **_kwargs: servicer.Unregister(
+            request, _InlineGrpcContext()
+        ),
+        Cleanup=lambda request, **_kwargs: servicer.Cleanup(
+            request, _InlineGrpcContext()
+        ),
         Aggregate=aggregate,
     )
     monkeypatch.setattr(aggregation_config, "max_wait_for_aggregation_inputs", 30)
@@ -338,7 +366,9 @@ class _InProcessEngine:
     def run_udf(self, func, check_min_rows, add_dataset_variable, kw_args):
         request_id = f"lazy-agg-{uuid.uuid4().hex}"
         controller = ControllerAggregationClient(request_id)
-        controller.configure(num_workers=len(self._worker_inputdata))
+        controller.configure(
+            num_workers=len(self._worker_inputdata), timeout=AGG_CLIENT_TIMEOUT
+        )
         wire_kw_args = _struct_to_dict(_dict_to_struct(kw_args))
 
         def run_worker(inputdata):
@@ -367,7 +397,7 @@ class _InProcessEngine:
             with ThreadPoolExecutor(max_workers=len(self._worker_inputdata)) as pool:
                 results = list(pool.map(run_worker, self._worker_inputdata))
         finally:
-            controller.cleanup()
+            controller.cleanup(timeout=AGG_CLIENT_TIMEOUT)
             controller.close()
         results = [result for result in results if result is not None]
         if not results:

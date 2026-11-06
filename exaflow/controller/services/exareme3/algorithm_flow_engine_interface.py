@@ -1,5 +1,4 @@
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import as_completed
+import queue
 from typing import Any
 from typing import Dict
 from typing import List
@@ -51,39 +50,39 @@ class Exareme3AlgorithmFlowEngineInterface:
             preprocessing=self._preprocessing,
         )
 
-        executor = ThreadPoolExecutor(max_workers=len(self._tasks_handlers))
-        future_to_index = {}
-        pending = set()
-        results: List[Optional[dict]] = [None] * len(self._tasks_handlers)
+        done = queue.SimpleQueue()
+        calls = []
         try:
-            future_to_index = {
-                executor.submit(
-                    task_handler.run_udf,
+            for idx, task_handler in enumerate(self._tasks_handlers):
+                udf_call = task_handler.run_udf(
                     udf_registry_key=udf_registry_key,
                     kw_args=kw_args,
                     system_args=system_args,
-                ): idx
-                for idx, task_handler in enumerate(self._tasks_handlers)
-            }
-            pending = set(future_to_index)
-            for future in as_completed(future_to_index):
-                idx = future_to_index[future]
-                try:
-                    results[idx] = future.result()
-                except InsufficientDataError as exc:
-                    self._logger.warning(
-                        "Worker %s returned insufficient data and will be skipped: %s",
-                        self._tasks_handlers[idx].worker_id,
-                        exc,
-                    )
-                    results[idx] = None
-                pending.discard(future)
+                )
+                udf_call.add_done_callback(lambda _, idx=idx: done.put(idx))
+                calls.append(udf_call)
         except Exception:
-            for future in future_to_index:
-                future.cancel()
+            for udf_call in calls:
+                udf_call.cancel()
             raise
-        finally:
-            executor.shutdown(wait=not pending, cancel_futures=bool(pending))
+
+        results: List[Optional[dict]] = [None] * len(self._tasks_handlers)
+        for _ in range(len(calls)):
+            idx = done.get()
+            try:
+                results[idx] = calls[idx].result()
+            except InsufficientDataError as exc:
+                self._logger.warning(
+                    "Worker %s returned insufficient data and will be skipped: %s",
+                    self._tasks_handlers[idx].worker_id,
+                    exc,
+                )
+                results[idx] = None
+            except Exception:
+                for udf_call in calls:
+                    udf_call.cancel()
+                raise
+
         filtered_results = [res for res in results if res is not None]
         if not filtered_results:
             raise InsufficientDataError(

@@ -8,14 +8,21 @@ the default executor.
 
 import asyncio
 import contextlib
+import logging
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 
 from exaflow.controller import config as ctrl_config
 
+_LOGGER = logging.getLogger(__name__)
+
 _DEFAULT_MAX_CONCURRENT_EXPERIMENTS = 32
 _THREAD_NAME_PREFIX = "exaflow-analysis"
+DEFAULT_CAPACITY_MESSAGE = (
+    "The controller is already running the maximum number of concurrent analyses."
+)
 
 _executor: ThreadPoolExecutor | None = None
 _semaphore: asyncio.Semaphore | None = None
@@ -24,11 +31,8 @@ _state_guard = threading.Lock()
 
 
 class AnalysisCapacityExceeded(Exception):
-    def __init__(self) -> None:
-        self.message = (
-            "The controller is already running the maximum number of "
-            "concurrent analyses."
-        )
+    def __init__(self, message: str = DEFAULT_CAPACITY_MESSAGE) -> None:
+        self.message = message
         super().__init__(self.message)
 
 
@@ -52,20 +56,42 @@ def start_analysis_execution() -> None:
     _ensure_semaphore()
 
 
-def shutdown_analysis_execution(wait: bool = False) -> None:
+def shutdown_analysis_execution(join_timeout: float = 0) -> None:
+    """Stop the pool and wait up to join_timeout seconds for its running threads.
+
+    The wait is bounded so the shutdown hook cannot outlive Hypercorn's
+    shutdown_timeout when a thread is stuck in work that no RPC cancel ends.
+    """
     global _executor, _semaphore, _semaphore_loop
     with _state_guard:
         executor = _executor
         _executor = None
         _semaphore = None
         _semaphore_loop = None
-    if executor is not None:
-        executor.shutdown(wait=wait, cancel_futures=False)
+    if executor is None:
+        return
+    executor.shutdown(wait=False, cancel_futures=False)
+    deadline = time.monotonic() + join_timeout
+    for thread in threading.enumerate():
+        if thread.name.startswith(_THREAD_NAME_PREFIX):
+            thread.join(max(0.0, deadline - time.monotonic()))
+    running = [
+        thread.name
+        for thread in threading.enumerate()
+        if thread.name.startswith(_THREAD_NAME_PREFIX)
+    ]
+    if join_timeout and running:
+        _LOGGER.warning(
+            "%d analysis threads still running %s seconds after shutdown "
+            "cancelled their RPCs",
+            len(running),
+            join_timeout,
+        )
 
 
 def reset_analysis_execution() -> None:
     """Drop the cached pool and semaphore. Tests use this between limits."""
-    shutdown_analysis_execution(wait=False)
+    shutdown_analysis_execution()
 
 
 def _ensure_executor() -> ThreadPoolExecutor:

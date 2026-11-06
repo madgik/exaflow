@@ -2,9 +2,11 @@ from ipaddress import IPv4Address
 from logging import Logger
 from typing import List
 
+import grpc
 from google.protobuf import json_format
 from google.protobuf import struct_pb2
 
+from exaflow.controller.services.controller_shutdown import register_inflight_rpc
 from exaflow.controller.worker_client.app import WorkerClientFactory
 from exaflow.protos.worker import worker_pb2
 from exaflow.udf_result_serialization import UDF_RESULT_FORMAT_JSON_BYTES_V1
@@ -16,6 +18,32 @@ from exaflow.worker_communication import DatasetInfo
 from exaflow.worker_communication import DatasetsInfoPerDataModel
 from exaflow.worker_communication import WorkerInfo
 from exaflow.worker_communication import WorkerRole
+
+
+class RunUdfCall:
+    """One started ``RunUdf``. The handler and the gRPC future stay on the call.
+
+    The flow engine starts a call per worker, then waits with ``result``.
+    ``cancel`` stops a sibling whose RPC is still outstanding.
+    """
+
+    def __init__(self, handler: "WorkerTasksHandler", future: grpc.Future):
+        self.handler = handler
+        self.future = future
+
+    def add_done_callback(self, fn) -> None:
+        self.future.add_done_callback(fn)
+
+    def cancel(self) -> bool:
+        return bool(self.future.cancel())
+
+    def result(self) -> dict:
+        response = self.handler._client().finish_call("RunUdf", self.future)
+        if response.result_format != UDF_RESULT_FORMAT_JSON_BYTES_V1:
+            raise ValueError(
+                f"Unsupported RunUdfResponse result format: {response.result_format!r}"
+            )
+        return decode_udf_result(response.result)
 
 
 def _proto_worker_role(role_value: int) -> WorkerRole:
@@ -104,26 +132,39 @@ class WorkerTasksHandler:
     def _client(self):
         return WorkerClientFactory().get_client(self._worker_queue_addr)
 
-    def get_worker_info(self, request_id: str, timeout: int) -> WorkerInfo:
+    def get_worker_info(
+        self, request_id: str, timeout: int, *, cancel_on_shutdown: bool = False
+    ) -> WorkerInfo:
         response = self._client().call(
             "GetWorkerInfo",
             worker_pb2.GetWorkerInfoRequest(request_id=request_id),
             timeout,
+            cancel_on_shutdown=cancel_on_shutdown,
         )
         return _proto_worker_to_model(response.worker)
 
     def get_worker_datasets_per_data_model(
-        self, request_id: str, timeout: int
+        self,
+        request_id: str,
+        timeout: int,
+        *,
+        cancel_on_shutdown: bool = False,
     ) -> DatasetsInfoPerDataModel:
         response = self._client().call(
             "ListDatasetsPerDataModel",
             worker_pb2.ListDatasetsPerDataModelRequest(request_id=request_id),
             timeout,
+            cancel_on_shutdown=cancel_on_shutdown,
         )
         return _proto_datasets_to_model(response)
 
     def get_data_model_cdes(
-        self, request_id: str, data_model: str, timeout: int
+        self,
+        request_id: str,
+        data_model: str,
+        timeout: int,
+        *,
+        cancel_on_shutdown: bool = False,
     ) -> CommonDataElements:
         response = self._client().call(
             "GetDataModelCdes",
@@ -131,11 +172,17 @@ class WorkerTasksHandler:
                 request_id=request_id, data_model=data_model
             ),
             timeout,
+            cancel_on_shutdown=cancel_on_shutdown,
         )
         return _proto_common_data_elements(response)
 
     def get_data_model_attributes(
-        self, request_id: str, data_model: str, timeout: int
+        self,
+        request_id: str,
+        data_model: str,
+        timeout: int,
+        *,
+        cancel_on_shutdown: bool = False,
     ) -> DataModelAttributes:
         response = self._client().call(
             "GetDataModelAttributes",
@@ -143,14 +190,23 @@ class WorkerTasksHandler:
                 request_id=request_id, data_model=data_model
             ),
             timeout,
+            cancel_on_shutdown=cancel_on_shutdown,
         )
         return _proto_attributes_to_model(response)
 
-    def healthcheck(self, request_id: str, check_db: bool, timeout: int) -> None:
+    def healthcheck(
+        self,
+        request_id: str,
+        check_db: bool,
+        timeout: int,
+        *,
+        cancel_on_shutdown: bool = False,
+    ) -> None:
         self._client().call(
             "Healthcheck",
             worker_pb2.HealthcheckRequest(request_id=request_id, check_db=check_db),
             timeout,
+            cancel_on_shutdown=cancel_on_shutdown,
         )
 
     def start_flower_client(
@@ -237,8 +293,8 @@ class WorkerTasksHandler:
         kw_args: dict,
         system_args: dict,
         timeout: int,
-    ):
-        response = self._client().call(
+    ) -> RunUdfCall:
+        future = self._client().start_call(
             "RunUdf",
             worker_pb2.RunUdfRequest(
                 request_id=request_id,
@@ -248,8 +304,8 @@ class WorkerTasksHandler:
             ),
             timeout,
         )
-        if response.result_format != UDF_RESULT_FORMAT_JSON_BYTES_V1:
-            raise ValueError(
-                f"Unsupported RunUdfResponse result format: {response.result_format!r}"
-            )
-        return decode_udf_result(response.result)
+        # RunUdf is cancelled on shutdown. Landscape metadata calls register
+        # themselves. Cleanup and other metadata calls do not: they release
+        # resources and finish on their own deadline.
+        register_inflight_rpc(future)
+        return RunUdfCall(self, future)

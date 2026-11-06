@@ -4,6 +4,7 @@ from typing import List
 from exaflow import flower_algorithm_folder_paths
 from exaflow.controller import config as ctrl_config
 from exaflow.controller.federation_info_logs import log_experiment_execution
+from exaflow.controller.services.analysis_execution import AnalysisCapacityExceeded
 from exaflow.controller.services.analysis_execution import run_blocking
 from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.controller.services.errors import WorkerTaskTimeoutError
@@ -13,6 +14,8 @@ from exaflow.controller.services.strategy_interface import AlgorithmExecutionStr
 from exaflow.controller.worker_client.app import WorkerClientConnectionError
 from exaflow.controller.worker_client.app import WorkerClientTimeoutException
 from exaflow.controller.worker_client.app import WorkerMessageTooLargeError
+
+FLOWER_BUSY_MESSAGE = "The controller is already running a Flower analysis."
 
 
 class FlowerStrategy(AlgorithmExecutionStrategyI):
@@ -24,6 +27,8 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
         # Flower runs its server on the global worker.
         if self._global_worker_tasks_handler is None:
             raise GlobalWorkerUnavailableError()
+        if self._controller.algorithm_execution_lock.locked():
+            raise AnalysisCapacityExceeded(FLOWER_BUSY_MESSAGE)
         async with self._controller.algorithm_execution_lock:
             data_model = self._analysis_request_dto.inputdata.data_model
             datasets = self._analysis_request_dto.inputdata.datasets + (

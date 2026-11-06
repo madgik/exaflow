@@ -1,5 +1,6 @@
 from exaflow.controller import logger as ctrl_logger
 from exaflow.controller.services.tasks_handler_interface import TasksHandlerI
+from exaflow.controller.worker_client.tasks_handler import RunUdfCall
 from exaflow.controller.worker_client.tasks_handler import WorkerTasksHandler
 from exaflow.worker_communication import RunUdfSystemArgs
 
@@ -31,7 +32,7 @@ class Exareme3TasksHandler(TasksHandlerI):
 
     def run_udf(
         self, udf_registry_key: str, kw_args: dict, system_args: RunUdfSystemArgs
-    ):
+    ) -> RunUdfCall:
         return self._worker_tasks_handler.run_udf(
             request_id=self._request_id,
             udf_registry_key=udf_registry_key,
