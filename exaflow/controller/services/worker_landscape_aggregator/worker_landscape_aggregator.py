@@ -350,13 +350,17 @@ class WorkerLandscapeAggregator:
         self._logger.info("WorkerLandscapeAggregator started.")
 
     def stop(self, join_timeout: float | None = None):
-        if self._update_loop_thread and self._update_loop_thread.is_alive():
-            self._stop_event.set()
-            # join_timeout bounds shutdown. A refresh blocked in a worker RPC
-            # must not hold after_serving for worker_tasks_timeout. start()
-            # calls stop() with no timeout so a restart still waits for the
-            # previous loop to leave.
-            self._update_loop_thread.join(timeout=join_timeout)
+        # Set the event even when the thread is not alive yet. start() clears
+        # it and then starts the thread; a stop in that window has to be visible
+        # to the thread once it runs.
+        self._stop_event.set()
+        thread = self._update_loop_thread
+        # join_timeout bounds shutdown. A refresh blocked in a worker RPC
+        # must not hold after_serving for worker_tasks_timeout. start()
+        # calls stop() with no timeout so a restart still waits for the
+        # previous loop to leave.
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=join_timeout)
 
     def healthcheck(self):
         def _check(worker_queue_addr: str):
