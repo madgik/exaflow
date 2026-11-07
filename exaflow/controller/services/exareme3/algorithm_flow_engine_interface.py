@@ -4,8 +4,6 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
-import grpc
-
 from exaflow.algorithms.exareme3.utils.metadata_enums import add_ordered_enums
 from exaflow.algorithms.exareme3.utils.registry import get_udf_registry_key
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
@@ -53,26 +51,26 @@ class Exareme3AlgorithmFlowEngineInterface:
         )
 
         done = queue.SimpleQueue()
-        futures: List[grpc.Future] = []
+        calls = []
         try:
             for idx, task_handler in enumerate(self._tasks_handlers):
-                future = task_handler.start_run_udf(
+                udf_call = task_handler.run_udf(
                     udf_registry_key=udf_registry_key,
                     kw_args=kw_args,
                     system_args=system_args,
                 )
-                future.add_done_callback(lambda _, idx=idx: done.put(idx))
-                futures.append(future)
+                udf_call.add_done_callback(lambda _, idx=idx: done.put(idx))
+                calls.append(udf_call)
         except Exception:
-            for future in futures:
-                future.cancel()
+            for udf_call in calls:
+                udf_call.cancel()
             raise
 
         results: List[Optional[dict]] = [None] * len(self._tasks_handlers)
-        for _ in range(len(futures)):
+        for _ in range(len(calls)):
             idx = done.get()
             try:
-                results[idx] = self._tasks_handlers[idx].finish_run_udf(futures[idx])
+                results[idx] = calls[idx].result()
             except InsufficientDataError as exc:
                 self._logger.warning(
                     "Worker %s returned insufficient data and will be skipped: %s",
@@ -81,8 +79,8 @@ class Exareme3AlgorithmFlowEngineInterface:
                 )
                 results[idx] = None
             except Exception:
-                for future in futures:
-                    future.cancel()
+                for udf_call in calls:
+                    udf_call.cancel()
                 raise
 
         filtered_results = [res for res in results if res is not None]
