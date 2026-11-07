@@ -10,6 +10,7 @@ import os
 from contextlib import ExitStack
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 import pytest
@@ -382,3 +383,81 @@ def test_kill_controller_uses_stopping_message():
 
     assert any("Stopping previous Hypercorn instances..." in m for m in messages)
     assert not any("Killing previous Hypercorn instances..." in m for m in messages)
+
+
+@pytest.mark.parametrize("command", ["python3.11", "python3.1"])
+def test_kill_controller_recognizes_versioned_python(command):
+    """lsof shows at most 9 command characters unless +c 0 is set.
+
+    python3.11 is therefore python3.1, which is neither "python" nor
+    "hypercorn", and the controller must still be stopped.
+    """
+    lsof_out = (
+        "COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME\n"
+        f"{command} 333 user 5u IPv4 0x123 0t0 TCP *:5000 (LISTEN)\n"
+    )
+    calls = []
+    messages = []
+
+    def fake_run(c, cmd, **kwargs):
+        calls.append(cmd)
+        if cmd.startswith("lsof"):
+            return _Res(ok=True, stdout=lsof_out)
+        if cmd.startswith("kill -0"):
+            return _Res(ok=False)
+        return _Res(ok=False, stdout="")
+
+    def fake_message(msg, level=None):
+        messages.append(msg)
+
+    with (
+        mock.patch.object(tasks, "run", side_effect=fake_run),
+        mock.patch.object(tasks, "sleep", return_value=None),
+        mock.patch("tasks.time.monotonic", return_value=0.0),
+        mock.patch.object(tasks, "get_controller_port", return_value=5000),
+        mock.patch.object(tasks, "message", side_effect=fake_message),
+    ):
+        tasks.kill_controller(_CTX)
+
+    assert any(cmd.startswith("lsof") and "+c 0" in cmd for cmd in calls)
+    assert "kill 333" in calls
+    assert not any("is used by" in msg for msg in messages)
+
+
+def test_terminate_poll_is_not_stretched_by_the_spinner():
+    """The 0.5 s poll must not also pay for the invoke spinner's sleep.
+
+    The pid stays alive, so the loop polls until the timeout and then
+    SIGKILLs. Only the poll interval may reach sleep().
+    """
+    sleeps = []
+    state = {"t": 0.0}
+
+    class _Promise:
+        def __init__(self, result):
+            self.runner = SimpleNamespace(process_is_finished=True, stderr=None)
+            self._result = result
+
+        def join(self):
+            return self._result
+
+    def fake_c_run(cmd, **kwargs):
+        result = _Res(ok=cmd.startswith("kill -0"))
+        if kwargs.get("asynchronous"):
+            return _Promise(result)
+        return result
+
+    def sleep(seconds):
+        sleeps.append(seconds)
+        state["t"] += seconds
+
+    with (
+        mock.patch.object(tasks, "sleep", side_effect=sleep),
+        mock.patch("tasks.time.monotonic", side_effect=lambda: state["t"]),
+        mock.patch.object(tasks, "_pid_alive", return_value=True),
+    ):
+        tasks._terminate_pids(SimpleNamespace(run=fake_c_run), "4242")
+
+    interval = tasks.CONTROLLER_TERMINATE_POLL_INTERVAL_SECONDS
+    polls = int(tasks.CONTROLLER_TERMINATE_TIMEOUT_SECONDS / interval)
+    assert sleeps == [interval] * polls
