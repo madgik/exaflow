@@ -1,20 +1,20 @@
 import asyncio
 from logging.config import dictConfig
 
-import pydantic
 from quart import Blueprint
 from quart import jsonify
 from quart import request
 
-from exaflow.controller import config as ctrl_config
 from exaflow.controller.quart.loggers import loggers
 from exaflow.controller.services import get_worker_landscape_aggregator
 from exaflow.controller.services.algorithm_execution_strategy_factory import (
     get_algorithm_execution_strategy,
 )
-from exaflow.controller.services.analysis_execution import analysis_slot
 from exaflow.controller.services.analysis_execution import shutdown_analysis_execution
 from exaflow.controller.services.analysis_execution import start_analysis_execution
+from exaflow.controller.services.analysis_service import (
+    run_analysis as execute_analysis,
+)
 from exaflow.controller.services.api.algorithm_spec_dtos import (
     algorithm_specifications_dtos,
 )
@@ -24,9 +24,6 @@ from exaflow.controller.services.api.algorithm_spec_dtos import (
 from exaflow.controller.services.api.algorithm_spec_dtos import (
     preprocessing_step_specifications_dtos,
 )
-from exaflow.controller.services.api.algorithm_spec_dtos import specifications
-from exaflow.controller.services.api.analysis_request_dtos import AnalysisRequestDTO
-from exaflow.controller.services.api.analysis_request_validator import BadRequest
 from exaflow.controller.services.api.analysis_request_validator import (
     validate_analysis_request,
 )
@@ -144,29 +141,12 @@ async def livez() -> str:
 
 @algorithms.route("/analysis", methods=["POST"])
 async def run_analysis() -> str:
-    request_body = await request.json
-    try:
-        analysis_request_dto = AnalysisRequestDTO.model_validate(request_body)
-    except pydantic.ValidationError as pydantic_error:
-        error_msg = (
-            f"Analysis execution request malformed:"
-            f"\nrequest received:{request_body}"
-            f"\nerror:{pydantic_error}"
-        )
-        raise BadRequest(error_msg)
-
-    validate_analysis_request(
-        analysis_request_dto=analysis_request_dto,
-        algorithms_specs=specifications.enabled_algorithms,
-        preprocessing_steps_specs=specifications.enabled_preprocessing_steps,
-        worker_landscape_aggregator=get_worker_landscape_aggregator(),
-        smpc_enabled=ctrl_config.smpc.enabled,
-        smpc_optional=ctrl_config.smpc.optional,
+    return await execute_analysis(
+        await request.json,
+        validate_analysis_request=validate_analysis_request,
+        get_algorithm_execution_strategy=get_algorithm_execution_strategy,
+        get_worker_landscape_aggregator=get_worker_landscape_aggregator,
     )
-
-    strategy = get_algorithm_execution_strategy(analysis_request_dto)
-    async with analysis_slot():
-        return await strategy.execute()
 
 
 @algorithms.route("/flower/input", methods=["GET"])
