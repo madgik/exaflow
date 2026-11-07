@@ -48,10 +48,10 @@ def _aggregation_strategy(monkeypatch, configure, cleanup):
         def __init__(self, request_id, aggregator_dns=None, max_message_mb=None):
             pass
 
-        def configure(self, num_workers):
+        def configure(self, num_workers, timeout=None):
             return configure(num_workers)
 
-        def cleanup(self):
+        def cleanup(self, timeout=None):
             return cleanup()
 
         def __enter__(self):

@@ -60,9 +60,10 @@ def build_strategy(strategy_cls, algorithm_name="sample_algo"):
     strategy._local_worker_tasks_handlers = []
     strategy._global_worker_tasks_handler = None
     strategy._controller = types.SimpleNamespace(
+        task_timeout=300,
         worker_landscape_aggregator=types.SimpleNamespace(
             get_metadata=lambda data_model, variable_names: {}
-        )
+        ),
     )
     return strategy
 
