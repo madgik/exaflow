@@ -112,10 +112,13 @@ class WorkerClient:
             error_details=details or str(status_code),
         ) from exc
 
-    def call(self, rpc_name: str, request: Any, timeout: int):
+    def start_call(self, rpc_name: str, request: Any, timeout: int) -> grpc.Future:
         rpc = getattr(self._stub, rpc_name)
+        return rpc.future(request, timeout=timeout)
+
+    def finish_call(self, rpc_name: str, future: grpc.Future) -> Any:
         try:
-            return rpc(request, timeout=timeout)
+            return future.result()
         except grpc.RpcError as exc:  # noqa: BLE001
             LOGGER.debug(
                 "gRPC call %s to %s failed with status %s",
@@ -124,6 +127,9 @@ class WorkerClient:
                 exc.code(),
             )
             self._handle_rpc_error(exc)
+
+    def call(self, rpc_name: str, request: Any, timeout: int):
+        return self.finish_call(rpc_name, self.start_call(rpc_name, request, timeout))
 
 
 class WorkerClientFactory(metaclass=Singleton):

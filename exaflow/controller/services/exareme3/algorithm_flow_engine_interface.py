@@ -1,9 +1,10 @@
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import as_completed
+import queue
 from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
+
+import grpc
 
 from exaflow.algorithms.exareme3.utils.metadata_enums import add_ordered_enums
 from exaflow.algorithms.exareme3.utils.registry import get_udf_registry_key
@@ -51,39 +52,39 @@ class Exareme3AlgorithmFlowEngineInterface:
             preprocessing=self._preprocessing,
         )
 
-        executor = ThreadPoolExecutor(max_workers=len(self._tasks_handlers))
-        future_to_index = {}
-        pending = set()
-        results: List[Optional[dict]] = [None] * len(self._tasks_handlers)
+        done = queue.SimpleQueue()
+        futures: List[grpc.Future] = []
         try:
-            future_to_index = {
-                executor.submit(
-                    task_handler.run_udf,
+            for idx, task_handler in enumerate(self._tasks_handlers):
+                future = task_handler.start_run_udf(
                     udf_registry_key=udf_registry_key,
                     kw_args=kw_args,
                     system_args=system_args,
-                ): idx
-                for idx, task_handler in enumerate(self._tasks_handlers)
-            }
-            pending = set(future_to_index)
-            for future in as_completed(future_to_index):
-                idx = future_to_index[future]
-                try:
-                    results[idx] = future.result()
-                except InsufficientDataError as exc:
-                    self._logger.warning(
-                        "Worker %s returned insufficient data and will be skipped: %s",
-                        self._tasks_handlers[idx].worker_id,
-                        exc,
-                    )
-                    results[idx] = None
-                pending.discard(future)
+                )
+                future.add_done_callback(lambda _, idx=idx: done.put(idx))
+                futures.append(future)
         except Exception:
-            for future in future_to_index:
+            for future in futures:
                 future.cancel()
             raise
-        finally:
-            executor.shutdown(wait=not pending, cancel_futures=bool(pending))
+
+        results: List[Optional[dict]] = [None] * len(self._tasks_handlers)
+        for _ in range(len(futures)):
+            idx = done.get()
+            try:
+                results[idx] = self._tasks_handlers[idx].finish_run_udf(futures[idx])
+            except InsufficientDataError as exc:
+                self._logger.warning(
+                    "Worker %s returned insufficient data and will be skipped: %s",
+                    self._tasks_handlers[idx].worker_id,
+                    exc,
+                )
+                results[idx] = None
+            except Exception:
+                for future in futures:
+                    future.cancel()
+                raise
+
         filtered_results = [res for res in results if res is not None]
         if not filtered_results:
             raise InsufficientDataError(
