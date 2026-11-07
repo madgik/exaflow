@@ -66,6 +66,28 @@ def test_stop_before_start_is_noop():
     assert aggregator._update_loop_thread is None
 
 
+def test_stop_during_start_is_honoured(monkeypatch):
+    """A stop between clearing the event and starting the thread must stick."""
+    aggregator = _make_aggregator(update_interval=60)
+    calls = []
+    monkeypatch.setattr(aggregator, "update", lambda: calls.append("update"))
+    real_clear = threading.Event.clear
+
+    def clear_and_stop(event):
+        real_clear(event)
+        if event is aggregator._stop_event:
+            aggregator.stop()
+
+    monkeypatch.setattr(threading.Event, "clear", clear_and_stop)
+    aggregator.start()
+    try:
+        time.sleep(0.2)
+        assert calls == []
+        assert not aggregator._update_loop_thread.is_alive()
+    finally:
+        aggregator.stop()
+
+
 def test_start_after_stop_resumes_refreshing(monkeypatch):
     counter = _Counter()
     aggregator = _make_aggregator(update_interval=0.05)
