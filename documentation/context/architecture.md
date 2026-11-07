@@ -141,16 +141,17 @@ aggregation wait times out.
 Kubernetes probes: startup and liveness both call `/livez` with a 5 second
 timeout (liveness `failureThreshold` 3). Readiness calls `/healthcheck`, which
 can take as long as `worker_tasks_timeout`. A worker that is down does not
-restart the controller. Hypercorn closes the listen socket at SIGTERM, so
+restart the controller. Uvicorn closes the listen socket at SIGTERM, so
 `/livez` fails during the drain. Kubelet stops the liveness and startup probes
 of a terminating pod (`SyncTerminatingPod` calls `StopLivenessAndStartup`, then
 `killPod`), so that failure does not restart the pod. The liveness probe does
 not set its own grace period.
 
 Shutdown: a `preStop` sleep (5 s) keeps the pod serving until Endpoints stop
-routing to it. After SIGTERM Hypercorn drains in-flight requests for
-`graceful_timeout` (120 s), then cancels the request tasks. Quart does not pass
-that cancellation on to the task running an analysis, so the lifespan hook
+routing to it. After SIGTERM Uvicorn drains in-flight requests for
+`graceful_timeout` (120 s), cancels the request tasks still running, and starts
+the lifespan hook without waiting for them. A cancelled request still waits for
+its analysis thread (`run_blocking`), so the lifespan hook
 (`endpoints.shutdown`) calls `begin_controller_shutdown()`: it cancels the
 registered `RunUdf` and aggregation `Configure` RPCs, and any registered after
 it. Worker-landscape metadata RPCs are cancelled too, because their executor

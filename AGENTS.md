@@ -14,7 +14,7 @@ for full command lists, architecture detail, and validation matrices.
 Exaflow is the execution engine behind the Medical Informatics Platform. It
 orchestrates federated classical algorithms across multiple workers that hold
 DuckDB-backed datasets. The main runtime is a Python 3.11 backend/service system
-with a FastAPI/Hypercorn controller, gRPC workers, optional aggregation server,
+with a FastAPI/Uvicorn controller, gRPC workers, optional aggregation server,
 algorithm implementations, Kubernetes deployment manifests, and a nested
 `exadata-validator` Python package.
 
@@ -27,7 +27,7 @@ separate config, markers, and review requirements — see
 
 | Path | Purpose |
 | --- | --- |
-| `exaflow/controller/http` | HTTP API endpoints; FastAPI routes in `endpoints.py`, served by Hypercorn. |
+| `exaflow/controller/http` | HTTP API endpoints; FastAPI routes in `endpoints.py`, served by Uvicorn. |
 | `exaflow/controller/services` | Controller-side validation, worker landscape aggregation, execution strategies, and task handlers. |
 | `exaflow/worker` | Worker gRPC service, DuckDB loading, UDF execution, and worker metadata services. |
 | `exaflow/aggregation_server` | Optional gRPC aggregation service for federated vector operations. |
@@ -51,7 +51,7 @@ separate config, markers, and review requirements — see
 
 - Language/runtime: Python `>=3.11,<3.12`.
 - Package manager: uv; root lockfile is `uv.lock`.
-- Controller: FastAPI and Hypercorn.
+- Controller: FastAPI and Uvicorn.
 - Worker/API transport: gRPC, protobuf, grpcio health checks.
 - Local persistence: DuckDB loaded from CSV datasets.
 - Data/science stack: NumPy, SciPy, pandas, scikit-learn, statsmodels, pyarrow.

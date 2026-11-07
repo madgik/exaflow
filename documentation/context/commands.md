@@ -70,7 +70,7 @@ uv run inv start-worker --worker localworker1
 uv run inv start-aggregation-server
 ```
 
-Stop the controller. It gets SIGTERM, so Hypercorn drains running analyses and
+Stop the controller. It gets SIGTERM, so Uvicorn drains running analyses and
 runs its shutdown hooks, and `kill-controller` waits up to 195 s before it sends
 SIGKILL. An idle controller exits at once. `--stop-timeout` (seconds) or the
 environment variable `CONTROLLER_STOP_TIMEOUT` shortens the wait for every stop,

@@ -1,6 +1,6 @@
 """Tests for the graceful controller shutdown in ``tasks.kill_controller``.
 
-``kill_controller`` (the ``kill-controller`` invoke task) must stop Hypercorn
+``kill_controller`` (the ``kill-controller`` invoke task) must stop Uvicorn
 gracefully: it sends SIGTERM first so that shutdown hooks run, waits out the
 controller shutdown budget (or ``--stop-timeout`` / ``CONTROLLER_STOP_TIMEOUT``)
 polling every 0.5 s, and only SIGKILLs whatever is still alive afterwards.
@@ -23,9 +23,9 @@ from exaflow.controller.services import controller_shutdown as budget
 # A real invoke Context so the @task-wrapped kill_controller accepts it.
 _CTX = Context(Config())
 
-_LSOF_HYPERCORN = (
+_LSOF_UVICORN = (
     "COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME\n"
-    "hypercorn 222 user 5u IPv4 0x123 0t0 TCP *:5000 (LISTEN)\n"
+    "uvicorn 222 user 5u IPv4 0x123 0t0 TCP *:5000 (LISTEN)\n"
 )
 
 
@@ -133,7 +133,7 @@ def test_terminate_pids_sigkills_after_timeout():
     assert calls.index("kill 4242") < calls.index("kill -9 4242")
 
 
-def test_default_wait_equals_the_hypercorn_shutdown_budget():
+def test_default_wait_equals_the_uvicorn_shutdown_budget():
     """tasks.py cannot import exaflow (it takes seconds), so it repeats the sum."""
     assert tasks.CONTROLLER_TERMINATE_TIMEOUT_SECONDS == (
         budget.GRACEFUL_TIMEOUT
@@ -141,6 +141,14 @@ def test_default_wait_equals_the_hypercorn_shutdown_budget():
         + budget.SHUTDOWN_CLEANUP_TIMEOUT
         + budget.SHUTDOWN_TIMEOUT
     )
+
+
+def test_uvicorn_command_settings_match_the_server_config():
+    """tasks.py repeats the Uvicorn settings for the same reason."""
+    from exaflow.controller.http import server_config
+
+    assert tasks.CONTROLLER_UVICORN_WORKERS == server_config.workers
+    assert tasks.CONTROLLER_GRACEFUL_TIMEOUT_SECONDS == server_config.graceful_timeout
 
 
 def test_tasks_module_does_not_import_the_exaflow_runtime():
@@ -177,10 +185,10 @@ def test_shared_tmp_directories_tolerate_a_concurrent_creator(tmp_path, monkeypa
     assert "if not CLEANUP_DIR.exists()" not in source
 
 
-def test_terminate_pids_waits_for_the_hypercorn_drain():
+def test_terminate_pids_waits_for_the_uvicorn_drain():
     """The default wait covers the drain, RPC cancel, cleanup, and hooks.
 
-    A fixed 10 s SIGKILL lands while Hypercorn is still inside graceful_timeout
+    A fixed 10 s SIGKILL lands while Uvicorn is still inside graceful_timeout
     (T8). The wait is a maximum: a process that exits early returns immediately.
     """
     fake_run, calls = _run_recorder()
@@ -205,7 +213,7 @@ def test_pid_alive_reports_a_running_and_a_gone_process():
 
 def test_kill_controller_stop_timeout_can_be_shorter_for_local_dev():
     """``--stop-timeout`` bounds the wait. The default stays long enough to drain."""
-    fake_run, calls = _run_recorder(_LSOF_HYPERCORN)
+    fake_run, calls = _run_recorder(_LSOF_UVICORN)
     pid_alive, _ = _liveness([])
     sleeps = []
     monotonic, advance = _advance_clock()
@@ -229,7 +237,7 @@ def test_kill_controller_stop_timeout_can_be_shorter_for_local_dev():
 
 
 def test_controller_stop_timeout_env_overrides_the_default(monkeypatch):
-    fake_run, calls = _run_recorder(_LSOF_HYPERCORN)
+    fake_run, calls = _run_recorder(_LSOF_UVICORN)
     pid_alive, _ = _liveness([])
     sleeps = []
     monotonic, advance = _advance_clock()
@@ -325,8 +333,8 @@ def test_terminate_pids_multiple_pids_sigkill_only_alive():
 
 
 def test_kill_controller_sends_sigterm_before_sigkill():
-    """kill-controller SIGTERMes the Hypercorn pid found via lsof, then SIGKILLs."""
-    fake_run, calls = _run_recorder(_LSOF_HYPERCORN)
+    """kill-controller SIGTERMes the Uvicorn pid found via lsof, then SIGKILLs."""
+    fake_run, calls = _run_recorder(_LSOF_UVICORN)
     pid_alive, _ = _liveness([])  # stays alive -> forces SIGKILL
     monotonic, sleep = _advance_clock()
     with _patched(
@@ -345,7 +353,7 @@ def test_kill_controller_sends_sigterm_before_sigkill():
 
 def test_kill_controller_returns_when_controller_exits():
     """kill-controller returns without SIGKILL once the controller exits."""
-    fake_run, calls = _run_recorder(_LSOF_HYPERCORN.replace("hypercorn", "python"))
+    fake_run, calls = _run_recorder(_LSOF_UVICORN.replace("uvicorn", "python"))
     pid_alive, _ = _liveness([False])  # gone right after SIGTERM
     monotonic, sleep = _advance_clock()
     with _patched(
@@ -362,8 +370,8 @@ def test_kill_controller_returns_when_controller_exits():
 
 
 def test_kill_controller_uses_stopping_message():
-    """The message no longer says 'Killing previous Hypercorn instances...'."""
-    fake_run, _calls = _run_recorder(_LSOF_HYPERCORN)
+    """The message no longer says 'Killing previous Uvicorn instances...'."""
+    fake_run, _calls = _run_recorder(_LSOF_UVICORN)
     pid_alive, _ = _liveness([False])
     monotonic, sleep = _advance_clock()
     messages = []
@@ -381,8 +389,8 @@ def test_kill_controller_uses_stopping_message():
     ):
         tasks.kill_controller(_CTX)
 
-    assert any("Stopping previous Hypercorn instances..." in m for m in messages)
-    assert not any("Killing previous Hypercorn instances..." in m for m in messages)
+    assert any("Stopping previous Uvicorn instances..." in m for m in messages)
+    assert not any("Killing previous Uvicorn instances..." in m for m in messages)
 
 
 @pytest.mark.parametrize("command", ["python3.11", "python3.1"])
@@ -390,7 +398,7 @@ def test_kill_controller_recognizes_versioned_python(command):
     """lsof shows at most 9 command characters unless +c 0 is set.
 
     python3.11 is therefore python3.1, which is neither "python" nor
-    "hypercorn", and the controller must still be stopped.
+    "uvicorn", and the controller must still be stopped.
     """
     lsof_out = (
         "COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME\n"

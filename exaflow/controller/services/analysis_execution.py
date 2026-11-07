@@ -59,8 +59,8 @@ def start_analysis_execution() -> None:
 def shutdown_analysis_execution(join_timeout: float = 0) -> None:
     """Stop the pool and wait up to join_timeout seconds for its running threads.
 
-    The wait is bounded so the shutdown hook cannot outlive Hypercorn's
-    shutdown_timeout when a thread is stuck in work that no RPC cancel ends.
+    The wait is bounded so the shutdown hook stays within SHUTDOWN_TIMEOUT
+    when a thread is stuck in work that no RPC cancel ends.
     """
     global _executor, _semaphore, _semaphore_loop
     with _state_guard:
