@@ -1,4 +1,4 @@
-from exaflow.controller.quart.loggers import loggers
+from exaflow.controller.http.loggers import loggers
 from exaflow.controller.services.controller_shutdown import GRACEFUL_TIMEOUT
 from exaflow.controller.services.controller_shutdown import SHUTDOWN_TIMEOUT
 

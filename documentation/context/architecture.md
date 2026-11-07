@@ -14,7 +14,7 @@ No frontend application was detected in this repository.
 
 ```mermaid
 flowchart TD
-  CLI[run_analysis CLI or HTTP client] --> API[Quart controller API]
+  CLI[run_analysis CLI or HTTP client] --> API[FastAPI controller API]
   API --> Validator[Analysis request validator]
   API --> Strategy[Execution strategy]
   Strategy --> WLA[Worker Landscape Aggregator]
@@ -36,7 +36,8 @@ flowchart TD
    `/datasets_variables`, and `/cdes_metadata`.
 1. Clients submit `POST /analysis` with an `AnalysisRequestDTO` payload. The
    selected algorithm name is carried in `algorithm.name`.
-1. `exaflow/controller/quart/endpoints.py` validates request shape and delegates
+1. `exaflow/controller/http/endpoints.py` reads the body and
+   `analysis_service.run_analysis` validates request shape and delegates
    to `validate_analysis_request`.
 1. `get_algorithm_execution_strategy` selects an Exareme3 or Flower strategy.
 1. Exareme3 strategy gets worker metadata, applies preprocessing metadata
@@ -52,7 +53,7 @@ flowchart TD
 
 ## Module Boundaries
 
-- Controller HTTP routing should stay in `exaflow/controller/quart`.
+- Controller HTTP routing should stay in `exaflow/controller/http`.
 - Controller DTOs and request/spec validation should stay in
   `exaflow/controller/services/api`.
 - Worker landscape aggregation and task orchestration should stay in
@@ -94,7 +95,7 @@ There is no traditional migration framework detected. Data fixtures live under
 
 ## API Layer
 
-The Quart API exposes:
+The FastAPI controller exposes:
 
 - `GET /specifications/inputdata`
 - `GET /specifications/preprocessing`

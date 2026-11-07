@@ -815,7 +815,7 @@ def _kill_controller(c, timeout: float) -> None:
     # Fallback for controllers that may not expose a listening socket yet.
     hypercorn_process_patterns = (
         "hypercorn --config python:exaflow.controller.quart.hypercorn_config",
-        "exaflow.controller.quart.app:app",
+        "exaflow.controller.http.app:app",
     )
     for process_pattern in hypercorn_process_patterns:
         res = run(c, f"pgrep -f '{process_pattern}'", warn=True, show_ok=False)
@@ -892,7 +892,7 @@ def start_controller(
                 f"PYTHONPATH={PROJECT_ROOT} {UV_RUN_NO_SYNC} hypercorn "
                 "--config python:exaflow.controller.quart.hypercorn_config "
                 f"-b 0.0.0.0:{controller_port} "
-                "exaflow.controller.quart.app:app "
+                "exaflow.controller.http.app:app "
                 f">> {outpath} 2>&1"
             )
             run(c, cmd, wait=False)
@@ -901,7 +901,7 @@ def start_controller(
                 f"PYTHONPATH={PROJECT_ROOT} {UV_RUN_NO_SYNC} hypercorn "
                 "--config python:exaflow.controller.quart.hypercorn_config "
                 f"-b 0.0.0.0:{controller_port} "
-                "exaflow.controller.quart.app:app"
+                "exaflow.controller.http.app:app"
             )
             run(c, cmd, attach_=True)
 

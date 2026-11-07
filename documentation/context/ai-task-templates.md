@@ -153,7 +153,7 @@ Before editing, read:
 
 - `documentation/api-specification.md`
 - `documentation/context/architecture.md`
-- `exaflow/controller/quart/endpoints.py`
+- `exaflow/controller/http/endpoints.py`
 - Relevant DTOs/validators under `exaflow/controller/services/api`
 
 Feature:

@@ -2,10 +2,10 @@
 
 import logging
 
-from exaflow.controller.quart.error_handlers import ERROR_RESPONSES
-from exaflow.controller.quart.error_handlers import INSUFFICIENT_DATA_ERROR_MESSAGE
-from exaflow.controller.quart.error_handlers import HTTPStatusCode
-from exaflow.controller.quart.error_handlers import http_error_body
+from exaflow.controller.http.error_handlers import ERROR_RESPONSES
+from exaflow.controller.http.error_handlers import INSUFFICIENT_DATA_ERROR_MESSAGE
+from exaflow.controller.http.error_handlers import HTTPStatusCode
+from exaflow.controller.http.error_handlers import http_error_body
 from exaflow.controller.services.analysis_execution import AnalysisCapacityExceeded
 from exaflow.controller.services.api.analysis_request_validator import BadRequest
 from exaflow.controller.services.errors import ControllerShuttingDownError
