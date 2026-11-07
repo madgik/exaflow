@@ -11,18 +11,20 @@ logger = logging.getLogger(__name__)
 
 
 class ControllerAggregationClient(BaseAggregationClient):
-    def configure(self, num_workers: int) -> str:
+    def configure(self, num_workers: int, timeout: float) -> str:
         response = self._stub.Configure(
             pb2.ConfigureRequest(
                 request_id=self._request_id, num_of_workers=num_workers
-            )
+            ),
+            timeout=timeout,
         )
         return response.status
 
-    def cleanup(self) -> str:
+    def cleanup(self, timeout: float) -> str:
         try:
             response = self._stub.Cleanup(
-                pb2.CleanupRequest(request_id=self._request_id)
+                pb2.CleanupRequest(request_id=self._request_id),
+                timeout=timeout,
             )
             return response.status
         except grpc.RpcError as exc:
