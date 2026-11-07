@@ -138,7 +138,8 @@ def test_run_udf_starts_no_threads():
     result = engine.run_udf(_sample_udf, False, False, {})
     after = set(threading.enumerate())
 
-    assert after == before
+    # An unrelated thread may exit meanwhile; only a new one is a failure.
+    assert not (after - before)
     assert result == [{"worker": "w0"}, {"worker": "w1"}]
 
 

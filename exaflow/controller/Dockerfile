@@ -46,4 +46,4 @@ RUN rm -rf exaflow/worker
 #######################################################
 ENV PYTHONPATH=$CODE_PATH
 USER appuser
-CMD ["sh", "-c", "python -m hypercorn --config python:exaflow.controller.quart.hypercorn_config -b 0.0.0.0:5000 exaflow/controller/quart/app:app"]
+CMD ["python", "-m", "hypercorn", "--config", "python:exaflow.controller.quart.hypercorn_config", "-b", "0.0.0.0:5000", "exaflow/controller/quart/app:app"]

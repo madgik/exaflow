@@ -2,6 +2,7 @@ from exaflow.controller import config as ctrl_config
 from exaflow.controller import logger as ctrl_logger
 from exaflow.controller.services import get_worker_landscape_aggregator
 from exaflow.controller.services import set_worker_landscape_aggregator
+from exaflow.controller.services.controller_shutdown import SHUTDOWN_CLEANUP_TIMEOUT
 from exaflow.controller.services.exareme3 import Exareme3Controller
 from exaflow.controller.services.exareme3 import set_exareme3_controller
 from exaflow.controller.services.flower import set_flower_controller
@@ -36,4 +37,4 @@ def start_background_services():
 
 
 def stop_background_services():
-    get_worker_landscape_aggregator().stop()
+    get_worker_landscape_aggregator().stop(join_timeout=SHUTDOWN_CLEANUP_TIMEOUT)
