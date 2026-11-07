@@ -133,10 +133,10 @@ def test_cleanup_past_deadline_returns_error_and_logs_warning(caplog):
     returning ERROR, not hang, and the failure must be visible."""
 
     class DeadlineStub:
-        def Configure(self, request, timeout=None):
+        def Configure(self, request, timeout=None, metadata=None):
             return agg_pb2.ConfigureResponse(status=agg_pb2.Status.OK)
 
-        def Cleanup(self, request, timeout=None):
+        def Cleanup(self, request, timeout=None, metadata=None):
             raise _DeadlineRpcError(
                 grpc.StatusCode.DEADLINE_EXCEEDED, "deadline exceeded"
             )
@@ -154,7 +154,7 @@ def test_cleanup_past_deadline_returns_error_and_logs_warning(caplog):
 def test_client_sends_timeout_as_grpc_deadline():
     seen = {}
 
-    def configure_future(request, timeout=None):
+    def configure_future(request, timeout=None, metadata=None):
         seen["configure"] = timeout
         future = Future()
         future.set_result(agg_pb2.ConfigureResponse(status=agg_pb2.Status.OK))
@@ -163,7 +163,7 @@ def test_client_sends_timeout_as_grpc_deadline():
     class RecordingStub:
         Configure = types.SimpleNamespace(future=configure_future)
 
-        def Cleanup(self, request, timeout=None):
+        def Cleanup(self, request, timeout=None, metadata=None):
             seen["cleanup"] = timeout
             return agg_pb2.CleanupResponse(status=agg_pb2.Status.OK)
 

@@ -4,7 +4,9 @@ Lifecycle of a request
 ----------------------
 - The controller calls `Configure(request_id, num_of_workers)` before running
   the algorithm and `Cleanup(request_id)` when the request ends, in a `finally`
-  block.
+  block. Both calls carry an ownership token in gRPC metadata. Cleanup deletes
+  the context only when the token matches the one stored at Configure, so a
+  duplicate request that lost its response cannot remove someone else's context.
 - Each worker calls `Aggregate(request_id, step, operations)` from its UDF.
   `step` is numbered by the worker's client (1, 2, 3, ...). `operations` holds
   one or more `(aggregation_type, tensor)` pairs. Numeric types (`SUM`, `MIN`,
@@ -165,12 +167,35 @@ class _Step:
     reads: int = 0
 
 
+# gRPC metadata key. The controller sends a fresh token on Configure and the
+# same token on Cleanup. Workers do not send it; the context stays keyed by
+# request id so their Aggregate calls are unchanged.
+OWNERSHIP_TOKEN_METADATA_KEY = "x-aggregation-owner"
+
+
+def _ownership_token(context) -> str:
+    invocation = getattr(context, "invocation_metadata", None)
+    if not callable(invocation):
+        return ""
+    for item in invocation() or ():
+        key, value = item[0], item[1]
+        if str(key).lower() == OWNERSHIP_TOKEN_METADATA_KEY:
+            return str(value)
+    return ""
+
+
 class AggregationContext:
     """Aggregation state of one request, guarded by `condition`."""
 
-    def __init__(self, request_id: str, expected_workers: int):
+    def __init__(
+        self,
+        request_id: str,
+        expected_workers: int,
+        ownership_token: str = "",
+    ):
         self.request_id = request_id
         self.expected_workers = expected_workers
+        self.ownership_token = ownership_token
         self.steps: Dict[int, _Step] = {}
         self.last_completed_step = 0
         self.error: Optional[Exception] = None
@@ -372,7 +397,9 @@ class AggregationServer(AggregationServerServicer):
 
             self.cleaned_up_request_ids.pop(request.request_id, None)
             self.aggregation_contexts[request.request_id] = AggregationContext(
-                request.request_id, request.num_of_workers
+                request.request_id,
+                request.num_of_workers,
+                _ownership_token(context),
             )
 
         logger.info(
@@ -439,7 +466,19 @@ class AggregationServer(AggregationServerServicer):
         )
 
     def Cleanup(self, request, context):
+        token = _ownership_token(context)
         with self.global_lock:
+            current = self.aggregation_contexts.get(request.request_id)
+            if current is not None and current.ownership_token != token:
+                logger.warning(
+                    "[CLEANUP] Refused to remove request_id='%s': the ownership "
+                    "token does not match the caller that configured it",
+                    request.request_id,
+                )
+                return CleanupResponse(
+                    status=Status.ERROR,
+                    status_message="Aggregation context is owned by another caller",
+                )
             agg_ctx = self.aggregation_contexts.pop(request.request_id, None)
             if agg_ctx is not None:
                 self.cleaned_up_request_ids[request.request_id] = time.monotonic()

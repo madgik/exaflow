@@ -335,7 +335,7 @@ def test_aggregation_cleanup_rpc_is_not_cancelled_by_shutdown():
     client = ControllerAggregationClient("req-cleanup")
     seen = {}
 
-    def cleanup(request, timeout=None):
+    def cleanup(request, timeout=None, metadata=None):
         seen["shutting_down"] = shutdown.controller_is_shutting_down()
         return agg_pb2.CleanupResponse(status=agg_pb2.Status.OK)
 
@@ -363,7 +363,7 @@ def test_aggregation_configure_unblocks_when_its_rpc_is_cancelled():
     client = ControllerAggregationClient("req-shutdown")
     call = _BlockingCall()
 
-    def future(request, timeout=None):
+    def future(request, timeout=None, metadata=None):
         return call
 
     client._stub = SimpleNamespace(Configure=SimpleNamespace(future=future))
