@@ -606,6 +606,18 @@ class WorkerLandscapeAggregator:
             data_model, datasets
         )
 
+    def get_workers_info_with_any_of_datasets(
+        self, data_model: str, datasets: List[str]
+    ) -> List[WorkerInfo]:
+        registries = self._registries
+        worker_ids = registries.data_model_registry.get_worker_ids_with_any_of_datasets(
+            data_model, datasets
+        )
+        return [
+            registries.worker_registry.workers_per_id[worker_id]
+            for worker_id in worker_ids
+        ]
+
     def get_worker_specific_datasets(
         self, worker_id: str, data_model: str, wanted_datasets: List[str]
     ) -> List[str]:
