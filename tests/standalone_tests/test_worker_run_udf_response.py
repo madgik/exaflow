@@ -30,6 +30,10 @@ class _FakeWorkerClient:
         return future.result()
 
 
+def _run_udf(handler, **kwargs):
+    return handler.finish_run_udf(handler.start_run_udf(**kwargs))
+
+
 class _DummyRunUdfSystemArgs:
     @classmethod
     def model_validate(cls, data):
@@ -76,7 +80,8 @@ def test_worker_tasks_handler_decodes_json_bytes_run_udf_response(monkeypatch):
     handler = WorkerTasksHandler("127.0.0.1:1", logging.getLogger(__name__))
     monkeypatch.setattr(handler, "_client", lambda: client)
 
-    result = handler.run_udf(
+    result = _run_udf(
+        handler,
         request_id="req",
         udf_registry_key="udf",
         kw_args={"alpha": 1},
@@ -99,7 +104,8 @@ def test_worker_tasks_handler_decodes_linear_regression_infinite_f_stat(monkeypa
     handler = WorkerTasksHandler("127.0.0.1:1", logging.getLogger(__name__))
     monkeypatch.setattr(handler, "_client", lambda: client)
 
-    result = handler.run_udf(
+    result = _run_udf(
+        handler,
         request_id="req",
         udf_registry_key="linear_regression",
         kw_args={},
@@ -119,7 +125,8 @@ def test_worker_tasks_handler_rejects_unknown_run_udf_result_format(monkeypatch)
     monkeypatch.setattr(handler, "_client", lambda: client)
 
     with pytest.raises(ValueError, match="Unsupported RunUdfResponse result format"):
-        handler.run_udf(
+        _run_udf(
+            handler,
             request_id="req",
             udf_registry_key="udf",
             kw_args={},

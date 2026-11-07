@@ -18,12 +18,16 @@ class WorkerInfoTasksHandler:
 
     def get_worker_info_task(self) -> WorkerInfo:
         return self._worker_tasks_handler.get_worker_info(
-            request_id=self._request_id, timeout=self._tasks_timeout
+            request_id=self._request_id,
+            timeout=self._tasks_timeout,
+            cancel_on_shutdown=True,
         )
 
     def get_worker_datasets_per_data_model_task(self) -> DatasetsInfoPerDataModel:
         return self._worker_tasks_handler.get_worker_datasets_per_data_model(
-            request_id=self._request_id, timeout=self._tasks_timeout
+            request_id=self._request_id,
+            timeout=self._tasks_timeout,
+            cancel_on_shutdown=True,
         )
 
     def get_data_model_cdes_task(self, data_model: str) -> CommonDataElements:
@@ -31,6 +35,7 @@ class WorkerInfoTasksHandler:
             request_id=self._request_id,
             data_model=data_model,
             timeout=self._tasks_timeout,
+            cancel_on_shutdown=True,
         )
 
     def get_data_model_attributes_task(self, data_model: str) -> DataModelAttributes:
@@ -38,6 +43,7 @@ class WorkerInfoTasksHandler:
             request_id=self._request_id,
             data_model=data_model,
             timeout=self._tasks_timeout,
+            cancel_on_shutdown=True,
         )
 
     def get_healthcheck_task(self, check_db: bool):
@@ -45,4 +51,5 @@ class WorkerInfoTasksHandler:
             request_id=self._request_id,
             check_db=check_db,
             timeout=self._tasks_timeout,
+            cancel_on_shutdown=True,
         )

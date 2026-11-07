@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import types
+from concurrent.futures import Future
 
 import grpc
 import pytest
@@ -8,6 +9,8 @@ import pytest
 from exaflow.aggregation_clients.controller_aggregation_client import (
     ControllerAggregationClient,
 )
+from exaflow.controller.services.controller_shutdown import SHUTDOWN_CLEANUP_TIMEOUT
+from exaflow.controller.services.errors import ControllerShuttingDownError
 from exaflow.controller.services.exareme3 import strategies
 from exaflow.protos.aggregation_server import aggregation_server_pb2 as agg_pb2
 
@@ -151,10 +154,14 @@ def test_cleanup_past_deadline_returns_error_and_logs_warning(caplog):
 def test_client_sends_timeout_as_grpc_deadline():
     seen = {}
 
+    def configure_future(request, timeout=None):
+        seen["configure"] = timeout
+        future = Future()
+        future.set_result(agg_pb2.ConfigureResponse(status=agg_pb2.Status.OK))
+        return future
+
     class RecordingStub:
-        def Configure(self, request, timeout=None):
-            seen["configure"] = timeout
-            return agg_pb2.ConfigureResponse(status=agg_pb2.Status.OK)
+        Configure = types.SimpleNamespace(future=configure_future)
 
         def Cleanup(self, request, timeout=None):
             seen["cleanup"] = timeout
@@ -163,41 +170,55 @@ def test_client_sends_timeout_as_grpc_deadline():
     client = ControllerAggregationClient("deadline-pass-through")
     client._stub = RecordingStub()
 
-    client.configure(2, timeout=7)
+    assert client.configure(2, timeout=7) == agg_pb2.Status.OK
     client.cleanup(timeout=7)
 
     assert seen == {"configure": 7, "cleanup": 7}
 
 
-def test_configure_past_deadline_releases_slot_without_cleanup(monkeypatch):
-    """A configure that outlives its deadline raises as today; `configured`
-    stays False, so cleanup is never called and the analysis slot is freed."""
+class _ConfigureFailsClient:
+    """Configure raises ``error``; cleanup records the deadline it was given."""
+
+    error = None
     calls = []
 
-    class DeadlineConfigureClient:
-        def __init__(self, request_id, aggregator_dns=None, max_message_mb=None):
-            pass
+    def __init__(self, request_id, aggregator_dns=None, max_message_mb=None):
+        pass
 
-        def configure(self, num_workers, timeout=None):
-            calls.append("configure")
-            raise grpc.RpcError("deadline exceeded")
+    def configure(self, num_workers, timeout=None):
+        self.calls.append("configure")
+        raise self.error
 
-        def cleanup(self, timeout=None):
-            calls.append("cleanup")
-            return agg_pb2.Status.OK
+    def cleanup(self, timeout=None):
+        self.calls.append(("cleanup", timeout))
+        return agg_pb2.Status.OK
 
-        def __enter__(self):
-            return self
+    def __enter__(self):
+        return self
 
-        def __exit__(self, *_exc):
-            calls.append("close")
+    def __exit__(self, *_exc):
+        self.calls.append("close")
 
-    monkeypatch.setattr(
-        strategies, "ControllerAggregationClient", DeadlineConfigureClient
+
+@pytest.mark.parametrize(
+    "error",
+    [grpc.RpcError("deadline exceeded"), ControllerShuttingDownError()],
+)
+def test_failed_configure_still_cleans_up_with_the_short_deadline(monkeypatch, error):
+    """A Configure that timed out or was cancelled may have created the context
+    on the server. Cleanup runs, but a slow server does not hold the thread for
+    a second full task timeout."""
+    client_cls = type(
+        "FailingConfigure", (_ConfigureFailsClient,), {"error": error, "calls": []}
     )
-    strategy = _make_strategy(task_timeout=1)
+    monkeypatch.setattr(strategies, "ControllerAggregationClient", client_cls)
+    strategy = _make_strategy(task_timeout=300)
 
-    with pytest.raises(grpc.RpcError):
+    with pytest.raises(type(error)):
         asyncio.run(strategy.execute())
 
-    assert calls == ["configure", "close"]
+    assert client_cls.calls == [
+        "configure",
+        ("cleanup", SHUTDOWN_CLEANUP_TIMEOUT),
+        "close",
+    ]
