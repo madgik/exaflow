@@ -20,6 +20,32 @@ from exaflow.worker_communication import WorkerInfo
 from exaflow.worker_communication import WorkerRole
 
 
+class RunUdfCall:
+    """One started ``RunUdf``. The handler and the gRPC future stay on the call.
+
+    The flow engine starts a call per worker, then waits with ``result``.
+    ``cancel`` stops a sibling whose RPC is still outstanding.
+    """
+
+    def __init__(self, handler: "WorkerTasksHandler", future: grpc.Future):
+        self.handler = handler
+        self.future = future
+
+    def add_done_callback(self, fn) -> None:
+        self.future.add_done_callback(fn)
+
+    def cancel(self) -> bool:
+        return bool(self.future.cancel())
+
+    def result(self) -> dict:
+        response = self.handler._client().finish_call("RunUdf", self.future)
+        if response.result_format != UDF_RESULT_FORMAT_JSON_BYTES_V1:
+            raise ValueError(
+                f"Unsupported RunUdfResponse result format: {response.result_format!r}"
+            )
+        return decode_udf_result(response.result)
+
+
 def _proto_worker_role(role_value: int) -> WorkerRole:
     role_name = worker_pb2.WorkerRole.Name(role_value)
     return WorkerRole[role_name]
@@ -260,14 +286,14 @@ class WorkerTasksHandler:
             timeout,
         )
 
-    def start_run_udf(
+    def run_udf(
         self,
         request_id: str,
         udf_registry_key: str,
         kw_args: dict,
         system_args: dict,
         timeout: int,
-    ) -> grpc.Future:
+    ) -> RunUdfCall:
         future = self._client().start_call(
             "RunUdf",
             worker_pb2.RunUdfRequest(
@@ -282,12 +308,4 @@ class WorkerTasksHandler:
         # themselves. Cleanup and other metadata calls do not: they release
         # resources and finish on their own deadline.
         register_inflight_rpc(future)
-        return future
-
-    def finish_run_udf(self, future: grpc.Future) -> dict:
-        response = self._client().finish_call("RunUdf", future)
-        if response.result_format != UDF_RESULT_FORMAT_JSON_BYTES_V1:
-            raise ValueError(
-                f"Unsupported RunUdfResponse result format: {response.result_format!r}"
-            )
-        return decode_udf_result(response.result)
+        return RunUdfCall(self, future)

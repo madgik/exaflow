@@ -68,9 +68,8 @@ def _make_handlers(n: int):
 
 
 def _patch_handler_io(handler, future):
-    """Point a handler's start/finish at a fake future (no gRPC, no client)."""
-    setattr(handler, "start_run_udf", (lambda **_kwargs: future))
-    setattr(handler, "finish_run_udf", (lambda future: future.result()))
+    """Point a handler's run_udf at a fake call (no gRPC, no client)."""
+    setattr(handler, "run_udf", (lambda **_kwargs: future))
 
 
 def _make_engine(handlers):
@@ -208,10 +207,8 @@ def test_run_udf_cancels_started_calls_when_starting_a_later_call_fails():
     def start_second(**_kwargs):
         raise RuntimeError("cannot start w1")
 
-    setattr(handlers[0], "start_run_udf", start_first)
-    setattr(handlers[1], "start_run_udf", start_second)
-    setattr(handlers[0], "finish_run_udf", (lambda future: future.result()))
-    setattr(handlers[1], "finish_run_udf", (lambda future: future.result()))
+    setattr(handlers[0], "run_udf", start_first)
+    setattr(handlers[1], "run_udf", start_second)
 
     engine = _make_engine(handlers)
 
