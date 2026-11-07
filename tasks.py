@@ -766,7 +766,9 @@ def _terminate_pids(c, pids: str, timeout: float | None = None) -> None:
     pid_list = pids.split()
     limit = CONTROLLER_TERMINATE_TIMEOUT_SECONDS if timeout is None else timeout
     # Polite request to terminate: runs the shutdown hooks.
-    run(c, f"kill {pids}", warn=True, show_ok=False)
+    # spin=False: the invoke spinner sleeps before every command, which would
+    # stretch the grace period.
+    run(c, f"kill {pids}", warn=True, show_ok=False, spin=False)
     deadline = time.monotonic() + limit
     while time.monotonic() < deadline:
         if not _pids_still_alive(pid_list):
@@ -776,14 +778,14 @@ def _terminate_pids(c, pids: str, timeout: float | None = None) -> None:
     # must not be SIGKILLed.
     alive = _pids_still_alive(pid_list)
     if alive:
-        run(c, f"kill -9 {' '.join(alive)}", warn=True, show_ok=False)
+        run(c, f"kill -9 {' '.join(alive)}", warn=True, show_ok=False, spin=False)
 
 
 def _kill_controller(c, timeout: float) -> None:
     controller_port = get_controller_port()
     lsof_res = run(
         c,
-        f"lsof -nP -iTCP:{controller_port} -sTCP:LISTEN",
+        f"lsof +c 0 -nP -iTCP:{controller_port} -sTCP:LISTEN",
         warn=True,
         show_ok=False,
     )
@@ -796,7 +798,10 @@ def _kill_controller(c, timeout: float) -> None:
                 continue
             command = parts[0].lower()
             pid = parts[1]
-            if command in ("python", "hypercorn"):
+            # lsof's default command field is 9 characters, so python3.11 is
+            # python3.1. +c 0 asks for the full name; the prefix match covers
+            # a truncated name if that flag is ignored.
+            if command == "hypercorn" or command.startswith("python"):
                 pids_to_kill.add(pid)
             else:
                 non_controller_listeners.append((parts[0], pid))
@@ -1297,6 +1302,7 @@ def run(
     raise_error=False,
     show_ok=True,
     env=None,
+    spin=True,
 ):
     if attach_:
         c.run(cmd, pty=True, env=env)
@@ -1311,6 +1317,12 @@ def run(
         if show_ok:
             message("Ok", Level.SUCCESS)
         return
+
+    if not spin:
+        result = c.run(cmd, warn=warn, env=env)
+        if show_ok:
+            message("Ok", Level.SUCCESS)
+        return result
 
     # TODO this is supposed to run when wait=True, yet asynchronous=True
     promise = c.run(cmd, asynchronous=True, warn=warn, env=env)
