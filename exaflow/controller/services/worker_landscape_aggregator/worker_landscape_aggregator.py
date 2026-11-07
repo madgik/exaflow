@@ -1,5 +1,4 @@
 import threading
-import time
 import traceback
 from abc import ABC
 from collections import OrderedDict
@@ -285,7 +284,7 @@ class WorkerLandscapeAggregator:
         self._localworkers = localworkers
         self._registries = _wlaRegistries()
         self._update_lock = threading.Lock()
-        self._keep_updating = True
+        self._stop_event = threading.Event()
         self._update_loop_thread = None
         self._loaded_workers = set()
 
@@ -324,7 +323,7 @@ class WorkerLandscapeAggregator:
             )
 
     def _update_loop(self):
-        while self._keep_updating:
+        while not self._stop_event.is_set():
             try:
                 self.update()
             except Exception as exc:
@@ -335,13 +334,14 @@ class WorkerLandscapeAggregator:
                 tr = traceback.format_exc()
                 self._logger.error(tr)
             finally:
-                time.sleep(self._update_interval)
+                # Wait for the next refresh, but wake up promptly on stop().
+                self._stop_event.wait(self._update_interval)
 
     def start(self):
         self._logger.info("WorkerLandscapeAggregator starting ...")
 
         self.stop()
-        self._keep_updating = True
+        self._stop_event.clear()
         self._update_loop_thread = threading.Thread(
             target=self._update_loop, daemon=True
         )
@@ -351,7 +351,7 @@ class WorkerLandscapeAggregator:
 
     def stop(self):
         if self._update_loop_thread and self._update_loop_thread.is_alive():
-            self._keep_updating = False
+            self._stop_event.set()
             self._update_loop_thread.join()
 
     def healthcheck(self):
