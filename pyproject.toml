@@ -25,10 +25,10 @@ dependencies = [
 
 [dependency-groups]
 controller = [
-    "hypercorn>=0.18.0,<0.19.0",
     "dnspython>=2.8.0,<2.9.0",
     "fastapi>=0.115,<0.116",
     "starlette>=0.46,<0.47",
+    "uvicorn>=0.32,<0.33",
 ]
 worker = [
     "duckdb>=2.0.0,<2.1.0",

@@ -5,9 +5,8 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from hypercorn.config import Config
 
-from exaflow.controller.quart import hypercorn_config as hc
+from exaflow.controller.http import server_config as hc
 from exaflow.controller.services import controller_shutdown as budget
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -80,7 +79,7 @@ def _prestop_delay(block: str) -> int:
 def _shutdown_budget_seconds(prestop_delay: int) -> int:
     """Pod grace must cover the real shutdown path, not worker_tasks_timeout.
 
-    The preStop delay runs first. After SIGTERM Hypercorn drains for
+    The preStop delay runs first. After SIGTERM Uvicorn drains for
     GRACEFUL_TIMEOUT, then the lifespan hook cancels the analysis RPCs
     (SHUTDOWN_RPC_CANCEL_TIMEOUT) and aggregation cleanup is bounded by
     SHUTDOWN_CLEANUP_TIMEOUT, instead of waiting out worker_tasks_timeout. The
@@ -101,26 +100,22 @@ def _shutdown_budget_seconds(prestop_delay: int) -> int:
     )
 
 
-def test_hypercorn_graceful_timeout_is_120_seconds():
-    config = Config.from_object("exaflow.controller.quart.hypercorn_config")
-
-    assert config.graceful_timeout == 120 == budget.GRACEFUL_TIMEOUT
-    assert config.shutdown_timeout == 60 == budget.SHUTDOWN_TIMEOUT
+def test_uvicorn_graceful_timeout_is_120_seconds():
+    assert hc.graceful_timeout == 120 == budget.GRACEFUL_TIMEOUT
+    assert budget.SHUTDOWN_TIMEOUT == 60
 
 
-def test_hypercorn_serves_in_process():
-    """workers >= 1 puts Hypercorn's supervisor in front of the serving process.
+def test_uvicorn_serves_in_process():
+    """workers > 1 puts Uvicorn's supervisor in front of the serving process.
 
     Kubernetes signals PID 1 and `inv kill-controller` signals the process that
     listens. Both must be the one that serves.
     """
-    config = Config.from_object("exaflow.controller.quart.hypercorn_config")
-    assert hc.workers == 0
-    assert config.workers == 0
+    assert hc.workers == 1
 
 
 @pytest.mark.skipif(shutil.which("helm") is None, reason="helm is not installed")
-def test_controller_pod_grace_period_covers_hypercorn_shutdown():
+def test_controller_pod_grace_period_covers_uvicorn_shutdown():
     grace, block = _helm_grace()
     timeout_at = block.index("name: WORKER_TASKS_TIMEOUT")
     worker_tasks_timeout = int(
@@ -149,7 +144,7 @@ def test_controller_pod_grace_tracks_the_cleanup_bound_override():
 
 @pytest.mark.skipif(shutil.which("helm") is None, reason="helm is not installed")
 def test_controller_pod_keeps_serving_while_endpoints_update():
-    """Hypercorn closes its listen socket at SIGTERM. A preStop sleep keeps the
+    """Uvicorn closes its listen socket at SIGTERM. A preStop sleep keeps the
     pod serving until Endpoints stop routing to it, and the grace period
     counts it."""
     grace, block = _helm_grace()
@@ -178,14 +173,20 @@ def test_controller_image_command_is_exec_form_without_shell():
     dockerfile = (REPO_ROOT / "exaflow" / "controller" / "Dockerfile").read_text()
     cmd_line = next(line for line in dockerfile.splitlines() if line.startswith("CMD"))
 
-    # A shell as PID 1 does not forward SIGTERM to Hypercorn.
+    # A shell as PID 1 does not forward SIGTERM to Uvicorn.
     assert json.loads(cmd_line[len("CMD") :]) == [
         "python",
         "-m",
-        "hypercorn",
-        "--config",
-        "python:exaflow.controller.quart.hypercorn_config",
-        "-b",
-        "0.0.0.0:5000",
+        "uvicorn",
         "exaflow.controller.http.app:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "5000",
+        "--workers",
+        "1",
+        "--timeout-graceful-shutdown",
+        "120",
+        "--log-config",
+        "exaflow/controller/http/log_config.json",
     ]

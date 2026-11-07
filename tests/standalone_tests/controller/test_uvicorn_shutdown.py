@@ -1,9 +1,9 @@
-"""Shutdown of the controller under the real Hypercorn config.
+"""Shutdown of the controller under a real Uvicorn process.
 
 The unit tests of the shutdown helpers pass with any assumption about how
-Hypercorn and Quart deliver cancellation. These start ``python -m hypercorn``
-with ``exaflow.controller.quart.hypercorn_config`` (only the drain is shortened)
-and send it SIGTERM while analyses are in flight.
+Uvicorn and FastAPI deliver cancellation. These start ``python -m uvicorn``
+with the controller's settings (only the drain is shortened) and send it
+SIGTERM while analyses are in flight.
 """
 
 import os
@@ -17,20 +17,24 @@ from pathlib import Path
 
 import pytest
 
+from exaflow.controller.http import server_config
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 GRACEFUL_TIMEOUT = 3
 STARTUP_TIMEOUT = 90
+# Uvicorn re-raises the SIGTERM it handled once shutdown is complete.
+CLEAN_EXIT = (0, -signal.SIGTERM)
 
 
 class _Probe:
-    """One Hypercorn process serving ``shutdown_probe_app``."""
+    """One Uvicorn process serving ``shutdown_probe_app``."""
 
     def __init__(self, tmp_path):
         with socket.socket() as sock:
             sock.bind(("127.0.0.1", 0))
             self.port = sock.getsockname()[1]
         self.events_file = tmp_path / "events.txt"
-        self.output_file = tmp_path / "hypercorn.log"
+        self.output_file = tmp_path / "uvicorn.log"
         self._connections = []
         env = dict(
             os.environ,
@@ -43,14 +47,16 @@ class _Probe:
             [
                 sys.executable,
                 "-m",
-                "hypercorn",
-                "--config",
-                "python:exaflow.controller.quart.hypercorn_config",
-                "--graceful-timeout",
-                str(GRACEFUL_TIMEOUT),
-                "-b",
-                f"127.0.0.1:{self.port}",
+                "uvicorn",
                 "tests.standalone_tests.controller.shutdown_probe_app:app",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                str(self.port),
+                "--workers",
+                str(server_config.workers),
+                "--timeout-graceful-shutdown",
+                str(GRACEFUL_TIMEOUT),
             ],
             cwd=REPO_ROOT,
             env=env,
@@ -124,17 +130,17 @@ def probe(tmp_path):
 def test_analysis_running_at_drain_expiry_is_cancelled_and_the_process_exits_cleanly(
     probe,
 ):
-    """Hypercorn cancels the request task at drain expiry, but Quart leaves the
-    task running the analysis alone. The lifespan hook has to cancel its RPC, or
-    it waits Hypercorn's whole shutdown_timeout and fails."""
+    """Uvicorn cancels the request task at drain expiry, but the analysis thread
+    keeps running. The lifespan hook has to cancel its RPC, or the process waits
+    for the RPC deadline."""
     probe.start_analysis("a")
 
     sent_at = probe.terminate()
     returncode = probe.exit_code()
 
     events = probe.events()
-    assert returncode == 0, probe.output()
-    assert "LifespanTimeoutError" not in probe.output()
+    assert returncode in CLEAN_EXIT, probe.output()
+    assert "still running" not in probe.output()
     assert events["a:rpc-cancelled"] - sent_at >= GRACEFUL_TIMEOUT - 1
     assert events["a:rpc-cancelled"] - sent_at < GRACEFUL_TIMEOUT + 10
     assert "landscape-stopped" in events
@@ -154,5 +160,5 @@ def test_client_disconnect_during_the_drain_does_not_cancel_other_analyses(probe
     returncode = probe.exit_code()
 
     events = probe.events()
-    assert returncode == 0, probe.output()
+    assert returncode in CLEAN_EXIT, probe.output()
     assert events["a:rpc-cancelled"] - sent_at >= GRACEFUL_TIMEOUT - 1

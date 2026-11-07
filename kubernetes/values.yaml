@@ -34,7 +34,7 @@ controller:
   # Shutdown budget. The controller does not read these keys: they only size the
   # pod's terminationGracePeriodSeconds (and the preStop sleep). The values the
   # controller runs with live in exaflow/controller/services/controller_shutdown.py
-  # and exaflow/controller/quart/hypercorn_config.py. A test fails when these
+  # and exaflow/controller/http/server_config.py. A test fails when these
   # defaults differ from them, and overriding one here does not change the drain.
   # The grace period is the sum. It does not include worker_tasks_timeout.
   shutdown_prestop_delay: 5

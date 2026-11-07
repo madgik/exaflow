@@ -17,7 +17,7 @@ spec:
     spec:
       # Shutdown budget, matching exaflow/controller/services/controller_shutdown.py:
       # preStop delay + graceful drain + cancel in-flight RPCs + aggregation
-      # cleanup + Hypercorn shutdown hooks + margin. Shutdown cancels worker
+      # cleanup + Uvicorn lifespan shutdown hook + margin. Shutdown cancels worker
       # RPCs, so this does not add worker_tasks_timeout. Kubelet stops the
       # liveness and startup probes of a terminating pod (SyncTerminatingPod
       # calls StopLivenessAndStartup, then killPod), so /livez failing after the
@@ -36,7 +36,7 @@ spec:
 
         lifecycle:
           preStop:
-            # Keep serving while the Endpoints update removes this pod. Hypercorn
+            # Keep serving while the Endpoints update removes this pod. Uvicorn
             # closes its listen socket as soon as it gets SIGTERM.
             exec:
               command: ["sleep", {{ quote .Values.controller.shutdown_prestop_delay }}]

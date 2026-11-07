@@ -1,9 +1,10 @@
 """Shutdown budget and the shutdown flag for in-flight controller work.
 
-Hypercorn closes the listen socket on SIGTERM, drains requests for
-``GRACEFUL_TIMEOUT`` and then cancels the request tasks. Quart does not pass
-that cancellation on to the task that runs the request, so the analysis threads
-are still running when the lifespan shutdown hook starts. That hook calls
+Uvicorn closes the listen socket on SIGTERM, drains requests for
+``GRACEFUL_TIMEOUT``, cancels the request tasks still running and then starts
+the lifespan shutdown hook without waiting for them. A cancelled request still
+waits for its analysis thread (``run_blocking``), so those threads are running
+when the hook starts. That hook calls
 ``begin_controller_shutdown``: it cancels the registered worker and aggregation
 RPCs, and every RPC registered afterwards, so a thread that starts its next
 batch stops too.
@@ -21,8 +22,8 @@ from typing import Any
 # Seconds. The pod grace period is the sum of these, the preStop delay in the
 # chart, and the margin. It does not include worker_tasks_timeout, because
 # shutdown cancels the calls that would wait for it.
-GRACEFUL_TIMEOUT = 120  # Hypercorn drains in-flight requests this long
-SHUTDOWN_TIMEOUT = 60  # Hypercorn waits this long for the shutdown hooks
+GRACEFUL_TIMEOUT = 120  # Uvicorn drains in-flight requests this long
+SHUTDOWN_TIMEOUT = 60  # budget for the lifespan shutdown hook
 SHUTDOWN_RPC_CANCEL_TIMEOUT = 5  # wait for analysis threads after cancelling RPCs
 SHUTDOWN_CLEANUP_TIMEOUT = 10  # aggregation cleanup and worker-landscape join
 SHUTDOWN_GRACE_MARGIN = 20
