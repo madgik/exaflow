@@ -1,5 +1,6 @@
 import argparse
 import logging
+import signal
 from concurrent import futures
 from typing import Optional
 
@@ -296,6 +297,25 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
             self._handle_exception(context, exc)
 
 
+# Fits Kubernetes' default 30 s pod grace. The worker chart does not set
+# terminationGracePeriodSeconds, so a longer stop() would be SIGKILLed.
+SHUTDOWN_GRACE_SECONDS = 10
+
+
+def _install_shutdown_handlers(server: grpc.Server, grace: float) -> None:
+    """Stop the server on SIGTERM or SIGINT.
+
+    Container PID 1 ignores SIGTERM until the process installs a handler.
+    ``wait_for_termination`` returns once ``stop`` finishes.
+    """
+
+    def _stop(_signum, _frame) -> None:
+        server.stop(grace)
+
+    signal.signal(signal.SIGTERM, _stop)
+    signal.signal(signal.SIGINT, _stop)
+
+
 def _create_grpc_server(max_workers: int) -> grpc.Server:
     # The limit applies to every worker RPC, not only RunUdf.
     return grpc.server(
@@ -323,6 +343,10 @@ def serve() -> None:
 
     listen_addr = f"{worker_config.grpc.ip}:{worker_config.grpc.port}"
     server.add_insecure_port(listen_addr)
+    server.start()
+    # After start, and before the ready log, so a SIGTERM that arrives once
+    # the process has announced itself is not dropped.
+    _install_shutdown_handlers(server, SHUTDOWN_GRACE_SECONDS)
     LOGGER.info("Worker gRPC server listening on %s", listen_addr)
     LOGGER.info("Server starting on %s", listen_addr)
     LOGGER.info("Registered services: exaflow.worker.api.WorkerService")
@@ -331,12 +355,8 @@ def serve() -> None:
         worker_pb2.DESCRIPTOR.services_by_name["WorkerService"].full_name,
     )
 
-    server.start()
-    try:
-        server.wait_for_termination()
-    except KeyboardInterrupt:
-        LOGGER.info("Worker gRPC server shutting down...")
-        server.stop(0)
+    server.wait_for_termination()
+    LOGGER.info("Worker gRPC server shut down.")
 
 
 if __name__ == "__main__":
