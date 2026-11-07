@@ -168,7 +168,9 @@ same-named Helm keys only size the grace period, and a test fails when they
 differ.
 
 Workers expose gRPC services and load data at startup. The aggregation server
-keeps request-scoped aggregation contexts until cleanup.
+keeps request-scoped aggregation contexts until cleanup. Cleanup removes a
+context only when the caller's ownership token matches the token stored when
+that caller configured it.
 
 ## External Services
 

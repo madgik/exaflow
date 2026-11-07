@@ -146,9 +146,11 @@ class Exareme3WithAggregationServerStrategy(Exareme3Strategy):
                         timeout=deadline,
                     )
                 except (grpc.RpcError, ControllerShuttingDownError):
-                    # A timed out or cancelled Configure may still have created
-                    # the context, so cleanup has to run. The server is already
-                    # slow or gone: do not wait a second full deadline for it.
+                    # The response was lost. This client may still own the
+                    # context: Cleanup repeats the ownership token sent with
+                    # Configure, and the server deletes only on a match. A
+                    # duplicate request's token does not. The server is already
+                    # slow or gone, so do not wait a second full deadline.
                     configured = True
                     cleanup_deadline = SHUTDOWN_CLEANUP_TIMEOUT
                     raise
