@@ -1,11 +1,12 @@
 import asyncio
 from logging.config import dictConfig
 
-from quart import Blueprint
-from quart import jsonify
-from quart import request
+from fastapi import APIRouter
+from fastapi import Request
+from starlette.responses import JSONResponse
 
-from exaflow.controller.quart.loggers import loggers
+from exaflow.controller.http.loggers import loggers
+from exaflow.controller.http.responses import html_response
 from exaflow.controller.services import get_worker_landscape_aggregator
 from exaflow.controller.services.algorithm_execution_strategy_factory import (
     get_algorithm_execution_strategy,
@@ -33,20 +34,19 @@ from exaflow.controller.services.flower import get_flower_controller
 from exaflow.controller.services.startup import start_background_services
 from exaflow.controller.services.startup import stop_background_services
 
-algorithms = Blueprint("algorithms_endpoint", __name__)
+router = APIRouter()
 
 
-@algorithms.before_app_serving
 async def startup():
     configure_loggers()
     start_background_services()
     start_analysis_execution()
 
 
-@algorithms.after_app_serving
 async def shutdown():
-    # Hypercorn has drained the requests that could finish. Quart does not
-    # cancel the tasks still running the others, so cancel their RPCs here.
+    # Uvicorn has drained the requests that could finish and cancelled the
+    # others. Their analysis threads keep running until their RPCs are
+    # cancelled, so cancel them here.
     begin_controller_shutdown()
     try:
         await asyncio.to_thread(stop_background_services)
@@ -57,13 +57,13 @@ async def shutdown():
         )
 
 
-@algorithms.route("/datasets", methods=["GET"])
-async def get_datasets() -> dict:
+@router.get("/datasets")
+async def get_datasets():
     return get_worker_landscape_aggregator().get_all_available_datasets_per_data_model()
 
 
-@algorithms.route("/datasets_locations", methods=["GET"])
-async def get_datasets_locations() -> dict:
+@router.get("/datasets_locations")
+async def get_datasets_locations():
     return {
         data_model: {
             dataset: worker_id for dataset, worker_id in datasets_location.items()
@@ -74,8 +74,8 @@ async def get_datasets_locations() -> dict:
     }
 
 
-@algorithms.route("/datasets_variables", methods=["GET"])
-async def get_datasets_variables() -> dict:
+@router.get("/datasets_variables")
+async def get_datasets_variables():
     return {
         data_model: {
             dataset: variables for dataset, variables in datasets_variables.items()
@@ -86,8 +86,8 @@ async def get_datasets_variables() -> dict:
     }
 
 
-@algorithms.route("/cdes_metadata", methods=["GET"])
-async def get_cdes_metadata() -> dict:
+@router.get("/cdes_metadata")
+async def get_cdes_metadata():
     cdes_per_data_model = get_worker_landscape_aggregator().get_cdes_per_data_model()
     return {
         data_model: {
@@ -97,8 +97,8 @@ async def get_cdes_metadata() -> dict:
     }
 
 
-@algorithms.route("/data_models_attributes", methods=["GET"])
-async def get_data_models_attributes() -> dict:
+@router.get("/data_models_attributes")
+async def get_data_models_attributes():
     data_model_attrs = get_worker_landscape_aggregator().get_data_models_attributes()
     return {
         data_model: data_model_metadata.model_dump()
@@ -106,60 +106,63 @@ async def get_data_models_attributes() -> dict:
     }
 
 
-@algorithms.route("/specifications/inputdata", methods=["GET"])
-async def get_inputdata_specification() -> str:
-    return inputdata_specification_dto.model_dump_json()
+@router.get("/specifications/inputdata")
+async def get_inputdata_specification():
+    return html_response(inputdata_specification_dto.model_dump_json())
 
 
-@algorithms.route("/specifications/preprocessing", methods=["GET"])
-async def get_preprocessing_specifications() -> str:
-    return preprocessing_step_specifications_dtos.model_dump_json()
+@router.get("/specifications/preprocessing")
+async def get_preprocessing_specifications():
+    return html_response(preprocessing_step_specifications_dtos.model_dump_json())
 
 
-@algorithms.route("/specifications/algorithms", methods=["GET"])
-async def get_algorithm_specifications() -> str:
-    return algorithm_specifications_dtos.model_dump_json()
+@router.get("/specifications/algorithms")
+async def get_algorithm_specifications():
+    return html_response(algorithm_specifications_dtos.model_dump_json())
 
 
-@algorithms.route("/wla", methods=["POST"])
-async def update_wla() -> str:
+@router.post("/wla")
+async def update_wla():
     await asyncio.to_thread(get_worker_landscape_aggregator().update)
-    return ""
+    return html_response("")
 
 
-@algorithms.route("/healthcheck", methods=["GET"])
-async def healthcheck() -> str:
+@router.get("/healthcheck")
+async def healthcheck():
     await asyncio.to_thread(get_worker_landscape_aggregator().healthcheck)
-    return ""
+    return html_response("")
 
 
-@algorithms.route("/livez", methods=["GET"])
-async def livez() -> str:
+@router.get("/livez")
+async def livez():
     # Liveness only: unlike /healthcheck, it does not depend on worker health.
-    return ""
+    return html_response("")
 
 
-@algorithms.route("/analysis", methods=["POST"])
-async def run_analysis() -> str:
-    return await execute_analysis(
-        await request.json,
-        validate_analysis_request=validate_analysis_request,
-        get_algorithm_execution_strategy=get_algorithm_execution_strategy,
-        get_worker_landscape_aggregator=get_worker_landscape_aggregator,
+@router.post("/analysis")
+async def run_analysis(request: Request):
+    # No Pydantic body parameter: FastAPI would answer 422 for a bad body.
+    return html_response(
+        await execute_analysis(
+            await request.json(),
+            validate_analysis_request=validate_analysis_request,
+            get_algorithm_execution_strategy=get_algorithm_execution_strategy,
+            get_worker_landscape_aggregator=get_worker_landscape_aggregator,
+        )
     )
 
 
-@algorithms.route("/flower/input", methods=["GET"])
-async def get_flower_input() -> dict:
+@router.get("/flower/input")
+async def get_flower_input():
     return get_flower_controller().flower_execution_info.get_inputdata()
 
 
-@algorithms.route("/flower/result", methods=["POST"])
-async def set_flower_result():
-    request_body = await request.json
+@router.post("/flower/result")
+async def set_flower_result(request: Request):
+    request_body = await request.json()
     await get_flower_controller().flower_execution_info.set_result(result=request_body)
 
-    return jsonify({"message": "Result set successfully"}), 200
+    return JSONResponse({"message": "Result set successfully"})
 
 
 def configure_loggers():

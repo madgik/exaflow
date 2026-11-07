@@ -562,8 +562,8 @@ ______________________________________________________________________
 - Algorithm spec DTO shape:
   - `exaflow/controller/services/api/algorithm_spec_dtos.py`
 - Route surface:
-  - `exaflow/controller/quart/endpoints.py`
+  - `exaflow/controller/http/endpoints.py`
 - Error mapping:
-  - `exaflow/controller/quart/error_handlers.py`
+  - `exaflow/controller/http/error_handlers.py`
 - Algorithm/preprocessing names:
   - `exaflow/algorithms/specifications.py`

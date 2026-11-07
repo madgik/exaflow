@@ -1,4 +1,4 @@
-"""App served by the real Hypercorn config in ``test_hypercorn_shutdown.py``.
+"""App served by a real Uvicorn process in ``test_uvicorn_shutdown.py``.
 
 It wires the controller's own shutdown pieces (``run_blocking``, the in-flight
 RPC registry and the ``endpoints.shutdown`` lifespan hook) around a gRPC call
@@ -10,11 +10,13 @@ import os
 import threading
 import time
 from concurrent import futures
+from contextlib import asynccontextmanager
 
 import grpc
-from quart import Quart
+from fastapi import FastAPI
+from fastapi.responses import PlainTextResponse
 
-from exaflow.controller.quart import endpoints
+from exaflow.controller.http import endpoints
 from exaflow.controller.services import set_worker_landscape_aggregator
 from exaflow.controller.services.analysis_execution import run_blocking
 from exaflow.controller.services.analysis_execution import start_analysis_execution
@@ -51,16 +53,18 @@ _port = _server.add_insecure_port("127.0.0.1:0")
 _server.start()
 _wait = grpc.insecure_channel(f"127.0.0.1:{_port}").unary_unary("/probe.Probe/Wait")
 
-app = Quart(__name__)
 
-
-@app.before_serving
-async def startup():
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
     set_worker_landscape_aggregator(_Landscape())
     start_analysis_execution()
+    try:
+        yield
+    finally:
+        await endpoints.shutdown()
 
 
-app.after_serving(endpoints.shutdown)
+app = FastAPI(lifespan=_lifespan)
 
 
 def _analysis(name: str) -> str:
@@ -75,13 +79,13 @@ def _analysis(name: str) -> str:
     return "done"
 
 
-@app.route("/ping")
+@app.get("/ping", response_class=PlainTextResponse)
 async def ping():
     return "pong"
 
 
-@app.route("/analysis/<name>")
-async def analysis(name):
+@app.get("/analysis/{name}", response_class=PlainTextResponse)
+async def analysis(name: str):
     try:
         return await run_blocking(_analysis, name)
     finally:

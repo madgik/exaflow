@@ -1,7 +1,7 @@
 import asyncio
 
-from exaflow.controller.quart import endpoints
-from exaflow.controller.quart.app import app
+from exaflow.controller.http import endpoints
+from exaflow.controller.http.app import app
 
 
 def test_livez_does_not_contact_workers(monkeypatch):

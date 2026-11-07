@@ -6,7 +6,7 @@ import time
 import pytest
 
 from exaflow.controller import DeploymentType
-from exaflow.controller.quart import endpoints
+from exaflow.controller.http import endpoints
 from exaflow.controller.services import exareme3
 from exaflow.controller.services.exareme3 import get_exareme3_controller
 from exaflow.controller.services.worker_landscape_aggregator.worker_landscape_aggregator import (

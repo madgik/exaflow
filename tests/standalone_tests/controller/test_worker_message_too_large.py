@@ -41,8 +41,8 @@ def _message_too_large():
 
 
 def test_analysis_maps_worker_message_too_large(monkeypatch):
-    from exaflow.controller.quart import endpoints
-    from exaflow.controller.quart.app import app
+    from exaflow.controller.http import endpoints
+    from exaflow.controller.http.app import app
 
     error = _message_too_large()
 
@@ -55,8 +55,6 @@ def test_analysis_maps_worker_message_too_large(monkeypatch):
     monkeypatch.setattr(
         endpoints, "get_algorithm_execution_strategy", lambda dto: _Strategy()
     )
-    # Production does not propagate; force the registered handler to run.
-    monkeypatch.setitem(app.config, "PROPAGATE_EXCEPTIONS", False)
 
     async def _post():
         client = app.test_client()

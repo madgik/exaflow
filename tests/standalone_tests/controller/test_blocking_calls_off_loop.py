@@ -3,7 +3,7 @@ import threading
 
 import pytest
 
-from exaflow.controller.quart import endpoints
+from exaflow.controller.http import endpoints
 from exaflow.controller.services.exareme3 import strategies as exareme3_strategies
 from exaflow.controller.services.exareme3.strategies import (
     Exareme3WithAggregationServerStrategy,

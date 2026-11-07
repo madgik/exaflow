@@ -14,7 +14,7 @@ for full command lists, architecture detail, and validation matrices.
 Exaflow is the execution engine behind the Medical Informatics Platform. It
 orchestrates federated classical algorithms across multiple workers that hold
 DuckDB-backed datasets. The main runtime is a Python 3.11 backend/service system
-with a Quart/Hypercorn controller, gRPC workers, optional aggregation server,
+with a FastAPI/Hypercorn controller, gRPC workers, optional aggregation server,
 algorithm implementations, Kubernetes deployment manifests, and a nested
 `exadata-validator` Python package.
 
@@ -27,7 +27,7 @@ separate config, markers, and review requirements — see
 
 | Path | Purpose |
 | --- | --- |
-| `exaflow/controller/quart` | HTTP API endpoints; `endpoints.py` drives `/algorithms` and metadata routes. |
+| `exaflow/controller/http` | HTTP API endpoints; FastAPI routes in `endpoints.py`, served by Hypercorn. |
 | `exaflow/controller/services` | Controller-side validation, worker landscape aggregation, execution strategies, and task handlers. |
 | `exaflow/worker` | Worker gRPC service, DuckDB loading, UDF execution, and worker metadata services. |
 | `exaflow/aggregation_server` | Optional gRPC aggregation service for federated vector operations. |
@@ -51,7 +51,7 @@ separate config, markers, and review requirements — see
 
 - Language/runtime: Python `>=3.11,<3.12`.
 - Package manager: uv; root lockfile is `uv.lock`.
-- Controller: Quart and Hypercorn.
+- Controller: FastAPI and Hypercorn.
 - Worker/API transport: gRPC, protobuf, grpcio health checks.
 - Local persistence: DuckDB loaded from CSV datasets.
 - Data/science stack: NumPy, SciPy, pandas, scikit-learn, statsmodels, pyarrow.
@@ -136,7 +136,7 @@ See `documentation/context/architecture.md` and
 `documentation/context/module-index.md` for full flow diagrams and module
 ownership. Non-negotiable boundaries:
 
-- HTTP routes in `exaflow/controller/quart`; DTOs/validation in
+- HTTP routes in `exaflow/controller/http`; DTOs/validation in
   `exaflow/controller/services/api`.
 - Controller orchestration in `exaflow/controller/services` (strategies, task
   handlers).
@@ -323,8 +323,9 @@ The pipeline below is what you usually need to reference or debug.
 1. **HTTP Request Intake**
 
    - `run_analysis` posts to `POST /analysis`.
-   - Quart wiring lives in `exaflow/controller/quart/endpoints.py`. It parses
-     JSON into `AnalysisRequestDTO`, validates it against enabled specs, and
+   - FastAPI wiring lives in `exaflow/controller/http/endpoints.py`. It reads
+     the JSON body, and `analysis_service.run_analysis` parses it into
+     `AnalysisRequestDTO`, validates it against enabled specs, and
      instantiates a strategy via `get_algorithm_execution_strategy`.
 
 1. **Strategy Selection and Metadata Prep**

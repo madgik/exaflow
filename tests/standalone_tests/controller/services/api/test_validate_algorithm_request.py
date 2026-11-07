@@ -1,9 +1,9 @@
 import asyncio
 
 import pytest
+from fastapi import FastAPI
+from fastapi import Request
 from pydantic import ValidationError
-from quart import Quart
-from quart import request
 
 import exaflow.controller.services.api.analysis_request_validator as analysis_request_validator
 from exaflow.algorithms.exareme3.cluster.kmeans_cluster_creator import (
@@ -22,7 +22,9 @@ from exaflow.algorithms.specifications import InputDataType
 from exaflow.algorithms.specifications import ParameterDictValueType
 from exaflow.algorithms.specifications import ParameterSpecification
 from exaflow.algorithms.specifications import ParameterType
-from exaflow.controller.quart.error_handlers import error_handlers
+from exaflow.controller.http.asgi_client import ControllerClient
+from exaflow.controller.http.error_handlers import register_error_handlers
+from exaflow.controller.http.responses import html_response
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisAlgorithmDTO
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisInputDataDTO
 from exaflow.controller.services.api.analysis_request_dtos import (
@@ -167,14 +169,14 @@ def _validate_parameter_request(parameters, parameter_specs):
 
 
 def _post_parameter_request(parameters, parameter_specs):
-    app = Quart(__name__)
-    app.register_blueprint(error_handlers)
+    app = FastAPI()
+    register_error_handlers(app)
     algorithms_specs = {"sample_algorithm": _algorithm_spec(parameters=parameter_specs)}
     body = _request(parameters=parameters).model_dump(mode="json")
 
     @app.post("/analysis")
-    async def run_analysis():
-        analysis_request_dto = AnalysisRequestDTO.model_validate(await request.json)
+    async def run_analysis(request: Request):
+        analysis_request_dto = AnalysisRequestDTO.model_validate(await request.json())
         analysis_request_validator.validate_analysis_request(
             analysis_request_dto=analysis_request_dto,
             algorithms_specs=algorithms_specs,
@@ -183,10 +185,10 @@ def _post_parameter_request(parameters, parameter_specs):
             smpc_enabled=False,
             smpc_optional=False,
         )
-        return "ok"
+        return html_response("ok")
 
     async def _call():
-        async with app.test_client() as client:
+        async with ControllerClient(app) as client:
             response = await client.post("/analysis", json=body)
             body_text = await response.get_data(as_text=True)
             return response.status_code, body_text

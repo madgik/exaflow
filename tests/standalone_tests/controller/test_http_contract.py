@@ -1,7 +1,7 @@
 """Pin the HTTP contract of the controller routes.
 
 The expectations below (status codes, ``Content-Type`` headers and bodies) were
-captured from a live run of ``exaflow.controller.quart.app.app`` through
+captured from a live run of ``exaflow.controller.http.app.app`` through
 ``app.test_client()`` and are asserted here so that any drift in the served
 response is caught. No source under ``exaflow/`` is exercised beyond driving the
 real routes; the service layer is stubbed via ``monkeypatch`` exactly as in
@@ -14,8 +14,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from exaflow.controller.quart import endpoints
-from exaflow.controller.quart.app import app
+from exaflow.controller.http import endpoints
+from exaflow.controller.http.app import app
 from exaflow.controller.services.analysis_execution import AnalysisCapacityExceeded
 from exaflow.controller.services.api.algorithm_spec_dtos import (
     algorithm_specifications_dtos,
