@@ -1,7 +1,9 @@
+import json
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import pytest
+from pydantic import ValidationError
 from scipy.stats import yeojohnson
 from sklearn.preprocessing import MaxAbsScaler as SklearnMaxAbsScaler
 from sklearn.preprocessing import MinMaxScaler as SklearnMinMaxScaler
@@ -41,14 +43,25 @@ def _fit_in_workers(factory, parts):
     def fit_one(item):
         worker_id, part = item
         transformer = factory()
-        transformer.fit(
-            part,
-            agg_client=SimulatedAggClient(worker_id=worker_id, coordinator=coordinator),
-        )
+        try:
+            transformer.fit(
+                part,
+                agg_client=SimulatedAggClient(
+                    worker_id=worker_id, coordinator=coordinator
+                ),
+            )
+        except Exception as exc:
+            coordinator.abort(exc)
+            raise
         return transformer
 
     with ThreadPoolExecutor(max_workers=len(parts)) as executor:
-        return list(executor.map(fit_one, enumerate(parts)))
+        futures = [executor.submit(fit_one, item) for item in enumerate(parts)]
+        try:
+            return [future.result(timeout=30) for future in futures]
+        except Exception as exc:
+            coordinator.abort(exc)
+            raise
 
 
 def test_simple_imputer_mean_is_global_and_does_not_mutate_inputs():
@@ -69,7 +82,7 @@ def test_simple_imputer_median_constant_and_safe_categorical_mode():
     constant = SimpleImputer("constant", fill_value=-1).fit(
         data, agg_client=DummyAggClient()
     )
-    categorical = SimpleImputer("most_frequent").fit(
+    categorical = SimpleImputer("most_frequent", categories=[["a", "b"]]).fit(
         np.array([["a"], ["b"], ["a"], [None]], dtype=object),
         agg_client=DummyAggClient(),
     )
@@ -87,14 +100,14 @@ def test_simple_imputer_constant_defaults_to_zero_for_numeric_input():
 
 
 def test_simple_imputer_rejects_numerical_mode_without_safe_protocol():
-    with pytest.raises(BadInputError, match="numeric mode"):
+    with pytest.raises(BadInputError, match="metadata vocabulary"):
         SimpleImputer("most_frequent").fit(
             np.array([[1.0], [2.0], [np.nan]]), agg_client=DummyAggClient()
         )
 
 
 def test_simple_imputer_rejects_numeric_values_stored_as_object():
-    with pytest.raises(BadInputError, match="numeric mode"):
+    with pytest.raises(BadInputError, match="metadata vocabulary"):
         SimpleImputer("most_frequent").fit(
             np.array([[1.37], [8.21], [1.37]], dtype=object),
             agg_client=DummyAggClient(),
@@ -103,7 +116,7 @@ def test_simple_imputer_rejects_numeric_values_stored_as_object():
 
 def test_simple_imputer_mode_rejects_globally_all_missing_feature():
     with pytest.raises(BadInputError, match="no valid observations"):
-        SimpleImputer("most_frequent").fit(
+        SimpleImputer("most_frequent", categories=[["a", "b"]]).fit(
             np.array([[None], [None]], dtype=object),
             agg_client=DummyAggClient(),
         )
@@ -225,15 +238,28 @@ def test_maxabs_rejects_feature_without_valid_values():
         MaxAbsScaler().fit(np.array([[np.nan], [np.nan]]), agg_client=DummyAggClient())
 
 
-def test_winsorizer_and_robust_scaler_use_global_percentiles():
+def test_winsorizer_clips_to_global_fitted_bounds():
     parts = [np.array([[0.0], [1.0], [2.0]]), np.array([[3.0], [4.0], [100.0]])]
     winsorized = _fit_in_workers(lambda: Winsorizer(0.0, 0.8), parts)
-    robust = _fit_in_workers(RobustScalerApprox, parts)
     pooled = np.vstack(parts)
 
-    assert np.max(winsorized[0].transform(pooled)) <= 100.0
-    assert np.all(np.isfinite(robust[1].transform(pooled)))
+    clipped = winsorized[0].transform(pooled)
+    expected = np.clip(pooled, winsorized[0].lower_bounds_, winsorized[0].upper_bounds_)
+    np.testing.assert_allclose(clipped, expected)
+    assert clipped[-1, 0] == winsorized[0].upper_bounds_[0]
+    assert clipped[-1, 0] < pooled[-1, 0]
     assert np.array_equal(parts[0], [[0.0], [1.0], [2.0]])
+
+
+def test_robust_scaler_matches_reference_with_stated_quantile_tolerance():
+    pooled = np.linspace(0, 10, 1001).reshape(-1, 1)
+    fitted = _fit_in_workers(RobustScalerApprox, [pooled[:100], pooled[100:]])
+    q25, median, q75 = np.quantile(pooled[:, 0], [0.25, 0.5, 0.75])
+    np.testing.assert_allclose(fitted[0].center_, [median], atol=0.02)
+    np.testing.assert_allclose(fitted[0].scale_, [q75 - q25], atol=0.02)
+    np.testing.assert_allclose(
+        fitted[1].transform(pooled), (pooled - median) / (q75 - q25), atol=0.02
+    )
 
 
 def test_outlier_detector_is_diagnostic_only():
@@ -298,10 +324,10 @@ def test_yeo_johnson_all_missing_local_partition_still_joins_aggregation():
 
 
 def test_quantile_transformer_is_monotone_and_replays_recipe():
-    data = np.array([[0.0], [1.0], [2.0], [3.0], [4.0]])
-    transformer = QuantileTransformerApprox(
-        n_quantiles=5, min_observations_per_interval=1
-    ).fit(data, agg_client=DummyAggClient())
+    data = np.arange(40.0).reshape(-1, 1)
+    transformer = QuantileTransformerApprox(n_quantiles=5, platform_minimum=10).fit(
+        data, agg_client=DummyAggClient()
+    )
     transformed = transformer.transform(data)
 
     assert np.all(np.diff(transformed[:, 0]) >= 0)
@@ -315,9 +341,9 @@ def test_quantile_transformer_is_monotone_and_replays_recipe():
 
 
 def test_quantile_transformer_is_partition_stable():
-    pooled = np.arange(20.0).reshape(-1, 1)
+    pooled = np.arange(40.0).reshape(-1, 1)
     fitted = _fit_in_workers(
-        lambda: QuantileTransformerApprox(n_quantiles=5),
+        lambda: QuantileTransformerApprox(n_quantiles=5, platform_minimum=10),
         [pooled[:3], pooled[3:17], pooled[17:]],
     )
     actual = np.vstack(
@@ -334,8 +360,8 @@ def test_quantile_transformer_is_partition_stable():
 
 def test_quantile_transformer_requires_global_observations_per_interval():
     with pytest.raises(BadInputError, match="global observations"):
-        QuantileTransformerApprox(n_quantiles=5).fit(
-            np.arange(19.0).reshape(-1, 1), agg_client=DummyAggClient()
+        QuantileTransformerApprox(n_quantiles=5, platform_minimum=10).fit(
+            np.arange(39.0).reshape(-1, 1), agg_client=DummyAggClient()
         )
 
 
@@ -343,7 +369,366 @@ def test_quantile_transformer_constant_normal_output_is_centered():
     transformer = QuantileTransformerApprox(
         n_quantiles=5,
         output_distribution="normal",
-        min_observations_per_interval=1,
-    ).fit(np.ones((5, 1)), agg_client=DummyAggClient())
+        platform_minimum=10,
+    ).fit(np.ones((40, 1)), agg_client=DummyAggClient())
 
     assert np.allclose(transformer.transform(np.ones((2, 1))), 0.0)
+
+
+@pytest.mark.parametrize("start, stop", [(1e6, 1e6 + 1), (1e8, 1e8 + 100), (0, 1e-9)])
+def test_quantile_transformer_does_not_flatten_nonconstant_features(start, stop):
+    data = np.linspace(start, stop, 100).reshape(-1, 1)
+    fitted = QuantileTransformerApprox(n_quantiles=5, platform_minimum=10).fit(
+        data, agg_client=DummyAggClient()
+    )
+    actual = fitted.transform(data)[:, 0]
+    assert actual[0] == pytest.approx(0)
+    assert actual[-1] == pytest.approx(1)
+    assert np.all(np.diff(actual) >= 0)
+    assert len(np.unique(actual)) > 2
+
+
+def test_standard_scaler_preserves_real_variation_at_tiny_magnitudes():
+    data = np.array([1e-17, 2e-17, 3e-17]).reshape(-1, 1)
+    fitted = StandardScaler().fit(data, agg_client=DummyAggClient())
+    expected = SklearnStandardScaler().fit_transform(data)
+    np.testing.assert_allclose(fitted.transform(data), expected, atol=1e-14)
+
+
+def test_constant_imputer_numeric_output_supports_numpy_and_json_replay():
+    data = np.array([[1.0], [np.nan]])
+    fitted = SimpleImputer("constant").fit(data, agg_client=DummyAggClient())
+    for model in (fitted, SimpleImputer.from_recipe(fitted.recipe_.model_dump())):
+        actual = model.transform(data)
+        assert actual.dtype.kind == "f"
+        assert not np.isnan(actual).any()
+        np.testing.assert_array_equal(actual, [[1], [0]])
+    assert fitted.fill_value is None
+
+
+def test_quantile_fit_uses_bounded_aggregation_rounds():
+    class CountingClient(DummyAggClient):
+        def __init__(self):
+            self.calls = 0
+
+        def sum(self, values):
+            self.calls += 1
+            return super().sum(values)
+
+        def min(self, values):
+            self.calls += 1
+            return super().min(values)
+
+        def max(self, values):
+            self.calls += 1
+            return super().max(values)
+
+    data = np.random.default_rng(12).normal(size=(1000, 4))
+    client = CountingClient()
+    QuantileTransformerApprox(n_quantiles=100, platform_minimum=10).fit(
+        data, agg_client=client
+    )
+    assert client.calls <= 20
+
+
+@pytest.mark.parametrize(
+    "configured, platform, n, passes",
+    [
+        (1, 10, 39, False),
+        (1, 10, 40, True),
+        (20, 10, 79, False),
+        (20, 10, 80, True),
+        (5, 25, 99, False),
+    ],
+)
+def test_quantile_privacy_uses_stricter_minimum(configured, platform, n, passes):
+    transformer = QuantileTransformerApprox(
+        n_quantiles=5,
+        platform_minimum=platform,
+        min_observations_per_interval=configured,
+    )
+    data = np.arange(float(n)).reshape(-1, 1)
+    if passes:
+        transformer.fit(data, agg_client=DummyAggClient())
+        assert transformer.recipe_.min_observations_per_interval == max(
+            configured, platform
+        )
+    else:
+        with pytest.raises(BadInputError, match="global observations"):
+            transformer.fit(data, agg_client=DummyAggClient())
+
+
+def test_quantile_privacy_counts_nonmissing_values_per_feature():
+    data = np.column_stack((np.arange(50.0), np.arange(50.0)))
+    data[:11, 1] = np.nan
+    with pytest.raises(BadInputError, match="global observations"):
+        _fit_in_workers(
+            lambda: QuantileTransformerApprox(n_quantiles=5, platform_minimum=10),
+            [data[:25], data[25:]],
+        )
+
+
+def test_quantile_uses_strictest_platform_minimum_across_sites():
+    coordinator = AggregationCoordinator(2)
+
+    def fit_one(worker_id):
+        model = QuantileTransformerApprox(
+            n_quantiles=5,
+            platform_minimum=[10, 20][worker_id],
+        )
+        model.fit(
+            np.arange(40.0).reshape(-1, 1),
+            agg_client=SimulatedAggClient(worker_id=worker_id, coordinator=coordinator),
+        )
+        return model
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        models = list(executor.map(fit_one, range(2)))
+    assert [model.recipe_.min_observations_per_interval for model in models] == [20, 20]
+    np.testing.assert_array_equal(models[0].quantiles_, models[1].quantiles_)
+
+
+def test_quantile_histogram_error_is_bounded_by_bin_width():
+    data = np.random.default_rng(5).normal(size=(2000, 1))
+    model = QuantileTransformerApprox(
+        n_quantiles=20,
+        platform_minimum=10,
+        n_bins=128,
+    ).fit(data, agg_client=DummyAggClient())
+    reference = np.quantile(data[:, 0], model.references_, method="inverted_cdf")
+    width = np.ptp(data[:, 0]) / model.n_bins
+    np.testing.assert_allclose(model.quantiles_[0], reference, atol=width, rtol=0)
+
+
+def test_quantile_ties_use_midpoint_references():
+    recipe = QuantileTransformerRecipe(
+        quantiles=[[0, 0, 0, 1, 1]],
+        references=[0, 0.25, 0.5, 0.75, 1],
+        output_distribution="uniform",
+        min_observations_per_interval=10,
+        platform_minimum=10,
+        n_bins=256,
+    )
+    model = QuantileTransformerApprox.from_recipe(recipe)
+    np.testing.assert_array_equal(
+        model.transform([0, 1, np.nan]), [0.25, 0.875, np.nan]
+    )
+
+
+def test_quantile_histogram_handles_adjacent_representable_values():
+    low = 1e16
+    high = np.nextafter(low, np.inf)
+    data = np.repeat([low, high], 20)
+    model = QuantileTransformerApprox(
+        n_quantiles=5,
+        platform_minimum=10,
+    ).fit(data, agg_client=DummyAggClient())
+    assert np.ptp(model.transform([low, high])) > 0
+
+
+def test_standard_scaler_many_constant_rows_and_sites():
+    data = np.tile(np.linspace(0.01, 100, 200), (10000, 1))
+    fitted = _fit_in_workers(StandardScaler, np.array_split(data, 10))
+    for model in fitted:
+        np.testing.assert_array_equal(model.scale_, np.ones(200))
+        np.testing.assert_allclose(model.transform(data[:1]), 0, atol=1e-10)
+
+
+@pytest.mark.parametrize("feature_range", [(0, 1), (-2, 4)])
+def test_minmax_constant_feature_custom_range_matches_sklearn(feature_range):
+    train = np.array([[3.0], [3.0], [np.nan]])
+    test = np.array([[3.0], [9.0], [np.nan]])
+    actual = MinMaxScaler(feature_range).fit(train, agg_client=DummyAggClient())
+    reference = SklearnMinMaxScaler(feature_range=feature_range).fit(train)
+    np.testing.assert_allclose(
+        actual.transform(test), reference.transform(test), equal_nan=True
+    )
+
+
+@pytest.mark.parametrize(
+    "parts",
+    [
+        [np.array([[1e300], [2e300]]), np.array([[1.0], [2.0]])],
+        [np.array([[1.0], [2.0]]), np.array([[-1e300], [-2e300]])],
+    ],
+)
+def test_yeo_johnson_extreme_values_use_safe_search_bounds(parts):
+    models = _fit_in_workers(YeoJohnsonTransformer, parts)
+    np.testing.assert_array_equal(models[0].lambdas_, models[1].lambdas_)
+    for model, part in zip(models, parts):
+        assert np.isfinite(model.transform(part)).all()
+        assert model.fit_diagnostics_[0].evaluations <= model.max_evaluations
+
+
+def test_yeo_johnson_no_safe_interval_fails_on_all_sites():
+    parts = [np.array([[1e300], [2e300]]), np.array([[-1e300], [-2e300]])]
+    coordinator = AggregationCoordinator(len(parts))
+
+    def fit_one(item):
+        worker_id, part = item
+        try:
+            YeoJohnsonTransformer().fit(
+                part,
+                agg_client=SimulatedAggClient(
+                    worker_id=worker_id, coordinator=coordinator
+                ),
+            )
+        except BadInputError as exc:
+            return exc
+
+    with ThreadPoolExecutor(max_workers=len(parts)) as executor:
+        futures = [executor.submit(fit_one, item) for item in enumerate(parts)]
+        try:
+            outcomes = [future.result(timeout=30) for future in futures]
+        except Exception as exc:
+            coordinator.abort(exc)
+            raise
+    # Every site must observe the shared numeric failure without relying on
+    # test-harness cancellation to wake up another aggregation participant.
+    assert all(
+        isinstance(result, BadInputError) and "numeric range" in str(result)
+        for result in outcomes
+    )
+
+
+@pytest.mark.parametrize(
+    "factory",
+    [
+        lambda: SimpleImputer("mean"),
+        lambda: SimpleImputer("median"),
+        lambda: SimpleImputer("constant"),
+        RobustScalerApprox,
+        MaxAbsScaler,
+        Winsorizer,
+        OutlierDetector,
+        lambda: OutlierDetector(mode="robust"),
+    ],
+)
+def test_fitted_recipe_json_roundtrip_preserves_transform(factory):
+    data = np.array([[0.0], [1.0], [3.0], [10.0], [np.nan]])
+    model = factory().fit(data, agg_client=DummyAggClient())
+    replay = type(model).from_recipe(json.loads(model.recipe_.model_dump_json()))
+    np.testing.assert_allclose(
+        replay.transform(data), model.transform(data), equal_nan=True
+    )
+
+
+def test_categorical_imputer_json_roundtrip():
+    data = np.array([["a"], ["a"], ["b"], [None]], dtype=object)
+    model = SimpleImputer("most_frequent", categories=[["a", "b"]]).fit(
+        data, agg_client=DummyAggClient()
+    )
+    replay = SimpleImputer.from_recipe(json.loads(model.recipe_.model_dump_json()))
+    assert replay.transform(data).tolist() == [["a"], ["a"], ["b"], ["a"]]
+
+
+@pytest.mark.parametrize(
+    "factory",
+    [
+        lambda: SimpleImputer(strategy=[]),
+        lambda: MinMaxScaler((1, 1)),
+        lambda: MinMaxScaler((np.nan, 1)),
+        lambda: Winsorizer("a", 0.9),
+        lambda: Winsorizer(0.9, 0.1),
+        lambda: OutlierDetector(threshold=np.inf),
+        lambda: OutlierDetector(mode=[]),
+        lambda: QuantileTransformerApprox(n_quantiles=np.nan, platform_minimum=10),
+        lambda: QuantileTransformerApprox(n_quantiles=True, platform_minimum=10),
+        lambda: QuantileTransformerApprox(platform_minimum=0),
+        lambda: QuantileTransformerApprox(
+            platform_minimum=10, min_observations_per_interval="1"
+        ),
+        lambda: QuantileTransformerApprox(platform_minimum=10, n_bins=1),
+    ],
+)
+def test_constructor_errors_are_bad_input(factory):
+    with pytest.raises(BadInputError):
+        factory()
+
+
+@pytest.mark.parametrize(
+    "factory",
+    [
+        SimpleImputer,
+        MissingIndicator,
+        Log1pTransformer,
+        SqrtTransformer,
+        AsinhTransformer,
+        StandardScaler,
+        RobustScalerApprox,
+        MinMaxScaler,
+        MaxAbsScaler,
+        Winsorizer,
+        OutlierDetector,
+        YeoJohnsonTransformer,
+        lambda: QuantileTransformerApprox(platform_minimum=10),
+    ],
+)
+def test_unfitted_transform_raises_bad_input(factory):
+    with pytest.raises(BadInputError, match="fitted"):
+        factory().transform([[1.0]])
+
+
+@pytest.mark.parametrize(
+    "factory",
+    [
+        Log1pTransformer,
+        SqrtTransformer,
+        AsinhTransformer,
+        StandardScaler,
+        RobustScalerApprox,
+        MinMaxScaler,
+        MaxAbsScaler,
+        Winsorizer,
+        YeoJohnsonTransformer,
+        lambda: QuantileTransformerApprox(n_quantiles=5, platform_minimum=10),
+    ],
+)
+def test_numeric_transform_preserves_nan_shape_and_input(factory):
+    train = np.linspace(0, 5, 40).reshape(-1, 1)
+    model = factory().fit(train, agg_client=DummyAggClient())
+    data = np.array([0, np.nan, 5])
+    copy = data.copy()
+    actual = model.transform(data)
+    assert actual.shape == data.shape
+    assert np.isnan(actual[1])
+    np.testing.assert_array_equal(data, copy)
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda recipe: recipe.update(scale=[0]),
+        lambda recipe: recipe.update(scale=[1, 2]),
+        lambda recipe: recipe.update(location=[np.nan]),
+    ],
+)
+def test_scaler_replay_rejects_invalid_fitted_state(mutate):
+    model = StandardScaler().fit([[1], [2]], agg_client=DummyAggClient())
+    recipe = model.recipe_.model_dump()
+    mutate(recipe)
+    with pytest.raises(ValidationError):
+        StandardScaler.from_recipe(recipe)
+
+
+def test_mode_uses_metadata_vocabulary_without_observed_value_union():
+    class CountsOnlyClient(DummyAggClient):
+        def union(self, values):
+            pytest.fail("Observed categories must not be shared.")
+
+    model = SimpleImputer("most_frequent", categories=[["a", "b"]]).fit(
+        [["a"], ["a"], [None]], agg_client=CountsOnlyClient()
+    )
+    assert model.transform([[None]]).tolist() == [["a"]]
+
+
+def test_yeo_johnson_small_budget_returns_labelled_finite_recipe():
+    data = np.array([-4.0, -2.0, -1.0, 0.0, 1.0, 3.0, 8.0])
+    model = YeoJohnsonTransformer(max_evaluations=1).fit(
+        data, agg_client=DummyAggClient()
+    )
+    diagnostic = model.recipe_.fit_diagnostics[0]
+    assert diagnostic.status == "approximate"
+    assert diagnostic.reason == "evaluation_budget_exhausted"
+    assert diagnostic.evaluations == 1
+    assert np.isfinite(model.transform(data)).all()
