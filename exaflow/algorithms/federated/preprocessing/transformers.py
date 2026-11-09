@@ -16,6 +16,9 @@ import numpy as np
 import pandas as pd
 from scipy.special import ndtri
 
+from exaflow.algorithms.federated.preprocessing._batched_quantiles import (
+    batched_quantiles,
+)
 from exaflow.algorithms.federated.preprocessing._categorical import validate_vocabulary
 from exaflow.algorithms.federated.preprocessing._categorical import vocabulary_counts
 from exaflow.algorithms.federated.preprocessing._configuration import (
@@ -33,7 +36,6 @@ from exaflow.algorithms.federated.preprocessing.recipes import ScalerRecipe
 from exaflow.algorithms.federated.preprocessing.recipes import SimpleImputerRecipe
 from exaflow.algorithms.federated.preprocessing.recipes import WinsorizerRecipe
 from exaflow.algorithms.federated.preprocessing.recipes import YeoJohnsonRecipe
-from exaflow.algorithms.federated.statistics.histogram import SimpleHistogram
 from exaflow.algorithms.federated.statistics.percentile import Percentile
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils import as_numeric_array
@@ -875,10 +877,11 @@ class QuantileTransformerApprox(_BaseTransformer):
     per requested rank interval. This is a cohort-size guard, not differential
     privacy or a guarantee on the occupancy of value bins.
 
-    One equal-width histogram per feature is reused for all quantiles. Values
-    are interpolated uniformly inside each bin; inverse empirical-CDF value
-    error is at most one bin width, up to floating-point rounding. Exact global
-    endpoints remain in the recipe.
+    Quantiles share batched histogram refinement, with two additional rounds by
+    default. Selected bins are enlarged to meet the effective support floor;
+    only supported groups expose aggregate extrema. Recipes retain achieved
+    uncertainty intervals instead of claiming a fixed accuracy. Exact global
+    endpoints are retained separately from the interior support rule.
     """
 
     def __init__(
@@ -889,12 +892,14 @@ class QuantileTransformerApprox(_BaseTransformer):
         *,
         platform_minimum: int,
         n_bins: int = 256,
+        max_refinement_rounds: int = 2,
     ):
         for name, value, minimum in (
             ("n_quantiles", n_quantiles, 2),
             ("min_observations_per_interval", min_observations_per_interval, 1),
             ("platform_minimum", platform_minimum, 1),
             ("n_bins", n_bins, 2),
+            ("max_refinement_rounds", max_refinement_rounds, 0),
         ):
             if isinstance(value, (bool, np.bool_)):
                 raise BadInputError(f"{name} must be an integer.")
@@ -907,6 +912,7 @@ class QuantileTransformerApprox(_BaseTransformer):
         self.min_observations_per_interval = int(min_observations_per_interval)
         self.platform_minimum = int(platform_minimum)
         self.n_bins = int(n_bins)
+        self.max_refinement_rounds = int(max_refinement_rounds)
 
     @classmethod
     def from_recipe(cls, recipe):
@@ -917,9 +923,11 @@ class QuantileTransformerApprox(_BaseTransformer):
             min_observations_per_interval=recipe.min_observations_per_interval,
             platform_minimum=recipe.platform_minimum,
             n_bins=recipe.n_bins,
+            max_refinement_rounds=recipe.max_refinement_rounds,
         )
         transformer.quantiles_ = np.asarray(recipe.quantiles, dtype=float)
         transformer.references_ = np.asarray(recipe.references, dtype=float)
+        transformer.fit_diagnostics_ = recipe.fit_diagnostics
         transformer.recipe_ = recipe
         return transformer
 
@@ -927,6 +935,16 @@ class QuantileTransformerApprox(_BaseTransformer):
         array, squeezed = _as_2d_numeric(data)
         _require_rows(array)
         _reject_infinite(array)
+        check_common_configuration(
+            [
+                array.shape[1],
+                self.n_quantiles,
+                self.output_distribution,
+                self.n_bins,
+                self.max_refinement_rounds,
+            ],
+            agg_client,
+        )
         platform_minimum, configured_minimum = np.asarray(
             agg_client.max([self.platform_minimum, self.min_observations_per_interval]),
             dtype=float,
@@ -942,42 +960,23 @@ class QuantileTransformerApprox(_BaseTransformer):
             )
         references = np.linspace(0.0, 1.0, self.n_quantiles)
         minimum, maximum = _global_min_max(array, agg_client)
-        histogram = SimpleHistogram(NumpyAggregator(agg_client))
         quantiles = []
+        diagnostics = []
         for idx in range(array.shape[1]):
-            if minimum[idx] == maximum[idx]:
-                quantiles.append(np.full(self.n_quantiles, minimum[idx]))
-                continue
-            with np.errstate(over="ignore"):
-                span = maximum[idx] - minimum[idx]
-            if not np.isfinite(span):
-                raise BadInputError(
-                    "Quantile histogram range exceeds the numeric range."
-                )
-            # Histogram coordinates avoid coincident edges when original bounds
-            # differ by only one representable floating-point step.
-            normalized = (array[:, idx] - minimum[idx]) / span
-            counts, edges = histogram.compute(
-                normalized,
-                self.n_bins,
-                bounds=(0.0, 1.0),
+            values, diagnostic = batched_quantiles(
+                array[:, idx],
+                references,
+                minimum=minimum[idx],
+                maximum=maximum[idx],
+                count=int(global_count[idx]),
+                minimum_support=effective_minimum,
+                n_bins=self.n_bins,
+                max_refinement_rounds=self.max_refinement_rounds,
+                agg_client=agg_client,
             )
-            occupied = counts > 0
-            cumulative = np.cumsum(counts[occupied])
-            targets = references * global_count[idx]
-            bins = np.minimum(
-                np.searchsorted(cumulative, targets, side="left"), len(cumulative) - 1
-            )
-            previous = np.concatenate(([0.0], cumulative[:-1]))
-            fractions = (targets - previous[bins]) / counts[occupied][bins]
-            lower = edges[:-1][occupied][bins]
-            upper = edges[1:][occupied][bins]
-            values = minimum[idx] + (lower + fractions * (upper - lower)) * span
-            values[0], values[-1] = minimum[idx], maximum[idx]
             quantiles.append(values)
-        self.quantiles_ = np.maximum.accumulate(
-            np.asarray(quantiles, dtype=float), axis=1
-        )
+            diagnostics.append(diagnostic)
+        self.quantiles_ = np.asarray(quantiles, dtype=float)
         self.references_ = references
         self.recipe_ = QuantileTransformerRecipe(
             quantiles=self.quantiles_.tolist(),
@@ -986,7 +985,10 @@ class QuantileTransformerApprox(_BaseTransformer):
             min_observations_per_interval=effective_minimum,
             platform_minimum=int(platform_minimum),
             n_bins=self.n_bins,
+            max_refinement_rounds=self.max_refinement_rounds,
+            fit_diagnostics=diagnostics,
         )
+        self.fit_diagnostics_ = self.recipe_.fit_diagnostics
         return self
 
     def transform(self, data):
