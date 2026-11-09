@@ -428,7 +428,9 @@ def test_quantile_fit_uses_bounded_aggregation_rounds():
     QuantileTransformerApprox(n_quantiles=100, platform_minimum=10).fit(
         data, agg_client=client
     )
-    assert client.calls <= 20
+    # Shared setup plus at most three vector exchanges per histogram level,
+    # independent of how many target quantiles occupy those bins.
+    assert client.calls <= 6 + 3 * data.shape[1] * 3
 
 
 @pytest.mark.parametrize(
@@ -508,6 +510,17 @@ def test_quantile_ties_use_midpoint_references():
         min_observations_per_interval=10,
         platform_minimum=10,
         n_bins=256,
+        max_refinement_rounds=2,
+        fit_diagnostics=[
+            {
+                "histogram_rounds": 0,
+                "intervals": [[0, 0], [0, 0], [0, 0], [1, 1], [1, 1]],
+                "support_counts": [0, 10, 10, 10, 0],
+                "max_interval_width": 0,
+                "limited_by_minimum_support": False,
+                "limited_by_refinement_budget": False,
+            }
+        ],
     )
     model = QuantileTransformerApprox.from_recipe(recipe)
     np.testing.assert_array_equal(

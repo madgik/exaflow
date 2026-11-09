@@ -197,6 +197,33 @@ class YeoJohnsonRecipe(FittedRecipe):
         return self
 
 
+class QuantileFitDiagnostic(BaseModel):
+    """Achieved value intervals; endpoint support zero means not applicable."""
+
+    model_config = ConfigDict(allow_inf_nan=False)
+    histogram_rounds: int = Field(ge=0)
+    intervals: list[tuple[float, float]] = Field(min_length=2)
+    support_counts: list[int] = Field(min_length=2)
+    max_interval_width: float = Field(ge=0)
+    limited_by_minimum_support: bool
+    limited_by_refinement_budget: bool
+
+    @model_validator(mode="after")
+    def validate_intervals(self):
+        if len(self.intervals) != len(self.support_counts):
+            raise ValueError("Quantile support counts must match the intervals.")
+        if any(low > high for low, high in self.intervals):
+            raise ValueError("Quantile uncertainty intervals must be ordered.")
+        if any(count < 0 for count in self.support_counts):
+            raise ValueError("Quantile support counts must be nonnegative.")
+        if self.support_counts[0] != 0 or self.support_counts[-1] != 0:
+            raise ValueError("Global endpoints do not have per-group support counts.")
+        width = max(high - low for low, high in self.intervals)
+        if self.max_interval_width != width:
+            raise ValueError("Quantile uncertainty width must match the intervals.")
+        return self
+
+
 class QuantileTransformerRecipe(FittedRecipe):
     primitive_name: Literal["quantile_transformer_approx"] = (
         "quantile_transformer_approx"
@@ -207,6 +234,8 @@ class QuantileTransformerRecipe(FittedRecipe):
     min_observations_per_interval: int = Field(ge=1)
     platform_minimum: int = Field(ge=1)
     n_bins: int = Field(ge=2)
+    max_refinement_rounds: int = Field(ge=0)
+    fit_diagnostics: list[QuantileFitDiagnostic] = Field(min_length=1)
 
     @model_validator(mode="after")
     def validate_grid(self):
@@ -223,4 +252,23 @@ class QuantileTransformerRecipe(FittedRecipe):
             raise ValueError("Quantile rows must be ordered and match the references.")
         if self.min_observations_per_interval < self.platform_minimum:
             raise ValueError("Quantile recipe must respect the platform minimum.")
+        if len(self.fit_diagnostics) != len(self.quantiles):
+            raise ValueError("Provide one quantile diagnostic per feature.")
+        for row, diagnostic in zip(self.quantiles, self.fit_diagnostics):
+            if len(diagnostic.intervals) != len(self.references):
+                raise ValueError("Quantile intervals must match the references.")
+            if diagnostic.histogram_rounds > self.max_refinement_rounds + 1:
+                raise ValueError("Quantile diagnostics exceed the refinement budget.")
+            if any(
+                count < self.min_observations_per_interval
+                for count in diagnostic.support_counts[1:-1]
+            ):
+                raise ValueError(
+                    "Interior quantile groups must respect minimum support."
+                )
+            if any(
+                not low <= value <= high
+                for value, (low, high) in zip(row, diagnostic.intervals)
+            ):
+                raise ValueError("Quantile estimates must belong to their intervals.")
         return self
