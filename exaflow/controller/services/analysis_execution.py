@@ -68,18 +68,20 @@ def shutdown_analysis_execution(join_timeout: float = 0) -> None:
         _executor = None
         _semaphore = None
         _semaphore_loop = None
+        # Taken under the guard: cleanup that runs after this starts a new pool
+        # whose idle threads must not be waited for.
+        threads = [
+            thread
+            for thread in threading.enumerate()
+            if thread.name.startswith(_THREAD_NAME_PREFIX)
+        ]
     if executor is None:
         return
     executor.shutdown(wait=False, cancel_futures=False)
     deadline = time.monotonic() + join_timeout
-    for thread in threading.enumerate():
-        if thread.name.startswith(_THREAD_NAME_PREFIX):
-            thread.join(max(0.0, deadline - time.monotonic()))
-    running = [
-        thread.name
-        for thread in threading.enumerate()
-        if thread.name.startswith(_THREAD_NAME_PREFIX)
-    ]
+    for thread in threads:
+        thread.join(max(0.0, deadline - time.monotonic()))
+    running = [thread.name for thread in threads if thread.is_alive()]
     if join_timeout and running:
         _LOGGER.warning(
             "%d analysis threads still running %s seconds after shutdown "

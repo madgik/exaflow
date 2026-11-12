@@ -14,6 +14,7 @@ from exaflow.aggregation_clients.controller_aggregation_client import (
 )
 from exaflow.controller import DeploymentType
 from exaflow.controller.http import endpoints
+from exaflow.controller.services import analysis_execution
 from exaflow.controller.services import controller_shutdown as shutdown
 from exaflow.controller.services.analysis_execution import reset_analysis_execution
 from exaflow.controller.services.analysis_execution import run_blocking
@@ -301,6 +302,34 @@ def test_analysis_pool_join_is_bounded_and_warns_about_a_stuck_thread(caplog):
 
     assert elapsed < 2
     assert "analysis threads still running" in caplog.text
+
+
+def test_analysis_pool_join_skips_a_pool_started_after_shutdown(caplog):
+    """A cancelled request runs its cleanup after the hook stopped the pool, so
+    run_blocking starts a new pool. Its idle thread is not an analysis thread."""
+
+    async def scenario():
+        await run_blocking(lambda: None)
+        old_pool = analysis_execution._executor
+        stop_old_pool = old_pool.shutdown
+
+        def stop_then_run_cleanup(**kwargs):
+            stop_old_pool(**kwargs)
+            analysis_execution._ensure_executor().submit(lambda: None).result()
+
+        old_pool.shutdown = stop_then_run_cleanup
+        began = time.monotonic()
+        with caplog.at_level(logging.WARNING):
+            await asyncio.to_thread(shutdown_analysis_execution, 2)
+        return time.monotonic() - began
+
+    try:
+        elapsed = asyncio.run(scenario())
+    finally:
+        reset_analysis_execution()
+
+    assert elapsed < 1
+    assert "analysis threads still running" not in caplog.text
 
 
 def test_run_udf_rpc_is_registered_for_shutdown_cancel(monkeypatch):
