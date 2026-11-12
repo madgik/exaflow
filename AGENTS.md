@@ -323,9 +323,9 @@ The pipeline below is what you usually need to reference or debug.
 1. **HTTP Request Intake**
 
    - `run_analysis` posts to `POST /analysis`.
-   - FastAPI wiring lives in `exaflow/controller/http/endpoints.py`. It reads
-     the JSON body, and `analysis_service.run_analysis` parses it into
-     `AnalysisRequestDTO`, validates it against enabled specs, and
+   - FastAPI wiring lives in `exaflow/controller/http/endpoints.py`. FastAPI
+     validates the JSON body against `AnalysisRequestDTO`.
+     `analysis_service.run_analysis` validates it against enabled specs and
      instantiates a strategy via `get_algorithm_execution_strategy`.
 
 1. **Strategy Selection and Metadata Prep**

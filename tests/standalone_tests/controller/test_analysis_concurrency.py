@@ -5,6 +5,7 @@ import time
 
 from exaflow.controller.http import endpoints
 from exaflow.controller.http.app import app
+from exaflow.controller.services import analysis_service
 from exaflow.controller.services.exareme3 import strategies
 from exaflow.controller.services.exareme3.strategies import Exareme3Strategy
 from tests.standalone_tests.controller.analysis_support import ANALYSIS_BODY
@@ -22,12 +23,16 @@ from tests.standalone_tests.controller.asgi_client import controller_client
 
 def _patch_entrypoint(monkeypatch, strategy_factory):
     monkeypatch.setattr(
-        endpoints,
+        analysis_service,
         "get_worker_landscape_aggregator",
         lambda: object(),
     )
-    monkeypatch.setattr(endpoints, "validate_analysis_request", lambda **kwargs: None)
-    monkeypatch.setattr(endpoints, "get_algorithm_execution_strategy", strategy_factory)
+    monkeypatch.setattr(
+        analysis_service, "validate_analysis_request", lambda **kwargs: None
+    )
+    monkeypatch.setattr(
+        analysis_service, "get_algorithm_execution_strategy", strategy_factory
+    )
 
 
 def test_excess_concurrent_analyses_are_rejected(monkeypatch):

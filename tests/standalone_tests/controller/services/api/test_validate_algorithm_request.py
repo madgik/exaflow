@@ -2,7 +2,6 @@ import asyncio
 
 import pytest
 from fastapi import FastAPI
-from fastapi import Request
 from pydantic import ValidationError
 
 import exaflow.controller.services.api.analysis_request_validator as analysis_request_validator
@@ -23,7 +22,6 @@ from exaflow.algorithms.specifications import ParameterDictValueType
 from exaflow.algorithms.specifications import ParameterSpecification
 from exaflow.algorithms.specifications import ParameterType
 from exaflow.controller.http.error_handlers import register_error_handlers
-from exaflow.controller.http.responses import html_response
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisAlgorithmDTO
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisInputDataDTO
 from exaflow.controller.services.api.analysis_request_dtos import (
@@ -175,8 +173,7 @@ def _post_parameter_request(parameters, parameter_specs):
     body = _request(parameters=parameters).model_dump(mode="json")
 
     @app.post("/analysis")
-    async def run_analysis(request: Request):
-        analysis_request_dto = AnalysisRequestDTO.model_validate(await request.json())
+    async def run_analysis(analysis_request_dto: AnalysisRequestDTO):
         analysis_request_validator.validate_analysis_request(
             analysis_request_dto=analysis_request_dto,
             algorithms_specs=algorithms_specs,
@@ -185,7 +182,7 @@ def _post_parameter_request(parameters, parameter_specs):
             smpc_enabled=False,
             smpc_optional=False,
         )
-        return html_response("ok")
+        return "ok"
 
     async def _call():
         async with controller_client(app) as client:

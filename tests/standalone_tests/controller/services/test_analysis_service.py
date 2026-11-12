@@ -3,29 +3,9 @@
 import asyncio
 from contextlib import asynccontextmanager
 
-import pytest
-
 from exaflow.controller.services import analysis_service
 from exaflow.controller.services.analysis_service import run_analysis
-from exaflow.controller.services.api.analysis_request_validator import BadRequest
-
-ANALYSIS_REQUEST = {
-    "inputdata": {
-        "data_model": "data_model",
-        "datasets": ["dataset"],
-        "variables": ["variable"],
-    },
-    "algorithm": {"name": "algorithm", "y": ["variable"]},
-}
-
-
-def test_malformed_analysis_body_is_a_bad_request():
-    with pytest.raises(BadRequest) as caught:
-        asyncio.run(run_analysis({"foo": "bar"}))
-
-    message = str(caught.value)
-    assert message.startswith("Analysis execution request malformed:")
-    assert "request received:{'foo': 'bar'}" in message
+from tests.standalone_tests.controller.analysis_support import analysis_request
 
 
 def test_run_analysis_validates_then_executes_inside_a_slot(monkeypatch):
@@ -47,18 +27,19 @@ def test_run_analysis_validates_then_executes_inside_a_slot(monkeypatch):
         seen["aggregator"] = kwargs["worker_landscape_aggregator"]
 
     aggregator = object()
+    request = analysis_request()
     monkeypatch.setattr(analysis_service, "analysis_slot", slot)
-
-    body = asyncio.run(
-        run_analysis(
-            ANALYSIS_REQUEST,
-            validate_analysis_request=validate,
-            get_algorithm_execution_strategy=lambda dto: _Strategy(),
-            get_worker_landscape_aggregator=lambda: aggregator,
-        )
+    monkeypatch.setattr(analysis_service, "validate_analysis_request", validate)
+    monkeypatch.setattr(
+        analysis_service, "get_algorithm_execution_strategy", lambda dto: _Strategy()
     )
+    monkeypatch.setattr(
+        analysis_service, "get_worker_landscape_aggregator", lambda: aggregator
+    )
+
+    body = asyncio.run(run_analysis(request))
 
     assert body == '{"result": 1}'
     assert entered["value"]
-    assert seen["dto"].algorithm.name == "algorithm"
+    assert seen["dto"] is request
     assert seen["aggregator"] is aggregator
