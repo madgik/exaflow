@@ -2,6 +2,8 @@
 
 import logging
 
+from fastapi.exceptions import RequestValidationError
+
 from exaflow.controller.http.error_handlers import ERROR_RESPONSES
 from exaflow.controller.http.error_handlers import INSUFFICIENT_DATA_ERROR_MESSAGE
 from exaflow.controller.http.error_handlers import HTTPStatusCode
@@ -34,6 +36,10 @@ def test_error_responses_are_one_table():
             logging.INFO,
         ),
         BadRequest: (HTTPStatusCode.BAD_REQUEST, logging.INFO),
+        RequestValidationError: (
+            HTTPStatusCode.UNPROCESSABLE_CONTENT,
+            logging.INFO,
+        ),
         FilterError: (HTTPStatusCode.BAD_REQUEST, logging.INFO),
         BadUserInput: (HTTPStatusCode.BAD_USER_INPUT, logging.INFO),
         DataModelUnavailable: (HTTPStatusCode.BAD_USER_INPUT, logging.INFO),

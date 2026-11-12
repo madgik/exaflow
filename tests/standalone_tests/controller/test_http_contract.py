@@ -16,6 +16,7 @@ import pytest
 
 from exaflow.controller.http import endpoints
 from exaflow.controller.http.app import app
+from exaflow.controller.services import analysis_service
 from exaflow.controller.services.analysis_execution import AnalysisCapacityExceeded
 from exaflow.controller.services.api.algorithm_spec_dtos import (
     algorithm_specifications_dtos,
@@ -262,12 +263,22 @@ def test_wla_route_contract(monkeypatch):
     assert body == ""
 
 
-def test_analysis_success_route_contract(monkeypatch):
-    monkeypatch.setattr(endpoints, "get_worker_landscape_aggregator", lambda: object())
-    monkeypatch.setattr(endpoints, "validate_analysis_request", lambda **kwargs: None)
+def _stub_analysis(monkeypatch):
     monkeypatch.setattr(
-        endpoints, "get_algorithm_execution_strategy", lambda dto: _FakeStrategy()
+        analysis_service, "get_worker_landscape_aggregator", lambda: object()
     )
+    monkeypatch.setattr(
+        analysis_service, "validate_analysis_request", lambda **kwargs: None
+    )
+    monkeypatch.setattr(
+        analysis_service,
+        "get_algorithm_execution_strategy",
+        lambda dto: _FakeStrategy(),
+    )
+
+
+def test_analysis_success_route_contract(monkeypatch):
+    _stub_analysis(monkeypatch)
 
     status, content_type, body = asyncio.run(
         _post("/analysis", json_body=ANALYSIS_REQUEST)
@@ -278,20 +289,40 @@ def test_analysis_success_route_contract(monkeypatch):
     assert body == ANALYSIS_SUCCESS_BODY
 
 
-def test_analysis_malformed_body_returns_400(monkeypatch):
-    monkeypatch.setattr(endpoints, "get_worker_landscape_aggregator", lambda: object())
-    monkeypatch.setattr(endpoints, "validate_analysis_request", lambda **kwargs: None)
-    monkeypatch.setattr(
-        endpoints, "get_algorithm_execution_strategy", lambda dto: _FakeStrategy()
-    )
+def test_analysis_body_that_does_not_match_the_model_returns_422(monkeypatch):
+    _stub_analysis(monkeypatch)
 
     status, content_type, body = asyncio.run(
         _post("/analysis", json_body={"foo": "bar"})
     )
 
-    assert status == 400
+    assert status == 422
     assert content_type == HTML_CONTENT_TYPE
-    assert body.startswith("Analysis execution request malformed:")
+    assert body.startswith("Request malformed:")
+    assert "body.inputdata: Field required" in body
+    assert "body.foo: Extra inputs are not permitted" in body
+
+
+async def _post_raw(path, content):
+    async with controller_client(app) as client:
+        response = await client.post(
+            path, content=content, headers={"content-type": "application/json"}
+        )
+        return (
+            response.status_code,
+            response.headers.get("content-type"),
+            response.text,
+        )
+
+
+@pytest.mark.parametrize("path", ["/analysis", "/flower/result"])
+@pytest.mark.parametrize("raw_body", [b"not-json", b"{", b""])
+def test_body_that_is_not_json_returns_422(path, raw_body):
+    status, content_type, body = asyncio.run(_post_raw(path, raw_body))
+
+    assert status == 422
+    assert content_type == HTML_CONTENT_TYPE
+    assert body.startswith("Request malformed:")
 
 
 @pytest.mark.parametrize(

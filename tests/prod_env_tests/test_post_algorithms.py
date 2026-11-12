@@ -20,7 +20,7 @@ def get_parametrization_list_exception_cases():
             "y": ["test_cde3"],
         }
     }
-    expected_response = (400, ".*Analysis execution request malformed")
+    expected_response = (422, ".*Request malformed")
     parametrization_list.append((algorithm_name, request_dict, expected_response))
 
     # ~~~~~~~~~~exception case 2~~~~~~~~~~

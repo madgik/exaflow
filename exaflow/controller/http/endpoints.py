@@ -1,21 +1,17 @@
 import asyncio
 from logging.config import dictConfig
+from typing import Annotated
+from typing import Any
 
 from fastapi import APIRouter
-from fastapi import Request
-from starlette.responses import JSONResponse
+from fastapi import Body
 
 from exaflow.controller.http.loggers import loggers
 from exaflow.controller.http.responses import html_response
+from exaflow.controller.services import analysis_service
 from exaflow.controller.services import get_worker_landscape_aggregator
-from exaflow.controller.services.algorithm_execution_strategy_factory import (
-    get_algorithm_execution_strategy,
-)
 from exaflow.controller.services.analysis_execution import shutdown_analysis_execution
 from exaflow.controller.services.analysis_execution import start_analysis_execution
-from exaflow.controller.services.analysis_service import (
-    run_analysis as execute_analysis,
-)
 from exaflow.controller.services.api.algorithm_spec_dtos import (
     algorithm_specifications_dtos,
 )
@@ -25,9 +21,7 @@ from exaflow.controller.services.api.algorithm_spec_dtos import (
 from exaflow.controller.services.api.algorithm_spec_dtos import (
     preprocessing_step_specifications_dtos,
 )
-from exaflow.controller.services.api.analysis_request_validator import (
-    validate_analysis_request,
-)
+from exaflow.controller.services.api.analysis_request_dtos import AnalysisRequestDTO
 from exaflow.controller.services.controller_shutdown import SHUTDOWN_RPC_CANCEL_TIMEOUT
 from exaflow.controller.services.controller_shutdown import begin_controller_shutdown
 from exaflow.controller.services.flower import get_flower_controller
@@ -140,16 +134,8 @@ async def livez():
 
 
 @router.post("/analysis")
-async def run_analysis(request: Request):
-    # No Pydantic body parameter: FastAPI would answer 422 for a bad body.
-    return html_response(
-        await execute_analysis(
-            await request.json(),
-            validate_analysis_request=validate_analysis_request,
-            get_algorithm_execution_strategy=get_algorithm_execution_strategy,
-            get_worker_landscape_aggregator=get_worker_landscape_aggregator,
-        )
-    )
+async def run_analysis(analysis_request: AnalysisRequestDTO):
+    return html_response(await analysis_service.run_analysis(analysis_request))
 
 
 @router.get("/flower/input")
@@ -158,11 +144,9 @@ async def get_flower_input():
 
 
 @router.post("/flower/result")
-async def set_flower_result(request: Request):
-    request_body = await request.json()
-    await get_flower_controller().flower_execution_info.set_result(result=request_body)
-
-    return JSONResponse({"message": "Result set successfully"})
+async def set_flower_result(result: Annotated[Any, Body()]):
+    await get_flower_controller().flower_execution_info.set_result(result=result)
+    return {"message": "Result set successfully"}
 
 
 def configure_loggers():

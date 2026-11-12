@@ -32,6 +32,7 @@ class HTTPStatusCode(enum.IntEnum):
     OK = 200
     BAD_REQUEST = 400
     WORKER_MESSAGE_TOO_LARGE = 413
+    UNPROCESSABLE_CONTENT = 422
     BAD_USER_INPUT = 460
     INSUFFICIENT_DATA_ERROR = 461
     SMPC_USAGE_ERROR = 462
@@ -51,6 +52,7 @@ ERROR_RESPONSES = {
         logging.INFO,
     ),
     BadRequest: (HTTPStatusCode.BAD_REQUEST, logging.INFO),
+    RequestValidationError: (HTTPStatusCode.UNPROCESSABLE_CONTENT, logging.INFO),
     FilterError: (HTTPStatusCode.BAD_REQUEST, logging.INFO),
     BadUserInput: (HTTPStatusCode.BAD_USER_INPUT, logging.INFO),
     DataModelUnavailable: (HTTPStatusCode.BAD_USER_INPUT, logging.INFO),
@@ -78,6 +80,14 @@ ERROR_RESPONSES = {
 def http_error_body(error: Exception) -> str:
     if isinstance(error, InsufficientDataError):
         return INSUFFICIENT_DATA_ERROR_MESSAGE
+    if isinstance(error, RequestValidationError):
+        # Raised by FastAPI for a body that is not JSON or does not match the
+        # route's model. The body is text, like the other errors.
+        details = "\n".join(
+            f"{'.'.join(str(part) for part in detail['loc'])}: {detail['msg']}"
+            for detail in error.errors()
+        )
+        return f"Request malformed:\n{details}"
     return error.message
 
 
@@ -95,26 +105,21 @@ def _bind_error_handler(
     async def handler(
         _request, error: Exception, status=status, level=level, prefix=prefix
     ):
+        # str() of a RequestValidationError is empty.
+        message = (
+            http_error_body(error)
+            if isinstance(error, RequestValidationError)
+            else error
+        )
         get_background_service_logger().log(
             level,
-            f"{prefix}. Type: '{type(error).__name__}' Message: '{error}'",
+            f"{prefix}. Type: '{type(error).__name__}' Message: '{message}'",
         )
         return html_response(http_error_body(error), status_code=int(status))
 
     app.add_exception_handler(error_type, handler)
 
 
-async def request_validation_error(_request, error: RequestValidationError):
-    """Keep the historical 400 text body. FastAPI's default for this is 422 JSON."""
-    message = (
-        f"Analysis execution request malformed:"
-        f"\nrequest received:{error.body}"
-        f"\nerror:{error}"
-    )
-    return html_response(message, status_code=HTTPStatusCode.BAD_REQUEST)
-
-
 def register_error_handlers(app: FastAPI) -> None:
     for error_type, (status, level) in ERROR_RESPONSES.items():
         _bind_error_handler(app, error_type, status, level)
-    app.add_exception_handler(RequestValidationError, request_validation_error)

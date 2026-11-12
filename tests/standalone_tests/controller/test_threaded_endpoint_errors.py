@@ -4,6 +4,7 @@ import pytest
 
 from exaflow.controller.http import endpoints
 from exaflow.controller.http.app import app
+from exaflow.controller.services import analysis_service
 from exaflow.controller.services.api.analysis_request_validator import BadRequest
 from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.controller.services.errors import WorkerTaskTimeoutError
@@ -81,9 +82,11 @@ def test_analysis_without_global_worker_returns_503(monkeypatch):
     def validate_analysis_request(**kwargs):
         raise GlobalWorkerUnavailableError()
 
-    monkeypatch.setattr(endpoints, "get_worker_landscape_aggregator", lambda: None)
     monkeypatch.setattr(
-        endpoints, "validate_analysis_request", validate_analysis_request
+        analysis_service, "get_worker_landscape_aggregator", lambda: None
+    )
+    monkeypatch.setattr(
+        analysis_service, "validate_analysis_request", validate_analysis_request
     )
 
     async def post_analysis():

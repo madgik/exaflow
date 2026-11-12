@@ -3,7 +3,7 @@ import threading
 
 import pytest
 
-from exaflow.controller.http import endpoints
+from exaflow.controller.services import analysis_service
 from exaflow.controller.services.exareme3 import strategies as exareme3_strategies
 from exaflow.controller.services.exareme3.strategies import (
     Exareme3WithAggregationServerStrategy,
@@ -25,13 +25,15 @@ from tests.standalone_tests.controller.analysis_support import patch_algorithm
 
 def _patch_entrypoint(monkeypatch, strategy):
     monkeypatch.setattr(
-        endpoints,
+        analysis_service,
         "get_worker_landscape_aggregator",
         lambda: object(),
     )
-    monkeypatch.setattr(endpoints, "validate_analysis_request", lambda **kwargs: None)
     monkeypatch.setattr(
-        endpoints, "get_algorithm_execution_strategy", lambda dto: strategy
+        analysis_service, "validate_analysis_request", lambda **kwargs: None
+    )
+    monkeypatch.setattr(
+        analysis_service, "get_algorithm_execution_strategy", lambda dto: strategy
     )
 
 

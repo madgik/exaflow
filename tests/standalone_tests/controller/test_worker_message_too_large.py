@@ -42,8 +42,8 @@ def _message_too_large():
 
 
 def test_analysis_maps_worker_message_too_large(monkeypatch):
-    from exaflow.controller.http import endpoints
     from exaflow.controller.http.app import app
+    from exaflow.controller.services import analysis_service
 
     error = _message_too_large()
 
@@ -51,10 +51,14 @@ def test_analysis_maps_worker_message_too_large(monkeypatch):
         async def execute(self):
             raise error
 
-    monkeypatch.setattr(endpoints, "get_worker_landscape_aggregator", lambda: None)
-    monkeypatch.setattr(endpoints, "validate_analysis_request", lambda **kwargs: None)
     monkeypatch.setattr(
-        endpoints, "get_algorithm_execution_strategy", lambda dto: _Strategy()
+        analysis_service, "get_worker_landscape_aggregator", lambda: None
+    )
+    monkeypatch.setattr(
+        analysis_service, "validate_analysis_request", lambda **kwargs: None
+    )
+    monkeypatch.setattr(
+        analysis_service, "get_algorithm_execution_strategy", lambda dto: _Strategy()
     )
 
     async def _post():

@@ -36,9 +36,10 @@ flowchart TD
    `/datasets_variables`, and `/cdes_metadata`.
 1. Clients submit `POST /analysis` with an `AnalysisRequestDTO` payload. The
    selected algorithm name is carried in `algorithm.name`.
-1. `exaflow/controller/http/endpoints.py` reads the body and
-   `analysis_service.run_analysis` validates request shape and delegates
-   to `validate_analysis_request`.
+1. FastAPI validates the body against `AnalysisRequestDTO` in
+   `exaflow/controller/http/endpoints.py`. A body that does not match is
+   answered with `422`. `analysis_service.run_analysis` then delegates to
+   `validate_analysis_request`.
 1. `get_algorithm_execution_strategy` selects an Exareme3 or Flower strategy.
 1. Exareme3 strategy gets worker metadata, applies preprocessing metadata
    transforms, constructs `Exareme3AlgorithmFlowEngineInterface`, and runs the
