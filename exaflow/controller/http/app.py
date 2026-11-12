@@ -23,13 +23,3 @@ app = FastAPI(
 )
 register_error_handlers(app)
 app.include_router(endpoints.router)
-
-
-def test_client():
-    """Quart-shaped ASGI client. httpx is a dev dependency, so import it here."""
-    from exaflow.controller.http.asgi_client import ControllerClient
-
-    return ControllerClient(app)
-
-
-app.test_client = test_client

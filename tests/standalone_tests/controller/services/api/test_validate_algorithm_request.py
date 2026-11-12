@@ -22,7 +22,6 @@ from exaflow.algorithms.specifications import InputDataType
 from exaflow.algorithms.specifications import ParameterDictValueType
 from exaflow.algorithms.specifications import ParameterSpecification
 from exaflow.algorithms.specifications import ParameterType
-from exaflow.controller.http.asgi_client import ControllerClient
 from exaflow.controller.http.error_handlers import register_error_handlers
 from exaflow.controller.http.responses import html_response
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisAlgorithmDTO
@@ -35,6 +34,7 @@ from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.data_filters import FilterError
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import CommonDataElement
+from tests.standalone_tests.controller.asgi_client import controller_client
 
 DATA_MODEL = "dementia:0.1"
 _AVAILABLE_GLOBAL_WORKER = object()
@@ -188,9 +188,9 @@ def _post_parameter_request(parameters, parameter_specs):
         return html_response("ok")
 
     async def _call():
-        async with ControllerClient(app) as client:
+        async with controller_client(app) as client:
             response = await client.post("/analysis", json=body)
-            body_text = await response.get_data(as_text=True)
+            body_text = response.text
             return response.status_code, body_text
 
     return asyncio.run(_call())

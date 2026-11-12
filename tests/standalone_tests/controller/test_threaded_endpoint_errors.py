@@ -10,18 +10,19 @@ from exaflow.controller.services.errors import WorkerTaskTimeoutError
 from exaflow.controller.services.errors import WorkerUnresponsiveError
 from exaflow.worker_communication import BadUserInput
 from tests.standalone_tests.controller.analysis_support import ANALYSIS_BODY
+from tests.standalone_tests.controller.asgi_client import controller_client
 
 
 async def _get(path):
-    async with app.test_client() as client:
+    async with controller_client(app) as client:
         response = await client.get(path)
-        return response.status_code, await response.get_data(as_text=False)
+        return response.status_code, response.content
 
 
 async def _post(path):
-    async with app.test_client() as client:
+    async with controller_client(app) as client:
         response = await client.post(path)
-        return response.status_code, await response.get_data(as_text=False)
+        return response.status_code, response.content
 
 
 @pytest.mark.parametrize(
@@ -86,9 +87,9 @@ def test_analysis_without_global_worker_returns_503(monkeypatch):
     )
 
     async def post_analysis():
-        async with app.test_client() as client:
+        async with controller_client(app) as client:
             response = await client.post("/analysis", json=ANALYSIS_BODY)
-            return response.status_code, await response.get_data(as_text=True)
+            return response.status_code, response.text
 
     status_code, body = asyncio.run(post_analysis())
 
