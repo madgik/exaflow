@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from starlette.responses import PlainTextResponse
 
+from exaflow.controller.http.request_body_limit import RequestBodyTooLargeError
 from exaflow.controller.logger import get_background_service_logger
 from exaflow.controller.services.analysis_execution import AnalysisCapacityExceeded
 from exaflow.controller.services.api.analysis_request_validator import BadRequest
@@ -31,7 +32,7 @@ _INTERNAL_SERVER_ERROR_TYPES = (WorkerUnresponsiveError, WorkerTaskTimeoutError)
 class HTTPStatusCode(enum.IntEnum):
     OK = 200
     BAD_REQUEST = 400
-    WORKER_MESSAGE_TOO_LARGE = 413
+    CONTENT_TOO_LARGE = 413
     UNPROCESSABLE_CONTENT = 422
     BAD_USER_INPUT = 460
     INSUFFICIENT_DATA_ERROR = 461
@@ -62,10 +63,8 @@ ERROR_RESPONSES = {
         logging.INFO,
     ),
     SMPCUsageError: (HTTPStatusCode.SMPC_USAGE_ERROR, logging.INFO),
-    WorkerMessageTooLargeError: (
-        HTTPStatusCode.WORKER_MESSAGE_TOO_LARGE,
-        logging.ERROR,
-    ),
+    RequestBodyTooLargeError: (HTTPStatusCode.CONTENT_TOO_LARGE, logging.INFO),
+    WorkerMessageTooLargeError: (HTTPStatusCode.CONTENT_TOO_LARGE, logging.ERROR),
     WorkerUnresponsiveError: (
         HTTPStatusCode.WORKER_UNRESPONSIVE_ALGORITHM_EXECUTION_ERROR,
         logging.ERROR,

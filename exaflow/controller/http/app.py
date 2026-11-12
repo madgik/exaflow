@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from exaflow.controller.http import endpoints
 from exaflow.controller.http.error_handlers import register_error_handlers
+from exaflow.controller.http.request_body_limit import RequestBodyLimitMiddleware
 
 
 @asynccontextmanager
@@ -21,5 +22,6 @@ app = FastAPI(
     openapi_url=None,
     lifespan=lifespan,
 )
+app.add_middleware(RequestBodyLimitMiddleware)
 register_error_handlers(app)
 app.include_router(endpoints.router)

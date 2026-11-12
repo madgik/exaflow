@@ -15,6 +15,7 @@ from types import SimpleNamespace
 import pytest
 
 from exaflow.controller.http import endpoints
+from exaflow.controller.http import request_body_limit
 from exaflow.controller.http.app import app
 from exaflow.controller.services import analysis_service
 from exaflow.controller.services.analysis_execution import AnalysisCapacityExceeded
@@ -320,6 +321,37 @@ def test_body_that_is_not_json_returns_422(path, raw_body):
     assert status == 422
     assert content_type == TEXT_CONTENT_TYPE
     assert body.startswith("Request malformed:")
+
+
+async def _chunks(body):
+    yield body[:10]
+    yield body[10:]
+
+
+@pytest.mark.parametrize("send_chunked", [False, True])
+def test_request_body_over_the_limit_returns_413(monkeypatch, send_chunked):
+    _stub_analysis(monkeypatch)
+    body = json.dumps(ANALYSIS_REQUEST).encode()
+    monkeypatch.setattr(request_body_limit, "MAX_REQUEST_BODY_BYTES", len(body) - 1)
+
+    status, content_type, text = asyncio.run(
+        _post_raw("/analysis", _chunks(body) if send_chunked else body)
+    )
+
+    assert status == 413
+    assert content_type == TEXT_CONTENT_TYPE
+    assert text == (f"Request body is larger than the limit of {len(body) - 1} bytes.")
+
+
+def test_request_body_at_the_limit_is_accepted(monkeypatch):
+    _stub_analysis(monkeypatch)
+    body = json.dumps(ANALYSIS_REQUEST).encode()
+    monkeypatch.setattr(request_body_limit, "MAX_REQUEST_BODY_BYTES", len(body))
+
+    status, _content_type, text = asyncio.run(_post_raw("/analysis", body))
+
+    assert status == 200
+    assert text == ANALYSIS_SUCCESS_BODY
 
 
 @pytest.mark.parametrize(
