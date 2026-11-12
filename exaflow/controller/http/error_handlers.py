@@ -3,8 +3,8 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+from starlette.responses import PlainTextResponse
 
-from exaflow.controller.http.responses import html_response
 from exaflow.controller.logger import get_background_service_logger
 from exaflow.controller.services.analysis_execution import AnalysisCapacityExceeded
 from exaflow.controller.services.api.analysis_request_validator import BadRequest
@@ -82,7 +82,7 @@ def http_error_body(error: Exception) -> str:
         return INSUFFICIENT_DATA_ERROR_MESSAGE
     if isinstance(error, RequestValidationError):
         # Raised by FastAPI for a body that is not JSON or does not match the
-        # route's model. The body is text, like the other errors.
+        # route's model. The body is plain text, like the other errors.
         details = "\n".join(
             f"{'.'.join(str(part) for part in detail['loc'])}: {detail['msg']}"
             for detail in error.errors()
@@ -115,7 +115,7 @@ def _bind_error_handler(
             level,
             f"{prefix}. Type: '{type(error).__name__}' Message: '{message}'",
         )
-        return html_response(http_error_body(error), status_code=int(status))
+        return PlainTextResponse(http_error_body(error), status_code=int(status))
 
     app.add_exception_handler(error_type, handler)
 

@@ -42,7 +42,7 @@ from exaflow.worker_communication import DatasetUnavailable
 from exaflow.worker_communication import InsufficientDataError
 from tests.standalone_tests.controller.asgi_client import controller_client
 
-HTML_CONTENT_TYPE = "text/html; charset=utf-8"
+TEXT_CONTENT_TYPE = "text/plain; charset=utf-8"
 JSON_CONTENT_TYPE = "application/json"
 
 INSUFFICIENT_DATA_MESSAGE = (
@@ -207,15 +207,15 @@ def test_data_models_attributes_route_contract(aggregator):
     [
         (
             "/specifications/inputdata",
-            inputdata_specification_dto.model_dump_json(),
+            inputdata_specification_dto.model_dump(mode="json"),
         ),
         (
             "/specifications/preprocessing",
-            preprocessing_step_specifications_dtos.model_dump_json(),
+            preprocessing_step_specifications_dtos.model_dump(mode="json"),
         ),
         (
             "/specifications/algorithms",
-            algorithm_specifications_dtos.model_dump_json(),
+            algorithm_specifications_dtos.model_dump(mode="json"),
         ),
     ],
 )
@@ -223,15 +223,14 @@ def test_specifications_routes_contract(path, expected):
     status, content_type, body = asyncio.run(_get(path))
 
     assert status == 200
-    assert content_type == HTML_CONTENT_TYPE
-    assert body == expected
+    assert content_type == JSON_CONTENT_TYPE
+    assert json.loads(body) == expected
 
 
 def test_livez_contract():
-    status, content_type, body = asyncio.run(_get("/livez"))
+    status, _content_type, body = asyncio.run(_get("/livez"))
 
     assert status == 200
-    assert content_type == HTML_CONTENT_TYPE
     assert body == ""
 
 
@@ -242,10 +241,9 @@ def test_healthcheck_contract(monkeypatch):
         lambda: FakeWorkerLandscapeAggregator(),
     )
 
-    status, content_type, body = asyncio.run(_get("/healthcheck"))
+    status, _content_type, body = asyncio.run(_get("/healthcheck"))
 
     assert status == 200
-    assert content_type == HTML_CONTENT_TYPE
     assert body == ""
 
 
@@ -256,10 +254,9 @@ def test_wla_route_contract(monkeypatch):
         lambda: FakeWorkerLandscapeAggregator(),
     )
 
-    status, content_type, body = asyncio.run(_post("/wla"))
+    status, _content_type, body = asyncio.run(_post("/wla"))
 
     assert status == 200
-    assert content_type == HTML_CONTENT_TYPE
     assert body == ""
 
 
@@ -285,7 +282,7 @@ def test_analysis_success_route_contract(monkeypatch):
     )
 
     assert status == 200
-    assert content_type == HTML_CONTENT_TYPE
+    assert content_type == JSON_CONTENT_TYPE
     assert body == ANALYSIS_SUCCESS_BODY
 
 
@@ -297,7 +294,7 @@ def test_analysis_body_that_does_not_match_the_model_returns_422(monkeypatch):
     )
 
     assert status == 422
-    assert content_type == HTML_CONTENT_TYPE
+    assert content_type == TEXT_CONTENT_TYPE
     assert body.startswith("Request malformed:")
     assert "body.inputdata: Field required" in body
     assert "body.foo: Extra inputs are not permitted" in body
@@ -321,7 +318,7 @@ def test_body_that_is_not_json_returns_422(path, raw_body):
     status, content_type, body = asyncio.run(_post_raw(path, raw_body))
 
     assert status == 422
-    assert content_type == HTML_CONTENT_TYPE
+    assert content_type == TEXT_CONTENT_TYPE
     assert body.startswith("Request malformed:")
 
 
@@ -389,5 +386,5 @@ def test_mapped_exceptions_are_served_with_their_status_and_message(
     returned_status, content_type, body = asyncio.run(_get("/datasets"))
 
     assert returned_status == status
-    assert content_type == HTML_CONTENT_TYPE
+    assert content_type == TEXT_CONTENT_TYPE
     assert body == expected_body(error)
