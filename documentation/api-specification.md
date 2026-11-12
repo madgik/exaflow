@@ -550,7 +550,9 @@ Exaflow maps API exceptions to status codes:
 | `512` | Worker unresponsive during execution. | Treat as execution infrastructure failure. |
 | `513` | Worker task timeout during execution. | Treat as execution timeout. |
 
-Clients should expose the response body message as the primary diagnostic text.
+Error responses are `text/plain`. Clients should expose the response body
+message as the primary diagnostic text. Successful responses that carry data
+are `application/json`.
 
 ______________________________________________________________________
 

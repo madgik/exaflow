@@ -5,13 +5,22 @@ from typing import Any
 
 from fastapi import APIRouter
 from fastapi import Body
+from fastapi import Response
 
 from exaflow.controller.http.loggers import loggers
-from exaflow.controller.http.responses import html_response
 from exaflow.controller.services import analysis_service
 from exaflow.controller.services import get_worker_landscape_aggregator
 from exaflow.controller.services.analysis_execution import shutdown_analysis_execution
 from exaflow.controller.services.analysis_execution import start_analysis_execution
+from exaflow.controller.services.api.algorithm_spec_dtos import (
+    AlgorithmSpecificationsDTO,
+)
+from exaflow.controller.services.api.algorithm_spec_dtos import (
+    AnalysisInputDataSpecificationsDTO,
+)
+from exaflow.controller.services.api.algorithm_spec_dtos import (
+    PreprocessingStepSpecificationsDTO,
+)
 from exaflow.controller.services.api.algorithm_spec_dtos import (
     algorithm_specifications_dtos,
 )
@@ -101,41 +110,46 @@ async def get_data_models_attributes():
 
 
 @router.get("/specifications/inputdata")
-async def get_inputdata_specification():
-    return html_response(inputdata_specification_dto.model_dump_json())
+async def get_inputdata_specification() -> AnalysisInputDataSpecificationsDTO:
+    return inputdata_specification_dto
 
 
 @router.get("/specifications/preprocessing")
-async def get_preprocessing_specifications():
-    return html_response(preprocessing_step_specifications_dtos.model_dump_json())
+async def get_preprocessing_specifications() -> PreprocessingStepSpecificationsDTO:
+    return preprocessing_step_specifications_dtos
 
 
 @router.get("/specifications/algorithms")
-async def get_algorithm_specifications():
-    return html_response(algorithm_specifications_dtos.model_dump_json())
+async def get_algorithm_specifications() -> AlgorithmSpecificationsDTO:
+    return algorithm_specifications_dtos
 
 
 @router.post("/wla")
 async def update_wla():
     await asyncio.to_thread(get_worker_landscape_aggregator().update)
-    return html_response("")
+    return Response()
 
 
 @router.get("/healthcheck")
 async def healthcheck():
     await asyncio.to_thread(get_worker_landscape_aggregator().healthcheck)
-    return html_response("")
+    return Response()
 
 
 @router.get("/livez")
 async def livez():
     # Liveness only: unlike /healthcheck, it does not depend on worker health.
-    return html_response("")
+    return Response()
 
 
 @router.post("/analysis")
 async def run_analysis(analysis_request: AnalysisRequestDTO):
-    return html_response(await analysis_service.run_analysis(analysis_request))
+    # Each algorithm has its own result model, and the strategy returns it
+    # already serialized, so the JSON is passed through as it is.
+    return Response(
+        await analysis_service.run_analysis(analysis_request),
+        media_type="application/json",
+    )
 
 
 @router.get("/flower/input")
