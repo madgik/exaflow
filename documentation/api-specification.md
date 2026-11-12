@@ -542,7 +542,7 @@ Exaflow maps API exceptions to status codes:
 | Status | Meaning | Client Handling |
 | --- | --- | --- |
 | `400` | Invalid request or filter format error. | Treat as client payload/schema issue. |
-| `413` | gRPC message exceeded the configured size limit. | Reduce variables, factor levels, or result size and retry. |
+| `413` | Request body larger than 16 MiB, or gRPC message exceeded the configured size limit. | Reduce variables, factor levels, or result size and retry. |
 | `422` | Request body is not JSON or does not match the request schema. | Treat as client payload/schema issue. |
 | `503` | The controller is already running its maximum number of concurrent analyses. | Retry later. The limit is `max_concurrent_experiments`. |
 | `460` | Semantic user-input validation error. | Show the server message near the relevant form field when possible. |

@@ -8,6 +8,7 @@ from exaflow.controller.http.error_handlers import ERROR_RESPONSES
 from exaflow.controller.http.error_handlers import INSUFFICIENT_DATA_ERROR_MESSAGE
 from exaflow.controller.http.error_handlers import HTTPStatusCode
 from exaflow.controller.http.error_handlers import http_error_body
+from exaflow.controller.http.request_body_limit import RequestBodyTooLargeError
 from exaflow.controller.services.analysis_execution import AnalysisCapacityExceeded
 from exaflow.controller.services.api.analysis_request_validator import BadRequest
 from exaflow.controller.services.errors import ControllerShuttingDownError
@@ -49,10 +50,8 @@ def test_error_responses_are_one_table():
             logging.INFO,
         ),
         SMPCUsageError: (HTTPStatusCode.SMPC_USAGE_ERROR, logging.INFO),
-        WorkerMessageTooLargeError: (
-            HTTPStatusCode.WORKER_MESSAGE_TOO_LARGE,
-            logging.ERROR,
-        ),
+        RequestBodyTooLargeError: (HTTPStatusCode.CONTENT_TOO_LARGE, logging.INFO),
+        WorkerMessageTooLargeError: (HTTPStatusCode.CONTENT_TOO_LARGE, logging.ERROR),
         WorkerUnresponsiveError: (
             HTTPStatusCode.WORKER_UNRESPONSIVE_ALGORITHM_EXECUTION_ERROR,
             logging.ERROR,
