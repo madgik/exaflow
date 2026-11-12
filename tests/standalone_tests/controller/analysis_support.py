@@ -13,6 +13,7 @@ from exaflow.controller.http.app import app
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisAlgorithmDTO
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisInputDataDTO
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisRequestDTO
+from tests.standalone_tests.controller.asgi_client import controller_client
 
 ANALYSIS_BODY = {
     "inputdata": {
@@ -95,7 +96,7 @@ def assert_livez_while_blocked(started, release, drive):
     result = {}
 
     async def scenario():
-        async with app.test_client() as client:
+        async with controller_client(app) as client:
 
             async def poll():
                 await asyncio.to_thread(started.wait, 5)

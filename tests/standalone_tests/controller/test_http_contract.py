@@ -2,7 +2,7 @@
 
 The expectations below (status codes, ``Content-Type`` headers and bodies) were
 captured from a live run of ``exaflow.controller.http.app.app`` through
-``app.test_client()`` and are asserted here so that any drift in the served
+``controller_client(app)`` and are asserted here so that any drift in the served
 response is caught. No source under ``exaflow/`` is exercised beyond driving the
 real routes; the service layer is stubbed via ``monkeypatch`` exactly as in
 ``test_threaded_endpoint_errors.py``.
@@ -39,6 +39,7 @@ from exaflow.worker_communication import DataModelAttributes
 from exaflow.worker_communication import DataModelUnavailable
 from exaflow.worker_communication import DatasetUnavailable
 from exaflow.worker_communication import InsufficientDataError
+from tests.standalone_tests.controller.asgi_client import controller_client
 
 HTML_CONTENT_TYPE = "text/html; charset=utf-8"
 JSON_CONTENT_TYPE = "application/json"
@@ -114,22 +115,22 @@ class _FakeStrategy:
 
 
 async def _get(path):
-    async with app.test_client() as client:
+    async with controller_client(app) as client:
         response = await client.get(path)
         return (
             response.status_code,
-            response.content_type,
-            await response.get_data(as_text=True),
+            response.headers.get("content-type"),
+            response.text,
         )
 
 
 async def _post(path, json_body=None):
-    async with app.test_client() as client:
+    async with controller_client(app) as client:
         response = await client.post(path, json=json_body)
         return (
             response.status_code,
-            response.content_type,
-            await response.get_data(as_text=True),
+            response.headers.get("content-type"),
+            response.text,
         )
 
 

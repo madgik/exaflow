@@ -17,6 +17,7 @@ from tests.standalone_tests.controller.analysis_support import patch_algorithm
 from tests.standalone_tests.controller.analysis_support import (
     set_max_concurrent_experiments,
 )
+from tests.standalone_tests.controller.asgi_client import controller_client
 
 
 def _patch_entrypoint(monkeypatch, strategy_factory):
@@ -54,7 +55,7 @@ def test_excess_concurrent_analyses_are_rejected(monkeypatch):
     _patch_entrypoint(monkeypatch, lambda dto: HoldingStrategy())
 
     async def scenario():
-        async with app.test_client() as client:
+        async with controller_client(app) as client:
             first = asyncio.create_task(client.post("/analysis", json=ANALYSIS_BODY))
             second = asyncio.create_task(client.post("/analysis", json=ANALYSIS_BODY))
             await asyncio.to_thread(two_inside.wait, 5)
@@ -201,7 +202,7 @@ def test_healthcheck_is_not_starved_by_running_analyses(monkeypatch):
         while started["count"] < pool_size and time.monotonic() < deadline:
             await asyncio.sleep(0.01)
         assert started["count"] == pool_size
-        async with app.test_client() as client:
+        async with controller_client(app) as client:
             health_task = asyncio.create_task(client.get("/healthcheck"))
             done, _pending = await asyncio.wait({health_task}, timeout=0.5)
             healthy = health_task in done and health_task.result().status_code == 200

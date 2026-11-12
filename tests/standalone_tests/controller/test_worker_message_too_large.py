@@ -12,6 +12,7 @@ from exaflow.controller.services.worker_landscape_aggregator import (
 from exaflow.controller.services.worker_landscape_aggregator.worker_landscape_aggregator import (
     WorkerLandscapeAggregator,
 )
+from tests.standalone_tests.controller.asgi_client import controller_client
 
 
 @pytest.fixture
@@ -57,20 +58,19 @@ def test_analysis_maps_worker_message_too_large(monkeypatch):
     )
 
     async def _post():
-        client = app.test_client()
-        response = await client.post(
-            "/analysis",
-            json={
-                "inputdata": {
-                    "data_model": "dementia",
-                    "datasets": ["ppmi0"],
-                    "variables": ["x"],
+        async with controller_client(app) as client:
+            response = await client.post(
+                "/analysis",
+                json={
+                    "inputdata": {
+                        "data_model": "dementia",
+                        "datasets": ["ppmi0"],
+                        "variables": ["x"],
+                    },
+                    "algorithm": {"name": "pca", "y": ["x"]},
                 },
-                "algorithm": {"name": "pca", "y": ["x"]},
-            },
-        )
-        body = await response.get_data(as_text=True)
-        return response.status_code, body
+            )
+        return response.status_code, response.text
 
     status, body = asyncio.run(_post())
     assert status == 413
