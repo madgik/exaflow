@@ -125,6 +125,7 @@ CONTROLLER_TERMINATE_TIMEOUT_SECONDS = 195
 # equal by test_kill_controller.py for the same reason).
 CONTROLLER_UVICORN_WORKERS = 1
 CONTROLLER_GRACEFUL_TIMEOUT_SECONDS = 120
+CONTROLLER_LOG_CONFIG = PROJECT_ROOT / "exaflow/controller/http/log_config.json"
 # inv start-controller and inv cleanup stop the controller as a side effect, so
 # they do not wait out the drain of a running analysis.
 CONTROLLER_RESTART_TIMEOUT_SECONDS = 10
@@ -898,7 +899,7 @@ def start_controller(
                 f"--host 0.0.0.0 --port {controller_port} "
                 f"--workers {CONTROLLER_UVICORN_WORKERS} "
                 f"--timeout-graceful-shutdown {CONTROLLER_GRACEFUL_TIMEOUT_SECONDS} "
-                "--log-config exaflow/controller/http/log_config.json "
+                f"--log-config {CONTROLLER_LOG_CONFIG} "
                 f">> {outpath} 2>&1"
             )
             run(c, cmd, wait=False)
@@ -909,7 +910,7 @@ def start_controller(
                 f"--host 0.0.0.0 --port {controller_port} "
                 f"--workers {CONTROLLER_UVICORN_WORKERS} "
                 f"--timeout-graceful-shutdown {CONTROLLER_GRACEFUL_TIMEOUT_SECONDS} "
-                "--log-config exaflow/controller/http/log_config.json"
+                f"--log-config {CONTROLLER_LOG_CONFIG}"
             )
             run(c, cmd, attach_=True)
 
