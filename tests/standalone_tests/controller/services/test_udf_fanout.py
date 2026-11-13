@@ -100,7 +100,7 @@ def _run_with_driver(engine, futures, drive):
     driver_thread = threading.Thread(target=driver, daemon=True)
     driver_thread.start()
     try:
-        holder["result"] = engine.run_udf(_sample_udf, False, False, {})
+        holder["result"] = engine.run_udf(_sample_udf, False, {})
     except BaseException as exc:  # noqa: BLE001
         holder["exc"] = exc
     driver_thread.join(timeout=10)
@@ -134,7 +134,7 @@ def test_run_udf_starts_no_threads():
 
     engine = _make_engine(handlers)
     before = set(threading.enumerate())
-    result = engine.run_udf(_sample_udf, False, False, {})
+    result = engine.run_udf(_sample_udf, False, {})
     after = set(threading.enumerate())
 
     # An unrelated thread may exit meanwhile; only a new one is a failure.
@@ -213,14 +213,14 @@ def test_run_udf_cancels_started_calls_when_starting_a_later_call_fails():
     engine = _make_engine(handlers)
 
     with pytest.raises(RuntimeError, match="cannot start w1"):
-        engine.run_udf(_sample_udf, False, False, {})
+        engine.run_udf(_sample_udf, False, {})
 
     assert started_future.cancelled()
 
 
 def test_no_handlers_returns_empty_list():
     engine = _make_engine([])
-    assert engine.run_udf(_sample_udf, False, False, {}) == []
+    assert engine.run_udf(_sample_udf, False, {}) == []
 
 
 class _RpcError(grpc.RpcError):

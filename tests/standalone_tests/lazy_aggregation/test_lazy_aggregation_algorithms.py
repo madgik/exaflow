@@ -363,7 +363,7 @@ class _InProcessEngine:
         self._metadata = metadata
         self._preprocessing = preprocessing
 
-    def run_udf(self, func, check_min_rows, add_dataset_variable, kw_args):
+    def run_udf(self, func, add_dataset_variable, kw_args):
         request_id = f"lazy-agg-{uuid.uuid4().hex}"
         controller = ControllerAggregationClient(request_id)
         controller.configure(
@@ -375,7 +375,6 @@ class _InProcessEngine:
             system_args = RunUdfSystemArgs(
                 inputdata=inputdata,
                 metadata=add_ordered_enums(self._metadata),
-                check_min_rows=check_min_rows,
                 add_dataset_variable=add_dataset_variable,
                 preprocessing=self._preprocessing,
             )

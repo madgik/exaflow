@@ -13,6 +13,11 @@ from exaflow.worker_communication import InsufficientDataError
 from exaflow.worker_communication import RunUdfSystemArgs
 
 
+def translate_worker_error(exc: Exception) -> Exception:
+    """Return the error the HTTP layer documents for a failed worker call."""
+    raise NotImplementedError("not implemented")
+
+
 class Exareme3AlgorithmFlowEngineInterface:
     def __init__(
         self,
@@ -33,7 +38,6 @@ class Exareme3AlgorithmFlowEngineInterface:
     def run_udf(
         self,
         func,
-        check_min_rows: bool,
         add_dataset_variable: bool,
         kw_args: dict,
     ) -> List[dict]:
@@ -45,7 +49,6 @@ class Exareme3AlgorithmFlowEngineInterface:
         system_args = RunUdfSystemArgs(
             inputdata=self._inputdata,
             metadata=add_ordered_enums(self._metadata),
-            check_min_rows=check_min_rows,
             add_dataset_variable=add_dataset_variable,
             preprocessing=self._preprocessing,
         )
