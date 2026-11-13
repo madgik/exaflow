@@ -16,3 +16,7 @@
 | `exadata-validator` package | Separate package release can break external CLI users. | Nested package workflow builds and smoke-tests wheel. | Run nested tests/build for package changes. | Yes for release/CLI changes. |
 | Test fixtures | Expected JSON fixtures define behavior for algorithms. | `tests/prod_env_tests/expected`, validation expected fixtures. | Update fixtures only with justified behavior changes. | Sometimes. |
 | Dependency updates | Scientific stack changes can alter numerical results. | NumPy/SciPy/pandas/scikit/statsmodels dependencies. | Run focused numerical tests and compare fixtures. | Yes for major updates. |
+
+## SQL and CI hardening
+
+Worker loader SQL identifiers are quoted, including metadata-derived model names.

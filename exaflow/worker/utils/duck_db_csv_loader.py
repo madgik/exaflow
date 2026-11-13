@@ -15,6 +15,10 @@ from exaflow.worker.utils.logger import init_logger
 LOGGER = init_logger("WORKER DATA LOADER")
 
 
+def _quote_identifier(value: str) -> str:
+    return '"' + value.replace('"', '""') + '"'
+
+
 def _sanitize_name(name: str) -> str:
     sanitized = name
     for ch in (":", "-", "."):
@@ -25,7 +29,7 @@ def _sanitize_name(name: str) -> str:
 def _reset_metadata_tables(conn: duckdb.DuckDBPyConnection):
     tables = [row[0] for row in conn.execute("SHOW TABLES").fetchall()]
     for table in tables:
-        conn.execute(f'DROP TABLE IF EXISTS "{table}"')
+        conn.execute(f"DROP TABLE IF EXISTS {_quote_identifier(table)}")
 
     conn.execute(
         """
@@ -96,14 +100,18 @@ def _load_variables_metadata(
     conn: duckdb.DuckDBPyConnection, table_prefix: str, metadata: dict
 ):
     table_name = f"{table_prefix}_variables_metadata"
-    conn.execute(f'DROP TABLE IF EXISTS "{table_name}"')
-    conn.execute(f'CREATE TABLE "{table_name}" (code TEXT, metadata TEXT)')
+    conn.execute(f"DROP TABLE IF EXISTS {_quote_identifier(table_name)}")
+    conn.execute(
+        f"CREATE TABLE {_quote_identifier(table_name)} (code TEXT, metadata TEXT)"
+    )
     rows = [
         [variable["code"], json.dumps(_reformat_metadata(variable))]
         for variable in _collect_all_variables(metadata)
     ]
     if rows:
-        conn.executemany(f'INSERT INTO "{table_name}" VALUES (?, ?)', rows)
+        conn.executemany(
+            f"INSERT INTO {_quote_identifier(table_name)} VALUES (?, ?)", rows
+        )
 
 
 def _build_dataset_properties(csv_columns: list[str], cde_codes: set[str]) -> dict:
@@ -163,7 +171,7 @@ def _create_primary_data_table(
     column_types = _build_column_types(metadata) if metadata else None
 
     table_name = f"{table_prefix}__primary_data"
-    conn.execute(f'DROP TABLE IF EXISTS "{table_name}"')
+    conn.execute(f"DROP TABLE IF EXISTS {_quote_identifier(table_name)}")
 
     # Header sniffing has a fixed per-file cost and DuckDB releases the GIL.
     with ThreadPoolExecutor() as pool:
@@ -223,18 +231,21 @@ def _create_primary_data_table(
 
     staging_table = f"{table_name}__staging"
     query = " UNION ALL ".join(select_statements)
-    conn.execute(f'CREATE TEMP TABLE "{staging_table}" AS {query}', params)
+    conn.execute(
+        f"CREATE TEMP TABLE {_quote_identifier(staging_table)} AS {query}", params
+    )
     try:
         conn.execute(
-            f'CREATE TABLE "{table_name}" AS '
-            f'SELECT * EXCLUDE ("{_SOURCE_CSV_COL}") FROM "{staging_table}"'
+            f"CREATE TABLE {_quote_identifier(table_name)} AS "
+            f'SELECT * EXCLUDE ("{_SOURCE_CSV_COL}") '
+            f"FROM {_quote_identifier(staging_table)}"
         )
         dataset_csv_map = _datasets_from_staging_table(
             conn, staging_table, csv_paths, column_map
         )
         return PrimaryDataTable(dataset_csv_map=dataset_csv_map, csv_columns=column_map)
     finally:
-        conn.execute(f'DROP TABLE IF EXISTS "{staging_table}"')
+        conn.execute(f"DROP TABLE IF EXISTS {_quote_identifier(staging_table)}")
 
 
 def _read_csv_columns(csv_path: Path) -> list[str]:
@@ -265,7 +276,7 @@ def _datasets_from_staging_table(
     if any(DATASET_COL in columns for columns in column_map.values()):
         rows = conn.execute(
             f'SELECT DISTINCT "{DATASET_COL}", "{_SOURCE_CSV_COL}" '
-            f'FROM "{staging_table}"'
+            f"FROM {_quote_identifier(staging_table)}"
         ).fetchall()
         for dataset_code, source_idx in rows:
             # Filter out empty/None values and strip strings
