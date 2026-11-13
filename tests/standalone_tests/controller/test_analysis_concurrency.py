@@ -221,3 +221,44 @@ def test_healthcheck_is_not_starved_by_running_analyses(monkeypatch):
         release.set()
 
     assert healthy, "healthcheck did not return while analyses held the executor"
+
+
+def test_queued_analysis_waits_for_http_capacity_without_blocking_health(monkeypatch):
+    set_max_concurrent_experiments(1)
+
+    async def scenario():
+        entered = asyncio.Event()
+        release = asyncio.Event()
+        calls = []
+
+        class Strategy:
+            async def execute(self):
+                calls.append("execute")
+                entered.set()
+                await release.wait()
+                return "{}"
+
+        _patch_entrypoint(monkeypatch, lambda dto: Strategy())
+        from tests.standalone_tests.controller.analysis_support import analysis_request
+
+        async with controller_client(app) as client:
+            http = asyncio.create_task(client.post("/analysis", json=ANALYSIS_BODY))
+            await entered.wait()
+            queued = asyncio.create_task(
+                analysis_service.run_analysis(
+                    analysis_request(), wait_for_capacity=True
+                )
+            )
+            await asyncio.sleep(0)
+            assert not queued.done()
+            assert len(calls) == 1
+            assert (await client.get("/livez")).status_code == 200
+            assert (
+                await client.post("/analysis", json=ANALYSIS_BODY)
+            ).status_code == 503
+            release.set()
+            assert (await http).status_code == 200
+            assert await queued == "{}"
+            assert len(calls) == 2
+
+    asyncio.run(scenario())
