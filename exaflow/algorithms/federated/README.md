@@ -8,6 +8,11 @@ Mixed-effects numerical helpers live in `mixed_effects/mixed_effects_utils.py`.
 
 ## Input validation
 
+Feature transformations and their fitted-state contracts are documented in
+[Federated feature transformations](docs/transformations.md). Their numerical
+implementations live in `feature_engineering` and `outliers`; there is no generic
+`preprocessing` core package.
+
 The `validation` package provides reusable parameter type rules, numeric-array
 policies, row/feature checks, binary-target checks, and sample-count checks. It
 uses public scikit-learn validation helpers without requiring estimator

@@ -1,14 +1,22 @@
-"""Metadata-only categorical imputation and distributed failure regressions."""
+"""Partition, replay and numerical edge-case regressions."""
 
 import json
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import asdict
 
 import numpy as np
 import pytest
-from pydantic import ValidationError
 
-from exaflow.algorithms.federated.preprocessing import SimpleImputer
+from exaflow.algorithms.federated.feature_engineering.simple_imputer import (
+    SimpleImputer,
+)
 from exaflow.algorithms.federated.utils import BadInputError
+from tests.standalone_tests.federated_algorithms.feature_engineering.transformation_test_support import (
+    fit as _fit,
+)
+from tests.standalone_tests.federated_algorithms.feature_engineering.transformation_test_support import (
+    transform as _transform,
+)
 from tests.standalone_tests.federated_algorithms.utils.dummy_agg_client import (
     DummyAggClient,
 )
@@ -44,12 +52,12 @@ def _fit_sites(parts, vocabularies):
 
     def fit_one(i):
         try:
-            return SimpleImputer("most_frequent", categories=vocabularies[i]).fit(
-                parts[i], agg_client=clients[i]
+            return _fit(
+                SimpleImputer("most_frequent", categories=vocabularies[i]),
+                parts[i],
+                agg_client=clients[i],
             )
         except BadInputError as exc:
-            # Do not abort: production validation must wake every participant
-            # using its own shared protocol, not the harness cancellation path.
             return exc
 
     with ThreadPoolExecutor(max_workers=len(parts)) as executor:
@@ -59,7 +67,7 @@ def _fit_sites(parts, vocabularies):
         except Exception as exc:
             coordinator.abort(exc)
             raise
-    return results, clients
+    return (results, clients)
 
 
 def test_global_mode_and_replay_use_metadata_order_and_counts_only():
@@ -70,10 +78,12 @@ def test_global_mode_and_replay_use_metadata_order_and_counts_only():
     models, clients = _fit_sites(parts, [[["low", "high"]]] * 2)
     for model in models:
         assert model.statistics_.tolist() == ["high"]
-        replay = SimpleImputer.from_recipe(json.loads(model.recipe_.model_dump_json()))
-        assert replay.transform([[None]]).tolist() == [["high"]]
+        replay = SimpleImputer.from_recipe(
+            json.loads(json.dumps(asdict(model.recipe_), allow_nan=False))
+        )
+        assert _transform(replay, [[None]]).tolist() == [["high"]]
         with pytest.raises(BadInputError, match="outside"):
-            replay.transform([["patient_123"]])
+            _transform(replay, [["patient_123"]])
     np.testing.assert_array_equal(clients[0].submissions[-1], [8, 2])
     np.testing.assert_array_equal(clients[1].submissions[-1], [1, 9])
 
@@ -88,10 +98,11 @@ def test_real_vs_string_mismatch_is_rejected_by_every_site_before_counts(vocabul
         [vocabulary, vocabulary],
     )
     assert all(
-        isinstance(result, BadInputError) and "outside" in str(result)
-        for result in models
+        (
+            isinstance(result, BadInputError) and "outside" in str(result)
+            for result in models
+        )
     )
-    # The only submitted sums are fixed-size validation flags, not frequencies.
     assert [len(client.submissions) for client in clients] == [1, 1]
 
 
@@ -105,22 +116,24 @@ def test_real_vs_string_mismatch_is_rejected_by_every_site_before_counts(vocabul
 )
 def test_explicit_categorical_codes_are_accepted(vocabulary, parts, expected):
     models, _ = _fit_sites(parts, [vocabulary] * 2)
-    assert all(model.transform([[None]]).tolist() == [[expected]] for model in models)
+    assert all(
+        (_transform(model, [[None]]).tolist() == [[expected]] for model in models)
+    )
 
 
 @pytest.mark.parametrize("unknown", ["patient_123", "free text", "9.999", 1.37, ["a"]])
 def test_unknown_values_fail_without_sharing_them(unknown):
     parts = [[["a"]], [[unknown]]]
     results, clients = _fit_sites(parts, [[["a", "b"]]] * 2)
-    assert all(isinstance(result, BadInputError) for result in results)
+    assert all((isinstance(result, BadInputError) for result in results))
     assert [len(client.submissions) for client in clients] == [1, 1]
-    assert all(str(unknown) not in str(result) for result in results)
+    assert all((str(unknown) not in str(result) for result in results))
 
 
 @pytest.mark.parametrize("second", [None, [["b", "a"]], [["a", "b", "c"]]])
 def test_missing_or_inconsistent_metadata_fails_collectively(second):
     results, clients = _fit_sites([[["a"]], [["b"]]], [[["a", "b"]], second])
-    assert all(isinstance(result, BadInputError) for result in results)
+    assert all((isinstance(result, BadInputError) for result in results))
     assert [len(client.submissions) for client in clients] == [1, 1]
 
 
@@ -129,12 +142,12 @@ def test_all_missing_or_empty_local_site_still_uses_global_mode():
         [np.empty((0, 1), dtype=object), [[None], [None]], [["b"], [None]]],
         [[["a", "b"]]] * 3,
     )
-    assert all(model.statistics_.tolist() == ["b"] for model in models)
+    assert all((model.statistics_.tolist() == ["b"] for model in models))
 
 
 def test_tie_breaking_follows_approved_metadata_order():
     models, _ = _fit_sites([[["a"]], [["b"]]], [[["b", "a"]]] * 2)
-    assert all(model.statistics_.tolist() == ["b"] for model in models)
+    assert all((model.statistics_.tolist() == ["b"] for model in models))
 
 
 @pytest.mark.parametrize(
@@ -142,8 +155,10 @@ def test_tie_breaking_follows_approved_metadata_order():
 )
 def test_invalid_metadata_vocabulary_is_bad_input(vocabulary):
     with pytest.raises(BadInputError, match="metadata vocabulary"):
-        SimpleImputer("most_frequent", categories=vocabulary).fit(
-            [["a"]], agg_client=DummyAggClient()
+        _fit(
+            SimpleImputer("most_frequent", categories=vocabulary),
+            [["a"]],
+            agg_client=DummyAggClient(),
         )
 
 
@@ -153,15 +168,20 @@ def test_two_features_keep_their_own_vocabularies_and_global_modes():
         [[["a", "yes"], ["a", "no"]], [["b", "no"], [None, None]]], [vocab] * 2
     )
     assert all(
-        model.transform([[None, None]]).tolist() == [["a", "no"]] for model in models
+        (
+            _transform(model, [[None, None]]).tolist() == [["a", "no"]]
+            for model in models
+        )
     )
 
 
 def test_categorical_replay_rejects_unapproved_fitted_mode():
-    model = SimpleImputer("most_frequent", categories=[["a", "b"]]).fit(
-        [["a"]], agg_client=DummyAggClient()
+    model = _fit(
+        SimpleImputer("most_frequent", categories=[["a", "b"]]),
+        [["a"]],
+        agg_client=DummyAggClient(),
     )
-    recipe = model.recipe_.model_dump()
+    recipe = asdict(model.recipe_)
     recipe["statistics"] = ["patient_123"]
-    with pytest.raises(ValidationError):
+    with pytest.raises(BadInputError):
         SimpleImputer.from_recipe(recipe)
