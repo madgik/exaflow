@@ -287,6 +287,7 @@ class WorkerLandscapeAggregator:
         self._stop_event = threading.Event()
         self._update_loop_thread = None
         self._loaded_workers = set()
+        self.initial_refresh_complete = threading.Event()
 
     def update(self):
         """
@@ -317,6 +318,7 @@ class WorkerLandscapeAggregator:
             )
 
             self._set_new_registries(worker_registry, dmr)
+            self.initial_refresh_complete.set()
 
             self._logger.debug(
                 f"Workers:{[worker_info.id for worker_info in self.get_workers()]}"

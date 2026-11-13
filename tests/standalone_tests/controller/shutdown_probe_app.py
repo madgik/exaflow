@@ -3,14 +3,17 @@
 It wires the controller's own shutdown pieces (``run_blocking``, the in-flight
 RPC registry and the ``endpoints.shutdown`` lifespan hook) around a gRPC call
 that never finishes by itself, and appends what happens to the file named by
-``SHUTDOWN_PROBE_EVENTS``, one ``<unix time> <event>`` line each.
+``SHUTDOWN_PROBE_EVENTS``, one ``<monotonic seconds> <event>`` line each.
 """
 
+import asyncio
+import json
 import os
 import threading
 import time
 from concurrent import futures
 from contextlib import asynccontextmanager
+from types import SimpleNamespace
 
 import grpc
 from fastapi import FastAPI
@@ -21,11 +24,15 @@ from exaflow.controller.services import set_worker_landscape_aggregator
 from exaflow.controller.services.analysis_execution import run_blocking
 from exaflow.controller.services.analysis_execution import start_analysis_execution
 from exaflow.controller.services.controller_shutdown import register_inflight_rpc
+from exaflow.controller.services.rabbitmq.consumer import AnalysisConsumer
+from exaflow.controller.services.rabbitmq.consumer import AnalysisReply
+from exaflow.controller.services.rabbitmq.settings import RabbitMQSettings
+from tests.standalone_tests.controller.analysis_support import ANALYSIS_BODY
 
 
 def _event(name: str) -> None:
     with open(os.environ["SHUTDOWN_PROBE_EVENTS"], "a") as events:
-        events.write(f"{time.time():.3f} {name}\n")
+        events.write(f"{time.monotonic():.3f} {name}\n")
 
 
 class _Landscape:
@@ -58,10 +65,19 @@ _wait = grpc.insecure_channel(f"127.0.0.1:{_port}").unary_unary("/probe.Probe/Wa
 async def _lifespan(_app: FastAPI):
     set_worker_landscape_aggregator(_Landscape())
     start_analysis_execution()
+    _app.state.rabbitmq = _QueueProbeConsumer(
+        RabbitMQSettings(shutdown_drain_timeout=0.1, operation_timeout=1),
+        lambda: True,
+    )
     try:
         yield
     finally:
-        await endpoints.shutdown()
+        await _app.state.rabbitmq.drain()
+        _event("queue-drained")
+        try:
+            await endpoints.shutdown()
+        finally:
+            await _app.state.rabbitmq.close()
 
 
 app = FastAPI(lifespan=_lifespan)
@@ -92,3 +108,53 @@ async def analysis(name: str):
         # Like the aggregation cleanup in the strategy: it runs after the
         # analysis thread ended, also when shutdown ended it.
         await run_blocking(_event, f"{name}:cleanup-ran")
+
+
+class _QueueProbeConsumer(AnalysisConsumer):
+    async def _execute(self, request):
+        try:
+            await run_blocking(_analysis, request.request_id)
+            return AnalysisReply(status="succeeded", result={})
+        finally:
+            await run_blocking(_event, f"{request.request_id}:cleanup-ran")
+
+
+@app.post("/queue/{name}")
+async def queue_analysis(name: str):
+    async def ack():
+        _event(f"{name}:acked")
+
+    async def close():
+        _event(f"{name}:channel-closed")
+
+    async def publish(*args, **kwargs):
+        _event(f"{name}:reply-published")
+
+    async def declare(*args, **kwargs):
+        pass
+
+    channel = SimpleNamespace(
+        default_exchange=SimpleNamespace(publish=publish),
+        declare_queue=declare,
+        close=close,
+        is_closed=False,
+    )
+
+    async def open_channel(**kwargs):
+        return channel
+
+    message = SimpleNamespace(
+        body=json.dumps(ANALYSIS_BODY).encode(),
+        correlation_id=name,
+        reply_to="replies",
+        redelivered=False,
+        channel=SimpleNamespace(is_closed=False),
+        ack=ack,
+    )
+    connection = SimpleNamespace(is_closed=False, channel=open_channel)
+    runtime = app.state.rabbitmq
+    await runtime.handlers.acquire()
+    task = asyncio.create_task(runtime.handle(message, connection))
+    runtime.deliveries.add(task)
+    task.add_done_callback(runtime._delivery_done)
+    return {"submitted": name}
