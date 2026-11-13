@@ -25,6 +25,7 @@ dependencies = [
 
 [dependency-groups]
 controller = [
+    "aio-pika>=9.5,<10",
     "dnspython>=2.8.0,<2.9.0",
     "fastapi>=0.115,<0.116",
     "starlette>=0.46,<0.47",

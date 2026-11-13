@@ -2,8 +2,7 @@
 
 from fastapi import HTTPException
 
-# Uvicorn does not limit the request body. 16 MiB is the limit Quart applied.
-MAX_REQUEST_BODY_BYTES = 16 * 1024 * 1024
+from exaflow.controller.services.api.limits import MAX_REQUEST_BODY_BYTES
 
 
 class RequestBodyTooLargeError(HTTPException):

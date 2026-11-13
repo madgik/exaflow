@@ -1,6 +1,7 @@
 from abc import ABC
 from enum import Enum
 from enum import unique
+from typing import Annotated
 from typing import Any
 from typing import Dict
 from typing import List
@@ -9,6 +10,9 @@ from typing import Optional
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
+from pydantic import StringConstraints
+
+RequestID = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{1,128}$")]
 
 
 @unique
@@ -46,7 +50,7 @@ class AnalysisAlgorithmDTO(ImmutableBaseModel):
 class AnalysisRequestDTO(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    request_id: Optional[str] = None
+    request_id: Optional[RequestID] = None
     inputdata: AnalysisInputDataDTO
     preprocessing: Optional[List[AnalysisPreprocessingStepDTO]] = None
     algorithm: AnalysisAlgorithmDTO
