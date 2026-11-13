@@ -245,7 +245,9 @@ def test_preprocessing_requirement_can_create_client_for_non_aggregation_udf(
     created_clients = []
 
     class _CreatedAggClient(_DummyAggClient):
-        def __init__(self, request_id, aggregator_dns=None, max_message_mb=None):
+        def __init__(
+            self, request_id, aggregator_dns=None, max_message_mb=None, timeout=None
+        ):
             super().__init__()
             self.request_id = request_id
             self.aggregator_dns = aggregator_dns
@@ -304,6 +306,7 @@ def test_execute_udf_passes_fixed_agg_client_name_to_aggregation_udf():
 
 def test_run_udf_converts_preprocessing_bad_input_to_bad_user_input(monkeypatch):
     agg_client = _DummyAggClient()
+    monkeypatch.setattr(udf_service.worker_config.privacy, "minimum_row_count", 1)
 
     def udf(data):
         return {"rows": len(data)}
@@ -334,7 +337,6 @@ def test_run_udf_converts_preprocessing_bad_input_to_bad_user_input(monkeypatch)
         metadata={"x": {"is_categorical": False}},
         inputdata=None,
         add_dataset_variable=False,
-        check_min_rows=False,
     )
 
     with pytest.raises(BadUserInput, match="bad preprocessing input"):
@@ -363,6 +365,7 @@ def _raise_value_error(data):
 )
 def test_run_udf_closes_agg_client_without_unregistering(monkeypatch, udf, expectation):
     agg_client = _DummyAggClient()
+    monkeypatch.setattr(udf_service.worker_config.privacy, "minimum_row_count", 1)
     monkeypatch.setattr(udf_service, "_get_udf_or_raise", lambda _: udf)
     monkeypatch.setattr(
         udf_service,
@@ -384,7 +387,6 @@ def test_run_udf_closes_agg_client_without_unregistering(monkeypatch, udf, expec
         metadata={"x": {"is_categorical": False}},
         inputdata=None,
         add_dataset_variable=False,
-        check_min_rows=False,
     )
 
     with expectation:
@@ -400,18 +402,20 @@ def test_run_udf_closes_agg_client_without_unregistering(monkeypatch, udf, expec
 
 
 @pytest.mark.parametrize(
-    "preprocessing, check_min_rows, expected_error",
+    "preprocessing, minimum_row_count, expected_error",
     [
-        ([], True, InsufficientDataError),
-        ([{"name": "bad_input", "parameters": {}}], False, BadUserInput),
+        ([], 3, InsufficientDataError),
+        ([{"name": "bad_input", "parameters": {}}], 1, BadUserInput),
     ],
     ids=["insufficient_data", "bad_input"],
 )
 def test_run_udf_keeps_error_when_unregister_fails(
-    monkeypatch, preprocessing, check_min_rows, expected_error
+    monkeypatch, preprocessing, minimum_row_count, expected_error
 ):
     agg_client = _FailingUnregisterAggClient()
-    monkeypatch.setattr(udf_service.worker_config.privacy, "minimum_row_count", 3)
+    monkeypatch.setattr(
+        udf_service.worker_config.privacy, "minimum_row_count", minimum_row_count
+    )
     monkeypatch.setattr(udf_service, "_get_udf_or_raise", lambda _: lambda data: {})
     monkeypatch.setattr(
         udf_service,
@@ -438,7 +442,6 @@ def test_run_udf_keeps_error_when_unregister_fails(
         metadata={"x": {"is_categorical": False}},
         inputdata=None,
         add_dataset_variable=False,
-        check_min_rows=check_min_rows,
     )
 
     with pytest.raises(expected_error):
