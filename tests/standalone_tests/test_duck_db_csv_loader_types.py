@@ -156,3 +156,18 @@ def test_create_primary_data_table_rejects_dataset_in_multiple_csvs(tmp_path):
     with duckdb.connect(":memory:") as conn:
         with pytest.raises(ValueError, match="defined in multiple CSV files"):
             _create_primary_data_table(conn, "test", [first, second], METADATA)
+
+
+@pytest.mark.parametrize(
+    "prefix", ['quoted"model', 'x"; CREATE TABLE injected(a INT); --']
+)
+def test_model_identifiers_cannot_execute_sql(tmp_csv, prefix):
+    from exaflow.worker.utils.duck_db_csv_loader import _load_variables_metadata
+
+    with duckdb.connect(":memory:") as conn:
+        _create_primary_data_table(conn, prefix, [tmp_csv], METADATA)
+        _load_variables_metadata(conn, prefix, METADATA)
+        names = {row[0] for row in conn.execute("SHOW TABLES").fetchall()}
+        assert prefix + "__primary_data" in names
+        assert prefix + "_variables_metadata" in names
+        assert "injected" not in names
