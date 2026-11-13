@@ -11,6 +11,7 @@ real routes; the service layer is stubbed via ``monkeypatch`` exactly as in
 import asyncio
 import json
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -41,6 +42,8 @@ from exaflow.worker_communication import DataModelAttributes
 from exaflow.worker_communication import DataModelUnavailable
 from exaflow.worker_communication import DatasetUnavailable
 from exaflow.worker_communication import InsufficientDataError
+from tests.standalone_tests.controller.analysis_support import INVALID_REQUEST_IDS
+from tests.standalone_tests.controller.analysis_support import VALID_REQUEST_IDS
 from tests.standalone_tests.controller.asgi_client import controller_client
 
 TEXT_CONTENT_TYPE = "text/plain; charset=utf-8"
@@ -285,6 +288,36 @@ def test_analysis_success_route_contract(monkeypatch):
     assert status == 200
     assert content_type == JSON_CONTENT_TYPE
     assert body == ANALYSIS_SUCCESS_BODY
+
+
+@pytest.mark.parametrize("request_id", INVALID_REQUEST_IDS)
+def test_invalid_request_id_returns_422_before_orchestration(monkeypatch, request_id):
+    execute = AsyncMock()
+    monkeypatch.setattr(analysis_service, "run_analysis", execute)
+    status, content_type, body = asyncio.run(
+        _post("/analysis", json_body={**ANALYSIS_REQUEST, "request_id": request_id})
+    )
+    assert status == 422
+    assert content_type == TEXT_CONTENT_TYPE
+    assert "body.request_id:" in body
+    execute.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [{}, {"request_id": None}, *({"request_id": value} for value in VALID_REQUEST_IDS)],
+)
+def test_valid_and_optional_request_ids_reach_orchestration_unchanged(
+    monkeypatch, fields
+):
+    execute = AsyncMock(return_value=ANALYSIS_SUCCESS_BODY)
+    monkeypatch.setattr(analysis_service, "run_analysis", execute)
+    status, _, body = asyncio.run(
+        _post("/analysis", json_body={**ANALYSIS_REQUEST, **fields})
+    )
+    assert status == 200
+    assert body == ANALYSIS_SUCCESS_BODY
+    assert execute.await_args.args[0].request_id == fields.get("request_id")
 
 
 def test_analysis_body_that_does_not_match_the_model_returns_422(monkeypatch):

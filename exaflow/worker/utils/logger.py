@@ -4,33 +4,24 @@ import time
 from contextvars import ContextVar
 from functools import wraps
 
+from exaflow.logging_utils import request_logger
 from exaflow.worker import config as worker_config
 from exaflow.worker_communication import RequestIDNotFound
 
 LOGGING_ID_TASK_PARAM = "request_id"
 
-_request_logger: ContextVar[logging.Logger | None] = ContextVar(
+_request_logger: ContextVar[logging.LoggerAdapter | None] = ContextVar(
     "_request_logger", default=None
 )
 
 
 def init_logger(request_id):
-    logger = logging.getLogger(request_id)
-
-    formatter = logging.Formatter(
-        f"%(asctime)s - %(levelname)s - %(module)s.%(funcName)s(%(lineno)d) - [{worker_config.federation}] - [exaflow-{worker_config.role.lower()}] - [{worker_config.identifier}] - [{request_id}] - %(message)s"
+    return request_logger(
+        "exaflow.worker.requests",
+        request_id,
+        f"%(asctime)s - %(levelname)s - %(module)s.%(funcName)s(%(lineno)d) - [{worker_config.federation}] - [exaflow-{worker_config.role.lower()}] - [{worker_config.identifier}] - [%(request_id)s] - %(message)s",
+        worker_config.log_level,
     )
-
-    # StreamHandler
-    sh = logging.StreamHandler()
-    sh.setFormatter(formatter)
-    for hdlr in logger.handlers[:]:  # remove all old handlers
-        logger.removeHandler(hdlr)
-    logger.addHandler(sh)
-    logger.setLevel(worker_config.log_level)
-    logger.propagate = False
-
-    return logger
 
 
 def get_logger():

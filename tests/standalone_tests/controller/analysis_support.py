@@ -24,6 +24,22 @@ ANALYSIS_BODY = {
     "algorithm": {"name": "sample_algo", "y": ["x"]},
 }
 
+VALID_REQUEST_IDS = ("a", "X" * 128, "Analysis_123-abC")
+INVALID_REQUEST_IDS = (
+    "",
+    "a" * 129,
+    "request id",
+    "request.id",
+    "request:id",
+    "requést",
+    "request\tid",
+    "request\rid",
+    "request\nid",
+    "request\n",
+    "request\x00id",
+    "request\u2028id",
+)
+
 
 class ResultModel(BaseModel):
     thread_name: str

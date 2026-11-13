@@ -26,6 +26,14 @@ def _ensure_grpc_message_config(cfg: AttrDict) -> None:
     cfg.grpc = grpc_cfg
 
 
+def _ensure_log_levels(cfg: AttrDict) -> None:
+    for name in ("log_level", "framework_log_level"):
+        value = cfg.get(name)
+        if isinstance(value, str):
+            value = value.strip()
+        cfg[name] = "INFO" if value is None or value == "" else value
+
+
 # Initializing the configurations from the config file
 config = None
 if config_file := os.getenv("EXAFLOW_CONTROLLER_CONFIG_FILE"):
@@ -36,5 +44,6 @@ else:
         config = AttrDict(envtoml.load(fp))
 
 _ensure_grpc_message_config(config)
+_ensure_log_levels(config)
 
 worker_landscape_aggregator = None
