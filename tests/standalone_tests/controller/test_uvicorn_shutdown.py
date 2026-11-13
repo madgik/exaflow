@@ -162,3 +162,20 @@ def test_client_disconnect_during_the_drain_does_not_cancel_other_analyses(probe
     events = probe.events()
     assert returncode in CLEAN_EXIT, probe.output()
     assert events["a:rpc-cancelled"] - sent_at >= GRACEFUL_TIMEOUT - 1
+
+
+def test_queued_analysis_is_drained_cancelled_and_left_unacked(probe):
+    request = urllib.request.Request(
+        f"http://127.0.0.1:{probe.port}/queue/queued", data=b"", method="POST"
+    )
+    urllib.request.urlopen(request, timeout=5).read()
+    deadline = time.monotonic() + 10
+    while "queued:rpc-started" not in probe.events():
+        assert time.monotonic() < deadline, probe.output()
+        time.sleep(0.05)
+    probe.terminate()
+    assert probe.exit_code() in CLEAN_EXIT, probe.output()
+    events = probe.events()
+    assert events["queue-drained"] <= events["queued:rpc-cancelled"]
+    assert events["queued:cleanup-ran"] >= events["queued:rpc-cancelled"]
+    assert "queued:acked" not in events

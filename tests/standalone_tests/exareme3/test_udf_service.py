@@ -245,7 +245,9 @@ def test_preprocessing_requirement_can_create_client_for_non_aggregation_udf(
     created_clients = []
 
     class _CreatedAggClient(_DummyAggClient):
-        def __init__(self, request_id, aggregator_dns=None, max_message_mb=None):
+        def __init__(
+            self, request_id, context_id, aggregator_dns=None, max_message_mb=None
+        ):
             super().__init__()
             self.request_id = request_id
             self.aggregator_dns = aggregator_dns
@@ -259,6 +261,7 @@ def test_preprocessing_requirement_can_create_client_for_non_aggregation_udf(
     )
 
     client = udf_service._create_aggregation_client_if_required(
+        context_id="test-context",
         request_id="req",
         udf_registry_key="non_agg_udf",
         preprocessing=[{"name": "agg_aware", "parameters": {}}],
@@ -330,6 +333,7 @@ def test_run_udf_converts_preprocessing_bad_input_to_bad_user_input(monkeypatch)
         {"bad_input": _BadInputStep},
     )
     system_args = SimpleNamespace(
+        context_id="test-context",
         preprocessing=[{"name": "bad_input", "parameters": {}}],
         metadata={"x": {"is_categorical": False}},
         inputdata=None,
@@ -380,6 +384,7 @@ def test_run_udf_closes_agg_client_without_unregistering(monkeypatch, udf, expec
         lambda **_: pd.DataFrame({"x": [1, 2]}),
     )
     system_args = SimpleNamespace(
+        context_id="test-context",
         preprocessing=[],
         metadata={"x": {"is_categorical": False}},
         inputdata=None,
@@ -434,6 +439,7 @@ def test_run_udf_keeps_error_when_unregister_fails(
         {"bad_input": _BadInputStep},
     )
     system_args = SimpleNamespace(
+        context_id="test-context",
         preprocessing=preprocessing,
         metadata={"x": {"is_categorical": False}},
         inputdata=None,

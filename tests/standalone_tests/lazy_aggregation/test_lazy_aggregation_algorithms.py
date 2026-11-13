@@ -365,7 +365,7 @@ class _InProcessEngine:
 
     def run_udf(self, func, check_min_rows, add_dataset_variable, kw_args):
         request_id = f"lazy-agg-{uuid.uuid4().hex}"
-        controller = ControllerAggregationClient(request_id)
+        controller = ControllerAggregationClient(request_id, context_id=request_id)
         controller.configure(
             num_workers=len(self._worker_inputdata), timeout=AGG_CLIENT_TIMEOUT
         )
@@ -378,6 +378,7 @@ class _InProcessEngine:
                 check_min_rows=check_min_rows,
                 add_dataset_variable=add_dataset_variable,
                 preprocessing=self._preprocessing,
+                context_id=request_id,
             )
             wire_system_args = RunUdfSystemArgs.model_validate(
                 _struct_to_dict(_dict_to_struct(system_args.model_dump()))

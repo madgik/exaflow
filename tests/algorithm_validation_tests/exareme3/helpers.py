@@ -9,7 +9,9 @@ MISSING_VALUES_STEP_NAME = "missing_values_handler"
 MISSING_VALUE_DROP_STRATEGY = "drop"
 
 
-def analysis_request(algorithm: str, input: dict, drop_na: bool = True):
+def build_analysis_request_payload(
+    algorithm: str, input: dict, drop_na: bool = True
+) -> dict:
     request_payload = dict(input)
     request_payload.pop("test_case_num", None)
     request_payload.pop("type", None)
@@ -28,6 +30,11 @@ def analysis_request(algorithm: str, input: dict, drop_na: bool = True):
                 )
         request_payload["preprocessing"] = preprocessing
 
+    return request_payload
+
+
+def analysis_request(algorithm: str, input: dict, drop_na: bool = True):
+    request_payload = build_analysis_request_payload(algorithm, input, drop_na)
     url = "http://127.0.0.1:5100/analysis"
     headers = {"Content-type": "application/json", "Accept": "text/plain"}
     response = requests.post(url, data=json.dumps(request_payload), headers=headers)

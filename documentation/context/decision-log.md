@@ -213,3 +213,12 @@ Files affected: `.agents/skills`, `documentation/new-algorithm-setup.md`,
 algorithm wrapper/core/test/docs paths.
 
 Date: 2026-05-22
+
+## Separate logical requests from aggregation attempts
+
+RabbitMQ redelivery may repeat a logical request. Preserve `request_id` for
+tracing and use a fresh UUID `context_id` for each attempt, including all worker
+aggregation operations and cleanup. Propagate both explicitly; aggregation logs
+include both. This changes the aggregation RPC contract and requires coordinated
+controller, worker, and aggregation-server upgrades. Regenerate protobuf bindings
+using `exaflow/protos/README.md`.

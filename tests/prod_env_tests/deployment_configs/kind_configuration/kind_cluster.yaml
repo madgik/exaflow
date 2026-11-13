@@ -9,6 +9,9 @@ nodes:
   extraPortMappings:
   - containerPort: 30000
     hostPort: 5100
+  - containerPort: 30001
+    hostPort: 5679
+    listenAddress: "127.0.0.1"
   extraMounts:
   - hostPath: ./tests/prod_env_tests/deployment_configs/kind_configuration/master/hostname
     containerPath: /etc/hostname

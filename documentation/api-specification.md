@@ -570,3 +570,15 @@ ______________________________________________________________________
   - `exaflow/controller/http/error_handlers.py`
 - Algorithm/preprocessing names:
   - `exaflow/algorithms/specifications.py`
+
+## Optional RabbitMQ transport
+
+`POST /analysis` keeps its current body, response, and error behavior. An optional
+RabbitMQ consumer accepts the same analysis JSON and publishes a correlated
+success/failure envelope; see [RabbitMQ analysis submission](rabbitmq-analysis.md).
+
+`GET /healthcheck/rabbitmq` reports `enabled`, `connected`, `consuming`,
+`active_jobs`, and `last_error` (a safe error type or null). Its status is 503 when
+enabled but unavailable, otherwise 200. It does not change `/livez` or worker
+health checks. The aggregate HTTP/AMQP analysis limit is shared; only analysis
+submissions acquire a slot.

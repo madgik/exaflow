@@ -28,10 +28,12 @@ class BaseAggregationClient:
     def __init__(
         self,
         request_id: str,
+        context_id: str,
         aggregator_dns: str | None = None,
         max_message_mb: int | None = None,
     ):
         self._request_id = request_id
+        self._context_id = context_id
         self._step_counter = 1
 
         target = aggregator_dns or f"172.17.0.1:{DEFAULT_AGGREGATION_PORT}"
@@ -80,6 +82,7 @@ class BaseAggregationClient:
             )
         req = pb2.AggregateRequest(
             request_id=self._request_id,
+            context_id=self._context_id,
             step=step or self._next_step(),
             operations=operations,
         )

@@ -18,6 +18,13 @@ server_port = 8080
 [controller]
 port = 5100
 
+# Connect to an externally provisioned broker. Keep credentials out of version control.
+[rabbitmq]
+enabled = false
+url = "${RABBITMQ_URL:-}"
+request_queue = "exaflow.analysis.requests"
+dead_letter_queue = "exaflow.analysis.dead"
+
 [privacy]
 minimum_row_count = 10
 protect_local_data = false

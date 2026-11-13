@@ -304,6 +304,10 @@ def create_configs(c):
     ]
     controller_config["max_concurrent_experiments"] = max_concurrent_experiments
 
+    # Preserve the template's defaults and defer URL interpolation to the
+    # controller loader. Invoke tasks must not import the Exaflow runtime.
+    controller_config["rabbitmq"].update(deployment_config.get("rabbitmq", {}))
+
     controller_config["deployment_type"] = "LOCAL"
 
     controller_config["localworkers"]["config_file"] = str(

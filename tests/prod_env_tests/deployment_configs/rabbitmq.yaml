@@ -1,0 +1,87 @@
+# Test infrastructure only. Create exaflow-rabbitmq Secret before applying.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: exaflow-rabbitmq-config
+data:
+  rabbitmq.conf: |
+    # Longer than legitimate analysis execution plus admission waits.
+    consumer_timeout = 7200000
+    max_message_size = 33554432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: exaflow-rabbitmq
+spec:
+  serviceName: exaflow-rabbitmq
+  replicas: 1
+  selector:
+    matchLabels:
+      app: exaflow-rabbitmq
+  template:
+    metadata:
+      labels:
+        app: exaflow-rabbitmq
+    spec:
+      containers:
+      - name: rabbitmq
+        image: rabbitmq:4.1.0
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: "1"
+            memory: 1Gi
+        ports:
+        - containerPort: 5672
+        env:
+        - name: RABBITMQ_DEFAULT_USER
+          valueFrom:
+            secretKeyRef:
+              name: exaflow-rabbitmq
+              key: username
+        - name: RABBITMQ_DEFAULT_PASS
+          valueFrom:
+            secretKeyRef:
+              name: exaflow-rabbitmq
+              key: password
+        readinessProbe:
+          exec:
+            command: ["rabbitmq-diagnostics", "-q", "check_running"]
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 10
+        volumeMounts:
+        - name: config
+          mountPath: /etc/rabbitmq/rabbitmq.conf
+          subPath: rabbitmq.conf
+        - name: data
+          mountPath: /var/lib/rabbitmq
+      volumes:
+      - name: config
+        configMap:
+          name: exaflow-rabbitmq-config
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: exaflow-rabbitmq
+spec:
+  type: NodePort
+  selector:
+    app: exaflow-rabbitmq
+  ports:
+  - name: amqp
+    port: 5672
+    targetPort: 5672
+    nodePort: 30001

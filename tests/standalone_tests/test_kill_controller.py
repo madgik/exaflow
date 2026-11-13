@@ -469,3 +469,38 @@ def test_terminate_poll_is_not_stretched_by_the_spinner():
     interval = tasks.CONTROLLER_TERMINATE_POLL_INTERVAL_SECONDS
     polls = int(tasks.CONTROLLER_TERMINATE_TIMEOUT_SECONDS / interval)
     assert sleeps == [interval] * polls
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_config_generation_preserves_rabbitmq_template_defaults_without_runtime_import(
+    tmp_path, monkeypatch, enabled
+):
+    import envtoml
+
+    from exaflow.controller.services.rabbitmq.settings import RabbitMQSettings
+
+    deployment = tasks.toml.load(tasks.PROJECT_ROOT / ".deployment.sample.toml")
+    if enabled:
+        deployment["rabbitmq"] = {"enabled": True, "url": "${RABBITMQ_URL:-}"}
+    else:
+        deployment.pop("rabbitmq", None)
+    config_file = tmp_path / "deployment.toml"
+    config_file.write_text(tasks.toml.dumps(deployment))
+    controller_dir = tmp_path / "controller"
+    monkeypatch.setattr(tasks, "DEPLOYMENT_CONFIG_FILE", config_file)
+    monkeypatch.setattr(tasks, "WORKERS_CONFIG_DIR", tmp_path / "workers")
+    monkeypatch.setattr(tasks, "CONTROLLER_CONFIG_DIR", controller_dir)
+    monkeypatch.setattr(
+        tasks, "CONTROLLER_LOCALWORKERS_CONFIG_FILE", controller_dir / "workers.json"
+    )
+    monkeypatch.setattr(tasks, "AGG_SERVER_CONFIG_DIR", tmp_path / "aggregation")
+    monkeypatch.setenv("RABBITMQ_URL", "amqp://localhost")
+    monkeypatch.delenv("RABBITMQ_ENABLED", raising=False)
+
+    tasks.create_configs(_CTX)
+
+    with (controller_dir / "controller.toml").open("rb") as generated:
+        settings = RabbitMQSettings.model_validate(envtoml.load(generated)["rabbitmq"])
+    assert settings.enabled is enabled
+    assert settings.url == "amqp://localhost"
+    assert settings.max_result_bytes == 16 * 1024 * 1024

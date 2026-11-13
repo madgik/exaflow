@@ -5,7 +5,9 @@ from typing import Any
 
 from fastapi import APIRouter
 from fastapi import Body
+from fastapi import Request
 from fastapi import Response
+from fastapi.responses import JSONResponse
 
 from exaflow.controller.http.loggers import loggers
 from exaflow.controller.services import analysis_service
@@ -140,6 +142,24 @@ async def healthcheck():
 async def livez():
     # Liveness only: unlike /healthcheck, it does not depend on worker health.
     return Response()
+
+
+@router.get("/healthcheck/rabbitmq")
+async def rabbitmq_health(request: Request):
+    consumer = getattr(request.app.state, "rabbitmq", None)
+    state = (
+        consumer.health()
+        if consumer
+        else {
+            "enabled": False,
+            "connected": False,
+            "consuming": False,
+            "active_jobs": 0,
+            "last_error": None,
+        }
+    )
+    available = not state["enabled"] or (state["connected"] and state["consuming"])
+    return JSONResponse(state, status_code=200 if available else 503)
 
 
 @router.post("/analysis")

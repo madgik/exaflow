@@ -30,3 +30,23 @@ persistence. Publishing workflows build without restoring or saving CI caches;
 test caches remain enabled. Controller, worker, and staging aggregation images
 retain separate publishing jobs so one failure does not skip other images. Publishing credentials and triggers are unchanged.
 Rollback is a revert of these changes, restoring the corresponding exposures.
+
+## RabbitMQ analysis transport
+
+Broker persistence adds storage for analysis results and dead letters. Bound
+message size, queue growth, and retention; provide credentials through existing
+configuration/Secrets and keep URLs out of logs. AMQP is disabled by default and
+normal deployments provide an external broker. HTTP and AMQP share one analysis
+capacity limit; other HTTP routes remain independent.
+
+Delivery is at least once, with recomputation and duplicate replies allowed.
+Preserve logical request IDs and isolate aggregation state using attempt context
+IDs, including late calls, cancellation tombstones, and cleanup ownership checks.
+The internal protocol change requires coordinated controller/worker/aggregation
+rollout. Consumer tasks require explicit draining before existing shutdown cancels
+RPCs; cancelling asyncio tasks alone does not stop executor threads.
+
+Real-broker recovery tests may restart only their dedicated kind test broker and
+replace the test controller. They require the explicit test recovery environment
+flag and must never target shared deployments. See
+`documentation/rabbitmq-analysis.md` for configuration, tests, and rollback.
