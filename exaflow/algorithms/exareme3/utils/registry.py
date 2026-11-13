@@ -35,6 +35,7 @@ class UDFInfo:
     func: "Callable"
     with_aggregation_server: "bool"
     enable_lazy_aggregation: "bool"
+    check_min_rows: "bool"
 
 
 class Exareme3Registry(metaclass=Singleton):
@@ -47,6 +48,7 @@ class Exareme3Registry(metaclass=Singleton):
         *,
         with_aggregation_server: bool = False,
         enable_lazy_aggregation: bool = False,
+        check_min_rows: bool = True,
     ) -> str:
         """
         Register a UDF and return its registry key. Raises if the same key is
@@ -59,6 +61,7 @@ class Exareme3Registry(metaclass=Singleton):
             func,
             with_aggregation_server,
             enable_lazy_aggregation,
+            check_min_rows,
         )
         return key
 
@@ -70,9 +73,13 @@ class Exareme3Registry(metaclass=Singleton):
         info = self._registry.get(key)
         return bool(info and info.enable_lazy_aggregation)
 
-    def get_func(self, key: str) -> Callable:
+    def min_rows_check_required(self, key: str) -> bool:
         info = self._registry.get(key)
-        return info.func
+        return True if info is None else info.check_min_rows
+
+    def get_func(self, key: str) -> Callable | None:
+        info = self._registry.get(key)
+        return None if info is None else info.func
 
     def __repr__(self) -> str:
         return f"<Exareme3Registry {len(self._registry)} entries>"
@@ -86,6 +93,7 @@ def exareme3_udf(
     *,
     with_aggregation_server: bool = False,
     enable_lazy_aggregation: bool | None = None,
+    check_min_rows: bool = True,
 ):
     """
     Decorator to register a UDF and (optionally) enable lazy aggregation.
@@ -93,6 +101,8 @@ def exareme3_udf(
     - with_aggregation_server: whether the UDF expects an agg_client.
     - enable_lazy_aggregation: override to force on/off lazy batching. Defaults to
       matching with_aggregation_server.
+    - check_min_rows: whether the worker enforces the minimum row count before
+      running the UDF. Set False only for UDFs that mask small groups themselves.
     """
 
     def decorator(func: Callable) -> Callable:
@@ -105,6 +115,7 @@ def exareme3_udf(
             func,
             with_aggregation_server=with_aggregation_server,
             enable_lazy_aggregation=lazy_on,
+            check_min_rows=check_min_rows,
         )
         return func
 

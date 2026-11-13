@@ -124,10 +124,6 @@ class Describe(Algorithm):
         )
 
     @property
-    def check_min_rows(self) -> bool:
-        return False
-
-    @property
     def add_dataset_variable(self) -> bool:
         return True
 
@@ -176,7 +172,7 @@ class Describe(Algorithm):
         return Result(featurewise=[Variable.from_record(rec) for rec in recs])
 
 
-@exareme3_udf(with_aggregation_server=True)
+@exareme3_udf(with_aggregation_server=True, check_min_rows=False)
 def local_step(
     agg_client,
     data,
