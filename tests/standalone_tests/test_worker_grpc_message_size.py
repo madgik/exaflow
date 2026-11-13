@@ -158,6 +158,8 @@ def test_large_kw_args_and_result_round_trip_through_run_udf(monkeypatch):
     )
 
     def fake_run_udf(**kwargs):
+        assert kwargs["request_id"] == "req-large"
+        assert kwargs["system_args"].context_id == "size-test-context"
         assert kwargs["kw_args"]["blob"] == blob
         assert kwargs["system_args"].inputdata.data_model == "dementia"
         return {"blob": kwargs["kw_args"]["blob"], "result": result_blob}
@@ -174,6 +176,7 @@ def test_large_kw_args_and_result_round_trip_through_run_udf(monkeypatch):
             udf_registry_key="size_probe",
             kw_args={"blob": blob},
             system_args={
+                "context_id": "size-test-context",
                 "inputdata": {
                     "data_model": "dementia",
                     "datasets": ["ppmi0"],
@@ -229,7 +232,10 @@ def test_configured_limit_reaches_channel_and_server_options(monkeypatch):
         udf_service.exareme3_registry, "aggregation_server_required", lambda _: True
     )
     udf_service._create_aggregation_client_if_required(
-        request_id="req-size", udf_registry_key="udf", preprocessing=None
+        request_id="req-size",
+        context_id="size-test-context",
+        udf_registry_key="udf",
+        preprocessing=None,
     )
     serve()
 

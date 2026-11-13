@@ -2,12 +2,12 @@
 
 Lifecycle of a request
 ----------------------
-- The controller calls `Configure(request_id, num_of_workers)` before running
-  the algorithm and `Cleanup(request_id)` when the request ends, in a `finally`
+- The controller calls `Configure(request_id, context_id, num_of_workers)` before running
+  the algorithm and `Cleanup(request_id, context_id)` when the request ends, in a `finally`
   block. Both calls carry an ownership token in gRPC metadata. Cleanup deletes
   the context only when the token matches the one stored at Configure, so a
   duplicate request that lost its response cannot remove someone else's context.
-- Each worker calls `Aggregate(request_id, step, operations)` from its UDF.
+- Each worker calls `Aggregate(request_id, context_id, step, operations)` from its UDF.
   `step` is numbered by the worker's client (1, 2, 3, ...). `operations` holds
   one or more `(aggregation_type, tensor)` pairs. Numeric types (`SUM`, `MIN`,
   `MAX`) send Arrow tensors; `UNION` sends JSON-encoded values.
@@ -16,7 +16,7 @@ Lifecycle of a request
 
 Synchronization
 ---------------
-Each request has an `AggregationContext` guarded by one `Condition`. It keeps
+Each execution attempt has an `AggregationContext` guarded by one `Condition`. It keeps
 one slot per step number that is still in progress:
 - A worker's `Aggregate` call adds its inputs to the slot for its step,
   creating the slot if it is the first to arrive.
@@ -327,7 +327,7 @@ class AggregationContext:
 class AggregationServer(AggregationServerServicer):
     def __init__(self):
         self.aggregation_contexts: Dict[str, AggregationContext] = {}
-        # request_id -> monotonic time of Cleanup (or stale eviction). Lets late
+        # context_id -> monotonic time of Cleanup (or stale eviction). Lets late
         # Aggregate/Unregister calls get ABORTED instead of looking unconfigured.
         self.cleaned_up_context_ids: Dict[str, float] = {}
         self.global_lock = threading.Lock()

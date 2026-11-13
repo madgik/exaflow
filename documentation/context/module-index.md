@@ -225,3 +225,13 @@ Rules: Preserve dry-run behavior and JSON merge semantics.
 Tests: No dedicated test found during inspection; validate manually if changed.
 
 Notes: Can accept piped JSON and override fields with CLI args.
+
+## RabbitMQ analysis submission
+
+`exaflow/controller/services/rabbitmq` owns typed broker settings, bounded async
+consumption, reply envelopes, manual acknowledgement, and reconnect/drain behavior.
+FastAPI lifespan owns its runtime instance; the HTTP layer exposes independent
+consumer health. Both transports call the shared analysis service, with AMQP
+waiting for capacity before semantic validation. Production broker provisioning
+remains external; test-only kind manifests live with production test deployment
+configuration. See `documentation/rabbitmq-analysis.md`.

@@ -162,3 +162,15 @@ CI also builds the package and smoke-tests the wheel.
 | Dependency update | Lockfile update, focused tests, lint/format, and CI-equivalent suite where feasible. |
 | Refactor without behavior change | Focused tests for touched modules and broader standalone tests if shared code moved. |
 | `exadata-validator` change | `cd exadata-validator && uv run pytest -q`; build/smoke test if packaging or CLI changes. |
+
+## RabbitMQ transport
+
+Focused fake-AMQP tests live in `tests/standalone_tests/controller/rabbitmq`.
+Controller concurrency and Uvicorn shutdown tests cover shared admission and queue
+cancellation; aggregation gRPC tests cover independent execution contexts.
+Algorithm validation stays on HTTP and requires no broker.
+
+Production tests provision `tests/prod_env_tests/deployment_configs/rabbitmq.yaml`
+in kind. `RABBITMQ_TEST_URL` enables real-broker cases; the CI-only
+`RABBITMQ_TEST_RECOVERY=1` flag permits restarting the dedicated test broker and
+replacing its test controller. See `documentation/rabbitmq-analysis.md`.
