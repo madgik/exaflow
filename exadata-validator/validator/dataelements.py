@@ -1,4 +1,5 @@
 import json
+import math
 from dataclasses import dataclass
 
 from validator.exceptions import InvalidDataModelError
@@ -165,7 +166,24 @@ def validate_metadata(code, metadata):
             f"The CDE {code} has 'is_categorical' set to True but there are no enumerations."
         )
 
-    if {"min", "max"} <= set(metadata) and metadata["min"] >= metadata["max"]:
+    for bound in ("min", "max"):
+        value = metadata.get(bound)
+        if value is None:
+            continue
+        try:
+            valid = type(value) in (int, float) and math.isfinite(float(value))
+        except OverflowError:
+            valid = False
+        if not valid:
+            raise InvalidDataModelError(
+                f"The CDE {code} has an invalid {bound}; expected a finite number."
+            )
+
+    if (
+        metadata.get("min") is not None
+        and metadata.get("max") is not None
+        and metadata["min"] >= metadata["max"]
+    ):
         raise InvalidDataModelError(f"The CDE {code} has min greater than the max.")
 
     valid_metadata_types = ["nominal", "real", "integer", "text"]

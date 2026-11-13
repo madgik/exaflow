@@ -55,3 +55,37 @@ def test_validate_csv_longitudinal_duplicate_pair():
 
     with pytest.raises(InvalidDatasetError, match=r"duplicate \(visitid, subjectid\)"):
         DuckDBDatasetValidator(metadata).validate_csv(csv_path)
+
+
+@pytest.mark.parametrize("report_all", [False, True])
+def test_bound_parameters_preserve_range_checks(tmp_path, report_all):
+    metadata = {
+        "variables": [
+            {
+                "code": "dataset",
+                "label": "Dataset",
+                "type": "nominal",
+                "sql_type": "text",
+                "isCategorical": True,
+                "enumerations": [{"code": "d", "label": "D"}],
+            },
+            {
+                "code": "age",
+                "label": "Age",
+                "type": "real",
+                "sql_type": "real",
+                "isCategorical": False,
+                "minValue": 1,
+                "maxValue": 10.5,
+            },
+        ]
+    }
+    path = tmp_path / "bounds.csv"
+    path.write_text("dataset,age\nd,0\nd,5\nd,12\n")
+    validator = DuckDBDatasetValidator(metadata)
+    if report_all:
+        issues = validator.validate_csv(path, report_all=True)
+        assert {issue.rule for issue in issues} == {"range.min", "range.max"}
+    else:
+        with pytest.raises(InvalidDatasetError):
+            validator.validate_csv(path)
