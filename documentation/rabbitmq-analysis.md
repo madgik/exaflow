@@ -167,7 +167,11 @@ expire after two days; result messages expire after one day.
   storage and an isolated generated Secret. Set `RABBITMQ_TEST_URL` to enable the
   AMQP cases. `RABBITMQ_TEST_RECOVERY=1` additionally permits replacing the test
   controller and restarting this dedicated test broker; never use that flag
-  against a shared or production deployment. CI enables it on its own test stack.
+  against a shared or production deployment. CI enables it only in a separate
+  recovery step after the normal production test suite. Recovery cleanup waits
+  for the replacement controller rollout and HTTP/AMQP readiness before returning.
+  The test broker uses NodePort 30001, mapped to localhost port 5679 by kind;
+  this endpoint survives broker restarts without a port-forward process.
 
 Disable consumption to roll back the transport; pending durable requests stay in
 the broker and HTTP remains usable. Revert protocol changes across controller,

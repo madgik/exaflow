@@ -304,14 +304,9 @@ def create_configs(c):
     ]
     controller_config["max_concurrent_experiments"] = max_concurrent_experiments
 
-    from exaflow.controller.services.rabbitmq.settings import RabbitMQSettings
-
-    # Keep URL interpolation in the controller configuration loader, so credentials
-    # need not be present while generating configuration files.
-    controller_config["rabbitmq"] = {
-        **RabbitMQSettings().model_dump(),
-        **deployment_config.get("rabbitmq", {}),
-    }
+    # Preserve the template's defaults and defer URL interpolation to the
+    # controller loader. Invoke tasks must not import the Exaflow runtime.
+    controller_config["rabbitmq"].update(deployment_config.get("rabbitmq", {}))
 
     controller_config["deployment_type"] = "LOCAL"
 

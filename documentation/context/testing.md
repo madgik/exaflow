@@ -173,4 +173,9 @@ Algorithm validation stays on HTTP and requires no broker.
 Production tests provision `tests/prod_env_tests/deployment_configs/rabbitmq.yaml`
 in kind. `RABBITMQ_TEST_URL` enables real-broker cases; the CI-only
 `RABBITMQ_TEST_RECOVERY=1` flag permits restarting the dedicated test broker and
-replacing its test controller. See `documentation/rabbitmq-analysis.md`.
+replacing its test controller. CI sets that flag only in a separate recovery
+step after the normal production suite, and recovery cleanup waits for controller
+rollout and transport readiness, including on failures. Broker access uses kind
+host port 5679 mapped to NodePort 30001 instead of a restart-sensitive port-forward.
+Queue and HTTP parity cases share the existing request builder, including required
+missing-value preprocessing. See `documentation/rabbitmq-analysis.md`.

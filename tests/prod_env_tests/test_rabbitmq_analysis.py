@@ -15,6 +15,9 @@ import pytest
 import requests
 
 from tests.algorithm_validation_tests.exareme3.helpers import analysis_request
+from tests.algorithm_validation_tests.exareme3.helpers import (
+    build_analysis_request_payload,
+)
 from tests.algorithm_validation_tests.exareme3.helpers import parse_response
 
 pytestmark = pytest.mark.skipif(
@@ -27,8 +30,7 @@ def payload():
     cases = json.loads(
         (Path(__file__).parent / "expected/pca_expected.json").read_text()
     )
-    body = cases["test_cases"][0]["input"].copy()
-    body["algorithm"] = {**body["algorithm"], "name": "pca"}
+    body = build_analysis_request_payload("pca", cases["test_cases"][0]["input"])
     body["request_id"] = uuid4().hex
     return body
 
@@ -115,7 +117,7 @@ def test_queue_pca_matches_http_and_repeat_request_gets_fresh_aggregation_contex
         body = payload()
         case = {k: v for k, v in body.items() if k != "request_id"}
         expected = parse_response(
-            await asyncio.to_thread(analysis_request, "pca", case, False)
+            await asyncio.to_thread(analysis_request, "pca", case)
         )
         async with broker() as (_, channel, replies):
             for _ in range(2):
@@ -195,6 +197,17 @@ async def kubectl(*args):
     )
 
 
+async def restore_controller():
+    await kubectl("scale", "deployment/exaflow-controller-deployment", "--replicas=1")
+    await kubectl(
+        "rollout",
+        "status",
+        "deployment/exaflow-controller-deployment",
+        "--timeout=180s",
+    )
+    await ready()
+
+
 @pytest.mark.skipif(
     os.environ.get("RABBITMQ_TEST_RECOVERY") != "1",
     reason="Requires exclusive ownership of the production test deployment",
@@ -252,12 +265,7 @@ def test_redelivery_survives_broker_restart_and_controller_replacement():
                             "start_app",
                         )
                 finally:
-                    await kubectl(
-                        "scale",
-                        "deployment/exaflow-controller-deployment",
-                        "--replicas=1",
-                    )
-            await ready()
+                    await restore_controller()
             result = await receive(replies)
             assert result.correlation_id == sent.correlation_id
             assert json.loads(result.body)["status"] == "succeeded"

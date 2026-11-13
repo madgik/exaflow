@@ -158,11 +158,9 @@ jobs:
             --from-literal=password="$password" \
             --from-literal=url="amqp://exaflow_tests:$password@exaflow-rabbitmq:5672/" \
             --dry-run=client -o yaml | kubectl apply -f -
-          echo "RABBITMQ_TEST_RECOVERY=1" >> "$GITHUB_ENV"
           echo "RABBITMQ_TEST_URL=amqp://exaflow_tests:$password@127.0.0.1:5679/" >> "$GITHUB_ENV"
           kubectl apply -f tests/prod_env_tests/deployment_configs/rabbitmq.yaml
           kubectl rollout status statefulset/exaflow-rabbitmq --timeout=180s
-          kubectl port-forward service/exaflow-rabbitmq 5679:5672 > /tmp/rabbitmq-port-forward.log 2>&1 &
 
       - name: Deploy Helm
         run: helm install exaflow kubernetes/ --debug
@@ -273,6 +271,11 @@ jobs:
 
       - name: Run production env tests
         run: uv run --no-sync pytest tests/prod_env_tests --verbosity=4
+
+      - name: Run isolated RabbitMQ recovery test
+        env:
+          RABBITMQ_TEST_RECOVERY: "1"
+        run: uv run --no-sync pytest -q tests/prod_env_tests/test_rabbitmq_analysis.py::test_redelivery_survives_broker_restart_and_controller_replacement
 
       - name: Pod restarts and probe failures
         if: always()

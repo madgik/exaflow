@@ -77,9 +77,11 @@ kind: Service
 metadata:
   name: exaflow-rabbitmq
 spec:
+  type: NodePort
   selector:
     app: exaflow-rabbitmq
   ports:
   - name: amqp
     port: 5672
     targetPort: 5672
+    nodePort: 30001
