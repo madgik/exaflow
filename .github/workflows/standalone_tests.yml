@@ -52,4 +52,5 @@ jobs:
         with:
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
           files: ./non_smpc_cov.xml
+          add-prefix: exaflow/
 #          files: ./non_smpc_cov.xml,./smpc_cov.xml
