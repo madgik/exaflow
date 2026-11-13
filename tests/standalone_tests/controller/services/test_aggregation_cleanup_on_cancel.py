@@ -24,7 +24,9 @@ def test_cancel_during_analysis_cleans_up_only_after_run_finishes(
     release_run = threading.Event()
 
     class FakeAggregationClient:
-        def __init__(self, request_id, aggregator_dns=None, max_message_mb=None):
+        def __init__(
+            self, request_id, context_id, aggregator_dns=None, max_message_mb=None
+        ):
             order.append("init")
 
         def configure(self, num_workers, timeout=None):
@@ -91,7 +93,9 @@ def test_cancel_during_analysis_cleans_up_only_after_run_finishes(
 class _RecordingAggregationClient:
     configure_status = agg_pb2.Status.OK
 
-    def __init__(self, request_id, aggregator_dns=None, max_message_mb=None):
+    def __init__(
+        self, request_id, context_id, aggregator_dns=None, max_message_mb=None
+    ):
         self.calls = []
         _RecordingAggregationClient.last = self
 

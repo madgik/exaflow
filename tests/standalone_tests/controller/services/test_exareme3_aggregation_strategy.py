@@ -16,7 +16,9 @@ from exaflow.protos.aggregation_server import aggregation_server_pb2 as agg_pb2
 
 
 class _RecordingAggregationClient:
-    def __init__(self, request_id, aggregator_dns=None, max_message_mb=None):
+    def __init__(
+        self, request_id, context_id, aggregator_dns=None, max_message_mb=None
+    ):
         self.calls = []
 
     def configure(self, num_workers, timeout=None):
@@ -39,9 +41,10 @@ def test_aggregation_strategy_cleans_up_and_closes_client_when_algorithm_fails(
 ):
     created = []
 
-    def factory(request_id, aggregator_dns=None, max_message_mb=None):
+    def factory(request_id, context_id, aggregator_dns=None, max_message_mb=None):
         client = _RecordingAggregationClient(
             request_id,
+            context_id,
             aggregator_dns=aggregator_dns,
             max_message_mb=max_message_mb,
         )
@@ -55,6 +58,7 @@ def test_aggregation_strategy_cleans_up_and_closes_client_when_algorithm_fails(
     monkeypatch.setattr(strategies.Exareme3Strategy, "execute", failing_execute)
     strategy = object.__new__(strategies.Exareme3WithAggregationServerStrategy)
     strategy._request_id = "req"
+    strategy._context_id = "ctx"
     strategy._local_worker_tasks_handlers = [object(), object()]
     strategy._logger = logging.getLogger(__name__)
     strategy._controller = types.SimpleNamespace(task_timeout=300)
@@ -85,6 +89,7 @@ class _DeadlineRpcError(grpc.RpcError):
 def _make_strategy(task_timeout):
     strategy = object.__new__(strategies.Exareme3WithAggregationServerStrategy)
     strategy._request_id = "req"
+    strategy._context_id = "ctx"
     strategy._local_worker_tasks_handlers = [object(), object()]
     strategy._logger = logging.getLogger(__name__)
     strategy._controller = types.SimpleNamespace(task_timeout=task_timeout)
@@ -99,7 +104,9 @@ def test_configure_and_cleanup_send_the_controller_task_timeout_as_deadline(
     seen = {}
 
     class DeadlineClient:
-        def __init__(self, request_id, aggregator_dns=None, max_message_mb=None):
+        def __init__(
+            self, request_id, context_id, aggregator_dns=None, max_message_mb=None
+        ):
             pass
 
         def configure(self, num_workers, timeout=None):
@@ -141,7 +148,9 @@ def test_cleanup_past_deadline_returns_error_and_logs_warning(caplog):
                 grpc.StatusCode.DEADLINE_EXCEEDED, "deadline exceeded"
             )
 
-    client = ControllerAggregationClient("deadline-cleanup")
+    client = ControllerAggregationClient(
+        "deadline-cleanup", context_id="deadline-cleanup"
+    )
     client._stub = DeadlineStub()
 
     with caplog.at_level(logging.WARNING):
@@ -167,7 +176,9 @@ def test_client_sends_timeout_as_grpc_deadline():
             seen["cleanup"] = timeout
             return agg_pb2.CleanupResponse(status=agg_pb2.Status.OK)
 
-    client = ControllerAggregationClient("deadline-pass-through")
+    client = ControllerAggregationClient(
+        "deadline-pass-through", context_id="deadline-pass-through"
+    )
     client._stub = RecordingStub()
 
     assert client.configure(2, timeout=7) == agg_pb2.Status.OK
@@ -182,7 +193,9 @@ class _ConfigureFailsClient:
     error = None
     calls = []
 
-    def __init__(self, request_id, aggregator_dns=None, max_message_mb=None):
+    def __init__(
+        self, request_id, context_id, aggregator_dns=None, max_message_mb=None
+    ):
         pass
 
     def configure(self, num_workers, timeout=None):

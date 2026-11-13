@@ -179,7 +179,9 @@ def test_shutdown_cleanup_uses_the_short_deadline(monkeypatch):
     timeouts = []
 
     class FakeAggregationClient:
-        def __init__(self, request_id, aggregator_dns=None, max_message_mb=None):
+        def __init__(
+            self, request_id, context_id, aggregator_dns=None, max_message_mb=None
+        ):
             pass
 
         def configure(self, num_workers, timeout=None):
@@ -361,7 +363,7 @@ def test_cleanup_and_metadata_rpcs_are_not_cancelled_by_shutdown():
 
 
 def test_aggregation_cleanup_rpc_is_not_cancelled_by_shutdown():
-    client = ControllerAggregationClient("req-cleanup")
+    client = ControllerAggregationClient("req-cleanup", context_id="req-cleanup")
     seen = {}
 
     def cleanup(request, timeout=None, metadata=None):
@@ -389,7 +391,7 @@ def test_cancelled_worker_rpc_raises_the_shutting_down_error():
 
 
 def test_aggregation_configure_unblocks_when_its_rpc_is_cancelled():
-    client = ControllerAggregationClient("req-shutdown")
+    client = ControllerAggregationClient("req-shutdown", context_id="req-shutdown")
     call = _BlockingCall()
 
     def future(request, timeout=None, metadata=None):

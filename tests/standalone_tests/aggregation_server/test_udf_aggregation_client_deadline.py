@@ -38,7 +38,10 @@ class _RecordingStub:
 
 def _client(**kwargs):
     client = Exareme3UDFAggregationClient(
-        "req-deadline", aggregator_dns="127.0.0.1:1", **kwargs
+        "req-deadline",
+        context_id="ctx-deadline",
+        aggregator_dns="127.0.0.1:1",
+        **kwargs,
     )
     client._stub = _RecordingStub()  # noqa: SLF001
     return client
@@ -93,9 +96,11 @@ def test_worker_gives_its_task_timeout_to_the_aggregation_client(monkeypatch):
 
     udf_service._create_aggregation_client_if_required(
         request_id="req-deadline",
+        context_id="ctx-deadline",
         udf_registry_key="any_udf",
         preprocessing=[],
     )
 
     assert created["request_id"] == "req-deadline"
+    assert created["context_id"] == "ctx-deadline"
     assert created.get("timeout") == 42

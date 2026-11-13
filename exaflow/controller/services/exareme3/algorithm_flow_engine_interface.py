@@ -55,6 +55,7 @@ class Exareme3AlgorithmFlowEngineInterface:
         udf_registry_key = get_udf_registry_key(func)
 
         system_args = RunUdfSystemArgs(
+            context_id=self._context_id,
             inputdata=self._inputdata,
             metadata=add_ordered_enums(self._metadata),
             add_dataset_variable=add_dataset_variable,

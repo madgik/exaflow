@@ -86,6 +86,7 @@ def test_exareme3_run_udf_returns_the_worker_call(monkeypatch):
         inputdata={"data_model": "dm", "datasets": ["ds"], "variables": ["x"]},
         metadata={},
         add_dataset_variable=False,
+        context_id="test-context",
     )
 
     assert (

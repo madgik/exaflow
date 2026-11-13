@@ -246,10 +246,16 @@ def test_preprocessing_requirement_can_create_client_for_non_aggregation_udf(
 
     class _CreatedAggClient(_DummyAggClient):
         def __init__(
-            self, request_id, aggregator_dns=None, max_message_mb=None, timeout=None
+            self,
+            request_id,
+            context_id,
+            aggregator_dns=None,
+            max_message_mb=None,
+            timeout=None,
         ):
             super().__init__()
             self.request_id = request_id
+            self.context_id = context_id
             self.aggregator_dns = aggregator_dns
             created_clients.append(self)
 
@@ -261,6 +267,7 @@ def test_preprocessing_requirement_can_create_client_for_non_aggregation_udf(
     )
 
     client = udf_service._create_aggregation_client_if_required(
+        context_id="test-context",
         request_id="req",
         udf_registry_key="non_agg_udf",
         preprocessing=[{"name": "agg_aware", "parameters": {}}],
@@ -268,6 +275,7 @@ def test_preprocessing_requirement_can_create_client_for_non_aggregation_udf(
 
     assert client is created_clients[0]
     assert client.request_id == "req"
+    assert client.context_id == "test-context"
 
 
 def test_execute_udf_does_not_pass_preprocessing_only_agg_client_to_udf():
@@ -333,6 +341,7 @@ def test_run_udf_converts_preprocessing_bad_input_to_bad_user_input(monkeypatch)
         {"bad_input": _BadInputStep},
     )
     system_args = SimpleNamespace(
+        context_id="test-context",
         preprocessing=[{"name": "bad_input", "parameters": {}}],
         metadata={"x": {"is_categorical": False}},
         inputdata=None,
@@ -383,6 +392,7 @@ def test_run_udf_closes_agg_client_without_unregistering(monkeypatch, udf, expec
         lambda **_: pd.DataFrame({"x": [1, 2]}),
     )
     system_args = SimpleNamespace(
+        context_id="test-context",
         preprocessing=[],
         metadata={"x": {"is_categorical": False}},
         inputdata=None,
@@ -438,6 +448,7 @@ def test_run_udf_keeps_error_when_unregister_fails(
         {"bad_input": _BadInputStep},
     )
     system_args = SimpleNamespace(
+        context_id="test-context",
         preprocessing=preprocessing,
         metadata={"x": {"is_categorical": False}},
         inputdata=None,
