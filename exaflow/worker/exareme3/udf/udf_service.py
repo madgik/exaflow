@@ -44,6 +44,7 @@ def run_udf(
     )
     agg_client = _create_aggregation_client_if_required(
         request_id=request_id,
+        context_id=system_args.context_id,
         udf_registry_key=udf_registry_key,
         preprocessing=preprocessing,
     )
@@ -102,6 +103,7 @@ def _wrap_udf_with_lazy_aggregation_if_enabled(udf_registry_key: str, udf):
 
 def _create_aggregation_client_if_required(
     request_id,
+    context_id,
     udf_registry_key: str,
     preprocessing: Optional[List[Dict[str, Any]]],
 ) -> Optional[AggregationClient]:
@@ -113,6 +115,7 @@ def _create_aggregation_client_if_required(
     agg_dns = worker_config.aggregation_server.dns
     return AggregationClient(
         request_id,
+        context_id=context_id,
         aggregator_dns=agg_dns,
         max_message_mb=worker_config.grpc.max_message_mb,
     )

@@ -137,7 +137,7 @@ def controller_factory():
     created: list[ControllerAggregationClient] = []
 
     def factory(request_id: str) -> ControllerAggregationClient:
-        controller = ControllerAggregationClient(request_id)
+        controller = ControllerAggregationClient(request_id, context_id=request_id)
         created.append(controller)
         return controller
 
@@ -152,7 +152,7 @@ def worker_factory():
     created: list[Exareme3UDFAggregationClient] = []
 
     def factory(request_id: str) -> Exareme3UDFAggregationClient:
-        client = Exareme3UDFAggregationClient(request_id)
+        client = Exareme3UDFAggregationClient(request_id, context_id=request_id)
         created.append(client)
         return client
 
@@ -190,7 +190,7 @@ def test_cleanup_before_configure_rejects_the_later_configure(
     controller = controller_factory(request_id)
 
     assert controller.cleanup(timeout=300) == server_pb2.Status.NOT_FOUND
-    assert request_id in inline_grpc_stub.cleaned_up_request_ids
+    assert request_id in inline_grpc_stub.cleaned_up_context_ids
     assert controller.configure(1, timeout=300) == server_pb2.Status.ERROR
     assert request_id not in inline_grpc_stub.aggregation_contexts
 
@@ -210,7 +210,7 @@ def test_cancelled_request_ids_are_bounded(
             == server_pb2.Status.NOT_FOUND
         )
 
-    assert set(inline_grpc_stub.cleaned_up_request_ids) == {"bound-1", "bound-2"}
+    assert set(inline_grpc_stub.cleaned_up_context_ids) == {"bound-1", "bound-2"}
     assert (
         controller_factory("bound-0").configure(1, timeout=300) == server_pb2.Status.OK
     )
@@ -224,9 +224,9 @@ def test_expired_cancellation_can_be_configured(inline_grpc_stub, controller_fac
     request_id = "cleanup-expired"
     controller = controller_factory(request_id)
     assert controller.cleanup(timeout=300) == server_pb2.Status.NOT_FOUND
-    assert request_id in inline_grpc_stub.cleaned_up_request_ids
+    assert request_id in inline_grpc_stub.cleaned_up_context_ids
 
-    inline_grpc_stub.cleaned_up_request_ids[request_id] = (
+    inline_grpc_stub.cleaned_up_context_ids[request_id] = (
         time.monotonic() - STALE_CONTEXT_TTL_SECONDS - 1
     )
 
@@ -813,7 +813,7 @@ def test_unregister_reduces_expected_workers(controller_factory):
     request_id = "udf-unregister"
     controller = controller_factory(request_id)
     controller.configure(2, timeout=300)
-    client = Exareme3UDFAggregationClient(request_id)
+    client = Exareme3UDFAggregationClient(request_id, context_id=request_id)
 
     status, remaining = client.unregister()
     assert status == server_pb2.Status.OK
@@ -881,6 +881,7 @@ def test_unsupported_aggregation_type_is_rejected(inline_grpc_stub, controller_f
                 aggregation_type="MEDIAN", tensor=ndarray_to_bytes(np.array([1.0]))
             )
         ],
+        context_id="bad-type",
     )
 
     with pytest.raises(InlineRpcError) as exc:
@@ -898,6 +899,7 @@ def _sum_request(request_id: str, step: int = 1) -> server_pb2.AggregateRequest:
                 aggregation_type="SUM", tensor=ndarray_to_bytes(np.array([1.0]))
             )
         ],
+        context_id=request_id,
     )
 
 
@@ -938,7 +940,9 @@ def test_step_result_reaches_every_worker_after_an_unregister(
     monkeypatch.setattr(aggregation_config, "max_wait_for_aggregation_inputs", 5)
     request_id = "unregister-after-read"
     inline_grpc_stub.Configure(
-        server_pb2.ConfigureRequest(request_id=request_id, num_of_workers=3),
+        server_pb2.ConfigureRequest(
+            request_id=request_id, num_of_workers=3, context_id=request_id
+        ),
         InlineGrpcContext(),
     )
     agg_ctx = inline_grpc_stub.aggregation_contexts[request_id]
@@ -962,7 +966,9 @@ def test_step_result_reaches_every_worker_after_an_unregister(
         with agg_ctx.condition:
             inline_grpc_stub.Aggregate(_sum_request(request_id), InlineGrpcContext())
             inline_grpc_stub.Unregister(
-                server_pb2.UnregisterRequest(request_id=request_id),
+                server_pb2.UnregisterRequest(
+                    request_id=request_id, context_id=request_id
+                ),
                 InlineGrpcContext(),
             )
 

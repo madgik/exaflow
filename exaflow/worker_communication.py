@@ -199,6 +199,7 @@ class CommonDataElements(BaseModel):
 
 
 class RunUdfSystemArgs(BaseModel):
+    context_id: str
     inputdata: Inputdata
     metadata: Dict[str, Any]
     check_min_rows: bool

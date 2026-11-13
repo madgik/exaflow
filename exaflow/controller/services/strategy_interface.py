@@ -3,12 +3,12 @@ from abc import abstractmethod
 from logging import Logger
 from typing import List
 from typing import Optional
+from uuid import uuid4
 
 from exaflow.controller import logger as ctrl_logger
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisRequestDTO
 from exaflow.controller.services.controller_interface import ControllerI
 from exaflow.controller.services.tasks_handler_interface import TasksHandlerI
-from exaflow.controller.uid_generator import UIDGenerator
 
 
 class AlgorithmExecutionStrategyI(ABC):
@@ -37,7 +37,7 @@ class AlgorithmExecutionStrategyI(ABC):
         self._analysis_request_dto = analysis_request_dto
         self._algorithm_name = analysis_request_dto.algorithm.name
         self._request_id = self._analysis_request_dto.request_id
-        self._context_id = UIDGenerator().get_a_uid()
+        self._context_id = uuid4().hex
         self._logger = ctrl_logger.get_request_logger(self._request_id)
         self._local_worker_tasks_handlers = (
             self._controller.get_local_worker_tasks_handlers(

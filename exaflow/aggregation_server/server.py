@@ -124,7 +124,9 @@ def _result_dtype(
 
 def _decode_operations(request) -> Tuple[List[AggregationType], List[np.ndarray]]:
     if not request.operations:
-        raise ValueError(f"request_id='{request.request_id}' sent no operations")
+        raise ValueError(
+            f"request_id='{request.request_id}' context_id='{request.context_id}' sent no operations"
+        )
     aggregation_types = []
     payloads = []
     for op in request.operations:
@@ -136,7 +138,7 @@ def _decode_operations(request) -> Tuple[List[AggregationType], List[np.ndarray]
             ) from None
         if not op.tensor:
             raise ValueError(
-                f"request_id='{request.request_id}' missing tensor payload"
+                f"request_id='{request.request_id}' context_id='{request.context_id}' missing tensor payload"
             )
         if aggregation_type == AggregationType.UNION:
             payload = bytes_to_values(op.tensor)
@@ -199,8 +201,10 @@ class AggregationContext:
         request_id: str,
         expected_workers: int,
         ownership_token: str = "",
+        context_id: str = "",
     ):
         self.request_id = request_id
+        self.context_id = context_id
         self.expected_workers = expected_workers
         self.ownership_token = ownership_token
         self.steps: Dict[int, _Step] = {}
@@ -216,7 +220,7 @@ class AggregationContext:
                 self.error = exc
                 if log:
                     logger.error(
-                        f"[AGGREGATE] request_id='{self.request_id}' failed: {exc}",
+                        f"[AGGREGATE] request_id='{self.request_id}' context_id='{self.context_id}' failed: {exc}",
                         exc_info=exc,
                     )
             self.condition.notify_all()
@@ -240,7 +244,7 @@ class AggregationContext:
                     self._raise_error()
                 if step_no <= self.last_completed_step:
                     raise ValueError(
-                        f"Step {step_no} already completed for request_id='{self.request_id}'"
+                        f"Step {step_no} already completed for request_id='{self.request_id}' context_id='{self.context_id}'"
                     )
                 step = self.steps.setdefault(
                     step_no, _Step(aggregation_types, [[] for _ in aggregation_types])
@@ -263,7 +267,7 @@ class AggregationContext:
                     self._raise_error()
                 if not done:
                     raise TimeoutError(
-                        f"Timeout waiting for aggregation result for request_id='{self.request_id}' "
+                        f"Timeout waiting for aggregation result for request_id='{self.request_id}' context_id='{self.context_id}' "
                         f"step {step_no} (received {len(step.inputs[0])}/{self.expected_workers})"
                     )
                 step.reads += 1
@@ -300,7 +304,7 @@ class AggregationContext:
     ) -> None:
         if aggregation_types != step.aggregation_types:
             raise ValueError(
-                f"Batch aggregation_type mismatch for request_id='{self.request_id}' "
+                f"Batch aggregation_type mismatch for request_id='{self.request_id}' context_id='{self.context_id}' "
                 f"step {step_no} (expected {step.aggregation_types}, "
                 f"got {aggregation_types})"
             )
@@ -325,25 +329,30 @@ class AggregationServer(AggregationServerServicer):
         self.aggregation_contexts: Dict[str, AggregationContext] = {}
         # request_id -> monotonic time of Cleanup (or stale eviction). Lets late
         # Aggregate/Unregister calls get ABORTED instead of looking unconfigured.
-        self.cleaned_up_request_ids: Dict[str, float] = {}
+        self.cleaned_up_context_ids: Dict[str, float] = {}
         self.global_lock = threading.Lock()
 
-    def _get_aggregation_context(self, request_id, context) -> AggregationContext:
-        agg_ctx = self.aggregation_contexts.get(request_id)
+    def _get_aggregation_context(
+        self, context_id, context, request_id
+    ) -> AggregationContext:
+        if not context_id or not request_id:
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "request_id and context_id are required",
+            )
+        agg_ctx = self.aggregation_contexts.get(context_id)
         if agg_ctx:
             return agg_ctx
         with self.global_lock:
-            agg_ctx = self.aggregation_contexts.get(request_id)
+            agg_ctx = self.aggregation_contexts.get(context_id)
             if agg_ctx:
                 return agg_ctx
-            if request_id in self.cleaned_up_request_ids:
-                msg = (
-                    f"Aggregation for request_id='{request_id}' was cancelled "
-                    "because the controller cleaned up the request."
-                )
-                logger.error(f"[AGGREGATE] {msg}")
+            label = f"request_id='{request_id}' context_id='{context_id}'"
+            if context_id in self.cleaned_up_context_ids:
+                msg = f"Aggregation for {label} was cancelled because the controller cleaned up the request."
+                logger.error("[AGGREGATE] %s", msg)
                 context.abort(grpc.StatusCode.ABORTED, msg)
-            msg = f"request_id='{request_id}' is not configured."
+            msg = f"{label} is not configured."
             logger.error(msg)
             context.abort(grpc.StatusCode.INVALID_ARGUMENT, msg)
         return agg_ctx
@@ -370,80 +379,88 @@ class AggregationServer(AggregationServerServicer):
         ]
         for request_id in stale_request_ids:
             agg_ctx = self.aggregation_contexts.pop(request_id)
-            self.cleaned_up_request_ids[request_id] = time.monotonic()
+            self.cleaned_up_context_ids[request_id] = time.monotonic()
             agg_ctx.fail(
                 AggregationCancelledError(
-                    f"Aggregation for request_id='{request_id}' was cancelled "
+                    f"Aggregation for request_id='{agg_ctx.request_id}' context_id='{request_id}' was cancelled "
                     "because its context was evicted as stale."
                 ),
                 log=False,
             )
             logger.warning(
-                f"[CONFIGURE] Evicted stale AggregationContext for request_id='{request_id}' "
+                f"[CONFIGURE] Evicted stale AggregationContext for request_id='{agg_ctx.request_id}' context_id='{request_id}' "
                 f"(no activity for {STALE_CONTEXT_TTL_SECONDS}s and no Cleanup received)"
             )
         stale_cleaned = [
             request_id
-            for request_id, cleaned_at in self.cleaned_up_request_ids.items()
+            for request_id, cleaned_at in self.cleaned_up_context_ids.items()
             if cleaned_at < cutoff
         ]
         for request_id in stale_cleaned:
-            del self.cleaned_up_request_ids[request_id]
+            del self.cleaned_up_context_ids[request_id]
 
     def _remember_cancelled(self, request_id: str) -> None:
         """Record a Cleanup, including one that arrived before Configure."""
-        self.cleaned_up_request_ids[request_id] = time.monotonic()
+        self.cleaned_up_context_ids[request_id] = time.monotonic()
         self._evict_stale_contexts()
-        overflow = len(self.cleaned_up_request_ids) - CANCELLED_REQUEST_ID_LIMIT
+        overflow = len(self.cleaned_up_context_ids) - CANCELLED_REQUEST_ID_LIMIT
         if overflow <= 0:
             return
         oldest = sorted(
-            self.cleaned_up_request_ids,
-            key=self.cleaned_up_request_ids.__getitem__,
+            self.cleaned_up_context_ids,
+            key=self.cleaned_up_context_ids.__getitem__,
         )
         for stale_id in oldest[:overflow]:
-            del self.cleaned_up_request_ids[stale_id]
+            del self.cleaned_up_context_ids[stale_id]
 
     def Configure(self, request, context):
+        if not request.context_id or not request.request_id:
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "request_id and context_id are required",
+            )
         with self.global_lock:
             self._evict_stale_contexts()
-            if request.request_id in self.aggregation_contexts:
+            if request.context_id in self.aggregation_contexts:
                 logger.warning(
-                    f"[CONFIGURE] Request context already exists for request_id='{request.request_id}'"
+                    f"[CONFIGURE] Request context already exists for request_id='{request.request_id}' context_id='{request.context_id}'"
                 )
                 return ConfigureResponse(
                     status=Status.ALREADY_CONFIGURED,
                     status_message="Already configured for this request_id",
                 )
 
-            if request.request_id in self.cleaned_up_request_ids:
+            if request.context_id in self.cleaned_up_context_ids:
                 logger.warning(
                     "[CONFIGURE] Refusing request_id='%s': cleanup already cancelled it",
-                    request.request_id,
+                    f"{request.request_id} context_id={request.context_id}",
                 )
                 return ConfigureResponse(
                     status=Status.ERROR,
                     status_message="Request was already cancelled",
                 )
-            self.aggregation_contexts[request.request_id] = AggregationContext(
+            self.aggregation_contexts[request.context_id] = AggregationContext(
                 request.request_id,
                 request.num_of_workers,
                 _ownership_token(context),
+                context_id=request.context_id,
             )
 
         logger.info(
-            f"[CONFIGURE] Created AggregationContext for request_id='{request.request_id}' "
+            f"[CONFIGURE] Created AggregationContext for request_id='{request.request_id}' context_id='{request.context_id}' "
             f"with expected workers: {request.num_of_workers}"
         )
         return ConfigureResponse(status=Status.OK, status_message="Configured")
 
     def Unregister(self, request, context):
-        agg_ctx = self._get_aggregation_context(request.request_id, context)
+        agg_ctx = self._get_aggregation_context(
+            request.context_id, context, request.request_id
+        )
         agg_ctx.last_activity = time.monotonic()
         with agg_ctx.condition:
             if agg_ctx.expected_workers <= 1:
                 msg = (
-                    f"[UNREGISTER] request_id='{request.request_id}' cannot go below 1 worker "
+                    f"[UNREGISTER] request_id='{request.request_id}' context_id='{request.context_id}' cannot go below 1 worker "
                     f"(current: {agg_ctx.expected_workers})"
                 )
                 logger.warning(msg)
@@ -455,7 +472,7 @@ class AggregationServer(AggregationServerServicer):
 
             agg_ctx.expected_workers -= 1
             logger.info(
-                f"[UNREGISTER] request_id='{request.request_id}' decreased expected workers "
+                f"[UNREGISTER] request_id='{request.request_id}' context_id='{request.context_id}' decreased expected workers "
                 f"to {agg_ctx.expected_workers}"
             )
 
@@ -472,7 +489,9 @@ class AggregationServer(AggregationServerServicer):
         )
 
     def Aggregate(self, request, context):
-        agg_ctx = self._get_aggregation_context(request.request_id, context)
+        agg_ctx = self._get_aggregation_context(
+            request.context_id, context, request.request_id
+        )
         agg_ctx.last_activity = time.monotonic()
         try:
             aggregation_types, payloads = _decode_operations(request)
@@ -495,24 +514,29 @@ class AggregationServer(AggregationServerServicer):
         )
 
     def Cleanup(self, request, context):
+        if not request.context_id or not request.request_id:
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "request_id and context_id are required",
+            )
         token = _ownership_token(context)
         with self.global_lock:
-            current = self.aggregation_contexts.get(request.request_id)
+            current = self.aggregation_contexts.get(request.context_id)
             if current is not None and current.ownership_token != token:
                 logger.warning(
                     "[CLEANUP] Refused to remove request_id='%s': the ownership "
                     "token does not match the caller that configured it",
-                    request.request_id,
+                    f"{request.request_id} context_id={request.context_id}",
                 )
                 return CleanupResponse(
                     status=Status.ERROR,
                     status_message="Aggregation context is owned by another caller",
                 )
-            agg_ctx = self.aggregation_contexts.pop(request.request_id, None)
-            self._remember_cancelled(request.request_id)
+            agg_ctx = self.aggregation_contexts.pop(request.context_id, None)
+            self._remember_cancelled(request.context_id)
 
         if not agg_ctx:
-            msg = f"[CLEANUP] No aggregation context found for request_id='{request.request_id}'"
+            msg = f"[CLEANUP] No aggregation context found for request_id='{request.request_id}' context_id='{request.context_id}'"
             logger.warning(msg)
             return CleanupResponse(
                 status=Status.NOT_FOUND, status_message="No such request_id"
@@ -524,14 +548,14 @@ class AggregationServer(AggregationServerServicer):
         with agg_ctx.condition:
             agg_ctx.fail(
                 AggregationCancelledError(
-                    f"Aggregation for request_id='{request.request_id}' was "
+                    f"Aggregation for request_id='{request.request_id}' context_id='{request.context_id}' was "
                     "cancelled because the controller cleaned up the request."
                 ),
                 log=bool(agg_ctx.steps),
             )
 
         logger.info(
-            f"[CLEANUP] Removed AggregationContext for request_id='{request.request_id}'"
+            f"[CLEANUP] Removed AggregationContext for request_id='{request.request_id}' context_id='{request.context_id}'"
         )
         return CleanupResponse(status=Status.OK, status_message="Cleaned up")
 

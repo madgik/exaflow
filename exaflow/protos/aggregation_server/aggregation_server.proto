@@ -22,6 +22,7 @@ service AggregationServer {
 message ConfigureRequest {
   string request_id = 1;
   int32 num_of_workers = 2;
+  string context_id = 3;
 }
 
 message ConfigureResponse {
@@ -38,6 +39,7 @@ message AggregateRequest {
   string request_id = 1;
   int32 step = 2;
   repeated Operation operations = 3;
+  string context_id = 4;
 }
 
 message AggregateResponse {
@@ -46,6 +48,7 @@ message AggregateResponse {
 
 message CleanupRequest {
   string request_id = 1;
+  string context_id = 2;
 }
 
 message CleanupResponse {
@@ -55,6 +58,7 @@ message CleanupResponse {
 
 message UnregisterRequest {
   string request_id = 1;
+  string context_id = 2;
 }
 
 message UnregisterResponse {
