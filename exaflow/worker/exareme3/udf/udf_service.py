@@ -53,7 +53,7 @@ def run_udf(
             data=data,
             metadata=metadata,
             preprocessing=preprocessing,
-            check_min_rows=system_args.check_min_rows,
+            check_min_rows=exareme3_registry.min_rows_check_required(udf_registry_key),
             agg_client=agg_client,
         )
         return _execute_udf(

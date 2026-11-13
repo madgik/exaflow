@@ -85,7 +85,6 @@ def test_exareme3_run_udf_returns_the_worker_call(monkeypatch):
     system_args = RunUdfSystemArgs(
         inputdata={"data_model": "dm", "datasets": ["ds"], "variables": ["x"]},
         metadata={},
-        check_min_rows=False,
         add_dataset_variable=False,
     )
 
