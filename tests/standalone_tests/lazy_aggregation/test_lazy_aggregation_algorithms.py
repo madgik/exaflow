@@ -314,7 +314,7 @@ def _install_inline_aggregation_server(monkeypatch) -> set:
     servicer = AggregationServer()
     steps = set()
 
-    def aggregate(request):
+    def aggregate(request, **_kwargs):
         steps.add((request.request_id, request.step))
         return servicer.Aggregate(request, _InlineGrpcContext())
 
