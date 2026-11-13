@@ -8,6 +8,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 from pydantic import ConfigDict
+from pydantic import Field
 
 
 @unique
@@ -21,7 +22,7 @@ class ImmutableBaseModel(BaseModel, ABC):
 
 class AnalysisInputDataDTO(ImmutableBaseModel):
     data_model: str
-    datasets: List[str]
+    datasets: List[str] = Field(min_length=1)
     validation_datasets: Optional[List[str]] = None
     filters: Optional[dict] = None
     variables: List[str]

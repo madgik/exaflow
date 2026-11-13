@@ -8,14 +8,22 @@ from exaflow.algorithms.exareme3.utils.metadata_enums import add_ordered_enums
 from exaflow.algorithms.exareme3.utils.registry import get_udf_registry_key
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.controller import logger as ctrl_logger
+from exaflow.controller.services.errors import WorkerTaskTimeoutError
+from exaflow.controller.services.errors import WorkerUnresponsiveError
 from exaflow.controller.services.exareme3.tasks_handler import Exareme3TasksHandler
+from exaflow.controller.worker_client.app import WorkerClientConnectionError
+from exaflow.controller.worker_client.app import WorkerClientTimeoutException
 from exaflow.worker_communication import InsufficientDataError
 from exaflow.worker_communication import RunUdfSystemArgs
 
 
 def translate_worker_error(exc: Exception) -> Exception:
     """Return the error the HTTP layer documents for a failed worker call."""
-    raise NotImplementedError("not implemented")
+    if isinstance(exc, WorkerClientTimeoutException):
+        return WorkerTaskTimeoutError()
+    if isinstance(exc, WorkerClientConnectionError):
+        return WorkerUnresponsiveError()
+    return exc
 
 
 class Exareme3AlgorithmFlowEngineInterface:
@@ -64,10 +72,14 @@ class Exareme3AlgorithmFlowEngineInterface:
                 )
                 udf_call.add_done_callback(lambda _, idx=idx: done.put(idx))
                 calls.append(udf_call)
-        except Exception:
+        except Exception as exc:
             for udf_call in calls:
                 udf_call.cancel()
-            raise
+            error = translate_worker_error(exc)
+            if error is exc:
+                raise
+            self._logger.error("Worker call failed: %s", exc)
+            raise error from exc
 
         results: List[Optional[dict]] = [None] * len(self._tasks_handlers)
         for _ in range(len(calls)):
@@ -81,10 +93,14 @@ class Exareme3AlgorithmFlowEngineInterface:
                     exc,
                 )
                 results[idx] = None
-            except Exception:
+            except Exception as exc:
                 for udf_call in calls:
                     udf_call.cancel()
-                raise
+                error = translate_worker_error(exc)
+                if error is exc:
+                    raise
+                self._logger.error("Worker call failed: %s", exc)
+                raise error from exc
 
         filtered_results = [res for res in results if res is not None]
         if not filtered_results:
