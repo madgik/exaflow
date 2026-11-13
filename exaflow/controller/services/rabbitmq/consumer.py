@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import traceback
 from collections.abc import Callable
 
 import aio_pika
@@ -15,7 +16,11 @@ from exaflow.controller.services.analysis_execution import max_concurrent_experi
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisRequestDTO
 from exaflow.controller.services.api.analysis_request_validator import BadRequest
 from exaflow.controller.services.errors import ControllerShuttingDownError
+from exaflow.controller.services.errors import GlobalWorkerUnavailableError
+from exaflow.controller.services.errors import WorkerTaskTimeoutError
+from exaflow.controller.services.errors import WorkerUnresponsiveError
 from exaflow.controller.services.rabbitmq.settings import RabbitMQSettings
+from exaflow.controller.worker_client.app import WorkerMessageTooLargeError
 from exaflow.data_filters import FilterError
 from exaflow.smpc_cluster_communication import SMPCUsageError
 from exaflow.worker_communication import BadUserInput
@@ -198,13 +203,18 @@ class AnalysisConsumer:
             DatasetUnavailable,
             FilterError,
             SMPCUsageError,
+            GlobalWorkerUnavailableError,
+            WorkerTaskTimeoutError,
+            WorkerUnresponsiveError,
+            WorkerMessageTooLargeError,
         ) as exc:
             return failure(type(exc).__name__, getattr(exc, "message", str(exc)))
         except Exception as exc:
             LOGGER.error(
-                "Analysis failed request_id=%s (%s)",
+                "Analysis failed request_id=%s (%s)\n%s",
                 request.request_id,
                 type(exc).__name__,
+                "".join(traceback.format_tb(exc.__traceback__)),
             )
             return failure("internal_error", "Analysis execution failed.")
 
