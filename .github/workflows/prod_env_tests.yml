@@ -147,6 +147,23 @@ jobs:
       - name: Print Helm Templates
         run: helm template kubernetes/
 
+      - name: Deploy test RabbitMQ
+        run: |
+          set +x
+          password=$(openssl rand -hex 24)
+          echo "::add-mask::$password"
+          # Pipe the Secret directly to kubectl; never persist credentials in artifacts.
+          kubectl create secret generic exaflow-rabbitmq \
+            --from-literal=username=exaflow_tests \
+            --from-literal=password="$password" \
+            --from-literal=url="amqp://exaflow_tests:$password@exaflow-rabbitmq:5672/" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          echo "RABBITMQ_TEST_RECOVERY=1" >> "$GITHUB_ENV"
+          echo "RABBITMQ_TEST_URL=amqp://exaflow_tests:$password@127.0.0.1:5679/" >> "$GITHUB_ENV"
+          kubectl apply -f tests/prod_env_tests/deployment_configs/rabbitmq.yaml
+          kubectl rollout status statefulset/exaflow-rabbitmq --timeout=180s
+          kubectl port-forward service/exaflow-rabbitmq 5679:5672 > /tmp/rabbitmq-port-forward.log 2>&1 &
+
       - name: Deploy Helm
         run: helm install exaflow kubernetes/ --debug
 

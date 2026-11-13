@@ -28,6 +28,12 @@ controller:
   workers_dns: "exaflow-workers-service"
   worker_landscape_aggregator_update_interval: 20
   worker_tasks_timeout: 240
+  shutdown_prestop_delay: 5
+  graceful_timeout: 120
+  shutdown_rpc_cancel_timeout: 5
+  shutdown_cleanup_timeout: 10
+  shutdown_timeout: 60
+  shutdown_grace_margin: 20
 
 smpc:
   enabled: false
@@ -39,3 +45,16 @@ storage:
     db:
       localworker: "/opt/exaflow/localworker"
       globalworker: "/opt/exaflow/globalworker"
+
+rabbitmq:
+  enabled: true
+  existing_secret: "exaflow-rabbitmq"
+  url_secret_key: "url"
+  request_queue: "exaflow.analysis.requests"
+  dead_letter_queue: "exaflow.analysis.dead"
+  max_result_bytes: 16777216
+  queue_max_bytes: 268435456
+  reply_ttl_ms: 86400000
+  dead_letter_ttl_ms: 604800000
+  operation_timeout: 5
+  shutdown_drain_timeout: 30

@@ -38,3 +38,15 @@ privacy_budget = "$DP_PRIVACY_BUDGET"
 
 [grpc]
 max_message_mb = "${GRPC_MAX_MESSAGE_MB:-100}"
+
+[rabbitmq]
+enabled = "${RABBITMQ_ENABLED:-false}"
+url = "${RABBITMQ_URL:-}"
+request_queue = "${RABBITMQ_REQUEST_QUEUE:-exaflow.analysis.requests}"
+dead_letter_queue = "${RABBITMQ_DEAD_LETTER_QUEUE:-exaflow.analysis.dead}"
+max_result_bytes = "${RABBITMQ_MAX_RESULT_BYTES:-16777216}"
+queue_max_bytes = "${RABBITMQ_QUEUE_MAX_BYTES:-268435456}"
+reply_ttl_ms = "${RABBITMQ_REPLY_TTL_MS:-86400000}"
+dead_letter_ttl_ms = "${RABBITMQ_DEAD_LETTER_TTL_MS:-604800000}"
+operation_timeout = "${RABBITMQ_OPERATION_TIMEOUT:-5}"
+shutdown_drain_timeout = "${RABBITMQ_SHUTDOWN_DRAIN_TIMEOUT:-30}"
