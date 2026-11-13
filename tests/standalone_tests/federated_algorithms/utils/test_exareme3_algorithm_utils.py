@@ -15,7 +15,6 @@ class DummyEngine:
     def run_udf(
         self,
         func,
-        check_min_rows,
         add_dataset_variable,
         kw_args,
     ):

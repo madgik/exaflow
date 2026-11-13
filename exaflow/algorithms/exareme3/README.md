@@ -50,9 +50,11 @@ are resolved recursively; duplicate filenames are rejected.
   - Global step contract (`Algorithm.run`): it only has direct access to the
     preprocessed `inputdata` and algorithm `parameters`; it does not directly
     access worker dataframes or metadata.
-  - Override these properties when needed:
-    - `check_min_rows` (default `True`) to skip the privacy minimum-row check.
-    - `add_dataset_variable` (default `False`) to include the dataset column.
+  - Override `add_dataset_variable` (default `False`) to include the dataset
+    column.
+  - A UDF that masks small groups itself opts out of the minimum-row check where
+    it is registered: `@exareme3_udf(check_min_rows=False)`. The worker enforces
+    the check for every other UDF.
   - Missing-value handling is modeled as preprocessing (`missing_values_handler`)
     with a per-variable `strategies` map
     (`drop`, `mean`, `median`, `most_frequent`, `constant`), instead of a
@@ -165,5 +167,5 @@ are resolved recursively; duplicate filenames are rejected.
 - Prefer `self.run_local_udf(...)` for worker dispatch instead of direct engine access.
 - When using aggregation, aggregate numpy arrays and convert to lists before
   returning to stay JSON-serializable.
-- Preserve privacy checks (minimum row count) unless explicitly opting out via
-  `check_min_rows`.
+- Preserve privacy checks (minimum row count) unless the UDF is registered with
+  `@exareme3_udf(check_min_rows=False)`.
