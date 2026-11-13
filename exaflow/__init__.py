@@ -67,7 +67,9 @@ def _iter_algorithm_module_paths(algorithm_folder: str) -> List[Tuple[Path, str]
     """
     root_folder = Path(algorithm_folder).resolve()
     if not root_folder.is_dir():
-        return []
+        raise FileNotFoundError(
+            f"Algorithm folder '{algorithm_folder}' does not exist."
+        )
 
     excluded_dir_names = {"__pycache__", "docs"}
     module_paths = []
@@ -91,6 +93,9 @@ def import_algorithm_modules(algorithm_folders: str) -> Dict[str, ModuleType]:
     """
     all_modules = {}
     for algorithm_folder in algorithm_folders.split(","):
+        algorithm_folder = algorithm_folder.strip()
+        if not algorithm_folder:
+            continue
         modules = {}
         for module_path_obj, module_key in _iter_algorithm_module_paths(
             algorithm_folder
@@ -164,18 +169,20 @@ def find_flower_algorithm_folder_paths(algorithm_folders):
 
 
 FLOWER_ALGORITHM_FOLDERS_ENV_VARIABLE = "FLOWER_ALGORITHM_FOLDERS"
-FLOWER_ALGORITHM_FOLDERS = "./exaflow/algorithms/flower"
-if flower_algorithm_folders := os.getenv(FLOWER_ALGORITHM_FOLDERS_ENV_VARIABLE):
-    FLOWER_ALGORITHM_FOLDERS = flower_algorithm_folders
+EXAREME3_ALGORITHM_FOLDERS_ENV_VARIABLE = "EXAREME3_ALGORITHM_FOLDERS"
+
+_PACKAGE_ALGORITHMS_FOLDER = Path(__file__).resolve().parent / "algorithms"
+
+FLOWER_ALGORITHM_FOLDERS = os.getenv(FLOWER_ALGORITHM_FOLDERS_ENV_VARIABLE) or str(
+    _PACKAGE_ALGORITHMS_FOLDER / "flower"
+)
+
+EXAREME3_ALGORITHM_FOLDERS = os.getenv(EXAREME3_ALGORITHM_FOLDERS_ENV_VARIABLE) or str(
+    _PACKAGE_ALGORITHMS_FOLDER / "exareme3"
+)
 
 flower_algorithm_folder_paths = find_flower_algorithm_folder_paths(
     FLOWER_ALGORITHM_FOLDERS
-)
-
-
-EXAREME3_ALGORITHM_FOLDERS_ENV_VARIABLE = "EXAREME3_ALGORITHM_FOLDERS"
-EXAREME3_ALGORITHM_FOLDERS = os.getenv(
-    EXAREME3_ALGORITHM_FOLDERS_ENV_VARIABLE, "./exaflow/algorithms/exareme3"
 )
 
 _MODULES_BY_ABSPATH: Dict[str, ModuleType] = {}
