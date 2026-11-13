@@ -162,3 +162,44 @@ CI also builds the package and smoke-tests the wheel.
 | Dependency update | Lockfile update, focused tests, lint/format, and CI-equivalent suite where feasible. |
 | Refactor without behavior change | Focused tests for touched modules and broader standalone tests if shared code moved. |
 | `exadata-validator` change | `cd exadata-validator && uv run pytest -q`; build/smoke test if packaging or CLI changes. |
+
+## RabbitMQ transport
+
+Focused fake-AMQP tests live in `tests/standalone_tests/controller/rabbitmq`.
+Controller concurrency and Uvicorn shutdown tests cover shared admission and queue
+cancellation; aggregation gRPC tests cover independent execution contexts.
+Algorithm validation stays on HTTP and requires no broker.
+
+RabbitMQ configuration tests cover disabled-feature validation, independent
+publication deadlines, and ten seconds of headroom in the controller's lifespan
+shutdown budget. Helm rendering checks decimal integer environment values and
+fractional timeout values; it requires Helm on `PATH`.
+
+Consumer regressions cover missing destinations before execution, unroutable
+replies, broker nacks, transient publish retries, failed settlement, completed
+result retention and eviction, and concurrent reply-channel cleanup. Real broker
+tests also exercise deleted destinations and a full reply queue while another
+analysis succeeds. Shared logging tests check bounded logger/handler counts and
+concurrent request context isolation in the controller and worker.
+
+Shared DTO and intake tests enforce `^[A-Za-z0-9_-]{1,128}$` for caller-provided
+analysis request IDs. HTTP rejects invalid body IDs with 422 before orchestration;
+AMQP validates its correlation property before assigning it to the DTO or
+consulting execution/result caches. Cover lengths 1/128/129, control characters,
+spaces, punctuation, Unicode, nullable/omitted body IDs, and body/header conflicts.
+
+Run controller/logging regressions without supplying `LOG_LEVEL` or
+`FRAMEWORK_LOG_LEVEL`: the config loader defaults missing/empty values to `INFO`.
+The full-reply-queue production regression checks the source queue's `x-death`
+queue, reason, and count; a dead-letter delivery's `x-delivery-count` is not a
+reliable measure of analysis executions.
+
+Production tests provision `tests/prod_env_tests/deployment_configs/rabbitmq.yaml`
+in kind. `RABBITMQ_TEST_URL` enables real-broker cases; the CI-only
+`RABBITMQ_TEST_RECOVERY=1` flag permits restarting the dedicated test broker and
+replacing its test controller. CI sets that flag only in a separate recovery
+step after the normal production suite, and recovery cleanup waits for controller
+rollout and transport readiness, including on failures. Broker access uses kind
+host port 5679 mapped to NodePort 30001 instead of a restart-sensitive port-forward.
+Queue and HTTP parity cases share the existing request builder, including required
+missing-value preprocessing. See `documentation/rabbitmq-analysis.md`.

@@ -209,3 +209,28 @@ that caller configured it.
   need verification.
 - Some Flower and SMPC paths appear optional or partly disabled in CI; verify
   before broad changes.
+
+## Optional RabbitMQ analysis transport
+
+FastAPI lifespan can own a bounded async AMQP consumer alongside HTTP. Both call
+`analysis_service.run_analysis`; HTTP rejects excess analyses while AMQP waits
+for the same capacity and validates after admission. Metadata and health requests
+remain independent of analysis slots. The worker landscape refresher keeps its
+background thread and analyses keep their dedicated executor.
+
+A queue backlog can make HTTP analysis submissions return 503 until queued
+waiters are admitted. Each delivery passively checks its reply destination and
+publishes through its own channel on the existing broker connection. A rejected
+reply dead-letters only that request. Transient publication retries reuse the
+result; completed replies for unsettled deliveries have bounded in-memory
+retention for same-controller redelivery.
+
+Controller and worker request logging uses fixed service loggers with per-record
+request IDs, rather than permanently registering a logger and handler for every
+logical request. Worker request adapters retain their ContextVar isolation.
+
+Logical `request_id` values survive retries; UUID `context_id` values identify
+attempts and key all aggregation state. Both are carried to aggregation services
+and logged. This changes internal RPC contracts and requires coordinated rollout.
+See `documentation/rabbitmq-analysis.md` for delivery, lifecycle, configuration,
+and rollback behavior.
