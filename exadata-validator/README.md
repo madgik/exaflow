@@ -46,3 +46,9 @@ Use `exadata-validator validate-data-model --help` for reporting, output, and th
 
 - CSV validation queries files directly with DuckDB and uses fused aggregate checks to reduce scan overhead.
 - Folder-level dataset uniqueness is enforced across all CSV files via SQL using normalized codes (`trim + lower`).
+
+### Numerical bounds
+
+`minValue` and `maxValue` must be finite JSON numbers representable as doubles when supplied. Booleans,
+numeric strings, and SQL expressions are rejected. Missing or null bounds are
+unset. When both are set, the minimum must be below the maximum.

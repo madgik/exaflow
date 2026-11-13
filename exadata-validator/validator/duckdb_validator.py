@@ -46,6 +46,7 @@ class _FusedCheck:
     condition_sql: str
     sample_expression_sql: str
     message_factory: Callable[[int, str | None], str]
+    params: tuple = ()
 
 
 class DuckDBDatasetValidator:
@@ -200,11 +201,12 @@ class DuckDBDatasetValidator:
                 checks.append(
                     _FusedCheck(
                         key=f"min_{column}",
+                        params=(float(min_value),),
                         rule="range.min",
                         column=column,
                         condition_sql=(
                             f"{quoted_column} IS NOT NULL "
-                            f"AND TRY_CAST({quoted_column} AS DOUBLE) < {min_value}"
+                            f"AND TRY_CAST({quoted_column} AS DOUBLE) < ?"
                         ),
                         sample_expression_sql=quoted_column,
                         message_factory=lambda count, sample, c=column, v=min_value: (
@@ -217,11 +219,12 @@ class DuckDBDatasetValidator:
                 checks.append(
                     _FusedCheck(
                         key=f"max_{column}",
+                        params=(float(max_value),),
                         rule="range.max",
                         column=column,
                         condition_sql=(
                             f"{quoted_column} IS NOT NULL "
-                            f"AND TRY_CAST({quoted_column} AS DOUBLE) > {max_value}"
+                            f"AND TRY_CAST({quoted_column} AS DOUBLE) > ?"
                         ),
                         sample_expression_sql=quoted_column,
                         message_factory=lambda count, sample, c=column, v=max_value: (
@@ -339,7 +342,11 @@ class DuckDBDatasetValidator:
             ") "
             "SELECT " + ", ".join(projections) + " FROM csv_data"
         )
-        row = conn.execute(query, [str(csv_path)]).fetchone()
+        params = [str(csv_path)]
+        for check in checks:
+            # Each condition appears in the count, sample, and row projections.
+            params.extend(check.params * 3)
+        row = conn.execute(query, params).fetchone()
         if row is None:
             return []
 

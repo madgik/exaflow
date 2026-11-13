@@ -20,3 +20,5 @@
 ## SQL and CI hardening
 
 Worker loader SQL identifiers are quoted, including metadata-derived model names.
+Validator bounds must be finite JSON numbers (booleans and numeric strings are
+rejected); absent or null bounds are unset. Bounds are passed as SQL parameters.
