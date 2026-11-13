@@ -42,6 +42,7 @@ def two_row_worker(monkeypatch):
 
 def _system_args(**extra):
     return SimpleNamespace(
+        context_id="ctx-min-rows",
         preprocessing=[],
         metadata={"x": {"is_categorical": False}},
         inputdata=None,
@@ -101,6 +102,7 @@ def test_run_udf_system_args_carry_no_minimum_row_flag():
 def test_a_minimum_row_flag_in_the_payload_is_ignored():
     parsed = RunUdfSystemArgs.model_validate(
         {
+            "context_id": "ctx-min-rows",
             "inputdata": {"data_model": "dm:1", "datasets": ["ds"], "variables": ["x"]},
             "metadata": {},
             "add_dataset_variable": False,

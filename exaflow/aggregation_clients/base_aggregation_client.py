@@ -28,11 +28,13 @@ class BaseAggregationClient:
     def __init__(
         self,
         request_id: str,
+        context_id: str,
         aggregator_dns: str | None = None,
         max_message_mb: int | None = None,
         timeout: float | None = None,
     ):
         self._request_id = request_id
+        self._context_id = context_id
         self._step_counter = 1
         self._timeout = timeout
 
@@ -82,6 +84,7 @@ class BaseAggregationClient:
             )
         req = pb2.AggregateRequest(
             request_id=self._request_id,
+            context_id=self._context_id,
             step=step or self._next_step(),
             operations=operations,
         )

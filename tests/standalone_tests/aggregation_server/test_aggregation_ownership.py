@@ -91,7 +91,7 @@ def test_duplicate_lost_configure_does_not_remove_the_owners_context(monkeypatch
         return servicer.Cleanup(request, _MetadataContext(metadata))
 
     owner = _wire(
-        ControllerAggregationClient(request_id),
+        ControllerAggregationClient(request_id, context_id=request_id),
         owner_future,
         cleanup,
     )
@@ -103,12 +103,13 @@ def test_duplicate_lost_configure_does_not_remove_the_owners_context(monkeypatch
         servicer.Configure(request, _MetadataContext(metadata))
         return _LostResponse()
 
-    def factory(request_id, aggregator_dns=None, max_message_mb=None):
+    def factory(request_id, context_id, aggregator_dns=None, max_message_mb=None):
         return _wire(
             ControllerAggregationClient(
                 request_id,
                 aggregator_dns=aggregator_dns,
                 max_message_mb=max_message_mb,
+                context_id=request_id,
             ),
             lost_future,
             cleanup,
@@ -117,6 +118,7 @@ def test_duplicate_lost_configure_does_not_remove_the_owners_context(monkeypatch
     monkeypatch.setattr(strategies, "ControllerAggregationClient", factory)
     strategy = build_strategy(strategies.Exareme3WithAggregationServerStrategy)
     strategy._request_id = request_id
+    strategy._context_id = request_id
     strategy._logger = logging.getLogger("aggregation-ownership")
 
     with pytest.raises(ControllerShuttingDownError):
@@ -140,7 +142,11 @@ def test_owner_cleans_up_when_its_configure_response_is_lost():
     def cleanup(request, timeout=None, metadata=None):
         return servicer.Cleanup(request, _MetadataContext(metadata))
 
-    client = _wire(ControllerAggregationClient(request_id), lost_future, cleanup)
+    client = _wire(
+        ControllerAggregationClient(request_id, context_id=request_id),
+        lost_future,
+        cleanup,
+    )
     with pytest.raises(ControllerShuttingDownError):
         client.configure(2, timeout=5)
     assert request_id in servicer.aggregation_contexts

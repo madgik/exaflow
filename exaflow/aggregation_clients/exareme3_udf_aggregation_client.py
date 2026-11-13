@@ -45,7 +45,9 @@ class Exareme3UDFAggregationClient(BaseAggregationClient):
 
     def unregister(self) -> tuple[str, int]:
         response = self._stub.Unregister(
-            pb2.UnregisterRequest(request_id=self._request_id),
+            pb2.UnregisterRequest(
+                request_id=self._request_id, context_id=self._context_id
+            ),
             timeout=self._timeout,
         )
         return response.status, response.remaining_workers

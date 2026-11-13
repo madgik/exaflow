@@ -129,6 +129,7 @@ class Exareme3WithAggregationServerStrategy(Exareme3Strategy):
         )
         with ControllerAggregationClient(
             self._request_id,
+            context_id=self._context_id,
             aggregator_dns=agg_dns,
             max_message_mb=controller_config.grpc.max_message_mb,
         ) as agg_client:

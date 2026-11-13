@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 
 
 DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
-    b'\n:exaflow/protos/aggregation_server/aggregation_server.proto\x12\x12\x61ggregation_server">\n\x10\x43onfigureRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t\x12\x16\n\x0enum_of_workers\x18\x02 \x01(\x05"W\n\x11\x43onfigureResponse\x12*\n\x06status\x18\x01 \x01(\x0e\x32\x1a.aggregation_server.Status\x12\x16\n\x0estatus_message\x18\x02 \x01(\t"5\n\tOperation\x12\x18\n\x10\x61ggregation_type\x18\x01 \x01(\t\x12\x0e\n\x06tensor\x18\x03 \x01(\x0c"g\n\x10\x41ggregateRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t\x12\x0c\n\x04step\x18\x02 \x01(\x05\x12\x31\n\noperations\x18\x03 \x03(\x0b\x32\x1d.aggregation_server.Operation"$\n\x11\x41ggregateResponse\x12\x0f\n\x07tensors\x18\x03 \x03(\x0c"$\n\x0e\x43leanupRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t"U\n\x0f\x43leanupResponse\x12*\n\x06status\x18\x01 \x01(\x0e\x32\x1a.aggregation_server.Status\x12\x16\n\x0estatus_message\x18\x02 \x01(\t"\'\n\x11UnregisterRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t"s\n\x12UnregisterResponse\x12*\n\x06status\x18\x01 \x01(\x0e\x32\x1a.aggregation_server.Status\x12\x16\n\x0estatus_message\x18\x02 \x01(\t\x12\x19\n\x11remaining_workers\x18\x03 \x01(\x05*x\n\x06Status\x12\x16\n\x12STATUS_UNSPECIFIED\x10\x00\x12\x06\n\x02OK\x10\x01\x12\x16\n\x12\x41LREADY_CONFIGURED\x10\x02\x12\r\n\tNOT_FOUND\x10\x03\x12\x0f\n\x0bMIN_WORKERS\x10\x04\x12\x0b\n\x07TIMEOUT\x10\x05\x12\t\n\x05\x45RROR\x10\x06\x32\xf8\x02\n\x11\x41ggregationServer\x12X\n\tConfigure\x12$.aggregation_server.ConfigureRequest\x1a%.aggregation_server.ConfigureResponse\x12[\n\nUnregister\x12%.aggregation_server.UnregisterRequest\x1a&.aggregation_server.UnregisterResponse\x12X\n\tAggregate\x12$.aggregation_server.AggregateRequest\x1a%.aggregation_server.AggregateResponse\x12R\n\x07\x43leanup\x12".aggregation_server.CleanupRequest\x1a#.aggregation_server.CleanupResponseb\x06proto3'
+    b'\n:exaflow/protos/aggregation_server/aggregation_server.proto\x12\x12\x61ggregation_server"R\n\x10\x43onfigureRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t\x12\x16\n\x0enum_of_workers\x18\x02 \x01(\x05\x12\x12\n\ncontext_id\x18\x03 \x01(\t"W\n\x11\x43onfigureResponse\x12*\n\x06status\x18\x01 \x01(\x0e\x32\x1a.aggregation_server.Status\x12\x16\n\x0estatus_message\x18\x02 \x01(\t"5\n\tOperation\x12\x18\n\x10\x61ggregation_type\x18\x01 \x01(\t\x12\x0e\n\x06tensor\x18\x03 \x01(\x0c"{\n\x10\x41ggregateRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t\x12\x0c\n\x04step\x18\x02 \x01(\x05\x12\x31\n\noperations\x18\x03 \x03(\x0b\x32\x1d.aggregation_server.Operation\x12\x12\n\ncontext_id\x18\x04 \x01(\t"$\n\x11\x41ggregateResponse\x12\x0f\n\x07tensors\x18\x03 \x03(\x0c"8\n\x0e\x43leanupRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t\x12\x12\n\ncontext_id\x18\x02 \x01(\t"U\n\x0f\x43leanupResponse\x12*\n\x06status\x18\x01 \x01(\x0e\x32\x1a.aggregation_server.Status\x12\x16\n\x0estatus_message\x18\x02 \x01(\t";\n\x11UnregisterRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t\x12\x12\n\ncontext_id\x18\x02 \x01(\t"s\n\x12UnregisterResponse\x12*\n\x06status\x18\x01 \x01(\x0e\x32\x1a.aggregation_server.Status\x12\x16\n\x0estatus_message\x18\x02 \x01(\t\x12\x19\n\x11remaining_workers\x18\x03 \x01(\x05*x\n\x06Status\x12\x16\n\x12STATUS_UNSPECIFIED\x10\x00\x12\x06\n\x02OK\x10\x01\x12\x16\n\x12\x41LREADY_CONFIGURED\x10\x02\x12\r\n\tNOT_FOUND\x10\x03\x12\x0f\n\x0bMIN_WORKERS\x10\x04\x12\x0b\n\x07TIMEOUT\x10\x05\x12\t\n\x05\x45RROR\x10\x06\x32\xf8\x02\n\x11\x41ggregationServer\x12X\n\tConfigure\x12$.aggregation_server.ConfigureRequest\x1a%.aggregation_server.ConfigureResponse\x12[\n\nUnregister\x12%.aggregation_server.UnregisterRequest\x1a&.aggregation_server.UnregisterResponse\x12X\n\tAggregate\x12$.aggregation_server.AggregateRequest\x1a%.aggregation_server.AggregateResponse\x12R\n\x07\x43leanup\x12".aggregation_server.CleanupRequest\x1a#.aggregation_server.CleanupResponseb\x06proto3'
 )
 
 _globals = globals()
@@ -35,26 +35,26 @@ _builder.BuildTopDescriptorsAndMessages(
 )
 if not _descriptor._USE_C_DESCRIPTORS:
     DESCRIPTOR._loaded_options = None
-    _globals["_STATUS"]._serialized_start = 716
-    _globals["_STATUS"]._serialized_end = 836
+    _globals["_STATUS"]._serialized_start = 796
+    _globals["_STATUS"]._serialized_end = 916
     _globals["_CONFIGUREREQUEST"]._serialized_start = 82
-    _globals["_CONFIGUREREQUEST"]._serialized_end = 144
-    _globals["_CONFIGURERESPONSE"]._serialized_start = 146
-    _globals["_CONFIGURERESPONSE"]._serialized_end = 233
-    _globals["_OPERATION"]._serialized_start = 235
-    _globals["_OPERATION"]._serialized_end = 288
-    _globals["_AGGREGATEREQUEST"]._serialized_start = 290
-    _globals["_AGGREGATEREQUEST"]._serialized_end = 393
-    _globals["_AGGREGATERESPONSE"]._serialized_start = 395
-    _globals["_AGGREGATERESPONSE"]._serialized_end = 431
-    _globals["_CLEANUPREQUEST"]._serialized_start = 433
-    _globals["_CLEANUPREQUEST"]._serialized_end = 469
-    _globals["_CLEANUPRESPONSE"]._serialized_start = 471
-    _globals["_CLEANUPRESPONSE"]._serialized_end = 556
-    _globals["_UNREGISTERREQUEST"]._serialized_start = 558
-    _globals["_UNREGISTERREQUEST"]._serialized_end = 597
-    _globals["_UNREGISTERRESPONSE"]._serialized_start = 599
-    _globals["_UNREGISTERRESPONSE"]._serialized_end = 714
-    _globals["_AGGREGATIONSERVER"]._serialized_start = 839
-    _globals["_AGGREGATIONSERVER"]._serialized_end = 1215
+    _globals["_CONFIGUREREQUEST"]._serialized_end = 164
+    _globals["_CONFIGURERESPONSE"]._serialized_start = 166
+    _globals["_CONFIGURERESPONSE"]._serialized_end = 253
+    _globals["_OPERATION"]._serialized_start = 255
+    _globals["_OPERATION"]._serialized_end = 308
+    _globals["_AGGREGATEREQUEST"]._serialized_start = 310
+    _globals["_AGGREGATEREQUEST"]._serialized_end = 433
+    _globals["_AGGREGATERESPONSE"]._serialized_start = 435
+    _globals["_AGGREGATERESPONSE"]._serialized_end = 471
+    _globals["_CLEANUPREQUEST"]._serialized_start = 473
+    _globals["_CLEANUPREQUEST"]._serialized_end = 529
+    _globals["_CLEANUPRESPONSE"]._serialized_start = 531
+    _globals["_CLEANUPRESPONSE"]._serialized_end = 616
+    _globals["_UNREGISTERREQUEST"]._serialized_start = 618
+    _globals["_UNREGISTERREQUEST"]._serialized_end = 677
+    _globals["_UNREGISTERRESPONSE"]._serialized_start = 679
+    _globals["_UNREGISTERRESPONSE"]._serialized_end = 794
+    _globals["_AGGREGATIONSERVER"]._serialized_start = 919
+    _globals["_AGGREGATIONSERVER"]._serialized_end = 1295
 # @@protoc_insertion_point(module_scope)
