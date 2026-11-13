@@ -16,6 +16,19 @@ all of them through `exaflow.exareme3_preprocessing_step_classes` and
 | Longitudinal transformer | [longitudinal/longitudinal_transformer.py](longitudinal/longitudinal_transformer.py) |
 | K-means cluster creator | [cluster/kmeans_cluster_creator.py](cluster/kmeans_cluster_creator.py) |
 | PCA column creator | [decomposition/pca_column_creator.py](decomposition/pca_column_creator.py) |
+| Variable scaler | [transformations/variable_scaler.py](transformations/variable_scaler.py) |
+| Variable transformer | [transformations/variable_transformer.py](transformations/variable_transformer.py) |
+| Global numerical imputer | [missing_values/global_imputer.py](missing_values/global_imputer.py) |
+| Missing indicator | [missing_values/missing_indicator.py](missing_values/missing_indicator.py) |
+| Global winsorizer | [outliers/global_winsorizer.py](outliers/global_winsorizer.py) |
+| Outlier detector | [outliers/outlier_detector.py](outliers/outlier_detector.py) |
+
+The six numerical transformation steps preserve their source and create one
+derived numerical column named by `new_column_names`. They use the standard
+base preprocessing return path and output validation. Fitted recipes can be
+replayed but are not returned publicly by preprocessing. These contracts differ
+from the unmerged in-place preprocessing-catalog proposal; see the method pages
+under `documentation/algorithms/` and the federated transformation documentation.
 
 Outlier reporting reuses `OutlierWinsorizer.validate_outlier_configuration()`
 from `outliers/outlier_winsorizer.py`. K-means owns its replay models and

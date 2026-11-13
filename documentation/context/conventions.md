@@ -67,6 +67,14 @@
   constructing pandas categorical values, while validating current categories
   on every transformation.
 - Algorithm specifications are code-defined through `get_specification()`.
+- Numerical feature transformations implement `FederatedTransformer` directly
+  through their shared named-column base, without array-API adapters. Their
+  fitted states are validated dataclasses beside the owning implementations;
+  only genuinely shared scaler state is separate. Pydantic remains at the
+  public specification/request/response boundary. New numerical transformation
+  steps preserve their source and declare exactly one caller-named derived
+  output through the existing `outputs` specification. Replay state includes
+  the ordered source feature names; see `federated/docs/transformations.md`.
 - Specification metadata should be UI-ready: compact standard `label`,
   one-sentence method-level `desc`, and detailed parent `documentation` for
   formulas, defaults, ranges, options, assumptions, outputs, and reference

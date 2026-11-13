@@ -182,12 +182,17 @@ def register(
     )
 
 
-def load_runtime_catalog(repo_root: Path) -> list[str]:
+def load_runtime_catalog(repo_root: Path, *, preprocessing: bool = False) -> list[str]:
+    registry = (
+        "exareme3_preprocessing_step_classes"
+        if preprocessing
+        else "exareme3_algorithm_classes"
+    )
     try:
         sys.path.insert(0, str(repo_root))
         import exaflow  # pylint: disable=import-outside-toplevel
 
-        return sorted(exaflow.exareme3_algorithm_classes.keys())
+        return sorted(getattr(exaflow, registry).keys())
     except Exception:  # pylint: disable=broad-except
         probe = subprocess.run(
             [
@@ -199,7 +204,7 @@ def load_runtime_catalog(repo_root: Path) -> list[str]:
                     "import json, sys;"
                     "sys.path.insert(0, '.');"
                     "import exaflow;"
-                    "print(json.dumps(sorted(exaflow.exareme3_algorithm_classes.keys())))"
+                    f"print(json.dumps(sorted(exaflow.{registry}.keys())))"
                 ),
             ],
             cwd=str(repo_root),
@@ -327,7 +332,136 @@ def discover_canonical_standalone_paths(repo_root: Path, algorithm: str) -> list
 
 
 def discover_standalone_paths(repo_root: Path, algorithm: str) -> list[Path]:
-    return discover_canonical_standalone_paths(repo_root, algorithm)
+    paths = discover_canonical_standalone_paths(repo_root, algorithm)
+    if is_preprocessing_step(repo_root, algorithm):
+        base = repo_root / "tests/standalone_tests/exareme3"
+        module = runtime_import_path(
+            runtime_module_path(repo_root, algorithm), repo_root
+        )
+        paths.extend(
+            path
+            for path in base.rglob("test_*.py")
+            if references_preprocessing_step(path, algorithm, module)
+        )
+    return sorted(set(paths))
+
+
+def is_preprocessing_step(repo_root: Path, name: str) -> bool:
+    """Recognize an unregistered step too, so missing registration still fails."""
+    try:
+        path = runtime_module_path(repo_root, name)
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+    except (ValueError, OSError, SyntaxError):
+        return False
+    bases = {"PreprocessingStep", "LongitudinalPreprocessingStep"}
+    for node in tree.body:
+        if isinstance(node, ast.ImportFrom):
+            bases.update(
+                alias.asname or alias.name
+                for alias in node.names
+                if alias.name in bases
+            )
+    return any(
+        isinstance(node, ast.ClassDef)
+        and any(
+            (isinstance(base, ast.Name) and base.id in bases)
+            or (isinstance(base, ast.Attribute) and base.attr in bases)
+            for base in node.bases
+        )
+        for node in tree.body
+    )
+
+
+def references_preprocessing_step(path: Path, name: str, module: str) -> bool:
+    if path.name == f"test_{name}.py":
+        return True
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+    except (OSError, SyntaxError):
+        return False
+    # Grouped contract tests import their real step; grouped HTTP tests name it
+    # in requests or parameter tables. Comments and helper filenames do not count.
+    return any(
+        isinstance(node, ast.ImportFrom)
+        and node.module == module
+        or isinstance(node, ast.Constant)
+        and node.value == name
+        for node in ast.walk(tree)
+    )
+
+
+def discover_prod_test_paths(repo_root: Path, name: str) -> list[Path]:
+    base = repo_root / "tests/prod_env_tests"
+    canonical = base / f"test_{name}.py"
+    paths = [canonical] if canonical.exists() else []
+    if is_preprocessing_step(repo_root, name):
+        module = runtime_import_path(runtime_module_path(repo_root, name), repo_root)
+        paths.extend(
+            path
+            for path in base.glob("test_*.py")
+            if references_preprocessing_step(path, name, module)
+        )
+    return sorted(set(paths))
+
+
+def declares_runtime_component(path: Path) -> bool:
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+    except (OSError, SyntaxError):
+        # A missing/broken wrapper must fail validation, not be ignored.
+        return True
+    bases = {"Algorithm", "PreprocessingStep", "LongitudinalPreprocessingStep"}
+    for node in tree.body:
+        if isinstance(node, ast.ImportFrom):
+            bases.update(
+                alias.asname or alias.name
+                for alias in node.names
+                if alias.name in bases
+            )
+    return any(
+        isinstance(node, ast.ClassDef)
+        and (
+            any(
+                isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and member.name == "get_specification"
+                for member in node.body
+            )
+            or any(
+                isinstance(base, ast.Name)
+                and base.id in bases
+                or isinstance(base, ast.Attribute)
+                and base.attr in bases
+                for base in node.bases
+            )
+        )
+        for node in tree.body
+    )
+
+
+def filter_runtime_targets(
+    repo_root: Path, candidates: list[str], changed_files: list[str], *, registered=()
+) -> list[str]:
+    runtime = repo_root / "exaflow/algorithms/exareme3"
+    wrappers = {
+        path.stem
+        for path in runtime.rglob("*.py")
+        if "utils" not in path.relative_to(runtime).parts
+        and path.stem not in {"__init__", "metadata"}
+        and declares_runtime_component(path)
+    }
+    wrappers.update(registered)
+    # Retain deleted wrappers: accidental deletion must not silently disappear
+    # from validation. Federated-only helpers are not runtime algorithm IDs.
+    wrappers.update(
+        Path(path).stem
+        for path in changed_files
+        if path.startswith("exaflow/algorithms/exareme3/")
+        and "/utils/" not in path
+        and path.endswith(".py")
+        and Path(path).stem not in {"__init__", "metadata"}
+        and declares_runtime_component(repo_root / path)
+    )
+    return sorted(set(candidates) & wrappers)
 
 
 def check_import_and_spec(
@@ -336,7 +470,20 @@ def check_import_and_spec(
     *,
     repo_root: Path,
     runtime_catalog_set: set[str],
+    preprocessing: bool | None = None,
 ) -> None:
+    if preprocessing is None:
+        preprocessing = is_preprocessing_step(repo_root, algorithm)
+    base_class = "PreprocessingStep" if preprocessing else "Algorithm"
+    base_module = "preprocessing_step" if preprocessing else "algorithm"
+    specification_class = (
+        "PreprocessingStepSpecification" if preprocessing else "AlgorithmSpecification"
+    )
+    registry = (
+        "exareme3_preprocessing_step_classes"
+        if preprocessing
+        else "exareme3_algorithm_classes"
+    )
     try:
         module_path = runtime_module_path(repo_root, algorithm)
     except ValueError as exc:
@@ -378,7 +525,7 @@ def check_import_and_spec(
             repo_root=repo_root,
             next_action=(
                 "Ensure exaflow.algorithms.exareme3 module/class discovery registers "
-                f"'{algorithm}' in exaflow.exareme3_algorithm_classes."
+                f"'{algorithm}' in exaflow.{registry}."
             ),
         )
 
@@ -424,14 +571,16 @@ def check_import_and_spec(
                 "import importlib, inspect, json, sys;"
                 "sys.path.insert(0, '.');"
                 f"module = importlib.import_module({runtime_import_path(module_path, repo_root)!r});"
-                "from exaflow.algorithms.exareme3.utils.algorithm import Algorithm;"
+                f"from exaflow.algorithms.exareme3.utils.{base_module} import {base_class};"
+                f"from exaflow.algorithms.specifications import {specification_class};"
                 "classes = ["
                 "cls for _, cls in inspect.getmembers(module, inspect.isclass) "
-                "if cls.__module__ == module.__name__ and issubclass(cls, Algorithm) "
-                "and cls is not Algorithm"
+                f"if cls.__module__ == module.__name__ and issubclass(cls, {base_class}) "
+                f"and cls is not {base_class}"
                 "];"
                 f"match = any(cls.get_specification().name == '{algorithm}' for cls in classes);"
-                "print(json.dumps({'classes_found': len(classes), 'match': match}))"
+                f"valid_specs = all(isinstance(cls.get_specification(), {specification_class}) for cls in classes);"
+                "print(json.dumps({'classes_found': len(classes), 'match': match, 'valid_specs': valid_specs}))"
             ),
         ],
         cwd=str(repo_root),
@@ -500,14 +649,12 @@ def check_import_and_spec(
             check="algorithm_spec_name_match",
             status="failed",
             severity="failed",
-            message="No Algorithm subclass found in module.",
+            message=f"No {base_class} subclass found in module.",
             path=module_path,
             repo_root=repo_root,
-            next_action=(
-                "Define an Algorithm subclass with get_specification() and run()."
-            ),
+            next_action=(f"Define a {base_class} subclass with get_specification()."),
         )
-    elif match:
+    elif match and payload.get("valid_specs", False):
         register(
             report,
             algorithm=algorithm,
@@ -528,8 +675,8 @@ def check_import_and_spec(
             status="failed",
             severity="failed",
             message=(
-                "No Algorithm subclass has get_specification().name matching "
-                "the algorithm."
+                f"No {base_class} subclass has a valid {specification_class} "
+                "with the matching identifier and output declaration."
             ),
             path=module_path,
             repo_root=repo_root,
@@ -586,6 +733,44 @@ def check_required_paths(
     enforce_canonical: bool,
 ) -> AlgorithmPaths:
     paths = AlgorithmPaths()
+
+    if is_preprocessing_step(repo_root, algorithm):
+        groups = {
+            "standalone_test_exists": (
+                discover_standalone_paths(repo_root, algorithm),
+                "standalone",
+            ),
+            "prod_env_test_exists": (
+                discover_prod_test_paths(repo_root, algorithm),
+                "prod_test",
+            ),
+            "documentation_exists": (
+                [repo_root / "documentation/algorithms" / f"{algorithm}.md"],
+                "documentation",
+            ),
+        }
+        for check, (candidates, field) in groups.items():
+            existing = [path for path in candidates if path.is_file()]
+            setattr(paths, field, existing[0] if existing else None)
+            register(
+                report,
+                algorithm=algorithm,
+                phase="static",
+                check=check,
+                status="pass" if existing else "failed",
+                severity="pass" if existing else "failed",
+                message="Found preprocessing coverage/documentation."
+                if existing
+                else "Missing preprocessing coverage/documentation.",
+                path=existing[0] if existing else None,
+                repo_root=repo_root,
+                next_action=None
+                if existing
+                else "Add a focused or explicitly referencing grouped preprocessing test/documentation.",
+            )
+        # Preprocessing is validated by executable request/output assertions,
+        # not an analysis-result JSON fixture or an AlgorithmName enum entry.
+        return paths
 
     canonical_standalone = discover_canonical_standalone_paths(repo_root, algorithm)
     if canonical_standalone:
@@ -731,8 +916,24 @@ def find_federated_core_paths(repo_root: Path, algorithm: str) -> list[Path]:
     return sorted(pattern.glob(f"*/{algorithm}.py"))
 
 
-def federated_symbol_for_algorithm(algorithm: str) -> str:
-    return "Federated" + "".join(part.capitalize() for part in algorithm.split("_"))
+def federated_symbol_for_algorithm(algorithm: str, core_path: Path) -> str:
+    conventional = "Federated" + "".join(
+        part.capitalize() for part in algorithm.split("_")
+    )
+    try:
+        tree = ast.parse(core_path.read_text(encoding="utf-8"))
+    except SyntaxError:
+        # The import checks report the syntax error. Keep collecting registration
+        # diagnostics instead of terminating the whole report here.
+        return conventional
+    names = [
+        node.name
+        for node in tree.body
+        if isinstance(node, ast.ClassDef) and node.name.startswith("Federated")
+    ]
+    if conventional in names:
+        return conventional
+    return names[0] if len(names) == 1 else conventional
 
 
 def check_fixture_content(
@@ -944,7 +1145,7 @@ def check_new_algorithm_integration(
 
     core_path = core_paths[0]
     family = core_path.parent.name
-    symbol = federated_symbol_for_algorithm(algorithm)
+    symbol = federated_symbol_for_algorithm(algorithm, core_path)
 
     register(
         report,
@@ -1056,15 +1257,24 @@ def run_fast_tier(
     *,
     algorithms: list[str],
     repo_root: Path,
+    changed_files: list[str] | None = None,
 ) -> None:
     standalone_files: list[str] = []
     for algorithm in algorithms:
         for path in discover_standalone_paths(repo_root, algorithm):
             standalone_files.append(to_rel(path, repo_root) or "")
+    standalone_files.extend(
+        path
+        for path in changed_files or []
+        if path.startswith("tests/standalone_tests/")
+        and Path(path).name.startswith("test_")
+        and path.endswith(".py")
+        and (repo_root / path).is_file()
+    )
     standalone_files = sorted(set(path for path in standalone_files if path))
 
     if standalone_files:
-        rc, _, stderr = run_command(
+        rc, stdout, stderr = run_command(
             ["uv", "run", "pytest", "-q", *standalone_files],
             cwd=repo_root,
         )
@@ -1077,7 +1287,7 @@ def run_fast_tier(
             severity="pass" if rc == 0 else "failed",
             message="Standalone tests passed."
             if rc == 0
-            else (stderr or "Standalone tests failed."),
+            else (stderr or stdout or "Standalone tests failed."),
             path=None,
             repo_root=repo_root,
             next_action="Run standalone tests locally and fix failing assertions."
@@ -1102,11 +1312,8 @@ def run_fast_tier(
 
 
 def resolve_prod_test_file(repo_root: Path, algorithm: str) -> str | None:
-    preferred = f"tests/prod_env_tests/test_{algorithm}.py"
-    if (repo_root / preferred).exists():
-        return preferred
-
-    return None
+    paths = discover_prod_test_paths(repo_root, algorithm)
+    return to_rel(paths[0], repo_root) if paths else None
 
 
 def run_strict_tier(
@@ -1119,14 +1326,14 @@ def run_strict_tier(
         {
             path
             for algorithm in algorithms
-            for path in [resolve_prod_test_file(repo_root, algorithm)]
-            if path
+            for source in discover_prod_test_paths(repo_root, algorithm)
+            for path in [to_rel(source, repo_root)]
         }
     )
 
     if prod_files:
-        rc, _, stderr = run_command(
-            ["uv", "run", "pytest", "--verbosity=2", *prod_files],
+        rc, stdout, stderr = run_command(
+            ["uv", "run", "pytest", "-q", *prod_files],
             cwd=repo_root,
         )
         register(
@@ -1138,7 +1345,7 @@ def run_strict_tier(
             severity="pass" if rc == 0 else "failed",
             message="prod_env tests passed."
             if rc == 0
-            else (stderr or "prod_env tests failed."),
+            else (stderr or stdout or "prod_env tests failed."),
             path=None,
             repo_root=repo_root,
             next_action="Run targeted prod_env tests and update expected fixtures/tests."
@@ -1191,7 +1398,7 @@ def check_touched_registration_files(
         core_paths = find_federated_core_paths(repo_root, algorithm)
         if len(core_paths) == 1:
             family = core_paths[0].parent.name
-            symbol = federated_symbol_for_algorithm(algorithm)
+            symbol = federated_symbol_for_algorithm(algorithm, core_paths[0])
             family_init = f"exaflow/algorithms/federated/{family}/__init__.py"
             expected_tokens.setdefault(family_init, set()).add(symbol)
             expected_tokens["exaflow/algorithms/federated/__init__.py"].add(symbol)
@@ -1199,6 +1406,19 @@ def check_touched_registration_files(
     for rel in sorted(set(touched)):
         path = repo_root / rel
         if not path.exists():
+            if path.name == "__init__.py" and not any(path.parent.rglob("*.py")):
+                register(
+                    report,
+                    algorithm="*",
+                    phase="static",
+                    check="removed_package_initializer",
+                    status="pass",
+                    severity="pass",
+                    message="Package was removed; no live Python modules remain there.",
+                    path=path,
+                    repo_root=repo_root,
+                )
+                continue
             register(
                 report,
                 algorithm="*",
@@ -1277,6 +1497,51 @@ def check_touched_registration_files(
                 )
 
 
+def check_changed_source_imports(report, *, repo_root, changed_files):
+    modules = []
+    for name in changed_files:
+        if not name.startswith(
+            ("exaflow/algorithms/federated/", "exaflow/algorithms/exareme3/")
+        ):
+            continue
+        path = repo_root / name
+        if path.suffix != ".py" or not path.is_file():
+            continue
+        parts = path.relative_to(repo_root).with_suffix("").parts
+        modules.append(".".join(parts[:-1] if parts[-1] == "__init__" else parts))
+    if not modules:
+        return
+    code = (
+        "import importlib,json\n"
+        "errors={}\n"
+        f"for name in {sorted(set(modules))!r}:\n"
+        " try: importlib.import_module(name)\n"
+        " except Exception as exc: errors[name]=type(exc).__name__+': '+str(exc)\n"
+        "print(json.dumps(errors))\n"
+    )
+    rc, stdout, stderr = run_command(
+        ["uv", "run", "python", "-B", "-c", code], cwd=repo_root
+    )
+    try:
+        errors = json.loads(stdout) if rc == 0 else {"probe": stderr or stdout}
+    except json.JSONDecodeError:
+        errors = {"probe": "Changed-source import probe returned invalid JSON."}
+    register(
+        report,
+        algorithm="*",
+        phase="static",
+        check="changed_source_imports",
+        status="failed" if errors else "pass",
+        severity="failed" if errors else "pass",
+        message=json.dumps(errors)
+        if errors
+        else f"Imported {len(set(modules))} changed production modules, including helpers.",
+        path=None,
+        repo_root=repo_root,
+        next_action="Fix the reported production imports." if errors else None,
+    )
+
+
 def summarize(report: list[ReportEntry]) -> dict:
     rows = [entry.to_dict() for entry in report]
     failed = [row for row in rows if row["severity"] == "failed"]
@@ -1353,6 +1618,7 @@ def main() -> int:
 
     try:
         runtime_catalog = load_runtime_catalog(repo_root)
+        preprocessing_catalog = load_runtime_catalog(repo_root, preprocessing=True)
     except Exception as exc:  # pylint: disable=broad-except
         return _print_load_runtime_catalog_error(str(exc))
 
@@ -1367,6 +1633,18 @@ def main() -> int:
     except ValueError as exc:
         return _print_arg_error(str(exc))
 
+    if selection_mode == "changed-only":
+        target_algorithms = filter_runtime_targets(
+            repo_root,
+            target_algorithms,
+            changed_files,
+            registered=[*runtime_catalog, *preprocessing_catalog],
+        )
+    preprocessing_targets = {
+        name
+        for name in target_algorithms
+        if name in preprocessing_catalog or is_preprocessing_step(repo_root, name)
+    }
     report: list[ReportEntry] = []
 
     if not target_algorithms:
@@ -1377,28 +1655,29 @@ def main() -> int:
             check="target_selection",
             status="pass",
             severity="pass",
-            message="No target algorithms detected. Nothing to validate.",
+            message="No runtime components selected; checking changed source imports and tests where present.",
             path=None,
             repo_root=repo_root,
         )
-        summary = summarize(report)
-        summary["targets"] = target_algorithms
-        summary["tier"] = "strict" if args.strict else "fast"
-        summary["selection_mode"] = selection_mode
-        summary["new_algorithm_targets"] = sorted(new_algorithms)
-        print(json.dumps(summary, indent=2))
-        return 0
-
-    runtime_catalog_set = set(runtime_catalog)
+    analysis_targets = [
+        name for name in target_algorithms if name not in preprocessing_targets
+    ]
+    check_changed_source_imports(
+        report, repo_root=repo_root, changed_files=changed_files
+    )
 
     for algorithm in target_algorithms:
-        is_new_mode = algorithm in new_algorithms
+        preprocessing = algorithm in preprocessing_targets
+        is_new_mode = algorithm in new_algorithms and not preprocessing
 
         check_import_and_spec(
             algorithm,
             report,
             repo_root=repo_root,
-            runtime_catalog_set=runtime_catalog_set,
+            runtime_catalog_set=set(
+                preprocessing_catalog if preprocessing else runtime_catalog
+            ),
+            preprocessing=preprocessing,
         )
 
         resolved_paths = check_required_paths(
@@ -1485,18 +1764,28 @@ def main() -> int:
 
     check_touched_registration_files(
         report,
-        algorithms=target_algorithms,
+        algorithms=analysis_targets,
         repo_root=repo_root,
         changed_files=changed_files,
     )
 
-    run_fast_tier(
-        report,
-        algorithms=target_algorithms,
-        repo_root=repo_root,
-    )
+    changed_tests = [
+        name
+        for name in changed_files
+        if name.startswith("tests/standalone_tests/")
+        and Path(name).name.startswith("test_")
+        and name.endswith(".py")
+        and (repo_root / name).is_file()
+    ]
+    if target_algorithms or changed_tests:
+        run_fast_tier(
+            report,
+            algorithms=target_algorithms,
+            repo_root=repo_root,
+            changed_files=changed_files,
+        )
 
-    if args.strict:
+    if args.strict and target_algorithms:
         run_strict_tier(
             report,
             algorithms=target_algorithms,
@@ -1508,6 +1797,7 @@ def main() -> int:
     summary["tier"] = "strict" if args.strict else "fast"
     summary["selection_mode"] = selection_mode
     summary["new_algorithm_targets"] = sorted(new_algorithms)
+    summary["preprocessing_targets"] = sorted(preprocessing_targets)
     print(json.dumps(summary, indent=2))
     return 1 if summary["failed"] else 0
 
