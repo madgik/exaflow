@@ -43,3 +43,34 @@ def test_run_analysis_validates_then_executes_inside_a_slot(monkeypatch):
     assert entered["value"]
     assert seen["dto"] is request
     assert seen["aggregator"] is aggregator
+
+
+def test_queued_analysis_validates_and_creates_strategy_after_admission(monkeypatch):
+    events = []
+
+    @asynccontextmanager
+    async def slot(*, wait_for_capacity):
+        assert wait_for_capacity
+        events.append("admit")
+        yield
+
+    class Strategy:
+        async def execute(self):
+            events.append("execute")
+            return "{}"
+
+    def validate(**kwargs):
+        events.append("validate")
+
+    def strategy(dto):
+        events.append("strategy")
+        return Strategy()
+
+    monkeypatch.setattr(analysis_service, "analysis_slot", slot)
+    monkeypatch.setattr(
+        analysis_service, "get_worker_landscape_aggregator", lambda: object()
+    )
+    monkeypatch.setattr(analysis_service, "validate_analysis_request", validate)
+    monkeypatch.setattr(analysis_service, "get_algorithm_execution_strategy", strategy)
+    assert asyncio.run(run_analysis(analysis_request(), wait_for_capacity=True)) == "{}"
+    assert events == ["admit", "validate", "strategy", "execute"]

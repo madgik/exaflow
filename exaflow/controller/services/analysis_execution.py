@@ -117,10 +117,10 @@ def _ensure_semaphore() -> asyncio.Semaphore:
 
 
 @asynccontextmanager
-async def analysis_slot():
+async def analysis_slot(*, wait_for_capacity: bool = False):
     """Hold one analysis slot, or reject when every slot is taken."""
     semaphore = _ensure_semaphore()
-    if semaphore.locked():
+    if not wait_for_capacity and semaphore.locked():
         raise AnalysisCapacityExceeded()
     await semaphore.acquire()
     try:
