@@ -213,3 +213,27 @@ Files affected: `.agents/skills`, `documentation/new-algorithm-setup.md`,
 algorithm wrapper/core/test/docs paths.
 
 Date: 2026-05-22
+
+## Separate logical requests from aggregation attempts
+
+RabbitMQ redelivery may repeat a logical request. Preserve `request_id` for
+tracing and use a fresh UUID `context_id` for each attempt, including all worker
+aggregation operations and cleanup. Propagate both explicitly; aggregation logs
+include both. This changes the aggregation RPC contract and requires coordinated
+controller, worker, and aggregation-server upgrades. Regenerate protobuf bindings
+using `exaflow/protos/README.md`.
+
+## Isolate RabbitMQ replies and retain unsettled results briefly
+
+Each delivery checks that its producer-created reply queue exists and publishes
+through an isolated channel on the existing connection. Missing destinations and
+broker nacks dead-letter only their request; transient failures retry the
+serialized result. Completed replies can survive redelivery within one
+controller for five minutes, bounded to 128 entries and 64 MiB. This remains
+at-least-once execution without a durable result store. A sustained backlog can
+reject HTTP analysis submissions under the intentionally shared capacity limit.
+
+The broker is dedicated to Exaflow; no application queue-prefix allowlist or
+request-body collision checks are added. RabbitMQ remains opt-in and externally
+provisioned. The independent 30-second publication timeout is interruptible; the
+20-second drain cap leaves ten seconds of lifespan shutdown headroom.

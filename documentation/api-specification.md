@@ -414,11 +414,17 @@ Example:
 
 | Field | Type | Meaning | Validation / UI Notes |
 | --- | --- | --- | --- |
-| `request_id` | `string \| null` | Optional client request id. | If omitted, the server generates one. |
+| `request_id` | `string \| null` | Optional client request id. | Supplied strings must match `^[A-Za-z0-9_-]{1,128}$`. If omitted or null, the server generates one. |
 | `inputdata` | `AnalysisInputDataDTO` | Data model, datasets, filter, and source variables loaded before preprocessing. | Required. |
 | `preprocessing` | `AnalysisPreprocessingStepDTO[] \| null` | Ordered preprocessing step configuration. | Step names must exist in enabled preprocessing specs, and required preprocessing steps must be included. |
 | `algorithm` | `AnalysisAlgorithmDTO` | Selected algorithm name, final algorithm `x`, `y`, and parameter values. | Required. |
 | `flags` | `object \| null` | System flags. | Optional. |
+
+**Request ID compatibility:** caller-provided IDs are restricted to 1–128 ASCII
+letters, digits, underscores, or hyphens. Empty strings, whitespace, other
+punctuation, Unicode, and control characters return HTTP `422` before analysis
+orchestration. Accepted IDs are preserved exactly; they are not trimmed or
+rewritten. Clients previously using IDs outside this format must update them.
 
 ### `AnalysisInputDataDTO`
 
@@ -570,3 +576,15 @@ ______________________________________________________________________
   - `exaflow/controller/http/error_handlers.py`
 - Algorithm/preprocessing names:
   - `exaflow/algorithms/specifications.py`
+
+## Optional RabbitMQ transport
+
+`POST /analysis` keeps its current body, response, and error behavior. An optional
+RabbitMQ consumer accepts the same analysis JSON and publishes a correlated
+success/failure envelope; see [RabbitMQ analysis submission](rabbitmq-analysis.md).
+
+`GET /healthcheck/rabbitmq` reports `enabled`, `connected`, `consuming`,
+`active_jobs`, and `last_error` (a safe error type or null). Its status is 503 when
+enabled but unavailable, otherwise 200. It does not change `/livez` or worker
+health checks. The aggregate HTTP/AMQP analysis limit is shared; only analysis
+submissions acquire a slot.
