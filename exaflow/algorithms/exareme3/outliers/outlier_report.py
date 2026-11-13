@@ -148,10 +148,6 @@ class OutlierReport(Algorithm):
         )
 
     @property
-    def check_min_rows(self) -> bool:
-        return False
-
-    @property
     def add_dataset_variable(self) -> bool:
         return True
 
@@ -206,7 +202,7 @@ class OutlierReport(Algorithm):
         )
 
 
-@exareme3_udf()
+@exareme3_udf(check_min_rows=False)
 def local_step(data, rules):
     from exaflow.worker import config as worker_config
 
