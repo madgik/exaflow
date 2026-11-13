@@ -13,7 +13,7 @@ from exaflow.controller.services.api.analysis_request_validator import (
 )
 
 
-async def run_analysis(analysis_request_dto: AnalysisRequestDTO) -> str:
+def _validate(analysis_request_dto: AnalysisRequestDTO) -> None:
     validate_analysis_request(
         analysis_request_dto=analysis_request_dto,
         algorithms_specs=specifications.enabled_algorithms,
@@ -23,6 +23,18 @@ async def run_analysis(analysis_request_dto: AnalysisRequestDTO) -> str:
         smpc_optional=ctrl_config.smpc.optional,
     )
 
+
+async def run_analysis(
+    analysis_request_dto: AnalysisRequestDTO, *, wait_for_capacity: bool = False
+) -> str:
+    if wait_for_capacity:
+        async with analysis_slot(wait_for_capacity=True):
+            _validate(analysis_request_dto)
+            return await get_algorithm_execution_strategy(
+                analysis_request_dto
+            ).execute()
+    # Preserve HTTP validation and strategy creation before capacity rejection.
+    _validate(analysis_request_dto)
     strategy = get_algorithm_execution_strategy(analysis_request_dto)
     async with analysis_slot():
         return await strategy.execute()

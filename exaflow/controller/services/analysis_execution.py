@@ -1,8 +1,8 @@
 """Bounded off-loop execution for analyses.
 
 Analyses share one thread pool sized to ``max_concurrent_experiments``.
-A semaphore of the same size rejects extra requests instead of queueing
-them on that pool. Health checks and worker-landscape updates stay on
+A semaphore of the same size rejects excess HTTP requests; queue consumers
+can explicitly wait for a slot instead of queueing work on that pool. Health checks and worker-landscape updates stay on
 the default executor.
 """
 
@@ -117,10 +117,10 @@ def _ensure_semaphore() -> asyncio.Semaphore:
 
 
 @asynccontextmanager
-async def analysis_slot():
-    """Hold one analysis slot, or reject when every slot is taken."""
+async def analysis_slot(*, wait_for_capacity: bool = False):
+    """Hold one analysis slot; reject excess work unless waiting is requested."""
     semaphore = _ensure_semaphore()
-    if semaphore.locked():
+    if not wait_for_capacity and semaphore.locked():
         raise AnalysisCapacityExceeded()
     await semaphore.acquire()
     try:
