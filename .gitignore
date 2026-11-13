@@ -154,3 +154,6 @@ pyrightconfig.json
 
 # LLMs
 .codex
+
+# QLTY
+.qlty
