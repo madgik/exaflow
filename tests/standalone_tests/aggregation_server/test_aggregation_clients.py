@@ -115,10 +115,10 @@ def inline_grpc_stub(monkeypatch):
                 )
             )
 
-        def Unregister(self, request):
+        def Unregister(self, request, timeout=None):
             return servicer.Unregister(request, InlineGrpcContext())
 
-        def Aggregate(self, request):
+        def Aggregate(self, request, timeout=None):
             return servicer.Aggregate(request, InlineGrpcContext())
 
     monkeypatch.setattr(

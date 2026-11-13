@@ -30,9 +30,11 @@ class BaseAggregationClient:
         request_id: str,
         aggregator_dns: str | None = None,
         max_message_mb: int | None = None,
+        timeout: float | None = None,
     ):
         self._request_id = request_id
         self._step_counter = 1
+        self._timeout = timeout
 
         target = aggregator_dns or f"172.17.0.1:{DEFAULT_AGGREGATION_PORT}"
         # If a DNS name is provided, ensure a port is present and resolve it
@@ -83,7 +85,7 @@ class BaseAggregationClient:
             step=step or self._next_step(),
             operations=operations,
         )
-        resp = self._stub.Aggregate(req)
+        resp = self._stub.Aggregate(req, timeout=self._timeout)
         if not resp.tensors:
             raise ValueError("Aggregation response missing tensor payloads.")
         if len(resp.tensors) != len(ops):

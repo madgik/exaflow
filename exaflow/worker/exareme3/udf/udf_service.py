@@ -115,6 +115,7 @@ def _create_aggregation_client_if_required(
         request_id,
         aggregator_dns=agg_dns,
         max_message_mb=worker_config.grpc.max_message_mb,
+        timeout=worker_config.worker_tasks.tasks_timeout,
     )
 
 
