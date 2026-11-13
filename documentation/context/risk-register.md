@@ -22,3 +22,11 @@
 Worker loader SQL identifiers are quoted, including metadata-derived model names.
 Validator bounds must be finite JSON numbers (booleans and numeric strings are
 rejected); absent or null bounds are unset. Bounds are passed as SQL parameters.
+
+External GitHub Actions use verified full commit pins with version comments.
+Update the pin and comment together after verifying the upstream release.
+Workflows use read-only repository permissions and disable checkout credential
+persistence. Publishing workflows build without restoring or saving CI caches;
+test caches remain enabled. Controller, worker, and staging aggregation images
+retain separate publishing jobs so one failure does not skip other images. Publishing credentials and triggers are unchanged.
+Rollback is a revert of these changes, restoring the corresponding exposures.

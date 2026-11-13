@@ -6,19 +6,22 @@ on:
     tags:
     - '*'
 
+permissions:
+  contents: read
+
 jobs:
   to_ebrains:
     runs-on: ubuntu-latest
     steps:
       - name: syncmaster
-        uses: wei/git-sync@v3
+        uses: wei/git-sync@55c6b63b4f21607da0e9877ca9b4d11a29fc6d83 # v3
         with:
           source_repo: "https://${{ secrets.GITHUB_TOKEN }}@github.com/madgik/Exaflow.git"
           source_branch: "master"
           destination_repo: "https://ghpusher:${{ secrets.EBRAINS_GITLAB_ACCESS_TOKEN }}@gitlab.ebrains.eu/hbp-mip/Exareme2.git"
           destination_branch: "master"
       - name: synctags
-        uses: wei/git-sync@v3
+        uses: wei/git-sync@55c6b63b4f21607da0e9877ca9b4d11a29fc6d83 # v3
         with:
           source_repo: "https://${{ secrets.GITHUB_TOKEN }}@github.com/madgik/Exaflow.git"
           source_branch: "refs/tags/*"
