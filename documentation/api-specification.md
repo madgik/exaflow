@@ -223,10 +223,20 @@ Each column declares `type` (`text`, `int`, or `real`) and `stattype`
 (`nominal` or `numerical`). Nominal outputs support text/integer types and require
 `enumerations`; numerical outputs support integer/real types and serialize
 `enumerations: null`. A missing or null `column_count_param` describes one output
-column. When non-null, `column_count_param` references a required, single-valued integer
-request parameter and repeats that definition by its supplied value. The
-referenced parameter may declare `min` to guide clients, but `min` is not
-required by this contract. Actual counts must always be positive integers.
+column. When non-null, `column_count_param` references a required request
+parameter. For a single-valued integer parameter, the definition repeats by its
+supplied positive value. For a parameter declared with `multiple: true`, it
+repeats by the length of the supplied nonempty list. The declared parameter
+specification determines which rule applies; scalar integers and lists are not
+interchangeable. The integer parameter may declare `min` to guide clients, but
+`min` is not required by this contract. Missing values never fall back to defaults.
+
+For example, `column_count_param: "source_variables"` with
+`source_variables: ["crp", "subjectage"]` requires two output names. No separate
+numeric count is required from the caller. This extends the meaning of the
+existing field without adding DTO fields; clients resolving output counts must
+also handle references to list parameters. Existing integer references retain
+their behavior.
 
 Fixed and dynamic definitions can appear together, including multiple dynamic
 blocks. Expand definitions in declaration order, then consume names from the

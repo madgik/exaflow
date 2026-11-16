@@ -288,7 +288,13 @@ class PreprocessingStepSpecification(WorkflowStepSpecification):
         )
         for column in self.outputs.columns:
             if column.column_count_param is not None:
-                require_parameter(column.column_count_param, ParameterType.INT)
+                parameter = (self.parameters or {}).get(column.column_count_param)
+                if parameter is None or not parameter.required:
+                    raise ValueError(
+                        f"Invalid output parameter specification: '{column.column_count_param}'."
+                    )
+                if not parameter.multiple:
+                    require_parameter(column.column_count_param, ParameterType.INT)
             enums = column.enumerations
             if enums is None:
                 continue
