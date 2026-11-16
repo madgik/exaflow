@@ -12,9 +12,9 @@ def make_test_input(visit1: str, visit2: str) -> dict:
             "data_model": "longitudinal_dementia:0.1",
             "variables": ["agegroup", "lefthippocampus"],
             "datasets": [
-                "1",
-                "2",
-                "3",
+                "longitudinal_dementia0",
+                "longitudinal_dementia1",
+                "longitudinal_dementia2",
             ],
             "filters": None,
         },

@@ -6,9 +6,9 @@ base_input = {
     "inputdata": {
         "data_model": "longitudinal_dementia:0.1",
         "datasets": [
-            "1",
-            "2",
-            "3",
+            "longitudinal_dementia0",
+            "longitudinal_dementia1",
+            "longitudinal_dementia2",
         ],
         "filters": None,
         "variables": [],

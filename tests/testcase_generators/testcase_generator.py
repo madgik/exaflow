@@ -70,9 +70,17 @@ class _DB:
         return [code for code in table.columns if code in coded]
 
     @lru_cache
+    def get_dataset_codes(self):
+        """Dataset label -> code. Requests name datasets by label."""
+        dataset = self.get_metadata("dataset")
+        return {enum["label"]: enum["code"] for enum in dataset["enumerations"]}
+
+    @lru_cache
     def get_datasets(self):
-        data = self.get_data_table()
-        return data["dataset"].unique().tolist()
+        codes = set(self.get_data_table()["dataset"].unique())
+        return [
+            label for label, code in self.get_dataset_codes().items() if code in codes
+        ]
 
     @lru_cache
     def get_enumerations(self, varname):
@@ -550,7 +558,8 @@ class TestCaseGenerator(ABC):
     def get_input_data(self, input_):
         variables = self._get_variables_from_input(input_)
         inputdata = input_["inputdata"]
-        datasets = list(inputdata["datasets"])
+        dataset_codes = DB().get_dataset_codes()
+        datasets = [dataset_codes[label] for label in inputdata["datasets"]]
 
         if "dataset" in variables:
             full_data = self.all_data[variables]

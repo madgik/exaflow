@@ -9,7 +9,7 @@ from tests.algorithm_validation_tests.exareme3.conftest import parse_response
 def _inputdata():
     return {
         "data_model": "dementia:0.1",
-        "datasets": [str(12 + index) for index in range(10)],
+        "datasets": [f"EDSD_{index}" for index in range(10)],
         "filters": None,
         "variables": ["lefthippocampus", "righthippocampus", "gender"],
     }

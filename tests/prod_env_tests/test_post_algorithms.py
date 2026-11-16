@@ -59,7 +59,7 @@ def get_parametrization_list_exception_cases():
     request_dict = {
         "inputdata": {
             "data_model": "dementia:0.1",
-            "datasets": ["12"],
+            "datasets": ["EDSD_0"],
             "variables": ["lefthippocampus", "alzheimerstatus"],
             "filters": {
                 "condition": "AND",
@@ -136,7 +136,7 @@ def test_post_algorithm_with_request_id():
         "inputdata": {
             "data_model": "dementia:0.1",
             "datasets": [
-                "31",
+                "DESD-synthdata_8",
             ],
             "filters": None,
             "variables": ["lefthippocampus"],

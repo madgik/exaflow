@@ -11,7 +11,7 @@ from tests.algorithm_validation_tests.exareme3.conftest import analysis_request
 from tests.algorithm_validation_tests.exareme3.conftest import parse_response
 
 DATA_MODEL = "dementia:0.1"
-DATASETS = [str(12 + index) for index in range(10)]
+DATASETS = [f"EDSD_{index}" for index in range(10)]
 KMEANS_VARIABLES = ["lefthippocampus", "righthippocampus"]
 GENERATED_CODE = "kmeans_cluster"
 

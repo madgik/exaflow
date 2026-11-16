@@ -37,7 +37,7 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
         {
             "inputdata": {
                 "data_model": "dementia:0.1",
-                "datasets": ["31"],
+                "datasets": ["DESD-synthdata_8"],
                 "filters": None,
                 "variables": ["lefthippocampus", "rightpallidum"],
             },
@@ -55,7 +55,7 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
         {
             "inputdata": {
                 "data_model": "dementia:0.1",
-                "datasets": ["31"],
+                "datasets": ["DESD-synthdata_8"],
                 "filters": None,
                 "variables": ["lefthippocampus"],
             },
@@ -75,7 +75,7 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
         {
             "inputdata": {
                 "data_model": "dementia:0.1",
-                "datasets": ["31"],
+                "datasets": ["DESD-synthdata_8"],
                 "filters": None,
                 "variables": ["lefthippocampus", "rightpallidum", "subjectageyears"],
             },
@@ -94,10 +94,10 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
             "inputdata": {
                 "data_model": "dementia:0.1",
                 "datasets": [
-                    "12",
-                    "13",
-                    "14",
-                    "15",
+                    "EDSD_0",
+                    "EDSD_1",
+                    "EDSD_2",
+                    "EDSD_3",
                 ],
                 "filters": None,
                 "variables": ["lefthippocampus", "righthippocampus"],
@@ -117,14 +117,14 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
             "inputdata": {
                 "data_model": "dementia:0.1",
                 "datasets": [
-                    "19",
-                    "16",
-                    "3",
-                    "25",
-                    "12",
-                    "6",
-                    "31",
-                    "4",
+                    "EDSD_7",
+                    "EDSD_4",
+                    "PPMI_2",
+                    "DESD-synthdata_2",
+                    "EDSD_0",
+                    "PPMI_5",
+                    "DESD-synthdata_8",
+                    "PPMI_3",
                 ],
                 "filters": None,
                 "variables": [
@@ -151,7 +151,7 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
         {
             "inputdata": {
                 "data_model": "dementia:0.1",
-                "datasets": ["1", "23"],
+                "datasets": ["PPMI_0", "DESD-synthdata_0"],
                 "filters": None,
                 "variables": [
                     "rightttgtransversetemporalgyrus",
@@ -191,10 +191,10 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
             "inputdata": {
                 "data_model": "dementia:0.1",
                 "datasets": [
-                    "12",
-                    "13",
-                    "14",
-                    "15",
+                    "EDSD_0",
+                    "EDSD_1",
+                    "EDSD_2",
+                    "EDSD_3",
                 ],
                 "filters": None,
                 "variables": ["lefthippocampus", "righthippocampus"],
@@ -219,12 +219,12 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
             "inputdata": {
                 "data_model": "dementia:0.1",
                 "datasets": [
-                    "31",
-                    "20",
-                    "10",
-                    "19",
-                    "14",
-                    "24",
+                    "DESD-synthdata_8",
+                    "EDSD_8",
+                    "PPMI_9",
+                    "EDSD_7",
+                    "EDSD_2",
+                    "DESD-synthdata_1",
                 ],
                 "filters": None,
                 "variables": [
@@ -257,7 +257,7 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
         {
             "inputdata": {
                 "data_model": "dementia:0.1",
-                "datasets": ["9"],
+                "datasets": ["PPMI_8"],
                 "filters": None,
                 "variables": ["ppmicategory", "brainstem"],
             },
@@ -276,23 +276,23 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
             "inputdata": {
                 "data_model": "dementia:0.1",
                 "datasets": [
-                    "4",
-                    "3",
-                    "32",
-                    "9",
-                    "28",
-                    "26",
-                    "13",
-                    "2",
-                    "25",
-                    "27",
-                    "15",
-                    "24",
-                    "20",
-                    "21",
-                    "30",
-                    "7",
-                    "19",
+                    "PPMI_3",
+                    "PPMI_2",
+                    "DESD-synthdata_9",
+                    "PPMI_8",
+                    "DESD-synthdata_5",
+                    "DESD-synthdata_3",
+                    "EDSD_1",
+                    "PPMI_1",
+                    "DESD-synthdata_2",
+                    "DESD-synthdata_4",
+                    "EDSD_3",
+                    "DESD-synthdata_1",
+                    "EDSD_8",
+                    "EDSD_9",
+                    "DESD-synthdata_7",
+                    "PPMI_6",
+                    "EDSD_7",
                 ],
                 "filters": None,
                 "variables": ["gender", "lefttmptemporalpole"],
@@ -317,11 +317,11 @@ OUTLIER_WINSORIZER_ALGORITHM_CASES = [
             "inputdata": {
                 "data_model": "dementia:0.1",
                 "datasets": [
-                    "16",
-                    "20",
-                    "15",
-                    "27",
-                    "21",
+                    "EDSD_4",
+                    "EDSD_8",
+                    "EDSD_3",
+                    "DESD-synthdata_4",
+                    "EDSD_9",
                 ],
                 "filters": None,
                 "variables": ["leftmcggmiddlecingulategyrus"],
@@ -364,7 +364,7 @@ def test_outlier_winsorizer_rejects_categorical_variable_after_drop_na():
         {
             "inputdata": {
                 "data_model": "dementia:0.1",
-                "datasets": ["31"],
+                "datasets": ["DESD-synthdata_8"],
                 "filters": None,
                 "variables": ["alzheimerbroadcategory"],
             },
