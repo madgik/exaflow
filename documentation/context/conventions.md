@@ -29,10 +29,17 @@
 
 ### API and DTOs
 
+- Analysis validation errors call selected inputs variables. CDE refers to
+  metadata definitions; column refers to tabular operations. This terminology
+  changes error text only, not validation rules, status codes, or schemas.
+
 - FastAPI endpoint handlers live in `exaflow/controller/http/endpoints.py`.
+
 - Request DTOs and validators live under `exaflow/controller/services/api`.
+
 - Public analysis form shape is defined by common inputdata, preprocessing, and
   algorithm specifications exposed under `GET /specifications/*`.
+
 - `documentation/api-specification.md` documents the API contract for clients.
 
 ### Algorithms

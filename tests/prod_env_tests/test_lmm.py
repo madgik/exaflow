@@ -319,8 +319,8 @@ LMM_CASES = [
             },
             "expected_status": 460,
             "expected_message": (
-                r"The CDE 'gender'.*should NOT be categorical"
-                r"|The CDE 'gender'.*doesn't have one of the allowed types"
+                r"The variable 'gender'.*should NOT be categorical"
+                r"|The variable 'gender'.*doesn't have one of the allowed types"
             ),
         },
         id="invalid_categorical_y",
