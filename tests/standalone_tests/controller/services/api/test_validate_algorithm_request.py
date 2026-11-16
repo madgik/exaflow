@@ -93,6 +93,7 @@ def _cdes():
         "stage": _cde("stage", "ordinal", enumerations={"1": "I", "2": "II"}),
         "smoker": _cde("smoker", "binary", enumerations={"0": "n", "1": "y"}),
         "notes": _cde("notes", "nominal"),
+        "dataset": _cde("dataset", "nominal", enumerations={"1": "dataset_a"}),
     }
 
 
@@ -489,7 +490,9 @@ def test_dict_parameter_with_filter_values_is_validated():
             }
         },
         parameters_specs={"rules": parameter},
-        inputdata=analysis_request_validator._build_source_inputdata(_request()),
+        inputdata=analysis_request_validator._build_source_inputdata(
+            _request(), _cdes()
+        ),
         data_model_cdes=_cdes(),
     )
 
@@ -929,3 +932,9 @@ def test_fisher_exact_rejects_a_nominal_variable_even_with_two_levels():
         _validate_real_algorithm(
             "fisher_exact", x=["gender"], y=["smoker"], parameters={}
         )
+
+
+def test_source_inputdata_holds_dataset_codes_for_requested_labels():
+    inputdata = analysis_request_validator._build_source_inputdata(_request(), _cdes())
+
+    assert inputdata.datasets == ["1"]

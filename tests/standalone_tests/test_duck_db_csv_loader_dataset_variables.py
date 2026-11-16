@@ -191,3 +191,13 @@ def test_loader_stores_dataset_as_integer_with_label(loaded_data_folder):
     assert dataset_type == "INTEGER"
     assert gender_type == "INTEGER"
     assert datasets == [("1", "full"), ("2", "partial_a"), ("3", "partial_b")]
+
+
+def test_loader_rejects_two_dataset_codes_with_the_same_label(data_folder):
+    model_dir, _ = data_folder
+    metadata = json.loads(json.dumps(METADATA))
+    metadata["variables"][0]["enumerations"][2]["label"] = "partial_a"
+    (model_dir / "CDEsMetadata.json").write_text(json.dumps(metadata))
+
+    with pytest.raises(ValueError, match="same dataset label"):
+        load_all_csvs_from_data_folder("test-request")

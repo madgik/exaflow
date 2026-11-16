@@ -350,7 +350,7 @@ ______________________________________________________________________
 
 | Endpoint | Data Used By UI |
 | --- | --- |
-| `GET /datasets` | Map keyed by data model; use the selected `inputdata.data_model` key to get valid dataset codes (numeric strings such as `"12"`; the readable name is the label of the `dataset` enumeration in `GET /cdes_metadata`). |
+| `GET /datasets` | Map keyed by data model; use the selected `inputdata.data_model` key to get valid dataset labels (such as `"EDSD_0"`; each is the label of a `dataset` enumeration in `GET /cdes_metadata`). |
 | `GET /datasets_variables` | Map keyed by data model and dataset; use it to inspect variable availability. |
 | `GET /cdes_metadata` | Map keyed by data model; use the selected `inputdata.data_model` key to get CDE `type`, enumerations, and `min`/`max`. |
 | `GET /data_models_attributes` | Data-model-level display metadata. |
@@ -383,8 +383,8 @@ Example:
   "request_id": "optional-string",
   "inputdata": {
     "data_model": "dementia:0.1",
-    "datasets": ["1"],
-    "validation_datasets": ["2"],
+    "datasets": ["PPMI_0"],
+    "validation_datasets": ["PPMI_TEST"],
     "filters": {},
     "variables": ["age", "sex", "outcome"]
   },
@@ -430,8 +430,8 @@ Example:
 | Field | Type | Meaning | Validation / UI Notes |
 | --- | --- | --- | --- |
 | `data_model` | `string` | Data model code. | Required; must exist in worker landscape metadata. |
-| `datasets` | `string[]` | Training dataset codes: integer codes sent as numeric strings (for example `"12"`). | Required; every value must exist for `data_model`. |
-| `validation_datasets` | `string[] \| null` | Validation dataset codes (numeric strings). | Required only when the algorithm spec has `requires_validation_datasets=true`; forbidden otherwise. |
+| `datasets` | `string[]` | Training dataset labels (for example `"EDSD_0"`). | Required; every value must exist for `data_model`. |
+| `validation_datasets` | `string[] \| null` | Validation dataset labels. | Required only when the algorithm spec has `requires_validation_datasets=true`; forbidden otherwise. |
 | `filters` | `object \| null` | Query-builder filter JSON. | Optional; must use valid CDE ids, operators, conditions, and value types. Categorical CDEs (nominal, ordinal, binary) and `dataset` are integer columns, so rule values are integers (for example `1`), not level names. |
 | `variables` | `string[]` | Source variables available before preprocessing. | Include all raw variables used by filters, preprocessing parameters, and algorithm inputs that are not created by preprocessing. |
 

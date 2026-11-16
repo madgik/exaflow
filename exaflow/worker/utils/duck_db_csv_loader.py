@@ -403,6 +403,12 @@ def load_all_csvs_from_data_folder(request_id: str) -> str:
             assigned_datasets = sorted(dataset_csv_map.keys(), key=_dataset_sort_key)
             cde_codes = set(_build_column_types(metadata))
             dataset_labels = _dataset_labels(metadata)
+            # Datasets are identified by label across the federation.
+            if len(set(dataset_labels.values())) != len(dataset_labels):
+                raise ValueError(
+                    f"Data model '{code}:{version}' declares the same dataset "
+                    "label for more than one dataset code."
+                )
 
             for dataset_code in assigned_datasets:
                 dataset_id += 1

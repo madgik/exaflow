@@ -29,6 +29,9 @@ from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.controller.services.worker_landscape_aggregator.worker_landscape_aggregator import (
     WorkerLandscapeAggregator,
 )
+from exaflow.controller.services.worker_landscape_aggregator.worker_landscape_aggregator import (
+    dataset_codes,
+)
 from exaflow.data_filters import validate_filter
 from exaflow.datatypes import CDEType
 from exaflow.datatypes import is_integer_coded
@@ -190,7 +193,9 @@ def _validate_and_apply_preprocessing(
     preprocessing_steps_specs: Dict[str, PreprocessingStepSpecification],
     data_model_cdes: Dict[str, CommonDataElement],
 ):
-    transformed_inputdata = _build_source_inputdata(analysis_request_dto)
+    transformed_inputdata = _build_source_inputdata(
+        analysis_request_dto, data_model_cdes
+    )
     transformed_data_model_cdes = _select_available_cdes(
         analysis_request_dto.inputdata.variables, data_model_cdes
     )
@@ -270,13 +275,20 @@ def _validate_and_apply_preprocessing(
 
 def _build_source_inputdata(
     analysis_request_dto: AnalysisRequestDTO,
+    data_model_cdes: Dict[str, CommonDataElement],
 ) -> Inputdata:
+    # Requests name datasets by label; the data hold the dataset code.
+    inputdata = analysis_request_dto.inputdata
     return Inputdata(
-        data_model=analysis_request_dto.inputdata.data_model,
-        datasets=analysis_request_dto.inputdata.datasets,
-        validation_datasets=analysis_request_dto.inputdata.validation_datasets,
-        filters=analysis_request_dto.inputdata.filters,
-        variables=analysis_request_dto.inputdata.variables,
+        data_model=inputdata.data_model,
+        datasets=dataset_codes(data_model_cdes, inputdata.datasets),
+        validation_datasets=(
+            dataset_codes(data_model_cdes, inputdata.validation_datasets)
+            if inputdata.validation_datasets
+            else None
+        ),
+        filters=inputdata.filters,
+        variables=inputdata.variables,
     )
 
 

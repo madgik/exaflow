@@ -22,9 +22,12 @@ short "Variable types and coding" note for its own inputs.
   not published as category levels.
 - A categorical CDE without enumerations, or with non-integer codes, is rejected
   by the exadata-validator and by the worker CSV loader.
-- `dataset` codes are numeric strings in requests (`"datasets": ["12", "14"]`)
-  and results. `GET /datasets` returns the codes; the dataset name is the label
-  of the `dataset` enumeration in `GET /cdes_metadata`.
+- Requests name datasets by label (`"datasets": ["EDSD_0", "EDSD_2"]`).
+  `GET /datasets`, `GET /datasets_locations` and `GET /datasets_variables`
+  return labels. The controller translates each label to the integer code of
+  the `dataset` enumeration before it calls the workers, so a dataset label
+  must be unique in a data model. Results keep the `dataset` code, like every
+  other categorical level.
 - Filter values on categorical columns and on `dataset` are integers.
 - Parameters that name a level (`positive_class`, `groupA`, `groupB`,
   `category_order`, `visit1`, `visit2`) take the level code as a string, for

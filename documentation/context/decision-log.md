@@ -295,12 +295,17 @@ text codes right after the Arrow to pandas conversion, so algorithm parameters
 level-keyed results stay text codes (`"1"`, `"0"`) and nominal one-hot feature
 names carry the code (`alzheimerbroadcategory[2]`).
 
-API contract: `datasets` and `validation_datasets` stay lists of strings holding
-the numeric code (`"12"`). `GET /datasets` returns those codes; the readable
-name is the `label` of the `dataset` enumeration in `GET /cdes_metadata` and in
-the worker `datasets.label` column. Filter rules on categorical CDEs and on
-`dataset` must use integer values. Algorithm parameters that name a level use
-the code as a string.
+API contract: `datasets` and `validation_datasets` are lists of dataset labels
+(`"EDSD_0"`), the `label` of the `dataset` enumeration. The worker landscape
+aggregator keys dataset locations and dataset variables by label, and
+`GET /datasets`, `GET /datasets_locations` and `GET /datasets_variables` return
+labels. A dataset reported by two workers under the same label is a duplicate
+and is dropped. The controller translates labels to the integer codes of the
+`dataset` enumeration when it builds the worker input, so workers and
+algorithms still filter on codes, and results keep the `dataset` code. The
+worker CSV loader rejects a data model that gives one label to two dataset
+codes. Filter rules on categorical CDEs and on `dataset` must use integer
+values. Algorithm parameters that name a level use the code as a string.
 
 Migration: none. Existing deployed data is not migrated; only newly loaded
 data uses the new types and integer codes. No migration script is provided.

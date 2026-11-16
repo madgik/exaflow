@@ -40,7 +40,7 @@ ARGUMENTS
         One or more space-separated fields to include in the X variable.
 
     -d, --datasets
-        One or more space-separated integer dataset codes (see /datasets).
+        One or more space-separated dataset labels (see /datasets).
 
     -m, --data-model
         The data model name in full form, NAME:VERSION.
@@ -99,7 +99,7 @@ USING PIPED DATA
     will override the value found in the json data structure. For example, if
     you want the same variables and parameters, but a different dataset
 
-        jq '.test_cases[0].input' expected.json | ./run_analysis -a pca -d 1
+        jq '.test_cases[0].input' expected.json | ./run_analysis -a pca -d PPMI_0
 
 
 ALGORITHM EXAMPLES
@@ -109,51 +109,51 @@ ALGORITHM EXAMPLES
     PEARSON CORRELATION
 
         ./run_analysis -a pearson_correlation -y leftamygdala lefthippocampus \
-            -d 1 -m dementia:0.1 -p alpha 0.95
+            -d PPMI_0 -m dementia:0.1 -p alpha 0.95
 
     PCA
 
-        ./run_analysis -a pca -y leftamygdala lefthippocampus -d 1 \
+        ./run_analysis -a pca -y leftamygdala lefthippocampus -d PPMI_0 \
             -m dementia:0.1
 
     ONE WAY ANOVA
 
         ./run_analysis -a anova_oneway -x ppmicategory -y lefthippocampus \
-            -d 2 -m dementia:0.1
+            -d PPMI_1 -m dementia:0.1
 
     TWO WAY ANOVA
         ./run_analysis -a anova -x ppmicategory gender -y lefthippocampus \
-            -d 2 -m dementia:0.1 -p sstype 2
+            -d PPMI_1 -m dementia:0.1 -p sstype 2
 
     LINEAR REGRESSION
 
         ./run_analysis -a linear_regression -y righthippocampus \
-            -x lefthippocampus leftamygdala -d 1 -m dementia:0.1
+            -x lefthippocampus leftamygdala -d PPMI_0 -m dementia:0.1
 
     LINEAR REGRESSION CROSS-VALIDATION
 
         ./run_analysis -a linear_regression_cv -y righthippocampus \
-            -x lefthippocampus leftamygdala -d 1 -m dementia:0.1 -p n_splits 4
+            -x lefthippocampus leftamygdala -d PPMI_0 -m dementia:0.1 -p n_splits 4
 
     LOGISTIC REGRESSION
 
         ./run_analysis -a logistic_regression -y gender \
-            -x lefthippocampus leftamygdala -d 1 2 -m dementia:0.1 \
+            -x lefthippocampus leftamygdala -d PPMI_0 PPMI_1 -m dementia:0.1 \
             -p positive_class 1
 
     LOGISTIC REGRESSION CROSS-VALIDATION
 
         ./run_analysis -a logistic_regression_cv -y gender \
-            -x lefthippocampus righthippocampus -d 1 2 -m dementia:0.1 \
+            -x lefthippocampus righthippocampus -d PPMI_0 PPMI_1 -m dementia:0.1 \
             -p n_splits 4 -p positive_class 1
 
     T-TEST ONE-SAMPLE
-        ./run_analysis -a ttest_onesample -y lefthippocampus -d 1 -m dementia:0.1 \
+        ./run_analysis -a ttest_onesample -y lefthippocampus -d PPMI_0 -m dementia:0.1 \
             -p alt_hypothesis two-sided -p alpha 0.95 -p mu 0
 
     T-TEST PAIRED
         ./run_analysis -a ttest_paired -y lefthippocampus -x righthippocampus \
-           -d 1 -m dementia:0.1 -p alt_hypothesis two-sided -p alpha 0.95
+           -d PPMI_0 -m dementia:0.1 -p alt_hypothesis two-sided -p alpha 0.95
 """
 
 import json
