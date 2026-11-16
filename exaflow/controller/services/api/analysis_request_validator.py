@@ -294,7 +294,7 @@ def _validate_source_variables(
     ]
     if missing_variables:
         raise BadUserInput(
-            f"Inputdata 'variables' contain CDEs that do not exist in the data model provided: {missing_variables}."
+            f"Inputdata 'variables' contains variables that do not exist in the provided data model: {missing_variables}."
         )
 
 
@@ -494,7 +494,7 @@ def _validate_inputdata_value(
 def _get_cde_metadata(cde, data_model_cdes):
     if cde not in data_model_cdes.keys():
         raise BadUserInput(
-            f"The CDE '{cde}' does not exist in the data model provided."
+            f"The variable '{cde}' does not exist in the data model provided."
         )
     return data_model_cdes[cde]
 
@@ -514,7 +514,7 @@ def _validate_inputdata_types(
     ):
         return
     raise BadUserInput(
-        f"The CDE '{inputdata_value}', of algorithm input '{inputdata_specs.label}', "
+        f"The variable '{inputdata_value}', of algorithm input '{inputdata_specs.label}', "
         f"doesn't have one of the allowed types "
         f"'{inputdata_specs.types}'."
     )
@@ -529,12 +529,12 @@ def _validate_inputdata_stattypes(
     can_be_nominal = InputDataStatType.NOMINAL in inputdata_specs.stattypes
     if not inputdata_value_metadata.is_categorical and not can_be_numerical:
         raise BadUserInput(
-            f"The CDE '{inputdata_value}', of algorithm input '{inputdata_specs.label}', "
+            f"The variable '{inputdata_value}', of algorithm input '{inputdata_specs.label}', "
             f"should be categorical."
         )
     if inputdata_value_metadata.is_categorical and not can_be_nominal:
         raise BadUserInput(
-            f"The CDE '{inputdata_value}', of algorithm input '{inputdata_specs.label}', "
+            f"The variable '{inputdata_value}', of algorithm input '{inputdata_specs.label}', "
             f"should NOT be categorical."
         )
 
@@ -754,7 +754,7 @@ def _validate_param_enums_of_type_fixed_var_CDE_enums(
     )
     if parameter_value not in fixed_var_CDE_enums:
         raise BadUserInput(
-            f"Parameter's '{parameter_spec_label}' enums, that are taken from the CDE '{param_spec_enums_source}', "
+            f"Parameter's '{parameter_spec_label}' enums, that are taken from the variable '{param_spec_enums_source}', "
             f"should be one of the following: '{list(fixed_var_CDE_enums)}'."
         )
 
@@ -784,7 +784,7 @@ def _validate_param_enums_of_type_input_var_CDE_enums(
     input_var_CDE_enums = data_model_cdes[input_var].enumerations.keys()
     if parameter_value not in input_var_CDE_enums:
         raise BadUserInput(
-            f"Parameter's '{parameter_spec_label}' enums, that are taken from the CDE '{input_var}' "
+            f"Parameter's '{parameter_spec_label}' enums, that are taken from the variable '{input_var}' "
             f"given in inputdata '{parameter_spec_enums.source}' variable, "
             f"should be one of the following: '{list(input_var_CDE_enums)}'."
         )
