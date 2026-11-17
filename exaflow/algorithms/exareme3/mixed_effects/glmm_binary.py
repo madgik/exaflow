@@ -8,14 +8,14 @@ from exaflow.algorithms.exareme3.mixed_effects.mixed_effects_common import (
     split_grouping_var,
 )
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
+from exaflow.algorithms.exareme3.utils.covariate_encoding import (
+    build_covariate_transformer,
+)
+from exaflow.algorithms.exareme3.utils.positive_class import encode_positive_class
+from exaflow.algorithms.exareme3.utils.positive_class import (
+    require_binary_positive_class,
+)
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.compose.column_transformer import (
-    FederatedColumnTransformer,
-)
-from exaflow.algorithms.federated.feature_engineering import FederatedOneHotEncoder
-from exaflow.algorithms.federated.linear_model.logistic_regression import (
-    FederatedLogisticRegression,
-)
 from exaflow.algorithms.federated.mixed_effects import FederatedGLMMBinary
 
 
@@ -81,9 +81,12 @@ class GLMMBinary(Algorithm):
             required_preprocessing=["missing_values_handler"],
             y=specs.InputDataSpecification(
                 label="Outcome",
-                desc="Nominal outcome converted using the positive class.",
-                types=[specs.InputDataType.TEXT],
-                stattypes=[specs.InputDataStatType.NOMINAL],
+                desc=(
+                    "Binary outcome. Only variables declared as binary are "
+                    "accepted; nominal variables are rejected, never converted."
+                ),
+                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.BINARY],
                 required=True,
                 max_count=1,
             ),
@@ -99,7 +102,7 @@ class GLMMBinary(Algorithm):
                 ],
                 stattypes=[
                     specs.InputDataStatType.NUMERICAL,
-                    specs.InputDataStatType.NOMINAL,
+                    *specs.CATEGORICAL_STATTYPES,
                 ],
                 required=True,
                 min_count=2,
@@ -138,6 +141,9 @@ class GLMMBinary(Algorithm):
     def run(self):
         y_var = self.y[0]
         positive_class = self.get_parameter("positive_class")
+        require_binary_positive_class(
+            self.metadata, y_var, positive_class, role="outcome"
+        )
         grouping_var = self.get_parameter("grouping_var")
         categorical_vars, numerical_vars = split_grouping_var(
             self.x, grouping_var, self.metadata
@@ -189,21 +195,16 @@ def glmm_binary_local_step(
     grouping_var,
     categorical_vars,
     numerical_vars,
+    metadata,
 ):
-    transformer = FederatedColumnTransformer(
-        [("cat", FederatedOneHotEncoder(), categorical_vars)],
-        remainder="passthrough",
-    )
+    transformer = build_covariate_transformer(categorical_vars, metadata)
     transformer.fit(
         agg_client=agg_client,
         data=data,
         categorical_vars=categorical_vars,
         numerical_vars=numerical_vars,
     )
-    positive_class = FederatedLogisticRegression.coerce_positive_class(
-        data[y_var], positive_class
-    )
-    y = data[y_var].eq(positive_class).to_numpy(dtype=float, copy=False)
+    y = encode_positive_class(data[y_var], positive_class)
     center_ids = get_group_ids(data, grouping_var)
     X = transformer.transform(
         data,

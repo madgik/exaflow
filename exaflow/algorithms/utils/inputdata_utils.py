@@ -102,7 +102,9 @@ def _apply_inputdata(
     all_datasets = inputdata.datasets + (
         inputdata.validation_datasets if inputdata.validation_datasets else []
     )
-    df = df[df[DATASET_COL].isin(all_datasets)]
+    # The CSV stores the integer dataset codes; requests carry them as strings.
+    wanted_datasets = {str(dataset) for dataset in all_datasets}
+    df = df[df[DATASET_COL].astype(str).isin(wanted_datasets)]
 
     # Remove duplicates while preserving order to mirror the behaviour of the
     # SQL views used in the original algorithms.

@@ -2,8 +2,8 @@
 
 from numbers import Integral
 
-from exaflow.algorithms.specifications import InputDataStatType
 from exaflow.algorithms.specifications import PreprocessingOutputEnumerationSource
+from exaflow.datatypes import CATEGORICAL_CDE_TYPES
 
 
 def resolve_output_metadata(specification, parameters, existing_metadata):
@@ -60,14 +60,13 @@ def resolve_output_metadata(specification, parameters, existing_metadata):
         column for column, width in zip(outputs.columns, widths) for _ in range(width)
     )
     for name, column in zip(names, expanded_columns):
-        nominal = column.stattype == InputDataStatType.NOMINAL
+        categorical = column.type in CATEGORICAL_CDE_TYPES
         metadata = {
             "code": name,
             "label": name,
-            "sql_type": column.type.value,
-            "is_categorical": nominal,
+            "type": column.type.value,
         }
-        if nominal:
+        if categorical:
             enums = column.enumerations
             source = value(enums.source_parameter_name)
             if enums.source_type == PreprocessingOutputEnumerationSource.DICT_KEYS:
@@ -106,7 +105,7 @@ def validate_output_metadata(expected, metadata, variables):
             raise ValueError(
                 f"Metadata for output column '{name}' contradicts its specification."
             )
-        if not declared["is_categorical"] and actual.get("enumerations"):
+        if declared["type"] not in CATEGORICAL_CDE_TYPES and actual.get("enumerations"):
             raise ValueError(
                 f"Numerical output column '{name}' cannot have enumerations."
             )

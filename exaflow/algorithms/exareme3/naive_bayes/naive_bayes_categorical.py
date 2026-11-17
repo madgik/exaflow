@@ -7,9 +7,12 @@ from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.metadata_enums import get_enum_codes
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.feature_engineering import FederatedOrdinalEncoder
+from exaflow.algorithms.federated.feature_engineering._ordinal_encoder import (
+    _FederatedOrdinalEncoder,
+)
 from exaflow.algorithms.federated.naive_bayes import FederatedCategoricalNB
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
+from exaflow.algorithms.federated.utils import sort_levels
 
 
 class NaiveBayesCategoricalResult(BaseModel):
@@ -46,16 +49,16 @@ class NaiveBayesCategorical(Algorithm):
             y=specs.InputDataSpecification(
                 label="Outcome",
                 desc="Nominal outcome variable.",
-                types=[specs.InputDataType.TEXT],
-                stattypes=[specs.InputDataStatType.NOMINAL],
+                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                stattypes=[*specs.CATEGORICAL_STATTYPES],
                 required=True,
                 max_count=1,
             ),
             x=specs.InputDataSpecification(
                 label="Features",
                 desc="Nominal features used for classification.",
-                types=[specs.InputDataType.TEXT],
-                stattypes=[specs.InputDataStatType.NOMINAL],
+                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                stattypes=[*specs.CATEGORICAL_STATTYPES],
                 required=True,
             ),
             type=specs.AlgorithmType.EXAREME3,
@@ -66,7 +69,8 @@ class NaiveBayesCategorical(Algorithm):
         y_var = self.y[0]
         x_vars = list(self.x)
         categories: Dict[str, List[str]] = {
-            var: sorted(get_enum_codes(self.metadata, var)) for var in x_vars + [y_var]
+            var: sort_levels(get_enum_codes(self.metadata, var))
+            for var in x_vars + [y_var]
         }
 
         params = self.run_local_udf(
@@ -95,7 +99,7 @@ def local_step(
         [
             (
                 "features",
-                FederatedOrdinalEncoder(
+                _FederatedOrdinalEncoder(
                     categories=categories,
                     handle_unknown="error",
                 ),

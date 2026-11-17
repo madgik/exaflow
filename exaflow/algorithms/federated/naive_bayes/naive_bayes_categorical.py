@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.utils import sort_levels
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
@@ -153,7 +154,7 @@ class FederatedCategoricalNB(FederatedEstimator):
             global_levels = agg_client.union(
                 [lvl for lvl in local_levels if lvl is not None]
             )
-            class_cats = sorted(global_levels)
+            class_cats = sort_levels(global_levels)
         n_classes = len(class_cats)
 
         if y_arr.size == 0 or n_classes == 0:

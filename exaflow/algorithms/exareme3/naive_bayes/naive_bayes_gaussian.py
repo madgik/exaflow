@@ -7,6 +7,7 @@ from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.metadata_enums import get_enum_codes
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.naive_bayes import FederatedGaussianNB
+from exaflow.algorithms.federated.utils import sort_levels
 
 
 class NaiveBayesGaussianResult(BaseModel):
@@ -42,8 +43,8 @@ class NaiveBayesGaussian(Algorithm):
             y=specs.InputDataSpecification(
                 label="Outcome",
                 desc="Nominal outcome variable.",
-                types=[specs.InputDataType.TEXT],
-                stattypes=[specs.InputDataStatType.NOMINAL],
+                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                stattypes=[*specs.CATEGORICAL_STATTYPES],
                 required=True,
                 max_count=1,
             ),
@@ -61,7 +62,7 @@ class NaiveBayesGaussian(Algorithm):
     def run(self) -> NaiveBayesGaussianResult:
         y_var = self.y[0]
         x_vars = list(self.x)
-        labels = sorted(get_enum_codes(self.metadata, y_var))
+        labels = sort_levels(get_enum_codes(self.metadata, y_var))
 
         params = self.run_local_udf(
             func=local_step,

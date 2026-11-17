@@ -11,6 +11,22 @@ class BadInputError(ValueError):
         self.message = message
 
 
+def sort_levels(levels):
+    """Sort categorical levels by numeric code when canonical, else by text."""
+
+    def key(level):
+        text = str(level)
+        try:
+            number = int(text)
+        except ValueError:
+            return (1, 0, text)
+        if str(number) != text:
+            return (1, 0, text)
+        return (0, number, "")
+
+    return sorted(levels, key=key)
+
+
 def as_numeric_array(data, *, input_name: str, dtype=float) -> np.ndarray:
     """Preserve existing NumPy numeric conversions with safe input errors."""
     try:

@@ -7,6 +7,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
+from exaflow.algorithms.federated.utils import sort_levels
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedTransformer
 from exaflow.algorithms.federated.validation import as_numeric_array
@@ -37,7 +38,7 @@ class _FederatedOneHotEncoder(FederatedTransformer):
         for var in categorical_vars:
             levels = local_levels.get(var, [])
             global_levels = agg_client.union([lvl for lvl in levels if lvl is not None])
-            merged[var] = sorted(global_levels)
+            merged[var] = sort_levels(global_levels)
 
         self.dummy_categories = {var: levels[1:] for var, levels in merged.items()}
 

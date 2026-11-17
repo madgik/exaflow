@@ -4,6 +4,7 @@ from typing import Iterable
 
 import numpy as np
 
+from exaflow.datatypes import CATEGORICAL_CDE_TYPES
 from exaflow.worker_communication import BadUserInput
 
 
@@ -41,8 +42,12 @@ def split_grouping_var(
             "Inputdata 'Covariates and grouping variable' must include at least "
             "one fixed-effect covariate."
         )
-    categorical_vars = [var for var in fixed_vars if metadata[var]["is_categorical"]]
-    numerical_vars = [var for var in fixed_vars if not metadata[var]["is_categorical"]]
+    categorical_vars = [
+        var for var in fixed_vars if metadata[var]["type"] in CATEGORICAL_CDE_TYPES
+    ]
+    numerical_vars = [
+        var for var in fixed_vars if metadata[var]["type"] not in CATEGORICAL_CDE_TYPES
+    ]
     return categorical_vars, numerical_vars
 
 
