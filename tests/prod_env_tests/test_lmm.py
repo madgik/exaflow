@@ -12,7 +12,7 @@ LMM_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "desd-synthdata0"],
+                    "datasets": ["1", "2", "23"],
                     "filters": None,
                     "variables": [
                         "lefthippocampus",
@@ -40,7 +40,7 @@ LMM_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2"],
+                    "datasets": ["1", "2", "3"],
                     "filters": None,
                     "variables": ["lefthippocampus", "dataset", "righthippocampus"],
                 },
@@ -63,7 +63,7 @@ LMM_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2"],
+                    "datasets": ["1", "2", "3"],
                     "filters": None,
                     "variables": [
                         "lefthippocampus",
@@ -92,10 +92,10 @@ LMM_CASES = [
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "ppmi0",
-                        "ppmi1",
-                        "ppmi2",
-                        "desd-synthdata1",
+                        "1",
+                        "2",
+                        "3",
+                        "24",
                     ],
                     "filters": None,
                     "variables": [
@@ -130,7 +130,7 @@ LMM_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "desd-synthdata1"],
+                    "datasets": ["1", "2", "24"],
                     "filters": None,
                     "variables": [
                         "lefthippocampus",
@@ -158,7 +158,7 @@ LMM_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2"],
+                    "datasets": ["1", "2", "3"],
                     "filters": None,
                     "variables": [
                         "lefthippocampus",
@@ -187,10 +187,10 @@ LMM_CASES = [
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "ppmi0",
-                        "ppmi1",
-                        "ppmi2",
-                        "desd-synthdata1",
+                        "1",
+                        "2",
+                        "3",
+                        "24",
                     ],
                     "filters": None,
                     "variables": [
@@ -219,7 +219,7 @@ LMM_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1"],
+                    "datasets": ["1", "2"],
                     "filters": None,
                     "variables": [
                         "lefthippocampus",
@@ -252,7 +252,7 @@ LMM_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2"],
+                    "datasets": ["1", "2", "3"],
                     "filters": None,
                     "variables": [
                         "lefthippocampus",
@@ -280,7 +280,7 @@ LMM_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1"],
+                    "datasets": ["1", "2"],
                     "filters": None,
                     "variables": ["dataset", "righthippocampus"],
                 },
@@ -304,7 +304,7 @@ LMM_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1"],
+                    "datasets": ["1", "2"],
                     "filters": None,
                     "variables": ["lefthippocampus", "dataset", "gender"],
                 },

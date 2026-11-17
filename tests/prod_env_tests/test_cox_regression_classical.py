@@ -48,12 +48,10 @@ def test_cox_regression_classical_expected_fixture_has_10_real_cases():
         request = case["input"]
         assert request["inputdata"]["data_model"] == "longitudinal_dementia:0.1"
         assert request["algorithm"]["y"] == ["timesincebaseline"]
-        assert (
-            request["algorithm"]["parameters"]["event_var"] == "alzheimerbroadcategory"
-        )
+        assert request["algorithm"]["parameters"]["event_var"] == "alzheimerstatus"
         transformer = _longitudinal_transformer_parameters(request)
-        assert transformer["visit1"] == "BL"
-        assert transformer["visit2"] == "FL2"
+        assert transformer["visit1"] == "1"
+        assert transformer["visit2"] == "3"
 
 
 def test_cox_regression_classical_invalid_positive_class():
@@ -64,7 +62,7 @@ def test_cox_regression_classical_invalid_positive_class():
     response = analysis_request(algorithm_name, request)
     assert response.status_code == 460, response.text
     assert re.search(
-        r"positive_class.*observed event variable levels",
+        r"positive_class.*levels declared",
         response.text,
     ), response.text
 

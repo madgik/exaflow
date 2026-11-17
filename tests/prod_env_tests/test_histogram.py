@@ -63,7 +63,7 @@ def test_histogram_insufficient_data_after_filters_returns_461():
     request_dict = {
         "inputdata": {
             "data_model": "dementia:0.1",
-            "datasets": ["edsd0"],
+            "datasets": ["12"],
             "variables": ["lefthippocampus"],
             "filters": {
                 "condition": "AND",

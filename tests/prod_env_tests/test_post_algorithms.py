@@ -59,8 +59,8 @@ def get_parametrization_list_exception_cases():
     request_dict = {
         "inputdata": {
             "data_model": "dementia:0.1",
-            "datasets": ["edsd0"],
-            "variables": ["lefthippocampus", "alzheimerbroadcategory"],
+            "datasets": ["12"],
+            "variables": ["lefthippocampus", "alzheimerstatus"],
             "filters": {
                 "condition": "AND",
                 "rules": [
@@ -87,7 +87,7 @@ def get_parametrization_list_exception_cases():
                 "parameters": {
                     "strategies": {
                         "lefthippocampus": "drop",
-                        "alzheimerbroadcategory": "drop",
+                        "alzheimerstatus": "drop",
                     }
                 },
             }
@@ -95,8 +95,8 @@ def get_parametrization_list_exception_cases():
         "algorithm": {
             "name": algorithm_name,
             "x": ["lefthippocampus"],
-            "y": ["alzheimerbroadcategory"],
-            "parameters": {"positive_class": "AD"},
+            "y": ["alzheimerstatus"],
+            "parameters": {"positive_class": "0"},
         },
     }
 
@@ -136,7 +136,7 @@ def test_post_algorithm_with_request_id():
         "inputdata": {
             "data_model": "dementia:0.1",
             "datasets": [
-                "desd-synthdata8",
+                "31",
             ],
             "filters": None,
             "variables": ["lefthippocampus"],

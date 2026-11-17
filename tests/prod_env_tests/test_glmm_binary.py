@@ -12,7 +12,7 @@ GLMM_BINARY_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "desd-synthdata0"],
+                    "datasets": ["1", "2", "23"],
                     "filters": None,
                     "variables": [
                         "lefthippocampus",
@@ -26,7 +26,7 @@ GLMM_BINARY_CASES = [
                     "x": ["lefthippocampus", "leftamygdala", "dataset"],
                     "y": ["gender"],
                     "parameters": {
-                        "positive_class": "F",
+                        "positive_class": "1",
                         "grouping_var": ["dataset"],
                     },
                 },
@@ -41,7 +41,7 @@ GLMM_BINARY_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2"],
+                    "datasets": ["1", "2", "3"],
                     "filters": None,
                     "variables": ["lefthippocampus", "dataset", "gender"],
                 },
@@ -50,7 +50,7 @@ GLMM_BINARY_CASES = [
                     "x": ["lefthippocampus", "dataset"],
                     "y": ["gender"],
                     "parameters": {
-                        "positive_class": "F",
+                        "positive_class": "1",
                         "grouping_var": ["dataset"],
                     },
                 },
@@ -65,21 +65,21 @@ GLMM_BINARY_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2"],
+                    "datasets": ["14", "15", "16"],
                     "filters": None,
                     "variables": [
                         "lefthippocampus",
-                        "agegroup",
+                        "alzheimerbroadcategory",
                         "dataset",
                         "gender",
                     ],
                 },
                 "test_case_num": 2,
                 "algorithm": {
-                    "x": ["lefthippocampus", "agegroup", "dataset"],
+                    "x": ["lefthippocampus", "alzheimerbroadcategory", "dataset"],
                     "y": ["gender"],
                     "parameters": {
-                        "positive_class": "F",
+                        "positive_class": "1",
                         "grouping_var": ["dataset"],
                     },
                 },
@@ -95,10 +95,10 @@ GLMM_BINARY_CASES = [
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "ppmi0",
-                        "ppmi1",
-                        "ppmi2",
-                        "desd-synthdata1",
+                        "1",
+                        "2",
+                        "3",
+                        "24",
                     ],
                     "filters": None,
                     "variables": [
@@ -119,7 +119,7 @@ GLMM_BINARY_CASES = [
                     ],
                     "y": ["gender"],
                     "parameters": {
-                        "positive_class": "F",
+                        "positive_class": "1",
                         "grouping_var": ["dataset"],
                     },
                 },
@@ -134,7 +134,7 @@ GLMM_BINARY_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "desd-synthdata1"],
+                    "datasets": ["1", "2", "24"],
                     "filters": None,
                     "variables": [
                         "lefthippocampus",
@@ -148,7 +148,7 @@ GLMM_BINARY_CASES = [
                     "x": ["lefthippocampus", "subjectageyears", "dataset"],
                     "y": ["gender"],
                     "parameters": {
-                        "positive_class": "F",
+                        "positive_class": "1",
                         "grouping_var": ["dataset"],
                     },
                 },
@@ -163,7 +163,7 @@ GLMM_BINARY_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2"],
+                    "datasets": ["1", "2", "3"],
                     "filters": None,
                     "variables": [
                         "lefthippocampus",
@@ -177,7 +177,7 @@ GLMM_BINARY_CASES = [
                     "x": ["lefthippocampus", "leftamygdala", "agegroup"],
                     "y": ["gender"],
                     "parameters": {
-                        "positive_class": "F",
+                        "positive_class": "1",
                         "grouping_var": ["agegroup"],
                     },
                 },
@@ -192,7 +192,7 @@ GLMM_BINARY_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "desd-synthdata1"],
+                    "datasets": ["1", "2", "24"],
                     "filters": None,
                     "variables": [
                         "lefthippocampus",
@@ -206,7 +206,7 @@ GLMM_BINARY_CASES = [
                     "x": ["lefthippocampus", "leftamygdala", "alzheimerbroadcategory"],
                     "y": ["gender"],
                     "parameters": {
-                        "positive_class": "F",
+                        "positive_class": "1",
                         "grouping_var": ["alzheimerbroadcategory"],
                     },
                 },
@@ -221,7 +221,7 @@ GLMM_BINARY_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1"],
+                    "datasets": ["1", "2"],
                     "filters": None,
                     "variables": ["lefthippocampus", "dataset", "gender"],
                 },
@@ -246,7 +246,7 @@ GLMM_BINARY_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1"],
+                    "datasets": ["1", "2"],
                     "filters": None,
                     "variables": ["lefthippocampus", "leftamygdala", "gender"],
                 },
@@ -255,7 +255,7 @@ GLMM_BINARY_CASES = [
                     "x": ["lefthippocampus", "leftamygdala"],
                     "y": ["gender"],
                     "parameters": {
-                        "positive_class": "F",
+                        "positive_class": "1",
                         "grouping_var": ["dataset"],
                     },
                 },
@@ -274,7 +274,7 @@ GLMM_BINARY_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1"],
+                    "datasets": ["1", "2"],
                     "filters": None,
                     "variables": ["dataset", "gender"],
                 },
@@ -283,7 +283,7 @@ GLMM_BINARY_CASES = [
                     "x": ["dataset"],
                     "y": ["gender"],
                     "parameters": {
-                        "positive_class": "F",
+                        "positive_class": "1",
                         "grouping_var": ["dataset"],
                     },
                 },

@@ -5,7 +5,7 @@ from tests.algorithm_validation_tests.exareme3.conftest import analysis_request
 base_logistic_input = {
     "inputdata": {
         "variables": [
-            "alzheimerbroadcategory",
+            "alzheimerstatus",
             "rightttgtransversetemporalgyrus",
             "leftpinsposteriorinsula",
             "leftpoparietaloperculum",
@@ -13,7 +13,7 @@ base_logistic_input = {
             "leftventraldc",
         ],
         "data_model": "dementia:0.1",
-        "datasets": ["ppmi0", "desd-synthdata0"],
+        "datasets": ["1", "23"],
         "filters": None,
     },
     "algorithm": {
@@ -24,8 +24,8 @@ base_logistic_input = {
             "rightptplanumtemporale",
             "leftventraldc",
         ],
-        "y": ["alzheimerbroadcategory"],
-        "parameters": {"positive_class": "Other"},
+        "y": ["alzheimerstatus"],
+        "parameters": {"positive_class": "0"},
     },
 }
 
@@ -34,7 +34,7 @@ base_pca_input = {
     "inputdata": {
         "variables": ["lefthippocampus"],
         "data_model": "dementia:0.1",
-        "datasets": ["desd-synthdata8"],
+        "datasets": ["31"],
         "filters": None,
     },
     "algorithm": {"x": None, "y": ["lefthippocampus"], "parameters": None},
@@ -55,16 +55,16 @@ base_describe_input = {
         ],
         "data_model": "dementia:0.1",
         "datasets": [
-            "edsd3",
-            "edsd2",
-            "edsd8",
-            "desd-synthdata0",
-            "ppmi8",
-            "desd-synthdata5",
-            "ppmi5",
-            "desd-synthdata8",
-            "desd-synthdata4",
-            "edsd6",
+            "15",
+            "14",
+            "20",
+            "23",
+            "9",
+            "28",
+            "6",
+            "31",
+            "27",
+            "18",
         ],
         "filters": None,
     },
@@ -158,7 +158,7 @@ def test_missing_values_handler_rejects_mean_for_categorical_variable():
         {
             "name": "missing_values_handler",
             "parameters": {
-                "strategies": {"alzheimerbroadcategory": "mean"},
+                "strategies": {"alzheimerstatus": "mean"},
             },
         }
     ]
@@ -174,14 +174,14 @@ def test_missing_values_handler_rejects_constant_categorical_without_fill_values
         {
             "name": "missing_values_handler",
             "parameters": {
-                "strategies": {"alzheimerbroadcategory": "constant"},
+                "strategies": {"alzheimerstatus": "constant"},
             },
         }
     ]
 
     response = analysis_request("logistic_regression", payload, drop_na=False)
     assert response.status_code == 460, f"{response.status_code}: {response.content}"
-    assert b"requires 'fill_values[alzheimerbroadcategory]'" in response.content
+    assert b"requires 'fill_values[alzheimerstatus]'" in response.content
 
 
 def test_missing_values_handler_rejects_fill_values_for_non_constant_strategy():
