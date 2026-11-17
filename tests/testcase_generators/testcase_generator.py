@@ -14,6 +14,7 @@ TESTING_DATAMODEL = "dementia:0.1"
 DATAMODEL_BASEPATH = Path("tests/test_data/dementia_v_0_1/")
 DATAMODEL_CDESPATH = DATAMODEL_BASEPATH / "CDEsMetadata.json"
 TRANSFORMATIONS = ["log", "exp", "center", "standardize"]
+NUMERICAL_CDE_TYPES = ("continuous", "discrete")
 
 random.seed(0)
 
@@ -22,16 +23,12 @@ class _DB:
     @lru_cache
     def get_numerical_variables(self):
         cdes = self._get_cdes()
-        return [
-            cde["code"]
-            for cde in cdes
-            if not cde["isCategorical"] and cde["sql_type"] in ("int", "real")
-        ]
+        return [cde["code"] for cde in cdes if cde["type"] in NUMERICAL_CDE_TYPES]
 
     @lru_cache
     def get_nominal_variables(self):
         cdes = self._get_cdes()
-        return [cde["code"] for cde in cdes if cde["isCategorical"]]
+        return [cde["code"] for cde in cdes if "enumerations" in cde]
 
     @lru_cache
     def get_data_table(self):
@@ -44,12 +41,46 @@ class _DB:
                 filepath = DATAMODEL_BASEPATH / f"{prefix}{i}.csv"
                 datasets.append(pd.read_csv(filepath))
 
-        return pd.concat(datasets)
+        table = pd.concat(datasets)
+
+        # The CSVs hold integer category codes. Algorithms see them as text codes
+        # (the enumeration codes of the metadata), so the generators do too.
+        for code in self.get_nominal_variables_with_dataset(table):
+            column = table[code]
+            table[code] = (
+                column.astype("Int64")
+                .astype("string")
+                .astype(object)
+                .where(column.notna(), None)
+            )
+        return table
+
+    def get_nominal_variables_with_dataset(self, table):
+        with open(DATAMODEL_CDESPATH) as file:
+            cdes = json.load(file)
+        coded = {"dataset"}
+
+        def walk(node):
+            if "type" in node and node.get("enumerations"):
+                coded.add(node["code"])
+            for child in node.get("variables", []) + node.get("groups", []):
+                walk(child)
+
+        walk(cdes)
+        return [code for code in table.columns if code in coded]
+
+    @lru_cache
+    def get_dataset_codes(self):
+        """Dataset label -> code. Requests name datasets by label."""
+        dataset = self.get_metadata("dataset")
+        return {enum["label"]: enum["code"] for enum in dataset["enumerations"]}
 
     @lru_cache
     def get_datasets(self):
-        data = self.get_data_table()
-        return data["dataset"].unique().tolist()
+        codes = set(self.get_data_table()["dataset"].unique())
+        return [
+            label for label, code in self.get_dataset_codes().items() if code in codes
+        ]
 
     @lru_cache
     def get_enumerations(self, varname):
@@ -62,7 +93,7 @@ class _DB:
             cdes = json.load(file)
 
         def flatten_cdes(cdes: dict, flat_cdes: list):
-            if "isCategorical" in cdes:  # isCategorical indicates that we reached a var
+            if "type" in cdes:  # only variables have a type
                 flat_cdes.append(cdes)
             elif "variables" in cdes or "groups" in cdes:
                 for elm in cdes.get("variables", []) + cdes.get("groups", []):
@@ -527,7 +558,8 @@ class TestCaseGenerator(ABC):
     def get_input_data(self, input_):
         variables = self._get_variables_from_input(input_)
         inputdata = input_["inputdata"]
-        datasets = list(inputdata["datasets"])
+        dataset_codes = DB().get_dataset_codes()
+        datasets = [dataset_codes[label] for label in inputdata["datasets"]]
 
         if "dataset" in variables:
             full_data = self.all_data[variables]

@@ -11,28 +11,32 @@ from exaflow.worker.utils.duck_db_csv_loader import _create_primary_data_table
 
 @pytest.fixture()
 def tmp_csv(tmp_path):
-    """Create a CSV where categorical column has integer-like values."""
+    """Create a CSV whose categorical columns hold integer codes."""
     csv_path = tmp_path / "data.csv"
     with csv_path.open("w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["dataset", "category", "age", "score"])
-        writer.writerow(["ds1", "0", "25", "1.5"])
-        writer.writerow(["ds1", "1", "30", "2.0"])
-        writer.writerow(["ds1", None, "35", "3.7"])
+        writer.writerow(["1", "1", "25", "1.5"])
+        writer.writerow(["1", "2", "30", "2.0"])
+        writer.writerow(["1", None, "35", "3.7"])
     return csv_path
+
+
+def _enums(*codes):
+    return [{"code": code, "label": f"Level {code}"} for code in codes]
 
 
 METADATA = {
     "variables": [
         {
             "code": "dataset",
-            "isCategorical": True,
-            "sql_type": "text",
+            "type": "nominal",
+            "enumerations": _enums("1", "2", "3"),
         },
         {
             "code": "category",
-            "isCategorical": True,
-            "sql_type": "text",
+            "type": "nominal",
+            "enumerations": _enums("1", "2"),
         },
     ],
     "groups": [
@@ -40,18 +44,16 @@ METADATA = {
             "variables": [
                 {
                     "code": "age",
-                    "isCategorical": False,
-                    "sql_type": "int",
+                    "type": "discrete",
                 },
                 {
                     "code": "score",
-                    "isCategorical": False,
-                    "sql_type": "real",
+                    "type": "continuous",
                 },
                 {
                     "code": "diagnosis",
-                    "isCategorical": True,
-                    "sql_type": "text",
+                    "type": "nominal",
+                    "enumerations": _enums("1", "2"),
                 },
             ]
         }
@@ -59,13 +61,52 @@ METADATA = {
 }
 
 
-def test_build_column_types_maps_categorical_to_varchar():
+def test_build_column_types_maps_categorical_to_integer():
     col_types = _build_column_types(METADATA)
-    assert col_types["dataset"] == "VARCHAR"
-    assert col_types["category"] == "VARCHAR"
+    assert col_types["dataset"] == "INTEGER"
+    assert col_types["category"] == "INTEGER"
     assert col_types["age"] == "INTEGER"
     assert col_types["score"] == "DOUBLE"
-    assert col_types["diagnosis"] == "VARCHAR"
+    assert col_types["diagnosis"] == "INTEGER"
+
+
+@pytest.mark.parametrize("code", ["var", "visitid"])
+@pytest.mark.parametrize("cde_type", ["nominal", "ordinal", "binary"])
+@pytest.mark.parametrize("enumerations", [None, [], _enums("a", "b")])
+def test_categorical_without_integer_enumerations_is_rejected(
+    code, cde_type, enumerations
+):
+    variable = {"code": code, "type": cde_type}
+    if enumerations is not None:
+        variable["enumerations"] = enumerations
+
+    with pytest.raises(ValueError, match=f"'{code}'.*integer codes"):
+        _build_column_types({"variables": [variable]})
+
+
+def test_unsupported_variable_type_has_a_clear_error():
+    with pytest.raises(ValueError) as exc:
+        _build_column_types({"variables": [{"code": "var", "type": "real"}]})
+    assert "real" in str(exc.value)
+    assert "categorical CDE" not in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "variable",
+    [
+        {"code": "subjectid", "type": "discrete"},
+        {
+            "code": "visitid",
+            "type": "nominal",
+            "enumerations": _enums("1", "2"),
+        },
+    ],
+    ids=["discrete-subjectid", "nominal-visitid"],
+)
+def test_identifier_columns_are_integer(variable):
+    assert _build_column_types({"variables": [variable]}) == {
+        variable["code"]: "INTEGER"
+    }
 
 
 def test_create_primary_data_table_enforces_types(tmp_csv):
@@ -79,19 +120,19 @@ def test_create_primary_data_table_enforces_types(tmp_csv):
         ).fetchall()
 
         type_map = {name: dtype for name, dtype in schema}
-        assert type_map["dataset"] == "VARCHAR"
-        assert type_map["category"] == "VARCHAR"
+        assert type_map["dataset"] == "INTEGER"
+        assert type_map["category"] == "INTEGER"
         assert type_map["age"] == "INTEGER"
         assert type_map["score"] == "DOUBLE"
         # Column from metadata but not in CSV should still exist
-        assert type_map["diagnosis"] == "VARCHAR"
+        assert type_map["diagnosis"] == "INTEGER"
 
-        # Verify categorical values are strings, not integers
+        # Verify categorical values are stored as integer codes
         values = conn.execute(
             'SELECT "category" FROM "test__primary_data" ORDER BY "category"'
         ).fetchall()
         assert len(values) == 3
-        assert values == [("0",), ("1",), (None,)]
+        assert values == [(1,), (2,), (None,)]
 
 
 def test_metadata_only_columns_are_null(tmp_csv):
@@ -123,8 +164,8 @@ def _write_csv(path, header, rows):
 
 
 def test_create_primary_data_table_returns_dataset_csv_map(tmp_path):
-    first = _write_csv(tmp_path / "a.csv", ["dataset", "age"], [["ds1", 1], ["ds2", 2]])
-    second = _write_csv(tmp_path / "b.csv", ["dataset", "age"], [[" ds3 ", 3]])
+    first = _write_csv(tmp_path / "a.csv", ["dataset", "age"], [["1", 1], ["2", 2]])
+    second = _write_csv(tmp_path / "b.csv", ["dataset", "age"], [[" 3 ", 3]])
     no_dataset = _write_csv(tmp_path / "c.csv", ["age"], [[4]])
 
     with duckdb.connect(":memory:") as conn:
@@ -139,7 +180,7 @@ def test_create_primary_data_table_returns_dataset_csv_map(tmp_path):
             row[0] for row in conn.execute('DESCRIBE "test__primary_data"').fetchall()
         ]
 
-    assert result.dataset_csv_map == {"ds1": first, "ds2": first, "ds3": second}
+    assert result.dataset_csv_map == {"1": first, "2": first, "3": second}
     assert result.csv_columns == {
         first: ["dataset", "age"],
         second: ["dataset", "age"],
@@ -150,8 +191,8 @@ def test_create_primary_data_table_returns_dataset_csv_map(tmp_path):
 
 
 def test_create_primary_data_table_rejects_dataset_in_multiple_csvs(tmp_path):
-    first = _write_csv(tmp_path / "a.csv", ["dataset", "age"], [["ds1", 1]])
-    second = _write_csv(tmp_path / "b.csv", ["dataset", "age"], [["ds1", 2]])
+    first = _write_csv(tmp_path / "a.csv", ["dataset", "age"], [["1", 1]])
+    second = _write_csv(tmp_path / "b.csv", ["dataset", "age"], [["1", 2]])
 
     with duckdb.connect(":memory:") as conn:
         with pytest.raises(ValueError, match="defined in multiple CSV files"):

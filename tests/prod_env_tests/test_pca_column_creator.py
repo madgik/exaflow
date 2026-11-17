@@ -12,14 +12,15 @@ PCA_VARIABLES = [
     "rightttgtransversetemporalgyrus",
     "leftpinsposteriorinsula",
 ]
-OUTCOME_VARIABLE = "alzheimerbroadcategory"
-POSITIVE_CLASS = "Other"
+OUTCOME_VARIABLE = "alzheimerstatus"
+POSITIVE_CLASS = "0"
 
 
 def test_pca_reporter_recipe_creator_feeds_logistic_regression():
     logistic_input, _ = get_test_params(LOGISTIC_EXPECTED_FILE)[0]
 
     reporter_payload = deepcopy(logistic_input)
+    reporter_payload["inputdata"]["variables"] = [*PCA_VARIABLES, OUTCOME_VARIABLE]
     reporter_payload["preprocessing"] = [
         {
             "name": "missing_values_handler",
@@ -44,6 +45,7 @@ def test_pca_reporter_recipe_creator_feeds_logistic_regression():
     assert recipe["base_parameters"]["pca_variant"] == "pca"
 
     creator_payload = deepcopy(logistic_input)
+    creator_payload["inputdata"]["variables"] = [*PCA_VARIABLES, OUTCOME_VARIABLE]
     creator_payload["preprocessing"] = [
         {
             "name": "missing_values_handler",

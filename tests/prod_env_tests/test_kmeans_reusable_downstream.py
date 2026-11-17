@@ -11,7 +11,7 @@ from tests.algorithm_validation_tests.exareme3.conftest import analysis_request
 from tests.algorithm_validation_tests.exareme3.conftest import parse_response
 
 DATA_MODEL = "dementia:0.1"
-DATASETS = [f"edsd{index}" for index in range(10)]
+DATASETS = [f"EDSD_{index}" for index in range(10)]
 KMEANS_VARIABLES = ["lefthippocampus", "righthippocampus"]
 GENERATED_CODE = "kmeans_cluster"
 
@@ -70,7 +70,7 @@ def test_saved_centers_replay_into_logistic_regression(creator_parameters):
         "algorithm": {
             "x": [GENERATED_CODE],
             "y": ["gender"],
-            "parameters": {"positive_class": "F"},
+            "parameters": {"positive_class": "1"},
         },
     }
 

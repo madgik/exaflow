@@ -17,8 +17,8 @@ base_input = {
         {
             "name": "longitudinal_transformer",
             "parameters": {
-                "visit1": "BL",
-                "visit2": "FL1",
+                "visit1": "1",
+                "visit2": "2",
                 "strategies": None,
             },
         }
@@ -103,7 +103,7 @@ def test_longitudinal_linear_regression_cv():
 def test_longitudinal_logistic_regression():
     input = deepcopy(base_input)
     _set_algorithm_inputs(input, x=["lefthippocampus", "leftamygdala"], y=["gender"])
-    _set_parameters(input, positive_class="F")
+    _set_parameters(input, positive_class="1")
     _set_longitudinal_strategies(
         input,
         {
@@ -125,9 +125,9 @@ def test_longitudinal_logistic_regression_error_less_strategies():
             "rightpcggposteriorcingulategyrus",
             "leftacgganteriorcingulategyrus",
         ],
-        y=["alzheimerbroadcategory"],
+        y=["alzheimerstatus"],
     )
-    _set_parameters(input, positive_class="Other")
+    _set_parameters(input, positive_class="0")
     _set_longitudinal_strategies(
         input,
         {
@@ -144,7 +144,7 @@ def test_longitudinal_logistic_regression_error_less_strategies():
 def test_longitudinal_logistic_regression_cv():
     input = deepcopy(base_input)
     _set_algorithm_inputs(input, x=["lefthippocampus", "leftamygdala"], y=["gender"])
-    _set_parameters(input, n_splits=2, positive_class="F")
+    _set_parameters(input, n_splits=2, positive_class="1")
     _set_longitudinal_strategies(
         input,
         {

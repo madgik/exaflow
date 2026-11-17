@@ -20,22 +20,28 @@ METADATA = {
     "variables": [
         {
             "code": "dataset",
-            "isCategorical": True,
-            "sql_type": "text",
+            "type": "nominal",
             "enumerations": [
-                {"code": "full", "label": "full"},
-                {"code": "partial_a", "label": "partial_a"},
-                {"code": "partial_b", "label": "partial_b"},
+                {"code": "1", "label": "full"},
+                {"code": "2", "label": "partial_a"},
+                {"code": "3", "label": "partial_b"},
             ],
         },
-        {"code": "gender", "isCategorical": True, "sql_type": "text"},
+        {
+            "code": "gender",
+            "type": "binary",
+            "enumerations": [
+                {"code": "0", "label": "M"},
+                {"code": "1", "label": "F"},
+            ],
+        },
     ],
     "groups": [
         {
             "code": "measurements",
             "variables": [
-                {"code": "age", "isCategorical": False, "sql_type": "int"},
-                {"code": "score", "isCategorical": False, "sql_type": "real"},
+                {"code": "age", "type": "discrete"},
+                {"code": "score", "type": "continuous"},
             ],
         }
     ],
@@ -60,14 +66,14 @@ def data_folder(tmp_path, monkeypatch):
     _write_csv(
         model_dir / "full.csv",
         ["dataset", "gender", "age", "score"],
-        [["full", "F", "30", "1.5"]],
+        [["1", "1", "30", "1.5"]],
     )
     # Lacks "age" and has a column ("row_id") that is not a CDE.
     # Two datasets share this CSV, so both get the same variables.
     _write_csv(
         model_dir / "partial.csv",
         ["row_id", "score", "dataset", "gender"],
-        [["1", "2.0", "partial_a", "M"], ["2", "3.0", "partial_b", "F"]],
+        [["1", "2.0", "2", "0"], ["2", "3.0", "3", "1"]],
     )
 
     duckdb_path = tmp_path / "db.duckdb"
@@ -102,7 +108,7 @@ def test_build_dataset_properties_keeps_header_order_and_drops_non_cdes():
 def test_loader_fills_dataset_properties_from_csv_header(loaded_data_folder):
     stored = _stored_properties(loaded_data_folder)
 
-    assert stored["full"] == {
+    assert stored["1"] == {
         "tags": [],
         "properties": {"variables": ["dataset", "gender", "age", "score"]},
     }
@@ -112,16 +118,16 @@ def test_loader_lists_only_present_cdes_for_partial_dataset(loaded_data_folder):
     stored = _stored_properties(loaded_data_folder)
 
     expected = {"tags": [], "properties": {"variables": ["score", "dataset", "gender"]}}
-    assert stored["partial_a"] == expected
-    assert stored["partial_b"] == expected
+    assert stored["2"] == expected
+    assert stored["3"] == expected
 
 
 def test_dataset_infos_expose_loaded_variables(loaded_data_folder):
     infos = {info.code: info for info in get_dataset_infos("testmodel:0.1")}
 
-    assert infos["full"].variables == ["dataset", "gender", "age", "score"]
-    assert infos["partial_a"].variables == ["score", "dataset", "gender"]
-    assert infos["partial_b"].variables == ["score", "dataset", "gender"]
+    assert infos["1"].variables == ["dataset", "gender", "age", "score"]
+    assert infos["2"].variables == ["score", "dataset", "gender"]
+    assert infos["3"].variables == ["score", "dataset", "gender"]
 
 
 def test_read_csv_columns_warns_with_path_when_header_unreadable(tmp_path, monkeypatch):
@@ -157,14 +163,41 @@ def test_loader_warns_with_dataset_and_path_when_header_unreadable(
     load_all_csvs_from_data_folder("test-request")
 
     warned_args = [call.args for call in warning.call_args_list]
-    for dataset_code in ("partial_a", "partial_b"):
+    for dataset_code in ("2", "3"):
         assert any(partial_csv in args and dataset_code in args for args in warned_args)
-    assert not any("full" in args for args in warned_args)
+    assert not any("1" in args for args in warned_args)
     stored = _stored_properties(duckdb_path)
-    assert stored["partial_a"]["properties"]["variables"] == []
-    assert stored["full"]["properties"]["variables"] == [
+    assert stored["2"]["properties"]["variables"] == []
+    assert stored["1"]["properties"]["variables"] == [
         "dataset",
         "gender",
         "age",
         "score",
     ]
+
+
+def test_loader_stores_dataset_as_integer_with_label(loaded_data_folder):
+    with duckdb.connect(str(loaded_data_folder), read_only=True) as conn:
+        dataset_type = conn.execute(
+            "SELECT typeof(dataset) FROM testmodel_0_1__primary_data LIMIT 1"
+        ).fetchone()[0]
+        gender_type = conn.execute(
+            "SELECT typeof(gender) FROM testmodel_0_1__primary_data LIMIT 1"
+        ).fetchone()[0]
+        datasets = conn.execute(
+            "SELECT code, label FROM datasets ORDER BY code"
+        ).fetchall()
+
+    assert dataset_type == "INTEGER"
+    assert gender_type == "INTEGER"
+    assert datasets == [("1", "full"), ("2", "partial_a"), ("3", "partial_b")]
+
+
+def test_loader_rejects_two_dataset_codes_with_the_same_label(data_folder):
+    model_dir, _ = data_folder
+    metadata = json.loads(json.dumps(METADATA))
+    metadata["variables"][0]["enumerations"][2]["label"] = "partial_a"
+    (model_dir / "CDEsMetadata.json").write_text(json.dumps(metadata))
+
+    with pytest.raises(ValueError, match="same dataset label"):
+        load_all_csvs_from_data_folder("test-request")

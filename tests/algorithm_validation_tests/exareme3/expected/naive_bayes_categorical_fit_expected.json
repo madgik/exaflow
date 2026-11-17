@@ -2,104 +2,31 @@
     "test_cases": [
         {
             "input": {
-                "test_case_num": 0,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "edsd6",
-                        "edsd5",
-                        "desd-synthdata8",
-                        "edsd2",
-                        "ppmi6",
-                        "edsd7",
-                        "desd-synthdata5",
-                        "desd-synthdata4",
-                        "ppmi3",
-                        "ppmi5",
-                        "desd-synthdata6",
-                        "edsd9",
-                        "edsd8",
-                        "desd-synthdata0",
-                        "desd-synthdata2",
-                        "edsd0",
-                        "ppmi9",
-                        "edsd4",
-                        "ppmi4",
-                        "edsd3",
-                        "ppmi1",
-                        "ppmi2",
-                        "ppmi0",
-                        "desd-synthdata7",
-                        "desd-synthdata9"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "gender",
-                        "edsdcategory"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "gender"
-                    ],
-                    "y": [
-                        "edsdcategory"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    394,
-                    356,
-                    162
-                ],
-                "category_count": [
-                    [
-                        [
-                            227,
-                            167
-                        ],
-                        [
-                            195,
-                            161
-                        ],
-                        [
-                            82,
-                            80
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
                 "test_case_num": 1,
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "ppmi8",
-                        "edsd9",
-                        "ppmi3",
-                        "ppmi5",
-                        "desd-synthdata0",
-                        "ppmi7",
-                        "desd-synthdata7",
-                        "edsd4",
-                        "desd-synthdata1",
-                        "edsd5",
-                        "edsd1",
-                        "edsd0",
-                        "edsd8",
-                        "edsd3",
-                        "desd-synthdata8",
-                        "desd-synthdata9",
-                        "ppmi9",
-                        "desd-synthdata3",
-                        "ppmi6",
-                        "desd-synthdata5",
-                        "ppmi1"
+                        "PPMI_8",
+                        "EDSD_9",
+                        "PPMI_3",
+                        "PPMI_5",
+                        "DESD-synthdata_0",
+                        "PPMI_7",
+                        "DESD-synthdata_7",
+                        "EDSD_4",
+                        "DESD-synthdata_1",
+                        "EDSD_5",
+                        "EDSD_1",
+                        "EDSD_0",
+                        "EDSD_8",
+                        "EDSD_3",
+                        "DESD-synthdata_8",
+                        "DESD-synthdata_9",
+                        "PPMI_9",
+                        "DESD-synthdata_3",
+                        "PPMI_6",
+                        "DESD-synthdata_5",
+                        "PPMI_1"
                     ],
                     "filters": null,
                     "variables": [
@@ -120,293 +47,116 @@
             },
             "output": {
                 "class_count": [
-                    305,
-                    304,
-                    675
+                    305.0,
+                    304.0,
+                    675.0
                 ],
                 "category_count": [
                     [
                         [
-                            19,
-                            46,
-                            0,
-                            31,
-                            0,
-                            33,
-                            0,
-                            32,
-                            33,
-                            36,
-                            15,
-                            0,
-                            0,
-                            18,
-                            8,
-                            0,
-                            0,
-                            0,
-                            33,
-                            1,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            15.0,
+                            0.0,
+                            0.0,
+                            18.0,
+                            8.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            33.0,
+                            1.0,
+                            0.0,
+                            19.0,
+                            46.0,
+                            0.0,
+                            31.0,
+                            0.0,
+                            33.0,
+                            0.0,
+                            0.0,
+                            32.0,
+                            33.0,
+                            36.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            6,
-                            40,
-                            0,
-                            30,
-                            0,
-                            37,
-                            0,
-                            30,
-                            34,
-                            29,
-                            0,
-                            23,
-                            0,
-                            24,
-                            12,
-                            0,
-                            0,
-                            0,
-                            20,
-                            19,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            23.0,
+                            0.0,
+                            24.0,
+                            12.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            20.0,
+                            19.0,
+                            0.0,
+                            6.0,
+                            40.0,
+                            0.0,
+                            30.0,
+                            0.0,
+                            37.0,
+                            0.0,
+                            0.0,
+                            30.0,
+                            34.0,
+                            29.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            9,
-                            30,
-                            0,
-                            19,
-                            0,
-                            12,
-                            0,
-                            13,
-                            10,
-                            16,
-                            0,
-                            14,
-                            0,
-                            11,
-                            22,
-                            11,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            34,
-                            0,
-                            80,
-                            0,
-                            80,
-                            80,
-                            80,
-                            80,
-                            74
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 2,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "desd-synthdata2",
-                        "ppmi1",
-                        "edsd9",
-                        "ppmi3",
-                        "ppmi9",
-                        "ppmi7",
-                        "desd-synthdata7",
-                        "desd-synthdata8",
-                        "ppmi5"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "edsdcategory",
-                        "gender",
-                        "neurodegenerativescategories"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "edsdcategory",
-                        "gender"
-                    ],
-                    "y": [
-                        "neurodegenerativescategories"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    89,
-                    41
-                ],
-                "category_count": [
-                    [
-                        [
-                            89,
-                            0,
-                            0
-                        ],
-                        [
-                            0,
-                            0,
-                            41
-                        ]
-                    ],
-                    [
-                        [
-                            38,
-                            51
-                        ],
-                        [
-                            22,
-                            19
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 3,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "ppmi3"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "dataset",
-                        "parkinsonbroadcategory",
-                        "agegroup",
-                        "gender"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "dataset",
-                        "parkinsonbroadcategory",
-                        "agegroup"
-                    ],
-                    "y": [
-                        "gender"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    26,
-                    54
-                ],
-                "category_count": [
-                    [
-                        [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            26
-                        ],
-                        [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            54
-                        ]
-                    ],
-                    [
-                        [
-                            9,
-                            0,
-                            17
-                        ],
-                        [
-                            19,
-                            0,
-                            35
-                        ]
-                    ],
-                    [
-                        [
-                            0,
-                            5,
-                            11,
-                            5,
-                            5
-                        ],
-                        [
-                            1,
-                            14,
-                            7,
-                            22,
-                            10
+                            0.0,
+                            74.0,
+                            0.0,
+                            0.0,
+                            14.0,
+                            0.0,
+                            11.0,
+                            22.0,
+                            11.0,
+                            0.0,
+                            0.0,
+                            34.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            9.0,
+                            30.0,
+                            0.0,
+                            19.0,
+                            0.0,
+                            12.0,
+                            0.0,
+                            0.0,
+                            13.0,
+                            10.0,
+                            16.0,
+                            0.0,
+                            80.0,
+                            0.0,
+                            80.0,
+                            80.0,
+                            80.0,
+                            80.0
                         ]
                     ]
                 ]
@@ -418,10 +168,10 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "edsd5",
-                        "ppmi7",
-                        "desd-synthdata7",
-                        "desd-synthdata9"
+                        "EDSD_5",
+                        "PPMI_7",
+                        "DESD-synthdata_7",
+                        "DESD-synthdata_9"
                     ],
                     "filters": null,
                     "variables": [
@@ -442,253 +192,116 @@
             },
             "output": {
                 "class_count": [
-                    68,
-                    59,
-                    120
+                    68.0,
+                    59.0,
+                    120.0
                 ],
                 "category_count": [
                     [
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            32,
-                            0,
-                            36,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            32.0,
+                            0.0,
+                            36.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            30,
-                            0,
-                            29,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            30.0,
+                            0.0,
+                            29.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            13,
-                            0,
-                            16,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            11,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            80
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 5,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "edsd4",
-                        "desd-synthdata9",
-                        "desd-synthdata2",
-                        "edsd8",
-                        "edsd0",
-                        "desd-synthdata8",
-                        "edsd1",
-                        "ppmi6",
-                        "ppmi3",
-                        "desd-synthdata7",
-                        "ppmi4",
-                        "ppmi8",
-                        "desd-synthdata5",
-                        "edsd9",
-                        "desd-synthdata3",
-                        "desd-synthdata1",
-                        "edsd3",
-                        "ppmi5",
-                        "edsd2",
-                        "edsd7",
-                        "ppmi7",
-                        "desd-synthdata4",
-                        "ppmi0",
-                        "edsd5",
-                        "ppmi9"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "neurodegenerativescategories",
-                        "gender",
-                        "agegroup"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "neurodegenerativescategories",
-                        "gender"
-                    ],
-                    "y": [
-                        "agegroup"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    114,
-                    50,
-                    127,
-                    304,
-                    353
-                ],
-                "category_count": [
-                    [
-                        [
-                            78,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            30,
-                            0,
-                            6
-                        ],
-                        [
-                            8,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            5,
-                            0,
-                            37
-                        ],
-                        [
-                            22,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            10,
-                            0,
-                            95
-                        ],
-                        [
-                            103,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            63,
-                            0,
-                            138
-                        ],
-                        [
-                            188,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            89,
-                            0,
-                            76
-                        ]
-                    ],
-                    [
-                        [
-                            75,
-                            39
-                        ],
-                        [
-                            19,
-                            31
-                        ],
-                        [
-                            54,
-                            73
-                        ],
-                        [
-                            122,
-                            182
-                        ],
-                        [
-                            167,
-                            186
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            11.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            13.0,
+                            0.0,
+                            16.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            80.0,
+                            0.0
                         ]
                     ]
                 ]
@@ -700,20 +313,20 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "desd-synthdata0",
-                        "ppmi5",
-                        "desd-synthdata1",
-                        "desd-synthdata5",
-                        "edsd9",
-                        "desd-synthdata9",
-                        "edsd5",
-                        "ppmi2",
-                        "ppmi7",
-                        "ppmi1",
-                        "edsd1",
-                        "desd-synthdata4",
-                        "edsd6",
-                        "desd-synthdata7"
+                        "DESD-synthdata_0",
+                        "PPMI_5",
+                        "DESD-synthdata_1",
+                        "DESD-synthdata_5",
+                        "EDSD_9",
+                        "DESD-synthdata_9",
+                        "EDSD_5",
+                        "PPMI_2",
+                        "PPMI_7",
+                        "PPMI_1",
+                        "EDSD_1",
+                        "DESD-synthdata_4",
+                        "EDSD_6",
+                        "DESD-synthdata_7"
                     ],
                     "filters": null,
                     "variables": [
@@ -734,114 +347,14 @@
             },
             "output": {
                 "class_count": [
-                    157
+                    157.0
                 ],
                 "category_count": [
                     [
                         [
-                            0,
-                            0,
-                            157
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 7,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "edsd7",
-                        "desd-synthdata2",
-                        "edsd5",
-                        "ppmi9",
-                        "ppmi1",
-                        "edsd4",
-                        "edsd1"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "neurodegenerativescategories",
-                        "agegroup"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "neurodegenerativescategories"
-                    ],
-                    "y": [
-                        "agegroup"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    20,
-                    2,
-                    7,
-                    36,
-                    61
-                ],
-                "category_count": [
-                    [
-                        [
-                            11,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            9
-                        ],
-                        [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            2
-                        ],
-                        [
-                            4,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            3
-                        ],
-                        [
-                            13,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            23
-                        ],
-                        [
-                            30,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            31
+                            157.0,
+                            0.0,
+                            0.0
                         ]
                     ]
                 ]
@@ -853,29 +366,29 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "desd-synthdata1",
-                        "desd-synthdata2",
-                        "edsd8",
-                        "edsd4",
-                        "desd-synthdata4",
-                        "desd-synthdata8",
-                        "edsd6",
-                        "ppmi5",
-                        "edsd7",
-                        "ppmi6",
-                        "ppmi3",
-                        "edsd0",
-                        "desd-synthdata0",
-                        "edsd3",
-                        "edsd9",
-                        "ppmi7",
-                        "desd-synthdata6",
-                        "ppmi8",
-                        "ppmi4",
-                        "desd-synthdata9",
-                        "ppmi9",
-                        "edsd1",
-                        "edsd2"
+                        "DESD-synthdata_1",
+                        "DESD-synthdata_2",
+                        "EDSD_8",
+                        "EDSD_4",
+                        "DESD-synthdata_4",
+                        "DESD-synthdata_8",
+                        "EDSD_6",
+                        "PPMI_5",
+                        "EDSD_7",
+                        "PPMI_6",
+                        "PPMI_3",
+                        "EDSD_0",
+                        "DESD-synthdata_0",
+                        "EDSD_3",
+                        "EDSD_9",
+                        "PPMI_7",
+                        "DESD-synthdata_6",
+                        "PPMI_8",
+                        "PPMI_4",
+                        "DESD-synthdata_9",
+                        "PPMI_9",
+                        "EDSD_1",
+                        "EDSD_2"
                     ],
                     "filters": null,
                     "variables": [
@@ -898,58 +411,58 @@
             },
             "output": {
                 "class_count": [
-                    81,
-                    132,
-                    306,
-                    35
+                    306.0,
+                    132.0,
+                    35.0,
+                    81.0
                 ],
                 "category_count": [
                     [
                         [
-                            0,
-                            81,
-                            0
+                            306.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            132,
-                            0,
-                            0
+                            0.0,
+                            132.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            306
+                            0.0,
+                            0.0,
+                            35.0
                         ],
                         [
-                            0,
-                            35,
-                            0
+                            0.0,
+                            0.0,
+                            81.0
                         ]
                     ],
                     [
                         [
-                            0,
-                            0,
-                            0,
-                            81
+                            0.0,
+                            0.0,
+                            306.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            132
+                            0.0,
+                            0.0,
+                            132.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            306
+                            0.0,
+                            0.0,
+                            35.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            35
+                            0.0,
+                            0.0,
+                            81.0,
+                            0.0
                         ]
                     ]
                 ]
@@ -961,23 +474,23 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "ppmi2",
-                        "edsd0",
-                        "desd-synthdata5",
-                        "ppmi7",
-                        "edsd8",
-                        "edsd9",
-                        "edsd1",
-                        "desd-synthdata9",
-                        "ppmi4",
-                        "desd-synthdata4",
-                        "desd-synthdata6",
-                        "ppmi9",
-                        "desd-synthdata8",
-                        "desd-synthdata7",
-                        "edsd2",
-                        "desd-synthdata2",
-                        "edsd5"
+                        "PPMI_2",
+                        "EDSD_0",
+                        "DESD-synthdata_5",
+                        "PPMI_7",
+                        "EDSD_8",
+                        "EDSD_9",
+                        "EDSD_1",
+                        "DESD-synthdata_9",
+                        "PPMI_4",
+                        "DESD-synthdata_4",
+                        "DESD-synthdata_6",
+                        "PPMI_9",
+                        "DESD-synthdata_8",
+                        "DESD-synthdata_7",
+                        "EDSD_2",
+                        "DESD-synthdata_2",
+                        "EDSD_5"
                     ],
                     "filters": null,
                     "variables": [
@@ -998,14 +511,14 @@
             },
             "output": {
                 "class_count": [
-                    160
+                    160.0
                 ],
                 "category_count": [
                     [
                         [
-                            0,
-                            0,
-                            160
+                            160.0,
+                            0.0,
+                            0.0
                         ]
                     ]
                 ]
@@ -1017,8 +530,8 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "ppmi3",
-                        "desd-synthdata8"
+                        "PPMI_3",
+                        "DESD-synthdata_8"
                     ],
                     "filters": null,
                     "variables": [
@@ -1039,89 +552,116 @@
             },
             "output": {
                 "class_count": [
-                    33,
-                    10,
-                    52
+                    52.0,
+                    33.0,
+                    10.0
                 ],
                 "category_count": [
                     [
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            33,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            52.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            10,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            33.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            52
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            10.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ]
                     ]
                 ]
@@ -1133,9 +673,9 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "edsd2",
-                        "desd-synthdata9",
-                        "ppmi1"
+                        "EDSD_2",
+                        "DESD-synthdata_9",
+                        "PPMI_1"
                     ],
                     "filters": null,
                     "variables": [
@@ -1156,120 +696,20 @@
             },
             "output": {
                 "class_count": [
-                    24,
-                    10
+                    24.0,
+                    10.0
                 ],
                 "category_count": [
                     [
                         [
-                            24,
-                            0
+                            0.0,
+                            24.0,
+                            0.0
                         ],
                         [
-                            0,
-                            10
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 12,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "desd-synthdata8",
-                        "edsd7",
-                        "edsd6",
-                        "edsd9"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "agegroup",
-                        "neurodegenerativescategories"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "neurodegenerativescategories"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    76,
-                    19
-                ],
-                "category_count": [
-                    [
-                        [
-                            18,
-                            0,
-                            4,
-                            16,
-                            38
-                        ],
-                        [
-                            1,
-                            1,
-                            1,
-                            11,
-                            5
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 13,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "desd-synthdata2",
-                        "edsd5",
-                        "edsd0",
-                        "ppmi1"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "edsdcategory",
-                        "gender"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "edsdcategory"
-                    ],
-                    "y": [
-                        "gender"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    50,
-                    53
-                ],
-                "category_count": [
-                    [
-                        [
-                            16,
-                            20,
-                            14
-                        ],
-                        [
-                            22,
-                            16,
-                            15
+                            0.0,
+                            0.0,
+                            10.0
                         ]
                     ]
                 ]
@@ -1281,19 +721,19 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "ppmi5",
-                        "ppmi1",
-                        "ppmi6",
-                        "edsd5",
-                        "edsd8",
-                        "ppmi2",
-                        "edsd1",
-                        "ppmi0",
-                        "desd-synthdata9",
-                        "ppmi3",
-                        "desd-synthdata4",
-                        "desd-synthdata2",
-                        "edsd2"
+                        "PPMI_5",
+                        "PPMI_1",
+                        "PPMI_6",
+                        "EDSD_5",
+                        "EDSD_8",
+                        "PPMI_2",
+                        "EDSD_1",
+                        "PPMI_0",
+                        "DESD-synthdata_9",
+                        "PPMI_3",
+                        "DESD-synthdata_4",
+                        "DESD-synthdata_2",
+                        "EDSD_2"
                     ],
                     "filters": null,
                     "variables": [
@@ -1314,406 +754,26 @@
             },
             "output": {
                 "class_count": [
-                    155,
-                    160,
-                    77
+                    155.0,
+                    160.0,
+                    77.0
                 ],
                 "category_count": [
                     [
                         [
-                            155,
-                            0,
-                            0
+                            155.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            160,
-                            0
+                            0.0,
+                            0.0,
+                            160.0
                         ],
                         [
-                            0,
-                            0,
-                            77
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 15,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "desd-synthdata9",
-                        "desd-synthdata6"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "gender",
-                        "neurodegenerativescategories",
-                        "agegroup"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "gender",
-                        "neurodegenerativescategories"
-                    ],
-                    "y": [
-                        "agegroup"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    21,
-                    3,
-                    4,
-                    29,
-                    46
-                ],
-                "category_count": [
-                    [
-                        [
-                            16,
-                            5
-                        ],
-                        [
-                            2,
-                            1
-                        ],
-                        [
-                            2,
-                            2
-                        ],
-                        [
-                            15,
-                            14
-                        ],
-                        [
-                            25,
-                            21
-                        ]
-                    ],
-                    [
-                        [
-                            16,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            5
-                        ],
-                        [
-                            2,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            1
-                        ],
-                        [
-                            3,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            1
-                        ],
-                        [
-                            20,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            9
-                        ],
-                        [
-                            33,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            13
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 16,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "desd-synthdata3",
-                        "desd-synthdata2",
-                        "ppmi0"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "dataset",
-                        "gender",
-                        "ppmicategory"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "dataset",
-                        "gender"
-                    ],
-                    "y": [
-                        "ppmicategory"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    46
-                ],
-                "category_count": [
-                    [
-                        [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            46
-                        ]
-                    ],
-                    [
-                        [
-                            20,
-                            26
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 17,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "ppmi4",
-                        "ppmi9",
-                        "ppmi3",
-                        "ppmi1",
-                        "desd-synthdata0",
-                        "desd-synthdata2",
-                        "desd-synthdata4",
-                        "edsd5",
-                        "ppmi0",
-                        "edsd0",
-                        "desd-synthdata1"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "gender",
-                        "edsdcategory"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "gender"
-                    ],
-                    "y": [
-                        "edsdcategory"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    142,
-                    116,
-                    77
-                ],
-                "category_count": [
-                    [
-                        [
-                            84,
-                            58
-                        ],
-                        [
-                            56,
-                            60
-                        ],
-                        [
-                            37,
-                            40
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 18,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "ppmi7",
-                        "ppmi3",
-                        "ppmi1",
-                        "desd-synthdata0",
-                        "desd-synthdata3",
-                        "edsd2",
-                        "ppmi5",
-                        "edsd0",
-                        "desd-synthdata2",
-                        "edsd1",
-                        "desd-synthdata5"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "agegroup",
-                        "ppmicategory"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "ppmicategory"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    10,
-                    97,
-                    156,
-                    11
-                ],
-                "category_count": [
-                    [
-                        [
-                            0,
-                            0,
-                            3,
-                            6,
-                            1
-                        ],
-                        [
-                            5,
-                            20,
-                            24,
-                            30,
-                            18
-                        ],
-                        [
-                            1,
-                            22,
-                            38,
-                            62,
-                            33
-                        ],
-                        [
-                            0,
-                            0,
-                            0,
-                            9,
-                            2
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 19,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "ppmi2",
-                        "desd-synthdata8",
-                        "desd-synthdata4",
-                        "edsd4",
-                        "edsd9",
-                        "desd-synthdata9",
-                        "ppmi3",
-                        "ppmi4",
-                        "desd-synthdata3"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "agegroup",
-                        "gender"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "gender"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    322,
-                    421
-                ],
-                "category_count": [
-                    [
-                        [
-                            34,
-                            70,
-                            40,
-                            83,
-                            95
-                        ],
-                        [
-                            21,
-                            98,
-                            54,
-                            132,
-                            116
+                            0.0,
+                            77.0,
+                            0.0
                         ]
                     ]
                 ]
@@ -1725,23 +785,23 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "ppmi8",
-                        "ppmi5",
-                        "desd-synthdata9",
-                        "edsd3",
-                        "desd-synthdata8",
-                        "ppmi1",
-                        "ppmi0",
-                        "desd-synthdata6",
-                        "ppmi9",
-                        "ppmi6",
-                        "desd-synthdata3",
-                        "edsd7",
-                        "ppmi4",
-                        "desd-synthdata2",
-                        "ppmi7",
-                        "desd-synthdata4",
-                        "ppmi2"
+                        "PPMI_8",
+                        "PPMI_5",
+                        "DESD-synthdata_9",
+                        "EDSD_3",
+                        "DESD-synthdata_8",
+                        "PPMI_1",
+                        "PPMI_0",
+                        "DESD-synthdata_6",
+                        "PPMI_9",
+                        "PPMI_6",
+                        "DESD-synthdata_3",
+                        "EDSD_7",
+                        "PPMI_4",
+                        "DESD-synthdata_2",
+                        "PPMI_7",
+                        "DESD-synthdata_4",
+                        "PPMI_2"
                     ],
                     "filters": null,
                     "variables": [
@@ -1762,462 +822,116 @@
             },
             "output": {
                 "class_count": [
-                    245,
-                    224,
-                    733
+                    245.0,
+                    224.0,
+                    733.0
                 ],
                 "category_count": [
                     [
                         [
-                            0,
-                            0,
-                            23,
-                            31,
-                            39,
-                            0,
-                            38,
-                            0,
-                            33,
-                            36,
-                            0,
-                            0,
-                            0,
-                            18,
-                            0,
-                            0,
-                            0,
-                            27,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            18.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            27.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            23.0,
+                            31.0,
+                            39.0,
+                            0.0,
+                            38.0,
+                            0.0,
+                            0.0,
+                            33.0,
+                            36.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            36,
-                            30,
-                            34,
-                            0,
-                            22,
-                            0,
-                            34,
-                            29,
-                            0,
-                            0,
-                            0,
-                            24,
-                            0,
-                            0,
-                            0,
-                            15,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            24.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            15.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            36.0,
+                            30.0,
+                            34.0,
+                            0.0,
+                            22.0,
+                            0.0,
+                            0.0,
+                            34.0,
+                            29.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            18,
-                            19,
-                            9,
-                            0,
-                            13,
-                            0,
-                            10,
-                            16,
-                            0,
-                            0,
-                            0,
-                            11,
-                            0,
-                            0,
-                            0,
-                            3,
-                            0,
-                            0,
-                            46,
-                            34,
-                            80,
-                            0,
-                            80,
-                            80,
-                            80,
-                            80,
-                            80,
-                            74
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 21,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "ppmi1",
-                        "desd-synthdata3",
-                        "edsd3",
-                        "desd-synthdata4",
-                        "desd-synthdata5",
-                        "desd-synthdata6",
-                        "desd-synthdata0",
-                        "ppmi2",
-                        "ppmi4",
-                        "edsd8",
-                        "desd-synthdata9",
-                        "ppmi5",
-                        "ppmi6",
-                        "ppmi7",
-                        "edsd1",
-                        "edsd4",
-                        "desd-synthdata8",
-                        "desd-synthdata1",
-                        "ppmi8",
-                        "edsd9",
-                        "edsd7"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "agegroup",
-                        "dataset"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "dataset"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    34,
-                    166,
-                    100,
-                    100,
-                    100,
-                    100,
-                    100,
-                    100,
-                    38,
-                    53,
-                    53,
-                    53,
-                    53,
-                    50,
-                    34,
-                    80,
-                    80,
-                    80,
-                    80,
-                    80,
-                    80
-                ],
-                "category_count": [
-                    [
-                        [
-                            8,
-                            0,
-                            0,
-                            10,
-                            16
-                        ],
-                        [
-                            17,
-                            51,
-                            8,
-                            39,
-                            51
-                        ],
-                        [
-                            7,
-                            21,
-                            3,
-                            25,
-                            44
-                        ],
-                        [
-                            12,
-                            22,
-                            7,
-                            25,
-                            34
-                        ],
-                        [
-                            12,
-                            20,
-                            5,
-                            31,
-                            32
-                        ],
-                        [
-                            12,
-                            30,
-                            3,
-                            21,
-                            34
-                        ],
-                        [
-                            12,
-                            25,
-                            4,
-                            30,
-                            29
-                        ],
-                        [
-                            12,
-                            21,
-                            7,
-                            22,
-                            38
-                        ],
-                        [
-                            1,
-                            1,
-                            1,
-                            13,
-                            22
-                        ],
-                        [
-                            5,
-                            11,
-                            4,
-                            11,
-                            22
-                        ],
-                        [
-                            6,
-                            11,
-                            2,
-                            16,
-                            18
-                        ],
-                        [
-                            9,
-                            8,
-                            4,
-                            10,
-                            22
-                        ],
-                        [
-                            7,
-                            0,
-                            1,
-                            19,
-                            26
-                        ],
-                        [
-                            1,
-                            30,
-                            0,
-                            12,
-                            7
-                        ],
-                        [
-                            2,
-                            5,
-                            3,
-                            17,
-                            7
-                        ],
-                        [
-                            3,
-                            10,
-                            27,
-                            25,
-                            15
-                        ],
-                        [
-                            1,
-                            9,
-                            26,
-                            33,
-                            11
-                        ],
-                        [
-                            1,
-                            12,
-                            18,
-                            34,
-                            15
-                        ],
-                        [
-                            0,
-                            8,
-                            25,
-                            27,
-                            20
-                        ],
-                        [
-                            2,
-                            6,
-                            26,
-                            29,
-                            17
-                        ],
-                        [
-                            2,
-                            10,
-                            16,
-                            34,
-                            18
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 22,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "ppmi3",
-                        "edsd5"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "edsdcategory",
-                        "alzheimerbroadcategory",
-                        "gender"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "edsdcategory",
-                        "alzheimerbroadcategory"
-                    ],
-                    "y": [
-                        "gender"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    4,
-                    7
-                ],
-                "category_count": [
-                    [
-                        [
-                            0,
-                            0,
-                            4
-                        ],
-                        [
-                            0,
-                            0,
-                            7
-                        ]
-                    ],
-                    [
-                        [
-                            0,
-                            0,
-                            0,
-                            4
-                        ],
-                        [
-                            0,
-                            0,
-                            0,
-                            7
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 23,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "ppmi5",
-                        "desd-synthdata1",
-                        "edsd0",
-                        "ppmi2",
-                        "ppmi1",
-                        "desd-synthdata7",
-                        "ppmi7"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "parkinsonbroadcategory",
-                        "agegroup"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "parkinsonbroadcategory"
-                    ],
-                    "y": [
-                        "agegroup"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    8,
-                    33,
-                    74,
-                    105,
-                    54
-                ],
-                "category_count": [
-                    [
-                        [
-                            5,
-                            0,
-                            3
-                        ],
-                        [
-                            14,
-                            0,
-                            19
-                        ],
-                        [
-                            24,
-                            3,
-                            47
-                        ],
-                        [
-                            34,
-                            15,
-                            56
-                        ],
-                        [
-                            19,
-                            3,
-                            32
+                            46.0,
+                            74.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            11.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            3.0,
+                            34.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            18.0,
+                            19.0,
+                            9.0,
+                            0.0,
+                            13.0,
+                            80.0,
+                            0.0,
+                            10.0,
+                            16.0,
+                            0.0,
+                            0.0,
+                            80.0,
+                            80.0,
+                            80.0,
+                            80.0,
+                            80.0
                         ]
                     ]
                 ]
@@ -2229,8 +943,8 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "ppmi6",
-                        "edsd7"
+                        "PPMI_6",
+                        "EDSD_7"
                     ],
                     "filters": null,
                     "variables": [
@@ -2251,98 +965,116 @@
             },
             "output": {
                 "class_count": [
-                    27,
-                    3,
-                    53
+                    53.0,
+                    27.0,
+                    3.0
                 ],
                 "category_count": [
                     [
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            27,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            53.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            3,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            27.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            53
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            3.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ]
                     ]
                 ]
@@ -2354,16 +1086,16 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "ppmi8",
-                        "ppmi9",
-                        "desd-synthdata4",
-                        "edsd9",
-                        "desd-synthdata2",
-                        "edsd7",
-                        "edsd5",
-                        "ppmi6",
-                        "edsd4",
-                        "desd-synthdata7"
+                        "PPMI_8",
+                        "PPMI_9",
+                        "DESD-synthdata_4",
+                        "EDSD_9",
+                        "DESD-synthdata_2",
+                        "EDSD_7",
+                        "EDSD_5",
+                        "PPMI_6",
+                        "EDSD_4",
+                        "DESD-synthdata_7"
                     ],
                     "filters": null,
                     "variables": [
@@ -2384,110 +1116,36 @@
             },
             "output": {
                 "class_count": [
-                    130,
-                    170
+                    130.0,
+                    170.0
                 ],
                 "category_count": [
                     [
                         [
-                            130,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            130.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            76,
-                            0,
-                            94
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 26,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "edsd8",
-                        "ppmi4",
-                        "ppmi5",
-                        "edsd7",
-                        "desd-synthdata6",
-                        "ppmi7",
-                        "edsd5",
-                        "desd-synthdata5",
-                        "desd-synthdata3",
-                        "edsd6",
-                        "desd-synthdata2",
-                        "ppmi8",
-                        "edsd0"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "alzheimerbroadcategory",
-                        "parkinsonbroadcategory",
-                        "gender"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "alzheimerbroadcategory",
-                        "parkinsonbroadcategory"
-                    ],
-                    "y": [
-                        "gender"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    104,
-                    216
-                ],
-                "category_count": [
-                    [
-                        [
-                            0,
-                            0,
-                            0,
-                            104
-                        ],
-                        [
-                            0,
-                            0,
-                            0,
-                            216
-                        ]
-                    ],
-                    [
-                        [
-                            20,
-                            20,
-                            64
-                        ],
-                        [
-                            57,
-                            22,
-                            137
+                            94.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            76.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ]
                     ]
                 ]
@@ -2499,24 +1157,24 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "edsd1",
-                        "edsd5",
-                        "desd-synthdata8",
-                        "desd-synthdata1",
-                        "ppmi7",
-                        "desd-synthdata2",
-                        "ppmi5",
-                        "desd-synthdata3",
-                        "ppmi2",
-                        "edsd8",
-                        "desd-synthdata0",
-                        "ppmi8",
-                        "ppmi4",
-                        "edsd4",
-                        "desd-synthdata4",
-                        "desd-synthdata5",
-                        "edsd7",
-                        "edsd3"
+                        "EDSD_1",
+                        "EDSD_5",
+                        "DESD-synthdata_8",
+                        "DESD-synthdata_1",
+                        "PPMI_7",
+                        "DESD-synthdata_2",
+                        "PPMI_5",
+                        "DESD-synthdata_3",
+                        "PPMI_2",
+                        "EDSD_8",
+                        "DESD-synthdata_0",
+                        "PPMI_8",
+                        "PPMI_4",
+                        "EDSD_4",
+                        "DESD-synthdata_4",
+                        "DESD-synthdata_5",
+                        "EDSD_7",
+                        "EDSD_3"
                     ],
                     "filters": null,
                     "variables": [
@@ -2537,104 +1195,116 @@
             },
             "output": {
                 "class_count": [
-                    310,
-                    311,
-                    568
+                    310.0,
+                    311.0,
+                    568.0
                 ],
                 "category_count": [
                     [
                         [
-                            19,
-                            46,
-                            23,
-                            31,
-                            39,
-                            33,
-                            0,
-                            0,
-                            33,
-                            0,
-                            0,
-                            0,
-                            0,
-                            18,
-                            8,
-                            0,
-                            0,
-                            27,
-                            33,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            18.0,
+                            8.0,
+                            0.0,
+                            0.0,
+                            27.0,
+                            0.0,
+                            33.0,
+                            0.0,
+                            0.0,
+                            19.0,
+                            46.0,
+                            23.0,
+                            31.0,
+                            39.0,
+                            33.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            33.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            6,
-                            40,
-                            36,
-                            30,
-                            34,
-                            37,
-                            0,
-                            0,
-                            34,
-                            0,
-                            0,
-                            23,
-                            0,
-                            24,
-                            12,
-                            0,
-                            0,
-                            15,
-                            20,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            23.0,
+                            0.0,
+                            24.0,
+                            12.0,
+                            0.0,
+                            0.0,
+                            15.0,
+                            0.0,
+                            20.0,
+                            0.0,
+                            0.0,
+                            6.0,
+                            40.0,
+                            36.0,
+                            30.0,
+                            34.0,
+                            37.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            34.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            9,
-                            30,
-                            18,
-                            19,
-                            9,
-                            12,
-                            0,
-                            0,
-                            10,
-                            0,
-                            0,
-                            14,
-                            0,
-                            11,
-                            22,
-                            11,
-                            0,
-                            3,
-                            0,
-                            0,
-                            0,
-                            0,
-                            80,
-                            0,
-                            80,
-                            80,
-                            0,
-                            80,
-                            80
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            14.0,
+                            0.0,
+                            11.0,
+                            22.0,
+                            11.0,
+                            0.0,
+                            3.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            9.0,
+                            30.0,
+                            18.0,
+                            19.0,
+                            9.0,
+                            12.0,
+                            0.0,
+                            80.0,
+                            0.0,
+                            10.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            80.0,
+                            80.0,
+                            0.0,
+                            80.0,
+                            80.0
                         ]
                     ]
                 ]
@@ -2646,15 +1316,15 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "ppmi6",
-                        "edsd8",
-                        "desd-synthdata9",
-                        "edsd9",
-                        "edsd0",
-                        "ppmi0",
-                        "ppmi2",
-                        "ppmi3",
-                        "ppmi8"
+                        "PPMI_6",
+                        "EDSD_8",
+                        "DESD-synthdata_9",
+                        "EDSD_9",
+                        "EDSD_0",
+                        "PPMI_0",
+                        "PPMI_2",
+                        "PPMI_3",
+                        "PPMI_8"
                     ],
                     "filters": null,
                     "variables": [
@@ -2675,109 +1345,36 @@
             },
             "output": {
                 "class_count": [
-                    85,
-                    261
+                    85.0,
+                    261.0
                 ],
                 "category_count": [
                     [
                         [
-                            85,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            85.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            16,
-                            0,
-                            245
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 29,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "ppmi4",
-                        "edsd1",
-                        "desd-synthdata9",
-                        "desd-synthdata6",
-                        "edsd0",
-                        "edsd5",
-                        "ppmi6",
-                        "desd-synthdata3",
-                        "edsd8",
-                        "edsd2",
-                        "desd-synthdata8",
-                        "ppmi1"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "neurodegenerativescategories",
-                        "gender"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "neurodegenerativescategories"
-                    ],
-                    "y": [
-                        "gender"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    204,
-                    207
-                ],
-                "category_count": [
-                    [
-                        [
-                            131,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            44,
-                            0,
-                            29
-                        ],
-                        [
-                            79,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            48,
-                            0,
-                            80
+                            245.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            16.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ]
                     ]
                 ]
@@ -2789,13 +1386,13 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "edsd6",
-                        "desd-synthdata0",
-                        "edsd0",
-                        "ppmi2",
-                        "ppmi3",
-                        "desd-synthdata9",
-                        "edsd4"
+                        "EDSD_6",
+                        "DESD-synthdata_0",
+                        "EDSD_0",
+                        "PPMI_2",
+                        "PPMI_3",
+                        "DESD-synthdata_9",
+                        "EDSD_4"
                     ],
                     "filters": null,
                     "variables": [
@@ -2816,119 +1413,80 @@
             },
             "output": {
                 "class_count": [
-                    55,
-                    105
+                    105.0,
+                    55.0
                 ],
                 "category_count": [
                     [
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            27,
-                            28
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            53.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            52.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            53,
-                            52
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 31,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "desd-synthdata7",
-                        "ppmi0",
-                        "ppmi2",
-                        "edsd0",
-                        "edsd2",
-                        "ppmi4",
-                        "ppmi9"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "parkinsonbroadcategory",
-                        "agegroup",
-                        "neurodegenerativescategories"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "parkinsonbroadcategory",
-                        "agegroup"
-                    ],
-                    "y": [
-                        "neurodegenerativescategories"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    155
-                ],
-                "category_count": [
-                    [
-                        [
-                            0,
-                            0,
-                            155
-                        ]
-                    ],
-                    [
-                        [
-                            6,
-                            15,
-                            51,
-                            57,
-                            26
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            27.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            28.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ]
                     ]
                 ]
@@ -2940,22 +1498,22 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "ppmi5",
-                        "ppmi0",
-                        "edsd7",
-                        "desd-synthdata0",
-                        "edsd1",
-                        "desd-synthdata4",
-                        "ppmi4",
-                        "ppmi6",
-                        "ppmi7",
-                        "desd-synthdata2",
-                        "ppmi1",
-                        "ppmi8",
-                        "desd-synthdata3",
-                        "desd-synthdata8",
-                        "edsd0",
-                        "edsd2"
+                        "PPMI_5",
+                        "PPMI_0",
+                        "EDSD_7",
+                        "DESD-synthdata_0",
+                        "EDSD_1",
+                        "DESD-synthdata_4",
+                        "PPMI_4",
+                        "PPMI_6",
+                        "PPMI_7",
+                        "DESD-synthdata_2",
+                        "PPMI_1",
+                        "PPMI_8",
+                        "DESD-synthdata_3",
+                        "DESD-synthdata_8",
+                        "EDSD_0",
+                        "EDSD_2"
                     ],
                     "filters": null,
                     "variables": [
@@ -2978,237 +1536,29 @@
             },
             "output": {
                 "class_count": [
-                    300
+                    300.0
                 ],
                 "category_count": [
                     [
                         [
-                            0,
-                            0,
-                            300
+                            300.0,
+                            0.0,
+                            0.0
                         ]
                     ],
                     [
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            300
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 33,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "desd-synthdata5",
-                        "edsd5",
-                        "desd-synthdata0",
-                        "ppmi9",
-                        "ppmi8",
-                        "desd-synthdata9",
-                        "ppmi7",
-                        "edsd1",
-                        "ppmi5",
-                        "ppmi2",
-                        "ppmi3",
-                        "ppmi6",
-                        "edsd4",
-                        "desd-synthdata4"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "gender",
-                        "alzheimerbroadcategory",
-                        "agegroup"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "gender",
-                        "alzheimerbroadcategory"
-                    ],
-                    "y": [
-                        "agegroup"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    65,
-                    76,
-                    164,
-                    332,
-                    286
-                ],
-                "category_count": [
-                    [
-                        [
-                            42,
-                            23
-                        ],
-                        [
-                            32,
-                            44
-                        ],
-                        [
-                            71,
-                            93
-                        ],
-                        [
-                            129,
-                            203
-                        ],
-                        [
-                            128,
-                            158
-                        ]
-                    ],
-                    [
-                        [
-                            30,
-                            9,
-                            0,
-                            26
-                        ],
-                        [
-                            5,
-                            2,
-                            0,
-                            69
-                        ],
-                        [
-                            10,
-                            8,
-                            0,
-                            146
-                        ],
-                        [
-                            35,
-                            56,
-                            0,
-                            241
-                        ],
-                        [
-                            55,
-                            66,
-                            0,
-                            165
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 34,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "edsd2",
-                        "ppmi7",
-                        "desd-synthdata2",
-                        "edsd1",
-                        "edsd5",
-                        "desd-synthdata6",
-                        "edsd7",
-                        "ppmi6",
-                        "ppmi1",
-                        "desd-synthdata7",
-                        "ppmi0",
-                        "edsd3",
-                        "desd-synthdata8",
-                        "desd-synthdata1",
-                        "desd-synthdata4",
-                        "ppmi8",
-                        "ppmi5",
-                        "ppmi3",
-                        "edsd6",
-                        "ppmi9",
-                        "ppmi2"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "alzheimerbroadcategory",
-                        "gender",
-                        "ppmicategory"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "alzheimerbroadcategory",
-                        "gender"
-                    ],
-                    "y": [
-                        "ppmicategory"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    81,
-                    159,
-                    349,
-                    45
-                ],
-                "category_count": [
-                    [
-                        [
-                            0,
-                            0,
-                            0,
-                            81
-                        ],
-                        [
-                            0,
-                            0,
-                            0,
-                            159
-                        ],
-                        [
-                            0,
-                            0,
-                            0,
-                            349
-                        ],
-                        [
-                            0,
-                            0,
-                            0,
-                            45
-                        ]
-                    ],
-                    [
-                        [
-                            36,
-                            45
-                        ],
-                        [
-                            58,
-                            101
-                        ],
-                        [
-                            133,
-                            216
-                        ],
-                        [
-                            11,
-                            34
+                            300.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ]
                     ]
                 ]
@@ -3220,19 +1570,19 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "edsd9",
-                        "edsd0",
-                        "edsd1",
-                        "edsd5",
-                        "edsd3",
-                        "desd-synthdata6",
-                        "ppmi6",
-                        "desd-synthdata4",
-                        "desd-synthdata8",
-                        "edsd8",
-                        "edsd7",
-                        "ppmi5",
-                        "desd-synthdata2"
+                        "EDSD_9",
+                        "EDSD_0",
+                        "EDSD_1",
+                        "EDSD_5",
+                        "EDSD_3",
+                        "DESD-synthdata_6",
+                        "PPMI_6",
+                        "DESD-synthdata_4",
+                        "DESD-synthdata_8",
+                        "EDSD_8",
+                        "EDSD_7",
+                        "PPMI_5",
+                        "DESD-synthdata_2"
                     ],
                     "filters": null,
                     "variables": [
@@ -3253,98 +1603,116 @@
             },
             "output": {
                 "class_count": [
-                    227,
-                    89,
-                    106
+                    106.0,
+                    227.0,
+                    89.0
                 ],
                 "category_count": [
                     [
                         [
-                            0,
-                            0,
-                            23,
-                            0,
-                            39,
-                            0,
-                            38,
-                            0,
-                            33,
-                            0,
-                            15,
-                            0,
-                            0,
-                            18,
-                            0,
-                            0,
-                            0,
-                            27,
-                            33,
-                            1,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            53.0,
+                            53.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            18,
-                            0,
-                            9,
-                            0,
-                            13,
-                            0,
-                            10,
-                            0,
-                            0,
-                            14,
-                            0,
-                            11,
-                            0,
-                            11,
-                            0,
-                            3,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            15.0,
+                            0.0,
+                            0.0,
+                            18.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            27.0,
+                            0.0,
+                            33.0,
+                            1.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            23.0,
+                            0.0,
+                            39.0,
+                            0.0,
+                            38.0,
+                            0.0,
+                            0.0,
+                            33.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            53,
-                            53
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            14.0,
+                            0.0,
+                            11.0,
+                            0.0,
+                            11.0,
+                            0.0,
+                            3.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            18.0,
+                            0.0,
+                            9.0,
+                            0.0,
+                            13.0,
+                            0.0,
+                            0.0,
+                            10.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ]
                     ]
                 ]
@@ -3356,11 +1724,11 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "desd-synthdata7",
-                        "edsd6",
-                        "desd-synthdata2",
-                        "edsd9",
-                        "ppmi7"
+                        "DESD-synthdata_7",
+                        "EDSD_6",
+                        "DESD-synthdata_2",
+                        "EDSD_9",
+                        "PPMI_7"
                     ],
                     "filters": null,
                     "variables": [
@@ -3381,101 +1749,116 @@
             },
             "output": {
                 "class_count": [
-                    71,
-                    37,
-                    51
+                    51.0,
+                    71.0,
+                    37.0
                 ],
                 "category_count": [
                     [
                         [
-                            0,
-                            0,
-                            23,
-                            0,
-                            0,
-                            0,
-                            0,
-                            32,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            15,
-                            0,
-                            0,
-                            1,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            51.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            18,
-                            0,
-                            0,
-                            0,
-                            0,
-                            13,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            6,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            15.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            1.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            23.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            32.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            51
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            6.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            18.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            13.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ]
                     ]
                 ]
@@ -3487,21 +1870,21 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "desd-synthdata1",
-                        "edsd2",
-                        "ppmi6",
-                        "edsd5",
-                        "desd-synthdata4",
-                        "ppmi0",
-                        "edsd4",
-                        "ppmi1",
-                        "edsd0",
-                        "ppmi5",
-                        "desd-synthdata3",
-                        "edsd9",
-                        "edsd8",
-                        "ppmi4",
-                        "edsd3"
+                        "DESD-synthdata_1",
+                        "EDSD_2",
+                        "PPMI_6",
+                        "EDSD_5",
+                        "DESD-synthdata_4",
+                        "PPMI_0",
+                        "EDSD_4",
+                        "PPMI_1",
+                        "EDSD_0",
+                        "PPMI_5",
+                        "DESD-synthdata_3",
+                        "EDSD_9",
+                        "EDSD_8",
+                        "PPMI_4",
+                        "EDSD_3"
                     ],
                     "filters": null,
                     "variables": [
@@ -3522,109 +1905,26 @@
             },
             "output": {
                 "class_count": [
-                    102,
-                    208,
-                    10
+                    208.0,
+                    102.0,
+                    10.0
                 ],
                 "category_count": [
                     [
                         [
-                            102,
-                            0,
-                            0
+                            208.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            208
+                            0.0,
+                            102.0,
+                            0.0
                         ],
                         [
-                            0,
-                            10,
-                            0
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 38,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "ppmi8",
-                        "desd-synthdata4",
-                        "desd-synthdata6",
-                        "edsd7",
-                        "ppmi1",
-                        "desd-synthdata3",
-                        "edsd0",
-                        "edsd2",
-                        "ppmi5",
-                        "ppmi9",
-                        "ppmi2",
-                        "desd-synthdata0",
-                        "ppmi0",
-                        "edsd3",
-                        "desd-synthdata9",
-                        "edsd4",
-                        "edsd5",
-                        "desd-synthdata1",
-                        "ppmi4",
-                        "desd-synthdata2",
-                        "desd-synthdata7",
-                        "ppmi6",
-                        "edsd8",
-                        "desd-synthdata5",
-                        "ppmi7",
-                        "edsd9"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "agegroup",
-                        "neurodegenerativescategories"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "agegroup"
-                    ],
-                    "y": [
-                        "neurodegenerativescategories"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    423,
-                    195,
-                    353
-                ],
-                "category_count": [
-                    [
-                        [
-                            85,
-                            8,
-                            23,
-                            111,
-                            196
-                        ],
-                        [
-                            33,
-                            5,
-                            9,
-                            56,
-                            92
-                        ],
-                        [
-                            8,
-                            34,
-                            104,
-                            132,
-                            75
+                            0.0,
+                            0.0,
+                            10.0
                         ]
                     ]
                 ]
@@ -3636,26 +1936,26 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "edsd9",
-                        "ppmi3",
-                        "ppmi6",
-                        "desd-synthdata7",
-                        "desd-synthdata5",
-                        "ppmi9",
-                        "desd-synthdata8",
-                        "ppmi1",
-                        "ppmi5",
-                        "ppmi8",
-                        "edsd6",
-                        "edsd8",
-                        "edsd5",
-                        "desd-synthdata0",
-                        "ppmi4",
-                        "desd-synthdata3",
-                        "ppmi7",
-                        "ppmi2",
-                        "desd-synthdata6",
-                        "desd-synthdata9"
+                        "EDSD_9",
+                        "PPMI_3",
+                        "PPMI_6",
+                        "DESD-synthdata_7",
+                        "DESD-synthdata_5",
+                        "PPMI_9",
+                        "DESD-synthdata_8",
+                        "PPMI_1",
+                        "PPMI_5",
+                        "PPMI_8",
+                        "EDSD_6",
+                        "EDSD_8",
+                        "EDSD_5",
+                        "DESD-synthdata_0",
+                        "PPMI_4",
+                        "DESD-synthdata_3",
+                        "PPMI_7",
+                        "PPMI_2",
+                        "DESD-synthdata_6",
+                        "DESD-synthdata_9"
                     ],
                     "filters": null,
                     "variables": [
@@ -3676,107 +1976,116 @@
             },
             "output": {
                 "class_count": [
-                    183,
-                    126,
-                    359
+                    359.0,
+                    183.0,
+                    126.0
                 ],
                 "category_count": [
                     [
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            24,
-                            27,
-                            28,
-                            24,
-                            27,
-                            27,
-                            18,
-                            8,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            53.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            52.0,
+                            56.0,
+                            53.0,
+                            53.0,
+                            51.0,
+                            41.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            10,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            11,
-                            31,
-                            74
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            24.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            27.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            28.0,
+                            24.0,
+                            27.0,
+                            27.0,
+                            18.0,
+                            8.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            53,
-                            52,
-                            56,
-                            53,
-                            53,
-                            51,
-                            41,
-                            0
+                            0.0,
+                            74.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            10.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            11.0,
+                            31.0
                         ]
                     ]
                 ]
@@ -3788,22 +2097,22 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "desd-synthdata8",
-                        "ppmi9",
-                        "ppmi4",
-                        "ppmi0",
-                        "desd-synthdata9",
-                        "ppmi8",
-                        "desd-synthdata5",
-                        "edsd5",
-                        "edsd6",
-                        "desd-synthdata4",
-                        "ppmi1",
-                        "desd-synthdata1",
-                        "edsd3",
-                        "desd-synthdata3",
-                        "desd-synthdata7",
-                        "ppmi5"
+                        "DESD-synthdata_8",
+                        "PPMI_9",
+                        "PPMI_4",
+                        "PPMI_0",
+                        "DESD-synthdata_9",
+                        "PPMI_8",
+                        "DESD-synthdata_5",
+                        "EDSD_5",
+                        "EDSD_6",
+                        "DESD-synthdata_4",
+                        "PPMI_1",
+                        "DESD-synthdata_1",
+                        "EDSD_3",
+                        "DESD-synthdata_3",
+                        "DESD-synthdata_7",
+                        "PPMI_5"
                     ],
                     "filters": null,
                     "variables": [
@@ -3824,228 +2133,26 @@
             },
             "output": {
                 "class_count": [
-                    283,
-                    278,
-                    137
+                    283.0,
+                    278.0,
+                    137.0
                 ],
                 "category_count": [
                     [
                         [
-                            283,
-                            0,
-                            0
+                            283.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            278,
-                            0
+                            0.0,
+                            0.0,
+                            278.0
                         ],
                         [
-                            0,
-                            0,
-                            137
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 41,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "desd-synthdata4",
-                        "ppmi4",
-                        "ppmi9",
-                        "edsd8"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "dataset",
-                        "agegroup"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "dataset"
-                    ],
-                    "y": [
-                        "agegroup"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    24,
-                    33,
-                    45,
-                    114,
-                    91
-                ],
-                "category_count": [
-                    [
-                        [
-                            0,
-                            0,
-                            0,
-                            0,
-                            12,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            7,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            1,
-                            0,
-                            0,
-                            0,
-                            0,
-                            4
-                        ],
-                        [
-                            0,
-                            0,
-                            0,
-                            0,
-                            22,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            9,
-                            0,
-                            0,
-                            0,
-                            0,
-                            2
-                        ],
-                        [
-                            0,
-                            0,
-                            0,
-                            0,
-                            7,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            1,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            26,
-                            0,
-                            0,
-                            0,
-                            0,
-                            11
-                        ],
-                        [
-                            0,
-                            0,
-                            0,
-                            0,
-                            25,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            19,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            33,
-                            0,
-                            0,
-                            0,
-                            0,
-                            37
-                        ],
-                        [
-                            0,
-                            0,
-                            0,
-                            0,
-                            34,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            26,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            11,
-                            0,
-                            0,
-                            0,
-                            0,
-                            20
+                            0.0,
+                            137.0,
+                            0.0
                         ]
                     ]
                 ]
@@ -4057,9 +2164,9 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "desd-synthdata3",
-                        "ppmi5",
-                        "desd-synthdata4"
+                        "DESD-synthdata_3",
+                        "PPMI_5",
+                        "DESD-synthdata_4"
                     ],
                     "filters": null,
                     "variables": [
@@ -4082,36 +2189,92 @@
             },
             "output": {
                 "class_count": [
-                    70,
-                    28
+                    70.0,
+                    28.0
                 ],
                 "category_count": [
                     [
                         [
-                            0,
-                            0,
-                            0,
-                            31,
-                            39
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            31.0,
+                            39.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            19,
-                            9
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            19.0,
+                            9.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ]
                     ],
                     [
                         [
-                            70,
-                            0,
-                            0
+                            70.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            28
+                            0.0,
+                            28.0,
+                            0.0
                         ]
                     ]
                 ]
@@ -4123,21 +2286,21 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "desd-synthdata6",
-                        "desd-synthdata4",
-                        "ppmi8",
-                        "desd-synthdata2",
-                        "desd-synthdata0",
-                        "edsd6",
-                        "ppmi9",
-                        "desd-synthdata9",
-                        "edsd9",
-                        "ppmi0",
-                        "desd-synthdata8",
-                        "ppmi7",
-                        "edsd1",
-                        "edsd0",
-                        "ppmi5"
+                        "DESD-synthdata_6",
+                        "DESD-synthdata_4",
+                        "PPMI_8",
+                        "DESD-synthdata_2",
+                        "DESD-synthdata_0",
+                        "EDSD_6",
+                        "PPMI_9",
+                        "DESD-synthdata_9",
+                        "EDSD_9",
+                        "PPMI_0",
+                        "DESD-synthdata_8",
+                        "PPMI_7",
+                        "EDSD_1",
+                        "EDSD_0",
+                        "PPMI_5"
                     ],
                     "filters": null,
                     "variables": [
@@ -4158,111 +2321,36 @@
             },
             "output": {
                 "class_count": [
-                    81,
-                    53,
-                    191,
-                    35
+                    191.0,
+                    53.0,
+                    35.0,
+                    81.0
                 ],
                 "category_count": [
                     [
                         [
-                            0,
-                            0,
-                            0,
-                            81
+                            0.0,
+                            0.0,
+                            191.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            53
+                            0.0,
+                            0.0,
+                            53.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            191
+                            0.0,
+                            0.0,
+                            35.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            35
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 44,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "desd-synthdata1",
-                        "edsd9",
-                        "edsd4",
-                        "edsd1",
-                        "ppmi3",
-                        "ppmi5",
-                        "edsd3",
-                        "edsd5",
-                        "ppmi2",
-                        "edsd6",
-                        "desd-synthdata5",
-                        "desd-synthdata0"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "parkinsonbroadcategory",
-                        "agegroup"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "parkinsonbroadcategory"
-                    ],
-                    "y": [
-                        "agegroup"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    5,
-                    41,
-                    63,
-                    86,
-                    45
-                ],
-                "category_count": [
-                    [
-                        [
-                            2,
-                            0,
-                            3
-                        ],
-                        [
-                            15,
-                            0,
-                            26
-                        ],
-                        [
-                            26,
-                            0,
-                            37
-                        ],
-                        [
-                            22,
-                            0,
-                            64
-                        ],
-                        [
-                            17,
-                            0,
-                            28
+                            0.0,
+                            0.0,
+                            81.0,
+                            0.0
                         ]
                     ]
                 ]
@@ -4274,8 +2362,8 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "ppmi2",
-                        "ppmi0"
+                        "PPMI_2",
+                        "PPMI_0"
                     ],
                     "filters": null,
                     "variables": [
@@ -4296,22 +2384,22 @@
             },
             "output": {
                 "class_count": [
-                    99
+                    99.0
                 ],
                 "category_count": [
                     [
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            99
+                            99.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ]
                     ]
                 ]
@@ -4323,13 +2411,13 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "edsd6",
-                        "ppmi3",
-                        "ppmi7",
-                        "edsd3",
-                        "desd-synthdata3",
-                        "desd-synthdata8",
-                        "desd-synthdata1"
+                        "EDSD_6",
+                        "PPMI_3",
+                        "PPMI_7",
+                        "EDSD_3",
+                        "DESD-synthdata_3",
+                        "DESD-synthdata_8",
+                        "DESD-synthdata_1"
                     ],
                     "filters": null,
                     "variables": [
@@ -4350,151 +2438,116 @@
             },
             "output": {
                 "class_count": [
-                    143,
-                    148,
-                    236
+                    143.0,
+                    148.0,
+                    236.0
                 ],
                 "category_count": [
                     [
                         [
-                            0,
-                            46,
-                            0,
-                            31,
-                            0,
-                            0,
-                            0,
-                            0,
-                            33,
-                            0,
-                            0,
-                            0,
-                            0,
-                            18,
-                            0,
-                            0,
-                            15,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            18.0,
+                            0.0,
+                            0.0,
+                            15.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            46.0,
+                            0.0,
+                            31.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            33.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            40,
-                            0,
-                            30,
-                            0,
-                            0,
-                            0,
-                            0,
-                            34,
-                            0,
-                            0,
-                            0,
-                            0,
-                            24,
-                            0,
-                            0,
-                            20,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            24.0,
+                            0.0,
+                            0.0,
+                            20.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            40.0,
+                            0.0,
+                            30.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            34.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            30,
-                            0,
-                            19,
-                            0,
-                            0,
-                            0,
-                            0,
-                            10,
-                            0,
-                            0,
-                            0,
-                            0,
-                            11,
-                            0,
-                            0,
-                            6,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            80,
-                            0,
-                            0,
-                            0,
-                            80
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 47,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "ppmi2",
-                        "edsd9"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "gender",
-                        "alzheimerbroadcategory"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "gender"
-                    ],
-                    "y": [
-                        "alzheimerbroadcategory"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    1,
-                    19,
-                    80
-                ],
-                "category_count": [
-                    [
-                        [
-                            0,
-                            1
-                        ],
-                        [
-                            9,
-                            10
-                        ],
-                        [
-                            34,
-                            46
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            11.0,
+                            0.0,
+                            0.0,
+                            6.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            30.0,
+                            0.0,
+                            19.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            10.0,
+                            0.0,
+                            0.0,
+                            80.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            80.0,
+                            0.0
                         ]
                     ]
                 ]
@@ -4506,11 +2559,11 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "edsd3",
-                        "edsd0",
-                        "ppmi1",
-                        "desd-synthdata7",
-                        "edsd8"
+                        "EDSD_3",
+                        "EDSD_0",
+                        "PPMI_1",
+                        "DESD-synthdata_7",
+                        "EDSD_8"
                     ],
                     "filters": null,
                     "variables": [
@@ -4531,124 +2584,116 @@
             },
             "output": {
                 "class_count": [
-                    98,
-                    74,
-                    24
+                    98.0,
+                    24.0,
+                    74.0
                 ],
                 "category_count": [
                     [
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            32,
-                            0,
-                            0,
-                            15,
-                            0,
-                            0,
-                            18,
-                            0,
-                            0,
-                            0,
-                            0,
-                            33
+                            0.0,
+                            0.0,
+                            0.0,
+                            15.0,
+                            0.0,
+                            0.0,
+                            18.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            33.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            32.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            30,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            24,
-                            0,
-                            0,
-                            0,
-                            0,
-                            20
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            11.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            13.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ],
                         [
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            13,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0,
-                            11,
-                            0,
-                            0,
-                            0,
-                            0,
-                            0
-                        ]
-                    ]
-                ]
-            }
-        },
-        {
-            "input": {
-                "test_case_num": 49,
-                "inputdata": {
-                    "data_model": "dementia:0.1",
-                    "datasets": [
-                        "desd-synthdata0",
-                        "ppmi2"
-                    ],
-                    "filters": null,
-                    "variables": [
-                        "gender",
-                        "neurodegenerativescategories"
-                    ]
-                },
-                "preprocessing": null,
-                "algorithm": {
-                    "x": [
-                        "gender"
-                    ],
-                    "y": [
-                        "neurodegenerativescategories"
-                    ],
-                    "parameters": {}
-                }
-            },
-            "output": {
-                "class_count": [
-                    19,
-                    9,
-                    53
-                ],
-                "category_count": [
-                    [
-                        [
-                            19,
-                            0
-                        ],
-                        [
-                            9,
-                            0
-                        ],
-                        [
-                            23,
-                            30
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            24.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            20.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            30.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
                         ]
                     ]
                 ]

@@ -148,7 +148,7 @@ def test_apply_preprocessing_checks_min_rows_after_each_step(monkeypatch):
     with pytest.raises(InsufficientDataError, match="minimum required is 1"):
         udf_service._apply_preprocessing_steps_to_data_and_metadata(
             data=data,
-            metadata={"x": {"is_categorical": False}},
+            metadata={"x": {"type": "continuous"}},
             preprocessing=[{"name": "drop_all", "parameters": {}}],
             check_min_rows=True,
             agg_client=None,
@@ -162,7 +162,7 @@ def test_apply_preprocessing_checks_min_rows_when_no_steps(monkeypatch):
     with pytest.raises(InsufficientDataError, match="minimum required is 3"):
         udf_service._apply_preprocessing_steps_to_data_and_metadata(
             data=data,
-            metadata={"x": {"is_categorical": False}},
+            metadata={"x": {"type": "continuous"}},
             preprocessing=[],
             check_min_rows=True,
             agg_client=None,
@@ -179,7 +179,7 @@ def test_apply_preprocessing_uses_request_order(monkeypatch):
 
     udf_service._apply_preprocessing_steps_to_data_and_metadata(
         data=pd.DataFrame({"x": [1, 2]}),
-        metadata={"x": {"is_categorical": False}},
+        metadata={"x": {"type": "continuous"}},
         preprocessing=[
             {"name": "second", "parameters": {"calls": calls}},
             {"name": "first", "parameters": {"calls": calls}},
@@ -212,7 +212,7 @@ def test_apply_preprocessing_passes_agg_client_only_to_steps_that_accept_it(
 
     udf_service._apply_preprocessing_steps_to_data_and_metadata(
         data=pd.DataFrame({"x": [1, 2]}),
-        metadata={"x": {"is_categorical": False}},
+        metadata={"x": {"type": "continuous"}},
         preprocessing=[
             {"name": "first", "parameters": {"calls": []}},
             {"name": "agg_aware", "parameters": {"received_client": received_client}},
@@ -231,7 +231,7 @@ def test_base_transform_data_and_metadata_passes_agg_client_to_transform_data():
 
     data, _ = step.transform_data_and_metadata(
         data=pd.DataFrame({"x": [1, 2]}),
-        metadata={"x": {"is_categorical": False}},
+        metadata={"x": {"type": "continuous"}},
         agg_client=agg_client,
     )
 
@@ -278,7 +278,7 @@ def test_execute_udf_does_not_pass_preprocessing_only_agg_client_to_udf():
         udf=udf,
         kw_args={},
         data=pd.DataFrame({"x": [1, 2]}),
-        metadata={"x": {"is_categorical": False}},
+        metadata={"x": {"type": "continuous"}},
         agg_client=_DummyAggClient(),
         inject_agg_client=False,
     )
@@ -296,7 +296,7 @@ def test_execute_udf_passes_fixed_agg_client_name_to_aggregation_udf():
         udf=udf,
         kw_args={},
         data=pd.DataFrame({"x": [1, 2]}),
-        metadata={"x": {"is_categorical": False}},
+        metadata={"x": {"type": "continuous"}},
         agg_client=agg_client,
         inject_agg_client=True,
     )
@@ -334,7 +334,7 @@ def test_run_udf_converts_preprocessing_bad_input_to_bad_user_input(monkeypatch)
     )
     system_args = SimpleNamespace(
         preprocessing=[{"name": "bad_input", "parameters": {}}],
-        metadata={"x": {"is_categorical": False}},
+        metadata={"x": {"type": "continuous"}},
         inputdata=None,
         add_dataset_variable=False,
     )
@@ -384,7 +384,7 @@ def test_run_udf_closes_agg_client_without_unregistering(monkeypatch, udf, expec
     )
     system_args = SimpleNamespace(
         preprocessing=[],
-        metadata={"x": {"is_categorical": False}},
+        metadata={"x": {"type": "continuous"}},
         inputdata=None,
         add_dataset_variable=False,
     )
@@ -439,7 +439,7 @@ def test_run_udf_keeps_error_when_unregister_fails(
     )
     system_args = SimpleNamespace(
         preprocessing=preprocessing,
-        metadata={"x": {"is_categorical": False}},
+        metadata={"x": {"type": "continuous"}},
         inputdata=None,
         add_dataset_variable=False,
     )
@@ -454,3 +454,52 @@ def test_run_udf_keeps_error_when_unregister_fails(
 
     assert agg_client.unregistered is True
     assert agg_client.closed is True
+
+
+def test_integer_codes_to_text_converts_only_integer_coded_columns():
+    data = pd.DataFrame(
+        {
+            "category": pd.Series([1, 2, None], dtype="Int64"),
+            "age": pd.Series([25.0, 30.0, 35.0]),
+            "derived": pd.Series(["a", "b", None], dtype=object),
+        }
+    )
+    metadata = {
+        "category": {
+            "type": "nominal",
+            "enumerations": {"1": "One", "2": "Two"},
+        },
+        "age": {"type": "continuous"},
+        "derived": {
+            "type": "nominal",
+            "enumerations": {"a": "A", "b": "B"},
+        },
+    }
+
+    result = udf_service.integer_codes_to_text(data, metadata)
+
+    assert result["category"].tolist() == ["1", "2", None]
+    assert result["age"].tolist() == [25.0, 30.0, 35.0]
+    assert result["derived"].tolist() == ["a", "b", None]
+
+
+def test_integer_codes_to_text_keeps_discrete_subjectid_as_integer():
+    data = pd.DataFrame(
+        {
+            "subjectid": pd.Series([1, 2, 3], dtype="Int64"),
+            "visitid": pd.Series([1, 2, 3], dtype="Int64"),
+        }
+    )
+    metadata = {
+        "subjectid": {"type": "discrete"},
+        "visitid": {
+            "type": "nominal",
+            "enumerations": {"1": "Baseline", "2": "Visit 2", "3": "Visit 3"},
+        },
+    }
+
+    result = udf_service.integer_codes_to_text(data, metadata)
+
+    assert result["subjectid"].tolist() == [1, 2, 3]
+    assert pd.api.types.is_integer_dtype(result["subjectid"])
+    assert result["visitid"].tolist() == ["1", "2", "3"]

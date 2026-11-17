@@ -26,7 +26,7 @@ from tests.standalone_tests.test_preprocessing_output_specifications import _par
 from tests.standalone_tests.test_preprocessing_output_specifications import _request
 from tests.standalone_tests.test_preprocessing_output_specifications import _spec
 
-NUMERICAL = {"type": "real", "stattype": "numerical"}
+NUMERICAL = {"type": "continuous"}
 DYNAMIC = {**NUMERICAL, "column_count_param": "n_components"}
 
 
@@ -89,7 +89,7 @@ def test_mixed_outputs_agree_across_controller_and_worker_protobuf(monkeypatch, 
         20.0 * index for index in range(1, len(names) + 1)
     ]
     for name in names:
-        assert cdes[name].sql_type == metadata[name]["sql_type"] == "real"
+        assert cdes[name].type == metadata[name]["type"] == "continuous"
         assert not cdes[name].is_categorical
         assert cdes[name].enumerations is None
 
@@ -106,13 +106,12 @@ def test_dynamic_only_outputs(count):
         {},
     )
     assert list(resolved) == names
-    assert all(column["sql_type"] == "real" for column in resolved.values())
+    assert all(column["type"] == "continuous" for column in resolved.values())
 
 
 def test_multiple_dynamic_groups_and_independent_nominal_metadata():
     nominal = {
-        "type": "text",
-        "stattype": "nominal",
+        "type": "nominal",
         "enumerations": {"source_parameter_name": "rules", "source_type": "dict_keys"},
     }
     specification = _spec(
@@ -133,14 +132,8 @@ def test_multiple_dynamic_groups_and_independent_nominal_metadata():
         {},
     )
     assert list(resolved) == names
-    assert [column["is_categorical"] for column in resolved.values()] == [
-        True,
-        True,
-        True,
-        False,
-        False,
-        False,
-        False,
+    assert [column["type"] for column in resolved.values()] == 3 * ["nominal"] + 4 * [
+        "continuous"
     ]
     for name in names[:3]:
         assert resolved[name]["enumerations"] == {"low": "low", "high": "high"}

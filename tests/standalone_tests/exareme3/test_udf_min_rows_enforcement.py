@@ -43,7 +43,7 @@ def two_row_worker(monkeypatch):
 def _system_args(**extra):
     return SimpleNamespace(
         preprocessing=[],
-        metadata={"x": {"is_categorical": False}},
+        metadata={"x": {"type": "continuous"}},
         inputdata=None,
         add_dataset_variable=False,
         **extra,

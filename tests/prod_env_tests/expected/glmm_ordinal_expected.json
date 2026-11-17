@@ -6,10 +6,10 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "ppmi0",
-                        "ppmi1",
-                        "ppmi2",
-                        "desd-synthdata1"
+                        "PPMI_0",
+                        "PPMI_1",
+                        "PPMI_2",
+                        "DESD-synthdata_1"
                     ],
                     "filters": null,
                     "variables": [
@@ -32,11 +32,11 @@
                     "parameters": {
                         "grouping_var": "dataset",
                         "category_order": [
-                            "-50y",
-                            "50-59y",
-                            "60-69y",
-                            "70-79y",
-                            "+80y"
+                            "1",
+                            "2",
+                            "3",
+                            "4",
+                            "5"
                         ]
                     }
                 }

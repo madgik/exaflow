@@ -11,6 +11,7 @@ from exaflow.algorithms.exareme3.linear_model.linear_regression_cv import (
 from exaflow.algorithms.exareme3.linear_model.linear_regression_cv import (
     LinearRegressionCVResult,
 )
+from tests.testcase_generators.design_matrix import coded_design_matrix
 from tests.testcase_generators.testcase_generator import TestCaseGenerator
 
 
@@ -27,31 +28,18 @@ class LinearRegressionTestCaseGenerator(TestCaseGenerator):
         if n_splits > len(y):
             return None
 
-        categorical = [
-            cde["code"]
-            for cde in metadata
-            if cde["code"] in X.columns and cde["isCategorical"]
-        ]
-        numerical = [name for name in X.columns if name not in categorical]
-
-        def design(frame, levels):
-            columns = [
-                (frame[name] == level).to_numpy(dtype=float)
-                for name in categorical
-                for level in levels[name][1:]
-            ] + [frame[name].to_numpy(dtype=float) for name in numerical]
-            return np.column_stack(columns) if columns else np.empty((len(frame), 0))
+        def design(frame, levels_from):
+            return coded_design_matrix(frame, metadata, levels_from).to_numpy(
+                dtype=float
+            )
 
         metrics = {key: [] for key in ["rmse", "mae", "r2", "f_stat"]}
         n_obs = []
         y_values = y.iloc[:, 0].to_numpy(dtype=float)
         for train, test in KFold(n_splits=n_splits, shuffle=False).split(X):
-            levels = {
-                name: sorted(X.iloc[train][name].unique()) for name in categorical
-            }
             X_train, X_test = (
-                design(X.iloc[train], levels),
-                design(X.iloc[test], levels),
+                design(X.iloc[train], X.iloc[train]),
+                design(X.iloc[test], X.iloc[train]),
             )
             y_train, y_test = y_values[train], y_values[test]
             p = X_train.shape[1]
@@ -83,11 +71,7 @@ class LinearRegressionTestCaseGenerator(TestCaseGenerator):
                 return None, None
             return float(np.mean(values)), float(np.std(values, ddof=1))
 
-        feature_names = [
-            f"{name}[{level}]"
-            for name in categorical
-            for level in sorted(X[name].unique())[1:]
-        ] + numerical
+        feature_names = list(coded_design_matrix(X, metadata).columns)
         return LinearRegressionCVResult(
             dependent_var=y.columns[0],
             indep_vars=["Intercept"] + feature_names,

@@ -6,24 +6,24 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "edsd0",
-                        "edsd5",
-                        "ppmi7",
-                        "ppmi8",
-                        "edsd3",
-                        "desd-synthdata2",
-                        "ppmi6",
-                        "desd-synthdata9",
-                        "ppmi9",
-                        "desd-synthdata4",
-                        "desd-synthdata3",
-                        "ppmi4",
-                        "ppmi0",
-                        "edsd4",
-                        "desd-synthdata0",
-                        "ppmi5",
-                        "edsd9",
-                        "edsd8"
+                        "EDSD_0",
+                        "EDSD_5",
+                        "PPMI_7",
+                        "PPMI_8",
+                        "EDSD_3",
+                        "DESD-synthdata_2",
+                        "PPMI_6",
+                        "DESD-synthdata_9",
+                        "PPMI_9",
+                        "DESD-synthdata_4",
+                        "DESD-synthdata_3",
+                        "PPMI_4",
+                        "PPMI_0",
+                        "EDSD_4",
+                        "DESD-synthdata_0",
+                        "PPMI_5",
+                        "EDSD_9",
+                        "EDSD_8"
                     ],
                     "filters": null,
                     "variables": [
@@ -44,7 +44,7 @@
             "output": [
                 {
                     "variable": "leftttgtransversetemporalgyrus",
-                    "dataset": "edsd0",
+                    "dataset": "12",
                     "data": {
                         "num_dtps": 15,
                         "num_na": 0,
@@ -60,7 +60,7 @@
                 },
                 {
                     "variable": "rightmprgprecentralgyrusmedialsegment",
-                    "dataset": "edsd0",
+                    "dataset": "12",
                     "data": {
                         "num_dtps": 15,
                         "num_na": 0,
@@ -76,7 +76,7 @@
                 },
                 {
                     "variable": "leftttgtransversetemporalgyrus",
-                    "dataset": "edsd3",
+                    "dataset": "15",
                     "data": {
                         "num_dtps": 53,
                         "num_na": 0,
@@ -92,7 +92,7 @@
                 },
                 {
                     "variable": "rightmprgprecentralgyrusmedialsegment",
-                    "dataset": "edsd3",
+                    "dataset": "15",
                     "data": {
                         "num_dtps": 53,
                         "num_na": 0,
@@ -108,7 +108,7 @@
                 },
                 {
                     "variable": "leftttgtransversetemporalgyrus",
-                    "dataset": "edsd4",
+                    "dataset": "16",
                     "data": {
                         "num_dtps": 53,
                         "num_na": 0,
@@ -124,7 +124,7 @@
                 },
                 {
                     "variable": "rightmprgprecentralgyrusmedialsegment",
-                    "dataset": "edsd4",
+                    "dataset": "16",
                     "data": {
                         "num_dtps": 53,
                         "num_na": 0,
@@ -140,7 +140,7 @@
                 },
                 {
                     "variable": "leftttgtransversetemporalgyrus",
-                    "dataset": "edsd5",
+                    "dataset": "17",
                     "data": {
                         "num_dtps": 52,
                         "num_na": 1,
@@ -156,7 +156,7 @@
                 },
                 {
                     "variable": "rightmprgprecentralgyrusmedialsegment",
-                    "dataset": "edsd5",
+                    "dataset": "17",
                     "data": {
                         "num_dtps": 52,
                         "num_na": 1,
@@ -172,7 +172,7 @@
                 },
                 {
                     "variable": "leftttgtransversetemporalgyrus",
-                    "dataset": "edsd8",
+                    "dataset": "20",
                     "data": {
                         "num_dtps": 53,
                         "num_na": 0,
@@ -188,7 +188,7 @@
                 },
                 {
                     "variable": "rightmprgprecentralgyrusmedialsegment",
-                    "dataset": "edsd8",
+                    "dataset": "20",
                     "data": {
                         "num_dtps": 53,
                         "num_na": 0,
@@ -204,7 +204,7 @@
                 },
                 {
                     "variable": "leftttgtransversetemporalgyrus",
-                    "dataset": "edsd9",
+                    "dataset": "21",
                     "data": {
                         "num_dtps": 20,
                         "num_na": 30,
@@ -220,7 +220,7 @@
                 },
                 {
                     "variable": "rightmprgprecentralgyrusmedialsegment",
-                    "dataset": "edsd9",
+                    "dataset": "21",
                     "data": {
                         "num_dtps": 20,
                         "num_na": 30,
@@ -236,7 +236,7 @@
                 },
                 {
                     "variable": "leftttgtransversetemporalgyrus",
-                    "dataset": "ppmi0",
+                    "dataset": "1",
                     "data": {
                         "num_dtps": 46,
                         "num_na": 0,
@@ -252,7 +252,7 @@
                 },
                 {
                     "variable": "rightmprgprecentralgyrusmedialsegment",
-                    "dataset": "ppmi0",
+                    "dataset": "1",
                     "data": {
                         "num_dtps": 46,
                         "num_na": 0,
@@ -268,7 +268,7 @@
                 },
                 {
                     "variable": "leftttgtransversetemporalgyrus",
-                    "dataset": "ppmi4",
+                    "dataset": "5",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -284,7 +284,7 @@
                 },
                 {
                     "variable": "rightmprgprecentralgyrusmedialsegment",
-                    "dataset": "ppmi4",
+                    "dataset": "5",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -300,7 +300,7 @@
                 },
                 {
                     "variable": "leftttgtransversetemporalgyrus",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -316,7 +316,7 @@
                 },
                 {
                     "variable": "rightmprgprecentralgyrusmedialsegment",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -332,7 +332,7 @@
                 },
                 {
                     "variable": "leftttgtransversetemporalgyrus",
-                    "dataset": "ppmi6",
+                    "dataset": "7",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -348,7 +348,7 @@
                 },
                 {
                     "variable": "rightmprgprecentralgyrusmedialsegment",
-                    "dataset": "ppmi6",
+                    "dataset": "7",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -364,7 +364,7 @@
                 },
                 {
                     "variable": "leftttgtransversetemporalgyrus",
-                    "dataset": "ppmi7",
+                    "dataset": "8",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -380,7 +380,7 @@
                 },
                 {
                     "variable": "rightmprgprecentralgyrusmedialsegment",
-                    "dataset": "ppmi7",
+                    "dataset": "8",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -396,7 +396,7 @@
                 },
                 {
                     "variable": "leftttgtransversetemporalgyrus",
-                    "dataset": "ppmi8",
+                    "dataset": "9",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -412,7 +412,7 @@
                 },
                 {
                     "variable": "rightmprgprecentralgyrusmedialsegment",
-                    "dataset": "ppmi8",
+                    "dataset": "9",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -428,7 +428,7 @@
                 },
                 {
                     "variable": "leftttgtransversetemporalgyrus",
-                    "dataset": "ppmi9",
+                    "dataset": "10",
                     "data": {
                         "num_dtps": 74,
                         "num_na": 0,
@@ -444,7 +444,7 @@
                 },
                 {
                     "variable": "rightmprgprecentralgyrusmedialsegment",
-                    "dataset": "ppmi9",
+                    "dataset": "10",
                     "data": {
                         "num_dtps": 74,
                         "num_na": 0,
@@ -460,7 +460,7 @@
                 },
                 {
                     "variable": "leftttgtransversetemporalgyrus",
-                    "dataset": "desd-synthdata0",
+                    "dataset": "23",
                     "data": {
                         "num_dtps": 31,
                         "num_na": 3,
@@ -476,7 +476,7 @@
                 },
                 {
                     "variable": "rightmprgprecentralgyrusmedialsegment",
-                    "dataset": "desd-synthdata0",
+                    "dataset": "23",
                     "data": {
                         "num_dtps": 31,
                         "num_na": 3,
@@ -492,7 +492,7 @@
                 },
                 {
                     "variable": "leftttgtransversetemporalgyrus",
-                    "dataset": "desd-synthdata2",
+                    "dataset": "25",
                     "data": {
                         "num_dtps": 92,
                         "num_na": 8,
@@ -508,7 +508,7 @@
                 },
                 {
                     "variable": "rightmprgprecentralgyrusmedialsegment",
-                    "dataset": "desd-synthdata2",
+                    "dataset": "25",
                     "data": {
                         "num_dtps": 92,
                         "num_na": 8,
@@ -524,7 +524,7 @@
                 },
                 {
                     "variable": "leftttgtransversetemporalgyrus",
-                    "dataset": "desd-synthdata3",
+                    "dataset": "26",
                     "data": {
                         "num_dtps": 96,
                         "num_na": 4,
@@ -540,7 +540,7 @@
                 },
                 {
                     "variable": "rightmprgprecentralgyrusmedialsegment",
-                    "dataset": "desd-synthdata3",
+                    "dataset": "26",
                     "data": {
                         "num_dtps": 96,
                         "num_na": 4,
@@ -556,7 +556,7 @@
                 },
                 {
                     "variable": "leftttgtransversetemporalgyrus",
-                    "dataset": "desd-synthdata4",
+                    "dataset": "27",
                     "data": {
                         "num_dtps": 90,
                         "num_na": 10,
@@ -572,7 +572,7 @@
                 },
                 {
                     "variable": "rightmprgprecentralgyrusmedialsegment",
-                    "dataset": "desd-synthdata4",
+                    "dataset": "27",
                     "data": {
                         "num_dtps": 90,
                         "num_na": 10,
@@ -588,7 +588,7 @@
                 },
                 {
                     "variable": "leftttgtransversetemporalgyrus",
-                    "dataset": "desd-synthdata9",
+                    "dataset": "32",
                     "data": {
                         "num_dtps": 91,
                         "num_na": 9,
@@ -604,7 +604,7 @@
                 },
                 {
                     "variable": "rightmprgprecentralgyrusmedialsegment",
-                    "dataset": "desd-synthdata9",
+                    "dataset": "32",
                     "data": {
                         "num_dtps": 91,
                         "num_na": 9,
@@ -658,16 +658,16 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "edsd3",
-                        "edsd2",
-                        "edsd8",
-                        "desd-synthdata0",
-                        "ppmi8",
-                        "desd-synthdata5",
-                        "ppmi5",
-                        "desd-synthdata8",
-                        "desd-synthdata4",
-                        "edsd6"
+                        "EDSD_3",
+                        "EDSD_2",
+                        "EDSD_8",
+                        "DESD-synthdata_0",
+                        "PPMI_8",
+                        "DESD-synthdata_5",
+                        "PPMI_5",
+                        "DESD-synthdata_8",
+                        "DESD-synthdata_4",
+                        "EDSD_6"
                     ],
                     "filters": null,
                     "variables": [
@@ -700,7 +700,7 @@
             "output": [
                 {
                     "variable": "subjectageyears",
-                    "dataset": "edsd2",
+                    "dataset": "14",
                     "data": {
                         "num_dtps": 51,
                         "num_na": 2,
@@ -716,7 +716,7 @@
                 },
                 {
                     "variable": "rightpallidum",
-                    "dataset": "edsd2",
+                    "dataset": "14",
                     "data": {
                         "num_dtps": 53,
                         "num_na": 0,
@@ -732,41 +732,41 @@
                 },
                 {
                     "variable": "ppmicategory",
-                    "dataset": "edsd2",
+                    "dataset": "14",
                     "data": null
                 },
                 {
                     "variable": "adnicategory",
-                    "dataset": "edsd2",
+                    "dataset": "14",
                     "data": null
                 },
                 {
                     "variable": "edsdcategory",
-                    "dataset": "edsd2",
+                    "dataset": "14",
                     "data": {
                         "num_dtps": 51,
                         "num_na": 2,
                         "num_total": 53,
                         "counts": {
-                            "AD": 24,
-                            "CN": 18,
-                            "MCI": 9
+                            "1": 24,
+                            "3": 18,
+                            "2": 9
                         }
                     }
                 },
                 {
                     "variable": "handedness",
-                    "dataset": "edsd2",
+                    "dataset": "14",
                     "data": null
                 },
                 {
                     "variable": "apoe4",
-                    "dataset": "edsd2",
+                    "dataset": "14",
                     "data": null
                 },
                 {
                     "variable": "subjectageyears",
-                    "dataset": "edsd3",
+                    "dataset": "15",
                     "data": {
                         "num_dtps": 53,
                         "num_na": 0,
@@ -782,7 +782,7 @@
                 },
                 {
                     "variable": "rightpallidum",
-                    "dataset": "edsd3",
+                    "dataset": "15",
                     "data": {
                         "num_dtps": 53,
                         "num_na": 0,
@@ -798,41 +798,41 @@
                 },
                 {
                     "variable": "ppmicategory",
-                    "dataset": "edsd3",
+                    "dataset": "15",
                     "data": null
                 },
                 {
                     "variable": "adnicategory",
-                    "dataset": "edsd3",
+                    "dataset": "15",
                     "data": null
                 },
                 {
                     "variable": "edsdcategory",
-                    "dataset": "edsd3",
+                    "dataset": "15",
                     "data": {
                         "num_dtps": 53,
                         "num_na": 0,
                         "num_total": 53,
                         "counts": {
-                            "CN": 24,
-                            "AD": 18,
-                            "MCI": 11
+                            "3": 24,
+                            "1": 18,
+                            "2": 11
                         }
                     }
                 },
                 {
                     "variable": "handedness",
-                    "dataset": "edsd3",
+                    "dataset": "15",
                     "data": null
                 },
                 {
                     "variable": "apoe4",
-                    "dataset": "edsd3",
+                    "dataset": "15",
                     "data": null
                 },
                 {
                     "variable": "subjectageyears",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": {
                         "num_dtps": 41,
                         "num_na": 12,
@@ -848,7 +848,7 @@
                 },
                 {
                     "variable": "rightpallidum",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": {
                         "num_dtps": 52,
                         "num_na": 1,
@@ -864,41 +864,41 @@
                 },
                 {
                     "variable": "ppmicategory",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": null
                 },
                 {
                     "variable": "adnicategory",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": null
                 },
                 {
                     "variable": "edsdcategory",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": {
                         "num_dtps": 41,
                         "num_na": 12,
                         "num_total": 53,
                         "counts": {
-                            "CN": 20,
-                            "AD": 15,
-                            "MCI": 6
+                            "3": 20,
+                            "1": 15,
+                            "2": 6
                         }
                     }
                 },
                 {
                     "variable": "handedness",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": null
                 },
                 {
                     "variable": "apoe4",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": null
                 },
                 {
                     "variable": "subjectageyears",
-                    "dataset": "edsd8",
+                    "dataset": "20",
                     "data": {
                         "num_dtps": 53,
                         "num_na": 0,
@@ -914,7 +914,7 @@
                 },
                 {
                     "variable": "rightpallidum",
-                    "dataset": "edsd8",
+                    "dataset": "20",
                     "data": {
                         "num_dtps": 53,
                         "num_na": 0,
@@ -930,40 +930,40 @@
                 },
                 {
                     "variable": "ppmicategory",
-                    "dataset": "edsd8",
+                    "dataset": "20",
                     "data": null
                 },
                 {
                     "variable": "adnicategory",
-                    "dataset": "edsd8",
+                    "dataset": "20",
                     "data": null
                 },
                 {
                     "variable": "edsdcategory",
-                    "dataset": "edsd8",
+                    "dataset": "20",
                     "data": {
                         "num_dtps": 53,
                         "num_na": 0,
                         "num_total": 53,
                         "counts": {
-                            "AD": 33,
-                            "CN": 20
+                            "1": 33,
+                            "3": 20
                         }
                     }
                 },
                 {
                     "variable": "handedness",
-                    "dataset": "edsd8",
+                    "dataset": "20",
                     "data": null
                 },
                 {
                     "variable": "apoe4",
-                    "dataset": "edsd8",
+                    "dataset": "20",
                     "data": null
                 },
                 {
                     "variable": "subjectageyears",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -979,7 +979,7 @@
                 },
                 {
                     "variable": "rightpallidum",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -995,40 +995,40 @@
                 },
                 {
                     "variable": "ppmicategory",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
                         "num_total": 80,
                         "counts": {
-                            "PD": 53,
-                            "HC": 27
+                            "1": 53,
+                            "2": 27
                         }
                     }
                 },
                 {
                     "variable": "adnicategory",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": null
                 },
                 {
                     "variable": "edsdcategory",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": null
                 },
                 {
                     "variable": "handedness",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": null
                 },
                 {
                     "variable": "apoe4",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": null
                 },
                 {
                     "variable": "subjectageyears",
-                    "dataset": "ppmi8",
+                    "dataset": "9",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -1044,7 +1044,7 @@
                 },
                 {
                     "variable": "rightpallidum",
-                    "dataset": "ppmi8",
+                    "dataset": "9",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -1060,41 +1060,41 @@
                 },
                 {
                     "variable": "ppmicategory",
-                    "dataset": "ppmi8",
+                    "dataset": "9",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
                         "num_total": 80,
                         "counts": {
-                            "PD": 41,
-                            "GENPD": 31,
-                            "HC": 8
+                            "1": 41,
+                            "4": 31,
+                            "2": 8
                         }
                     }
                 },
                 {
                     "variable": "adnicategory",
-                    "dataset": "ppmi8",
+                    "dataset": "9",
                     "data": null
                 },
                 {
                     "variable": "edsdcategory",
-                    "dataset": "ppmi8",
+                    "dataset": "9",
                     "data": null
                 },
                 {
                     "variable": "handedness",
-                    "dataset": "ppmi8",
+                    "dataset": "9",
                     "data": null
                 },
                 {
                     "variable": "apoe4",
-                    "dataset": "ppmi8",
+                    "dataset": "9",
                     "data": null
                 },
                 {
                     "variable": "subjectageyears",
-                    "dataset": "desd-synthdata0",
+                    "dataset": "23",
                     "data": {
                         "num_dtps": 34,
                         "num_na": 0,
@@ -1110,7 +1110,7 @@
                 },
                 {
                     "variable": "rightpallidum",
-                    "dataset": "desd-synthdata0",
+                    "dataset": "23",
                     "data": {
                         "num_dtps": 31,
                         "num_na": 3,
@@ -1126,41 +1126,41 @@
                 },
                 {
                     "variable": "ppmicategory",
-                    "dataset": "desd-synthdata0",
+                    "dataset": "23",
                     "data": null
                 },
                 {
                     "variable": "adnicategory",
-                    "dataset": "desd-synthdata0",
+                    "dataset": "23",
                     "data": null
                 },
                 {
                     "variable": "edsdcategory",
-                    "dataset": "desd-synthdata0",
+                    "dataset": "23",
                     "data": {
                         "num_dtps": 34,
                         "num_na": 0,
                         "num_total": 34,
                         "counts": {
-                            "AD": 19,
-                            "MCI": 9,
-                            "CN": 6
+                            "1": 19,
+                            "2": 9,
+                            "3": 6
                         }
                     }
                 },
                 {
                     "variable": "handedness",
-                    "dataset": "desd-synthdata0",
+                    "dataset": "23",
                     "data": null
                 },
                 {
                     "variable": "apoe4",
-                    "dataset": "desd-synthdata0",
+                    "dataset": "23",
                     "data": null
                 },
                 {
                     "variable": "subjectageyears",
-                    "dataset": "desd-synthdata4",
+                    "dataset": "27",
                     "data": {
                         "num_dtps": 82,
                         "num_na": 18,
@@ -1176,7 +1176,7 @@
                 },
                 {
                     "variable": "rightpallidum",
-                    "dataset": "desd-synthdata4",
+                    "dataset": "27",
                     "data": {
                         "num_dtps": 90,
                         "num_na": 10,
@@ -1192,41 +1192,41 @@
                 },
                 {
                     "variable": "ppmicategory",
-                    "dataset": "desd-synthdata4",
+                    "dataset": "27",
                     "data": null
                 },
                 {
                     "variable": "adnicategory",
-                    "dataset": "desd-synthdata4",
+                    "dataset": "27",
                     "data": null
                 },
                 {
                     "variable": "edsdcategory",
-                    "dataset": "desd-synthdata4",
+                    "dataset": "27",
                     "data": {
                         "num_dtps": 82,
                         "num_na": 18,
                         "num_total": 100,
                         "counts": {
-                            "AD": 39,
-                            "CN": 34,
-                            "MCI": 9
+                            "1": 39,
+                            "3": 34,
+                            "2": 9
                         }
                     }
                 },
                 {
                     "variable": "handedness",
-                    "dataset": "desd-synthdata4",
+                    "dataset": "27",
                     "data": null
                 },
                 {
                     "variable": "apoe4",
-                    "dataset": "desd-synthdata4",
+                    "dataset": "27",
                     "data": null
                 },
                 {
                     "variable": "subjectageyears",
-                    "dataset": "desd-synthdata5",
+                    "dataset": "28",
                     "data": {
                         "num_dtps": 82,
                         "num_na": 18,
@@ -1242,7 +1242,7 @@
                 },
                 {
                     "variable": "rightpallidum",
-                    "dataset": "desd-synthdata5",
+                    "dataset": "28",
                     "data": {
                         "num_dtps": 93,
                         "num_na": 7,
@@ -1258,41 +1258,41 @@
                 },
                 {
                     "variable": "ppmicategory",
-                    "dataset": "desd-synthdata5",
+                    "dataset": "28",
                     "data": null
                 },
                 {
                     "variable": "adnicategory",
-                    "dataset": "desd-synthdata5",
+                    "dataset": "28",
                     "data": null
                 },
                 {
                     "variable": "edsdcategory",
-                    "dataset": "desd-synthdata5",
+                    "dataset": "28",
                     "data": {
                         "num_dtps": 82,
                         "num_na": 18,
                         "num_total": 100,
                         "counts": {
-                            "CN": 37,
-                            "AD": 33,
-                            "MCI": 12
+                            "3": 37,
+                            "1": 33,
+                            "2": 12
                         }
                     }
                 },
                 {
                     "variable": "handedness",
-                    "dataset": "desd-synthdata5",
+                    "dataset": "28",
                     "data": null
                 },
                 {
                     "variable": "apoe4",
-                    "dataset": "desd-synthdata5",
+                    "dataset": "28",
                     "data": null
                 },
                 {
                     "variable": "subjectageyears",
-                    "dataset": "desd-synthdata8",
+                    "dataset": "31",
                     "data": {
                         "num_dtps": 77,
                         "num_na": 23,
@@ -1308,7 +1308,7 @@
                 },
                 {
                     "variable": "rightpallidum",
-                    "dataset": "desd-synthdata8",
+                    "dataset": "31",
                     "data": {
                         "num_dtps": 92,
                         "num_na": 8,
@@ -1324,36 +1324,36 @@
                 },
                 {
                     "variable": "ppmicategory",
-                    "dataset": "desd-synthdata8",
+                    "dataset": "31",
                     "data": null
                 },
                 {
                     "variable": "adnicategory",
-                    "dataset": "desd-synthdata8",
+                    "dataset": "31",
                     "data": null
                 },
                 {
                     "variable": "edsdcategory",
-                    "dataset": "desd-synthdata8",
+                    "dataset": "31",
                     "data": {
                         "num_dtps": 77,
                         "num_na": 23,
                         "num_total": 100,
                         "counts": {
-                            "CN": 34,
-                            "AD": 33,
-                            "MCI": 10
+                            "3": 34,
+                            "1": 33,
+                            "2": 10
                         }
                     }
                 },
                 {
                     "variable": "handedness",
-                    "dataset": "desd-synthdata8",
+                    "dataset": "31",
                     "data": null
                 },
                 {
                     "variable": "apoe4",
-                    "dataset": "desd-synthdata8",
+                    "dataset": "31",
                     "data": null
                 },
                 {
@@ -1396,9 +1396,9 @@
                         "num_na": 0,
                         "num_total": 160,
                         "counts": {
-                            "PD": 94,
-                            "HC": 35,
-                            "GENPD": 31
+                            "1": 94,
+                            "2": 35,
+                            "4": 31
                         }
                     }
                 },
@@ -1415,9 +1415,9 @@
                         "num_na": 73,
                         "num_total": 546,
                         "counts": {
-                            "AD": 214,
-                            "CN": 193,
-                            "MCI": 66
+                            "1": 214,
+                            "3": 193,
+                            "2": 66
                         }
                     }
                 },
@@ -1439,11 +1439,11 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "desd-synthdata7",
-                        "ppmi2",
-                        "edsd6",
-                        "ppmi0",
-                        "ppmi5"
+                        "DESD-synthdata_7",
+                        "PPMI_2",
+                        "EDSD_6",
+                        "PPMI_0",
+                        "PPMI_5"
                     ],
                     "filters": null,
                     "variables": [
@@ -1491,7 +1491,7 @@
             "output": [
                 {
                     "variable": "rightpogpostcentralgyrus",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": {
                         "num_dtps": 52,
                         "num_na": 1,
@@ -1507,7 +1507,7 @@
                 },
                 {
                     "variable": "rightcerebellumexterior",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": {
                         "num_dtps": 52,
                         "num_na": 1,
@@ -1523,7 +1523,7 @@
                 },
                 {
                     "variable": "rightocpoccipitalpole",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": {
                         "num_dtps": 52,
                         "num_na": 1,
@@ -1539,7 +1539,7 @@
                 },
                 {
                     "variable": "leftitginferiortemporalgyrus",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": {
                         "num_dtps": 52,
                         "num_na": 1,
@@ -1555,7 +1555,7 @@
                 },
                 {
                     "variable": "rightmorgmedialorbitalgyrus",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": {
                         "num_dtps": 52,
                         "num_na": 1,
@@ -1571,66 +1571,66 @@
                 },
                 {
                     "variable": "av45",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": null
                 },
                 {
                     "variable": "rs1476679_c",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": null
                 },
                 {
                     "variable": "rs17125944_c",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": null
                 },
                 {
                     "variable": "parkinsonbroadcategory",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": null
                 },
                 {
                     "variable": "rs2718058_g",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": null
                 },
                 {
                     "variable": "ppmicategory",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": null
                 },
                 {
                     "variable": "rs11767557_c",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": null
                 },
                 {
                     "variable": "apoe4",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": null
                 },
                 {
                     "variable": "rs11136000_t",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": null
                 },
                 {
                     "variable": "edsdcategory",
-                    "dataset": "edsd6",
+                    "dataset": "18",
                     "data": {
                         "num_dtps": 41,
                         "num_na": 12,
                         "num_total": 53,
                         "counts": {
-                            "CN": 20,
-                            "AD": 15,
-                            "MCI": 6
+                            "3": 20,
+                            "1": 15,
+                            "2": 6
                         }
                     }
                 },
                 {
                     "variable": "rightpogpostcentralgyrus",
-                    "dataset": "ppmi0",
+                    "dataset": "1",
                     "data": {
                         "num_dtps": 46,
                         "num_na": 0,
@@ -1646,7 +1646,7 @@
                 },
                 {
                     "variable": "rightcerebellumexterior",
-                    "dataset": "ppmi0",
+                    "dataset": "1",
                     "data": {
                         "num_dtps": 46,
                         "num_na": 0,
@@ -1662,7 +1662,7 @@
                 },
                 {
                     "variable": "rightocpoccipitalpole",
-                    "dataset": "ppmi0",
+                    "dataset": "1",
                     "data": {
                         "num_dtps": 46,
                         "num_na": 0,
@@ -1678,7 +1678,7 @@
                 },
                 {
                     "variable": "leftitginferiortemporalgyrus",
-                    "dataset": "ppmi0",
+                    "dataset": "1",
                     "data": {
                         "num_dtps": 46,
                         "num_na": 0,
@@ -1694,7 +1694,7 @@
                 },
                 {
                     "variable": "rightmorgmedialorbitalgyrus",
-                    "dataset": "ppmi0",
+                    "dataset": "1",
                     "data": {
                         "num_dtps": 46,
                         "num_na": 0,
@@ -1710,71 +1710,71 @@
                 },
                 {
                     "variable": "av45",
-                    "dataset": "ppmi0",
+                    "dataset": "1",
                     "data": null
                 },
                 {
                     "variable": "rs1476679_c",
-                    "dataset": "ppmi0",
+                    "dataset": "1",
                     "data": null
                 },
                 {
                     "variable": "rs17125944_c",
-                    "dataset": "ppmi0",
+                    "dataset": "1",
                     "data": null
                 },
                 {
                     "variable": "parkinsonbroadcategory",
-                    "dataset": "ppmi0",
+                    "dataset": "1",
                     "data": {
                         "num_dtps": 46,
                         "num_na": 0,
                         "num_total": 46,
                         "counts": {
-                            "PD": 46
+                            "1": 46
                         }
                     }
                 },
                 {
                     "variable": "rs2718058_g",
-                    "dataset": "ppmi0",
+                    "dataset": "1",
                     "data": null
                 },
                 {
                     "variable": "ppmicategory",
-                    "dataset": "ppmi0",
+                    "dataset": "1",
                     "data": {
                         "num_dtps": 46,
                         "num_na": 0,
                         "num_total": 46,
                         "counts": {
-                            "PD": 46
+                            "1": 46
                         }
                     }
                 },
                 {
                     "variable": "rs11767557_c",
-                    "dataset": "ppmi0",
+                    "dataset": "1",
                     "data": null
                 },
                 {
                     "variable": "apoe4",
-                    "dataset": "ppmi0",
+                    "dataset": "1",
                     "data": null
                 },
                 {
                     "variable": "rs11136000_t",
-                    "dataset": "ppmi0",
+                    "dataset": "1",
                     "data": null
                 },
                 {
                     "variable": "edsdcategory",
-                    "dataset": "ppmi0",
+                    "dataset": "1",
                     "data": null
                 },
                 {
                     "variable": "rightpogpostcentralgyrus",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -1790,7 +1790,7 @@
                 },
                 {
                     "variable": "rightcerebellumexterior",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -1806,7 +1806,7 @@
                 },
                 {
                     "variable": "rightocpoccipitalpole",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -1822,7 +1822,7 @@
                 },
                 {
                     "variable": "leftitginferiortemporalgyrus",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -1838,7 +1838,7 @@
                 },
                 {
                     "variable": "rightmorgmedialorbitalgyrus",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -1854,73 +1854,73 @@
                 },
                 {
                     "variable": "av45",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": null
                 },
                 {
                     "variable": "rs1476679_c",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": null
                 },
                 {
                     "variable": "rs17125944_c",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": null
                 },
                 {
                     "variable": "parkinsonbroadcategory",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
                         "num_total": 80,
                         "counts": {
-                            "PD": 53,
-                            "CN": 27
+                            "1": 53,
+                            "2": 27
                         }
                     }
                 },
                 {
                     "variable": "rs2718058_g",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": null
                 },
                 {
                     "variable": "ppmicategory",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
                         "num_total": 80,
                         "counts": {
-                            "PD": 53,
-                            "HC": 27
+                            "1": 53,
+                            "2": 27
                         }
                     }
                 },
                 {
                     "variable": "rs11767557_c",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": null
                 },
                 {
                     "variable": "apoe4",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": null
                 },
                 {
                     "variable": "rs11136000_t",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": null
                 },
                 {
                     "variable": "edsdcategory",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": null
                 },
                 {
                     "variable": "rightpogpostcentralgyrus",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -1936,7 +1936,7 @@
                 },
                 {
                     "variable": "rightcerebellumexterior",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -1952,7 +1952,7 @@
                 },
                 {
                     "variable": "rightocpoccipitalpole",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -1968,7 +1968,7 @@
                 },
                 {
                     "variable": "leftitginferiortemporalgyrus",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -1984,7 +1984,7 @@
                 },
                 {
                     "variable": "rightmorgmedialorbitalgyrus",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -2000,73 +2000,73 @@
                 },
                 {
                     "variable": "av45",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": null
                 },
                 {
                     "variable": "rs1476679_c",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": null
                 },
                 {
                     "variable": "rs17125944_c",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": null
                 },
                 {
                     "variable": "parkinsonbroadcategory",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
                         "num_total": 80,
                         "counts": {
-                            "PD": 53,
-                            "CN": 27
+                            "1": 53,
+                            "2": 27
                         }
                     }
                 },
                 {
                     "variable": "rs2718058_g",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": null
                 },
                 {
                     "variable": "ppmicategory",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
                         "num_total": 80,
                         "counts": {
-                            "PD": 53,
-                            "HC": 27
+                            "1": 53,
+                            "2": 27
                         }
                     }
                 },
                 {
                     "variable": "rs11767557_c",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": null
                 },
                 {
                     "variable": "apoe4",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": null
                 },
                 {
                     "variable": "rs11136000_t",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": null
                 },
                 {
                     "variable": "edsdcategory",
-                    "dataset": "ppmi5",
+                    "dataset": "6",
                     "data": null
                 },
                 {
                     "variable": "rightpogpostcentralgyrus",
-                    "dataset": "desd-synthdata7",
+                    "dataset": "30",
                     "data": {
                         "num_dtps": 89,
                         "num_na": 11,
@@ -2082,7 +2082,7 @@
                 },
                 {
                     "variable": "rightcerebellumexterior",
-                    "dataset": "desd-synthdata7",
+                    "dataset": "30",
                     "data": {
                         "num_dtps": 89,
                         "num_na": 11,
@@ -2098,7 +2098,7 @@
                 },
                 {
                     "variable": "rightocpoccipitalpole",
-                    "dataset": "desd-synthdata7",
+                    "dataset": "30",
                     "data": {
                         "num_dtps": 89,
                         "num_na": 11,
@@ -2114,7 +2114,7 @@
                 },
                 {
                     "variable": "leftitginferiortemporalgyrus",
-                    "dataset": "desd-synthdata7",
+                    "dataset": "30",
                     "data": {
                         "num_dtps": 89,
                         "num_na": 11,
@@ -2130,7 +2130,7 @@
                 },
                 {
                     "variable": "rightmorgmedialorbitalgyrus",
-                    "dataset": "desd-synthdata7",
+                    "dataset": "30",
                     "data": {
                         "num_dtps": 89,
                         "num_na": 11,
@@ -2146,60 +2146,60 @@
                 },
                 {
                     "variable": "av45",
-                    "dataset": "desd-synthdata7",
+                    "dataset": "30",
                     "data": null
                 },
                 {
                     "variable": "rs1476679_c",
-                    "dataset": "desd-synthdata7",
+                    "dataset": "30",
                     "data": null
                 },
                 {
                     "variable": "rs17125944_c",
-                    "dataset": "desd-synthdata7",
+                    "dataset": "30",
                     "data": null
                 },
                 {
                     "variable": "parkinsonbroadcategory",
-                    "dataset": "desd-synthdata7",
+                    "dataset": "30",
                     "data": null
                 },
                 {
                     "variable": "rs2718058_g",
-                    "dataset": "desd-synthdata7",
+                    "dataset": "30",
                     "data": null
                 },
                 {
                     "variable": "ppmicategory",
-                    "dataset": "desd-synthdata7",
+                    "dataset": "30",
                     "data": null
                 },
                 {
                     "variable": "rs11767557_c",
-                    "dataset": "desd-synthdata7",
+                    "dataset": "30",
                     "data": null
                 },
                 {
                     "variable": "apoe4",
-                    "dataset": "desd-synthdata7",
+                    "dataset": "30",
                     "data": null
                 },
                 {
                     "variable": "rs11136000_t",
-                    "dataset": "desd-synthdata7",
+                    "dataset": "30",
                     "data": null
                 },
                 {
                     "variable": "edsdcategory",
-                    "dataset": "desd-synthdata7",
+                    "dataset": "30",
                     "data": {
                         "num_dtps": 75,
                         "num_na": 25,
                         "num_total": 100,
                         "counts": {
-                            "AD": 32,
-                            "CN": 30,
-                            "MCI": 13
+                            "1": 32,
+                            "3": 30,
+                            "2": 13
                         }
                     }
                 },
@@ -2306,8 +2306,8 @@
                         "num_na": 0,
                         "num_total": 206,
                         "counts": {
-                            "PD": 152,
-                            "CN": 54
+                            "1": 152,
+                            "2": 54
                         }
                     }
                 },
@@ -2324,8 +2324,8 @@
                         "num_na": 0,
                         "num_total": 206,
                         "counts": {
-                            "PD": 152,
-                            "HC": 54
+                            "1": 152,
+                            "2": 54
                         }
                     }
                 },
@@ -2352,9 +2352,9 @@
                         "num_na": 37,
                         "num_total": 153,
                         "counts": {
-                            "CN": 50,
-                            "AD": 47,
-                            "MCI": 19
+                            "3": 50,
+                            "1": 47,
+                            "2": 19
                         }
                     }
                 }
@@ -2366,14 +2366,14 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "ppmi3",
-                        "ppmi6",
-                        "edsd2",
-                        "ppmi4",
-                        "edsd9",
-                        "ppmi9",
-                        "ppmi2",
-                        "desd-synthdata9"
+                        "PPMI_3",
+                        "PPMI_6",
+                        "EDSD_2",
+                        "PPMI_4",
+                        "EDSD_9",
+                        "PPMI_9",
+                        "PPMI_2",
+                        "DESD-synthdata_9"
                     ],
                     "filters": null,
                     "variables": [
@@ -2410,7 +2410,7 @@
             "output": [
                 {
                     "variable": "rightcerebellumwhitematter",
-                    "dataset": "edsd2",
+                    "dataset": "14",
                     "data": {
                         "num_dtps": 53,
                         "num_na": 0,
@@ -2426,7 +2426,7 @@
                 },
                 {
                     "variable": "rightpcuprecuneus",
-                    "dataset": "edsd2",
+                    "dataset": "14",
                     "data": {
                         "num_dtps": 53,
                         "num_na": 0,
@@ -2442,7 +2442,7 @@
                 },
                 {
                     "variable": "brainstem",
-                    "dataset": "edsd2",
+                    "dataset": "14",
                     "data": {
                         "num_dtps": 53,
                         "num_na": 0,
@@ -2458,51 +2458,51 @@
                 },
                 {
                     "variable": "rs190982_g",
-                    "dataset": "edsd2",
+                    "dataset": "14",
                     "data": null
                 },
                 {
                     "variable": "parkinsonbroadcategory",
-                    "dataset": "edsd2",
+                    "dataset": "14",
                     "data": null
                 },
                 {
                     "variable": "adnicategory",
-                    "dataset": "edsd2",
+                    "dataset": "14",
                     "data": null
                 },
                 {
                     "variable": "updrshy",
-                    "dataset": "edsd2",
+                    "dataset": "14",
                     "data": null
                 },
                 {
                     "variable": "handedness",
-                    "dataset": "edsd2",
+                    "dataset": "14",
                     "data": null
                 },
                 {
                     "variable": "alzheimerbroadcategory",
-                    "dataset": "edsd2",
+                    "dataset": "14",
                     "data": {
                         "num_dtps": 51,
                         "num_na": 2,
                         "num_total": 53,
                         "counts": {
-                            "AD": 24,
-                            "CN": 18,
-                            "Other": 9
+                            "1": 24,
+                            "2": 18,
+                            "3": 9
                         }
                     }
                 },
                 {
                     "variable": "rs1476679_c",
-                    "dataset": "edsd2",
+                    "dataset": "14",
                     "data": null
                 },
                 {
                     "variable": "rightcerebellumwhitematter",
-                    "dataset": "edsd9",
+                    "dataset": "21",
                     "data": {
                         "num_dtps": 20,
                         "num_na": 30,
@@ -2518,7 +2518,7 @@
                 },
                 {
                     "variable": "rightpcuprecuneus",
-                    "dataset": "edsd9",
+                    "dataset": "21",
                     "data": {
                         "num_dtps": 20,
                         "num_na": 30,
@@ -2534,7 +2534,7 @@
                 },
                 {
                     "variable": "brainstem",
-                    "dataset": "edsd9",
+                    "dataset": "21",
                     "data": {
                         "num_dtps": 20,
                         "num_na": 30,
@@ -2550,50 +2550,50 @@
                 },
                 {
                     "variable": "rs190982_g",
-                    "dataset": "edsd9",
+                    "dataset": "21",
                     "data": null
                 },
                 {
                     "variable": "parkinsonbroadcategory",
-                    "dataset": "edsd9",
+                    "dataset": "21",
                     "data": null
                 },
                 {
                     "variable": "adnicategory",
-                    "dataset": "edsd9",
+                    "dataset": "21",
                     "data": null
                 },
                 {
                     "variable": "updrshy",
-                    "dataset": "edsd9",
+                    "dataset": "21",
                     "data": null
                 },
                 {
                     "variable": "handedness",
-                    "dataset": "edsd9",
+                    "dataset": "21",
                     "data": null
                 },
                 {
                     "variable": "alzheimerbroadcategory",
-                    "dataset": "edsd9",
+                    "dataset": "21",
                     "data": {
                         "num_dtps": 20,
                         "num_na": 30,
                         "num_total": 50,
                         "counts": {
-                            "CN": 19,
-                            "AD": 1
+                            "2": 19,
+                            "1": 1
                         }
                     }
                 },
                 {
                     "variable": "rs1476679_c",
-                    "dataset": "edsd9",
+                    "dataset": "21",
                     "data": null
                 },
                 {
                     "variable": "rightcerebellumwhitematter",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -2609,7 +2609,7 @@
                 },
                 {
                     "variable": "rightpcuprecuneus",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -2625,7 +2625,7 @@
                 },
                 {
                     "variable": "brainstem",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -2641,57 +2641,57 @@
                 },
                 {
                     "variable": "rs190982_g",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": null
                 },
                 {
                     "variable": "parkinsonbroadcategory",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
                         "num_total": 80,
                         "counts": {
-                            "PD": 53,
-                            "CN": 27
+                            "1": 53,
+                            "2": 27
                         }
                     }
                 },
                 {
                     "variable": "adnicategory",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": null
                 },
                 {
                     "variable": "updrshy",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": null
                 },
                 {
                     "variable": "handedness",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": null
                 },
                 {
                     "variable": "alzheimerbroadcategory",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
                         "num_total": 80,
                         "counts": {
-                            "Other": 80
+                            "3": 80
                         }
                     }
                 },
                 {
                     "variable": "rs1476679_c",
-                    "dataset": "ppmi2",
+                    "dataset": "3",
                     "data": null
                 },
                 {
                     "variable": "rightcerebellumwhitematter",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -2707,7 +2707,7 @@
                 },
                 {
                     "variable": "rightpcuprecuneus",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -2723,7 +2723,7 @@
                 },
                 {
                     "variable": "brainstem",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -2739,57 +2739,57 @@
                 },
                 {
                     "variable": "rs190982_g",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": null
                 },
                 {
                     "variable": "parkinsonbroadcategory",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
                         "num_total": 80,
                         "counts": {
-                            "PD": 52,
-                            "CN": 28
+                            "1": 52,
+                            "2": 28
                         }
                     }
                 },
                 {
                     "variable": "adnicategory",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": null
                 },
                 {
                     "variable": "updrshy",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": null
                 },
                 {
                     "variable": "handedness",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": null
                 },
                 {
                     "variable": "alzheimerbroadcategory",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
                         "num_total": 80,
                         "counts": {
-                            "Other": 80
+                            "3": 80
                         }
                     }
                 },
                 {
                     "variable": "rs1476679_c",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": null
                 },
                 {
                     "variable": "rightcerebellumwhitematter",
-                    "dataset": "ppmi4",
+                    "dataset": "5",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -2805,7 +2805,7 @@
                 },
                 {
                     "variable": "rightpcuprecuneus",
-                    "dataset": "ppmi4",
+                    "dataset": "5",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -2821,7 +2821,7 @@
                 },
                 {
                     "variable": "brainstem",
-                    "dataset": "ppmi4",
+                    "dataset": "5",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -2837,57 +2837,57 @@
                 },
                 {
                     "variable": "rs190982_g",
-                    "dataset": "ppmi4",
+                    "dataset": "5",
                     "data": null
                 },
                 {
                     "variable": "parkinsonbroadcategory",
-                    "dataset": "ppmi4",
+                    "dataset": "5",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
                         "num_total": 80,
                         "counts": {
-                            "PD": 56,
-                            "CN": 24
+                            "1": 56,
+                            "2": 24
                         }
                     }
                 },
                 {
                     "variable": "adnicategory",
-                    "dataset": "ppmi4",
+                    "dataset": "5",
                     "data": null
                 },
                 {
                     "variable": "updrshy",
-                    "dataset": "ppmi4",
+                    "dataset": "5",
                     "data": null
                 },
                 {
                     "variable": "handedness",
-                    "dataset": "ppmi4",
+                    "dataset": "5",
                     "data": null
                 },
                 {
                     "variable": "alzheimerbroadcategory",
-                    "dataset": "ppmi4",
+                    "dataset": "5",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
                         "num_total": 80,
                         "counts": {
-                            "Other": 80
+                            "3": 80
                         }
                     }
                 },
                 {
                     "variable": "rs1476679_c",
-                    "dataset": "ppmi4",
+                    "dataset": "5",
                     "data": null
                 },
                 {
                     "variable": "rightcerebellumwhitematter",
-                    "dataset": "ppmi6",
+                    "dataset": "7",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -2903,7 +2903,7 @@
                 },
                 {
                     "variable": "rightpcuprecuneus",
-                    "dataset": "ppmi6",
+                    "dataset": "7",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -2919,7 +2919,7 @@
                 },
                 {
                     "variable": "brainstem",
-                    "dataset": "ppmi6",
+                    "dataset": "7",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -2935,57 +2935,57 @@
                 },
                 {
                     "variable": "rs190982_g",
-                    "dataset": "ppmi6",
+                    "dataset": "7",
                     "data": null
                 },
                 {
                     "variable": "parkinsonbroadcategory",
-                    "dataset": "ppmi6",
+                    "dataset": "7",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
                         "num_total": 80,
                         "counts": {
-                            "PD": 53,
-                            "CN": 27
+                            "1": 53,
+                            "2": 27
                         }
                     }
                 },
                 {
                     "variable": "adnicategory",
-                    "dataset": "ppmi6",
+                    "dataset": "7",
                     "data": null
                 },
                 {
                     "variable": "updrshy",
-                    "dataset": "ppmi6",
+                    "dataset": "7",
                     "data": null
                 },
                 {
                     "variable": "handedness",
-                    "dataset": "ppmi6",
+                    "dataset": "7",
                     "data": null
                 },
                 {
                     "variable": "alzheimerbroadcategory",
-                    "dataset": "ppmi6",
+                    "dataset": "7",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
                         "num_total": 80,
                         "counts": {
-                            "Other": 80
+                            "3": 80
                         }
                     }
                 },
                 {
                     "variable": "rs1476679_c",
-                    "dataset": "ppmi6",
+                    "dataset": "7",
                     "data": null
                 },
                 {
                     "variable": "rightcerebellumwhitematter",
-                    "dataset": "ppmi9",
+                    "dataset": "10",
                     "data": {
                         "num_dtps": 74,
                         "num_na": 0,
@@ -3001,7 +3001,7 @@
                 },
                 {
                     "variable": "rightpcuprecuneus",
-                    "dataset": "ppmi9",
+                    "dataset": "10",
                     "data": {
                         "num_dtps": 74,
                         "num_na": 0,
@@ -3017,7 +3017,7 @@
                 },
                 {
                     "variable": "brainstem",
-                    "dataset": "ppmi9",
+                    "dataset": "10",
                     "data": {
                         "num_dtps": 74,
                         "num_na": 0,
@@ -3033,56 +3033,56 @@
                 },
                 {
                     "variable": "rs190982_g",
-                    "dataset": "ppmi9",
+                    "dataset": "10",
                     "data": null
                 },
                 {
                     "variable": "parkinsonbroadcategory",
-                    "dataset": "ppmi9",
+                    "dataset": "10",
                     "data": {
                         "num_dtps": 74,
                         "num_na": 0,
                         "num_total": 74,
                         "counts": {
-                            "Other": 74
+                            "3": 74
                         }
                     }
                 },
                 {
                     "variable": "adnicategory",
-                    "dataset": "ppmi9",
+                    "dataset": "10",
                     "data": null
                 },
                 {
                     "variable": "updrshy",
-                    "dataset": "ppmi9",
+                    "dataset": "10",
                     "data": null
                 },
                 {
                     "variable": "handedness",
-                    "dataset": "ppmi9",
+                    "dataset": "10",
                     "data": null
                 },
                 {
                     "variable": "alzheimerbroadcategory",
-                    "dataset": "ppmi9",
+                    "dataset": "10",
                     "data": {
                         "num_dtps": 74,
                         "num_na": 0,
                         "num_total": 74,
                         "counts": {
-                            "Other": 74
+                            "3": 74
                         }
                     }
                 },
                 {
                     "variable": "rs1476679_c",
-                    "dataset": "ppmi9",
+                    "dataset": "10",
                     "data": null
                 },
                 {
                     "variable": "rightcerebellumwhitematter",
-                    "dataset": "desd-synthdata9",
+                    "dataset": "32",
                     "data": {
                         "num_dtps": 91,
                         "num_na": 9,
@@ -3098,7 +3098,7 @@
                 },
                 {
                     "variable": "rightpcuprecuneus",
-                    "dataset": "desd-synthdata9",
+                    "dataset": "32",
                     "data": {
                         "num_dtps": 91,
                         "num_na": 9,
@@ -3114,7 +3114,7 @@
                 },
                 {
                     "variable": "brainstem",
-                    "dataset": "desd-synthdata9",
+                    "dataset": "32",
                     "data": {
                         "num_dtps": 91,
                         "num_na": 9,
@@ -3130,46 +3130,46 @@
                 },
                 {
                     "variable": "rs190982_g",
-                    "dataset": "desd-synthdata9",
+                    "dataset": "32",
                     "data": null
                 },
                 {
                     "variable": "parkinsonbroadcategory",
-                    "dataset": "desd-synthdata9",
+                    "dataset": "32",
                     "data": null
                 },
                 {
                     "variable": "adnicategory",
-                    "dataset": "desd-synthdata9",
+                    "dataset": "32",
                     "data": null
                 },
                 {
                     "variable": "updrshy",
-                    "dataset": "desd-synthdata9",
+                    "dataset": "32",
                     "data": null
                 },
                 {
                     "variable": "handedness",
-                    "dataset": "desd-synthdata9",
+                    "dataset": "32",
                     "data": null
                 },
                 {
                     "variable": "alzheimerbroadcategory",
-                    "dataset": "desd-synthdata9",
+                    "dataset": "32",
                     "data": {
                         "num_dtps": 81,
                         "num_na": 19,
                         "num_total": 100,
                         "counts": {
-                            "AD": 36,
-                            "CN": 29,
-                            "Other": 16
+                            "1": 36,
+                            "2": 29,
+                            "3": 16
                         }
                     }
                 },
                 {
                     "variable": "rs1476679_c",
-                    "dataset": "desd-synthdata9",
+                    "dataset": "32",
                     "data": null
                 },
                 {
@@ -3233,9 +3233,9 @@
                         "num_na": 0,
                         "num_total": 394,
                         "counts": {
-                            "PD": 214,
-                            "CN": 106,
-                            "Other": 74
+                            "1": 214,
+                            "2": 106,
+                            "3": 74
                         }
                     }
                 },
@@ -3262,9 +3262,9 @@
                         "num_na": 51,
                         "num_total": 597,
                         "counts": {
-                            "AD": 61,
-                            "CN": 66,
-                            "Other": 419
+                            "1": 61,
+                            "2": 66,
+                            "3": 419
                         }
                     }
                 },
@@ -3281,7 +3281,7 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "ppmi3"
+                        "PPMI_3"
                     ],
                     "filters": null,
                     "variables": [
@@ -3325,7 +3325,7 @@
             "output": [
                 {
                     "variable": "leftententorhinalarea",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -3341,7 +3341,7 @@
                 },
                 {
                     "variable": "rightscasubcallosalarea",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -3357,7 +3357,7 @@
                 },
                 {
                     "variable": "leftmprgprecentralgyrusmedialsegment",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -3373,7 +3373,7 @@
                 },
                 {
                     "variable": "leftporgposteriororbitalgyrus",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -3389,7 +3389,7 @@
                 },
                 {
                     "variable": "leftitginferiortemporalgyrus",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -3405,7 +3405,7 @@
                 },
                 {
                     "variable": "leftthalamusproper",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -3421,7 +3421,7 @@
                 },
                 {
                     "variable": "rightfofrontaloperculum",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -3437,7 +3437,7 @@
                 },
                 {
                     "variable": "rightitginferiortemporalgyrus",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
@@ -3453,45 +3453,45 @@
                 },
                 {
                     "variable": "rs190982_g",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": null
                 },
                 {
                     "variable": "ppmicategory",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
                         "num_total": 80,
                         "counts": {
-                            "PD": 52,
-                            "HC": 28
+                            "1": 52,
+                            "2": 28
                         }
                     }
                 },
                 {
                     "variable": "rs3851179_a",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": null
                 },
                 {
                     "variable": "handedness",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": null
                 },
                 {
                     "variable": "agegroup",
-                    "dataset": "ppmi3",
+                    "dataset": "4",
                     "data": {
                         "num_dtps": 80,
                         "num_na": 0,
                         "num_total": 80,
                         "counts": {
-                            "60-69y": 27,
-                            "-50y": 19,
-                            "50-59y": 18,
-                            "70-79y": 15,
-                            "+80y": 1
+                            "3": 27,
+                            "1": 19,
+                            "2": 18,
+                            "4": 15,
+                            "5": 1
                         }
                     }
                 },
@@ -3636,8 +3636,8 @@
                         "num_na": 0,
                         "num_total": 80,
                         "counts": {
-                            "PD": 52,
-                            "HC": 28
+                            "1": 52,
+                            "2": 28
                         }
                     }
                 },
@@ -3659,11 +3659,11 @@
                         "num_na": 0,
                         "num_total": 80,
                         "counts": {
-                            "60-69y": 27,
-                            "-50y": 19,
-                            "50-59y": 18,
-                            "70-79y": 15,
-                            "+80y": 1
+                            "3": 27,
+                            "1": 19,
+                            "2": 18,
+                            "4": 15,
+                            "5": 1
                         }
                     }
                 }

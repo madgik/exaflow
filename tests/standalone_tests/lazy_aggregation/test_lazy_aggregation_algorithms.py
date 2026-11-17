@@ -52,28 +52,31 @@ N_WORKERS = 3
 # Generous grpc deadline for the in-process aggregation client; the real
 # controller passes its task timeout (see Exareme3WithAggregationServerStrategy).
 AGG_CLIENT_TIMEOUT = 300.0
-DATASETS = [
-    "desd-synthdata0",
-    "desd-synthdata1",
-    "edsd0",
-    "edsd1",
-    "ppmi0",
-    "ppmi1",
-]
-LONGITUDINAL_DATASETS = [
-    "longitudinal_dementia0",
-    "longitudinal_dementia1",
-    "longitudinal_dementia2",
-]
+# CSV file stem -> integer dataset code declared in the data model metadata.
+DATASET_FILES = {
+    "desd-synthdata0": "23",
+    "desd-synthdata1": "24",
+    "edsd0": "12",
+    "edsd1": "13",
+    "ppmi0": "1",
+    "ppmi1": "2",
+}
+LONGITUDINAL_DATASET_FILES = {
+    "longitudinal_dementia0": "1",
+    "longitudinal_dementia1": "2",
+    "longitudinal_dementia2": "3",
+}
+DATASETS = list(DATASET_FILES.values())
+LONGITUDINAL_DATASETS = list(LONGITUDINAL_DATASET_FILES.values())
 LONGITUDINAL_PREPROCESSING = [
     {
         "name": "longitudinal_transformer",
         "parameters": {
-            "visit1": "BL",
-            "visit2": "FL2",
+            "visit1": "1",
+            "visit2": "3",
             "strategies": {
                 "timesincebaseline": "second",
-                "alzheimerbroadcategory": "second",
+                "alzheimerstatus": "second",
                 "lefthippocampus": "first",
                 "leftamygdala": "first",
             },
@@ -99,27 +102,27 @@ CASES = {
         ["dataset"],
         ["lefthippocampus"],
         {
-            "groupA": "edsd0",
-            "groupB": "ppmi0",
+            "groupA": "12",
+            "groupB": "1",
             "num_bins": 40,
             "alt_hypothesis": "two-sided",
         },
     ),
     "chi_squared": _case(["alzheimerbroadcategory"], ["gender"]),
     "cox_regression_classical": _case(
-        ["alzheimerbroadcategory", "lefthippocampus", "leftamygdala"],
+        ["alzheimerstatus", "lefthippocampus", "leftamygdala"],
         ["timesincebaseline"],
-        {"event_var": "alzheimerbroadcategory", "positive_class": "AD"},
+        {"event_var": "alzheimerstatus", "positive_class": "0"},
         datasets=LONGITUDINAL_DATASETS,
         data_model="longitudinal_dementia:0.1",
         preprocessing=LONGITUDINAL_PREPROCESSING,
     ),
     "cox_regression_stacked": _case(
-        ["alzheimerbroadcategory", "lefthippocampus", "leftamygdala"],
+        ["alzheimerstatus", "lefthippocampus", "leftamygdala"],
         ["timesincebaseline"],
         {
-            "event_var": "alzheimerbroadcategory",
-            "positive_class": "AD",
+            "event_var": "alzheimerstatus",
+            "positive_class": "0",
             "time_grid_strategy": "distinct_event_times",
             "n_time_bins": 10,
         },
@@ -130,20 +133,18 @@ CASES = {
     "describe": _case(
         [], ["lefthippocampus", "leftamygdala", "alzheimerbroadcategory"], drop_na=False
     ),
-    "fisher_exact": _case(
-        ["alzheimerbroadcategory"], ["gender"], datasets=["edsd0", "ppmi0"]
-    ),
+    "fisher_exact": _case(["alzheimerstatus"], ["gender"], datasets=["12", "1"]),
     "glmm_binary": _case(
         ["lefthippocampus", "leftamygdala", "dataset"],
         ["gender"],
-        {"positive_class": "F", "grouping_var": ["dataset"]},
+        {"positive_class": "1", "grouping_var": ["dataset"]},
     ),
     "glmm_ordinal": _case(
         ["lefthippocampus", "leftamygdala", "dataset"],
         ["agegroup"],
         {
             "grouping_var": ["dataset"],
-            "category_order": ["-50y", "50-59y", "60-69y", "70-79y", "+80y"],
+            "category_order": ["1", "2", "3", "4", "5"],
         },
     ),
     "histogram": _case(["alzheimerbroadcategory"], ["lefthippocampus"], {"bins": 20}),
@@ -163,12 +164,12 @@ CASES = {
     "logistic_regression": _case(
         ["lefthippocampus", "leftamygdala", "alzheimerbroadcategory"],
         ["gender"],
-        {"positive_class": "F"},
+        {"positive_class": "1"},
     ),
     "logistic_regression_cv": _case(
         ["lefthippocampus", "leftamygdala", "alzheimerbroadcategory"],
         ["gender"],
-        {"positive_class": "F", "n_splits": 3},
+        {"positive_class": "1", "n_splits": 3},
     ),
     "naive_bayes_categorical": _case(
         ["gender", "agegroup"], ["alzheimerbroadcategory"]
@@ -192,8 +193,8 @@ CASES = {
         ["dataset"],
         ["lefthippocampus"],
         {
-            "groupA": "edsd0",
-            "groupB": "ppmi0",
+            "groupA": "12",
+            "groupB": "1",
             "alt_hypothesis": "two-sided",
             "alpha": 0.05,
         },
@@ -219,8 +220,8 @@ MAX_LAZY_ROUNDS = {
     "anova_twoway": 11,  # eager: 37
     "binned_mann_whitney_u_test": 4,  # eager: 8
     "chi_squared": 1,  # eager: 2
-    "cox_regression_classical": 8,  # eager: 8
-    "cox_regression_stacked": 13,  # eager: 29
+    "cox_regression_classical": 7,  # eager: 7
+    "cox_regression_stacked": 12,  # eager: 28
     "describe": 38,  # eager: 83
     "fisher_exact": 2,  # eager: 4
     "glmm_binary": 53,  # eager: 54
@@ -264,8 +265,8 @@ class _InlineGrpcContext:
 def _link_used_test_data(target: Path) -> Path:
     """Links only the metadata and CSVs the cases use; loading every CSV is slow."""
     used_datasets = {
-        "dementia_v_0_1": DATASETS,
-        "longitudinal_dementia_v_0_1": LONGITUDINAL_DATASETS,
+        "dementia_v_0_1": DATASET_FILES,
+        "longitudinal_dementia_v_0_1": LONGITUDINAL_DATASET_FILES,
     }
     for folder, datasets in used_datasets.items():
         (target / folder).mkdir(parents=True)
@@ -421,6 +422,7 @@ def _request(algorithm_name: str, case: dict) -> AnalysisRequestDTO:
             "inputdata": {
                 "data_model": case.get("data_model", "dementia:0.1"),
                 "datasets": case["datasets"],
+                "filters": case.get("filters"),
                 "variables": variables,
             },
             "preprocessing": preprocessing,

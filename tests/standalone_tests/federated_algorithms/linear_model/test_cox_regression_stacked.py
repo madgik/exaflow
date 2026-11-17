@@ -6,9 +6,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from exaflow.algorithms.exareme3.linear_model.cox_regression_stacked import (
-    _to_binary_event_array,
-)
 from exaflow.algorithms.federated.linear_model.cox_regression_stacked import (
     FederatedStackedCoxRegression,
 )
@@ -405,19 +402,6 @@ def test_stacked_cox_case_matrix_has_expected_coverage():
         "three_features_sparse_events",
         "two_features_large_n",
     }
-
-
-@pytest.mark.parametrize("positive_class", [2, "2"])
-def test_stacked_cox_maps_integer_event_category_to_binary_vector(positive_class):
-    event_var = pd.Series([1, 2, 3, 2, 1], dtype="int64")
-
-    events = _to_binary_event_array(
-        event_var,
-        positive_class=positive_class,
-        agg_client=DummyAggClient(),
-    )
-
-    np.testing.assert_array_equal(events, np.array([0.0, 1.0, 0.0, 1.0, 0.0]))
 
 
 def test_distinct_event_time_stacking_skips_pre_event_interval():
