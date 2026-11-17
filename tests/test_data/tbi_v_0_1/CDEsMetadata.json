@@ -1,53 +1,51 @@
 {
   "variables": [
     {
-      "isCategorical": true,
       "code": "dataset",
-      "sql_type": "text",
       "description": "",
       "enumerations": [
         {
-          "code": "dummy_tbi0",
+          "code": "1",
           "label": "Dummy TBI_0"
         },
         {
-          "code": "dummy_tbi1",
+          "code": "2",
           "label": "Dummy TBI_1"
         },
         {
-          "code": "dummy_tbi2",
+          "code": "3",
           "label": "Dummy TBI_2"
         },
         {
-          "code": "dummy_tbi3",
+          "code": "4",
           "label": "Dummy TBI_3"
         },
         {
-          "code": "dummy_tbi4",
+          "code": "5",
           "label": "Dummy TBI_4"
         },
         {
-          "code": "dummy_tbi5",
+          "code": "6",
           "label": "Dummy TBI_5"
         },
         {
-          "code": "dummy_tbi6",
+          "code": "7",
           "label": "Dummy TBI_6"
         },
         {
-          "code": "dummy_tbi7",
+          "code": "8",
           "label": "Dummy TBI_7"
         },
         {
-          "code": "dummy_tbi8",
+          "code": "9",
           "label": "Dummy TBI_8"
         },
         {
-          "code": "dummy_tbi9",
+          "code": "10",
           "label": "Dummy TBI_9"
         },
         {
-          "code": "dummy_tbi_test",
+          "code": "11",
           "label": "Dummy TBI test"
         }
       ],
@@ -63,44 +61,38 @@
     {
       "variables": [
         {
-            "isCategorical": false,
-            "label": "subjectcode",
-            "code": "subjectcode",
-            "sql_type": "text",
-            "description": "",
-            "methodology": "",
-            "type": "nominal"
+          "label": "subjectcode",
+          "code": "subjectcode",
+          "description": "",
+          "methodology": "",
+          "type": "discrete"
         },
         {
-          "isCategorical": false,
           "minValue": 0,
           "code": "age_value",
           "maxValue": 130,
-          "sql_type": "int",
           "description": "",
           "label": "Age",
           "units": "years",
-          "type": "integer",
+          "type": "discrete",
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "gender_type",
-          "sql_type": "text",
           "description": "",
           "enumerations": [
             {
-              "code": "M",
+              "code": "0",
               "label": "Male"
             },
             {
-              "code": "F",
+              "code": "1",
               "label": "Female"
             }
           ],
           "label": "Gender",
           "units": "",
-          "type": "nominal",
+          "type": "binary",
           "methodology": ""
         }
       ],
@@ -110,33 +102,31 @@
     {
       "variables": [
         {
-          "isCategorical": true,
           "code": "gcs_eye_response_scale",
-          "sql_type": "text",
           "description": "Glasgow Coma Scale (GCS) - eye response scale",
           "enumerations": [
             {
-              "code": "Untestable",
+              "code": "1",
               "label": "Untestable"
             },
             {
-              "code": "Unknown",
+              "code": "2",
               "label": "Unknown"
             },
             {
-              "code": "1",
+              "code": "3",
               "label": "No eye opening"
             },
             {
-              "code": "2",
+              "code": "4",
               "label": "Eye opening to pain"
             },
             {
-              "code": "3",
+              "code": "5",
               "label": "Eye opening to speech/verbal command"
             },
             {
-              "code": "4",
+              "code": "6",
               "label": "Eyes open spontaneously"
             }
           ],
@@ -146,41 +136,39 @@
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "gcs_motor_response_scale",
-          "sql_type": "text",
           "description": "Glasgow Coma Scale (GCS) - motor response scale",
           "enumerations": [
             {
-              "code": "Untestable",
+              "code": "1",
               "label": "Untestable"
             },
             {
-              "code": "Unknown",
+              "code": "2",
               "label": "Unknown"
             },
             {
-              "code": "1",
+              "code": "3",
               "label": "No motor response"
             },
             {
-              "code": "2",
+              "code": "4",
               "label": "Abnormal extension/Extensor response"
             },
             {
-              "code": "3",
+              "code": "5",
               "label": "Abnormal flexion"
             },
             {
-              "code": "4",
+              "code": "6",
               "label": "Flexion withdrawal/withdraws from pain"
             },
             {
-              "code": "5",
+              "code": "7",
               "label": "Localizes pain"
             },
             {
-              "code": "6",
+              "code": "8",
               "label": "Obeys command"
             }
           ],
@@ -190,37 +178,35 @@
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "gcs_verbal_response_scale",
-          "sql_type": "text",
           "description": "Glasgow Coma Scale (GCS) - verbal response scale",
           "enumerations": [
             {
-              "code": "Untestable",
+              "code": "1",
               "label": "Untestable"
             },
             {
-              "code": "Unknown",
+              "code": "2",
               "label": "Unknown"
             },
             {
-              "code": "1",
+              "code": "3",
               "label": "No verbal response/sounds"
             },
             {
-              "code": "2",
+              "code": "4",
               "label": "Incomprehensible sound"
             },
             {
-              "code": "3",
+              "code": "5",
               "label": "Inappropriate words"
             },
             {
-              "code": "4",
+              "code": "6",
               "label": "Confused"
             },
             {
-              "code": "5",
+              "code": "7",
               "label": "Oriented"
             }
           ],
@@ -230,29 +216,27 @@
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "pupil_reactivity_right_eye_result",
-          "sql_type": "text",
           "description": "Pupil reactivity light right eye",
           "enumerations": [
             {
-              "code": "Sluggish",
+              "code": "1",
               "label": "Sluggish"
             },
             {
-              "code": "Nonreactive",
+              "code": "2",
               "label": "Nonreactive"
             },
             {
-              "code": "Brisk",
+              "code": "3",
               "label": "Brisk"
             },
             {
-              "code": "Untestable",
+              "code": "4",
               "label": "Untestable"
             },
             {
-              "code": "Unknown",
+              "code": "5",
               "label": "Unknown"
             }
           ],
@@ -262,29 +246,27 @@
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "pupil_reactivity_left_eye_result",
-          "sql_type": "text",
           "description": "Pupil reactivity light left eye ",
           "enumerations": [
             {
-              "code": "Sluggish",
+              "code": "1",
               "label": "Sluggish"
             },
             {
-              "code": "Nonreactive",
+              "code": "2",
               "label": "Nonreactive"
             },
             {
-              "code": "Brisk",
+              "code": "3",
               "label": "Brisk"
             },
             {
-              "code": "Untestable",
+              "code": "4",
               "label": "Untestable"
             },
             {
-              "code": "Unknown",
+              "code": "5",
               "label": "Unknown"
             }
           ],
@@ -294,69 +276,67 @@
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "gcs_total_score",
-          "sql_type": "text",
           "description": "Glasgow Coma Scale (GCS) - total score",
           "enumerations": [
             {
-              "code": "3",
+              "code": "1",
               "label": "3"
             },
             {
-              "code": "4",
+              "code": "2",
               "label": "4"
             },
             {
-              "code": "5",
+              "code": "3",
               "label": "5"
             },
             {
-              "code": "6",
+              "code": "4",
               "label": "6"
             },
             {
-              "code": "7",
+              "code": "5",
               "label": "7"
             },
             {
-              "code": "8",
+              "code": "6",
               "label": "8"
             },
             {
-              "code": "9",
+              "code": "7",
               "label": "9"
             },
             {
-              "code": "10",
+              "code": "8",
               "label": "10"
             },
             {
-              "code": "11",
+              "code": "9",
               "label": "11"
             },
             {
-              "code": "12",
+              "code": "10",
               "label": "12"
             },
             {
-              "code": "13",
+              "code": "11",
               "label": "13"
             },
             {
-              "code": "14",
+              "code": "12",
               "label": "14"
             },
             {
-              "code": "15",
+              "code": "13",
               "label": "15"
             },
             {
-              "code": "untestable",
+              "code": "14",
               "label": "untestable"
             },
             {
-              "code": "unknown",
+              "code": "15",
               "label": "unknown"
             }
           ],
@@ -372,21 +352,19 @@
     {
       "variables": [
         {
-          "isCategorical": true,
           "code": "cisternal_compression_status",
-          "sql_type": "text",
           "description": "Cisternal compression status",
           "enumerations": [
             {
-              "code": "Present",
+              "code": "1",
               "label": "Present"
             },
             {
-              "code": "Absent",
+              "code": "2",
               "label": "Absent"
             },
             {
-              "code": "Indeterminate",
+              "code": "3",
               "label": "Indeterminate"
             }
           ],
@@ -396,21 +374,19 @@
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "epidural_hematoma_anatomic_status",
-          "sql_type": "text",
           "description": "Epidural hematoma status",
           "enumerations": [
             {
-              "code": "Present",
+              "code": "1",
               "label": "Present"
             },
             {
-              "code": "Absent",
+              "code": "2",
               "label": "Absent"
             },
             {
-              "code": "Indeterminate",
+              "code": "3",
               "label": "Indeterminate"
             }
           ],
@@ -420,21 +396,19 @@
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "midline_shift_supratentorial_indicator",
-          "sql_type": "text",
           "description": "Midline shift supratentorial indicator",
           "enumerations": [
             {
-              "code": "Present",
+              "code": "1",
               "label": "Present"
             },
             {
-              "code": "Absent",
+              "code": "2",
               "label": "Absent"
             },
             {
-              "code": "Indeterminate",
+              "code": "3",
               "label": "Indeterminate"
             }
           ],
@@ -444,9 +418,7 @@
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "marshall_ct_classification_code",
-          "sql_type": "text",
           "description": "Marshall CT classification code",
           "enumerations": [
             {
@@ -482,25 +454,23 @@
     {
       "variables": [
         {
-          "isCategorical": true,
           "code": "hypoxic_episode_indicator",
-          "sql_type": "text",
           "description": "Hypoxic episode indicator",
           "enumerations": [
             {
-              "code": "Yes",
+              "code": "1",
               "label": "Yes"
             },
             {
-              "code": "No",
+              "code": "2",
               "label": "No"
             },
             {
-              "code": "Unknown",
+              "code": "3",
               "label": "Unknown"
             },
             {
-              "code": "Suspected",
+              "code": "4",
               "label": "Suspected"
             }
           ],
@@ -510,25 +480,23 @@
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "hypotensive_episode_indicator",
-          "sql_type": "text",
           "description": "Hypotensive episode indicator",
           "enumerations": [
             {
-              "code": "Yes",
+              "code": "1",
               "label": "Yes"
             },
             {
-              "code": "No",
+              "code": "2",
               "label": "No"
             },
             {
-              "code": "Unknown",
+              "code": "3",
               "label": "Unknown"
             },
             {
-              "code": "Suspected",
+              "code": "4",
               "label": "Suspected"
             }
           ],
@@ -544,9 +512,7 @@
     {
       "variables": [
         {
-          "isCategorical": true,
           "code": "gose_score",
-          "sql_type": "text",
           "description": "Glasgow Outcome Scale Extended (GOS-E) - score",
           "enumerations": [
             {
@@ -588,33 +554,29 @@
           "methodology": ""
         },
         {
-          "isCategorical": false,
           "code": "mortality_core",
-          "sql_type": "real",
           "description": "6 month predicted mortality; LPcore, mortality = −2.55 + 0.275 × sum score core",
           "label": "Mortality - Core Impact",
           "units": "",
-          "type": "real",
+          "type": "continuous",
           "methodology": ""
         },
         {
-          "isCategorical": true,
           "code": "mortality_gose",
-          "sql_type": "text",
           "description": "Observed mortality by Glasgow output score",
           "enumerations": [
             {
-              "code": "1",
-              "label": "Dead"
-            },
-            {
               "code": "0",
               "label": "Alive"
+            },
+            {
+              "code": "1",
+              "label": "Dead"
             }
           ],
           "label": "Mortality - GOS-E ",
           "units": "",
-          "type": "nominal",
+          "type": "binary",
           "methodology": ""
         }
       ],
@@ -624,29 +586,23 @@
     {
       "variables": [
         {
-          "isCategorical": false,
           "minValue": 1.54,
           "code": "laboratory_procedure_glucose_value",
-          "maxValue": 36.00,
-          "sql_type": "real",
+          "maxValue": 36.0,
           "description": "Laboratory procedure glucose value",
-          "enumerations": [],
           "label": "Glucose",
           "units": "mmol/L",
-          "type": "real",
+          "type": "continuous",
           "methodology": ""
         },
         {
-          "isCategorical": false,
-          "minValue": 3.40,
+          "minValue": 3.4,
           "code": "laboratory_procedure_hemoglobin_value",
-          "maxValue": 18.00,
-          "sql_type": "real",
+          "maxValue": 18.0,
           "description": "Laboratory procedure hemoglobin value ",
-          "enumerations": [],
           "label": "Hemoglobin",
           "units": "g/dL",
-          "type": "real",
+          "type": "continuous",
           "methodology": ""
         }
       ],

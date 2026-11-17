@@ -1,7 +1,7 @@
 age_value,gender_type,gcs_eye_response_scale,gcs_motor_response_scale,gcs_verbal_response_scale,pupil_reactivity_right_eye_result,pupil_reactivity_left_eye_result,gcs_total_score,cisternal_compression_status,epidural_hematoma_anatomic_status,midline_shift_supratentorial_indicator,marshall_ct_classification_code,hypoxic_episode_indicator,hypotensive_episode_indicator,gose_score,laboratory_procedure_glucose_value,laboratory_procedure_hemoglobin_value,dataset,mortality_core,mortality_gose,subjectcode
-17,F,,1,,Brisk,Brisk,,,,,,,,4,,,dummy_tbi0,0.885776417274072,1,2
-17,F,,6,,Brisk,Brisk,,,,,,,,,,,dummy_tbi0,0.834956686677029,0,4
-18,F,,1,,Brisk,Brisk,,,,,,,,8,,,dummy_tbi0,0.349485013837268,0,6
-19,F,,1,,Brisk,Brisk,,,,,,,,1,,,dummy_tbi0,0.685964387039936,0,7
-19,F,,6,,Brisk,Brisk,,,,,,,,7,,,dummy_tbi0,0.991550171404979,0,8
-20,F,,5,,Brisk,Brisk,,,,,,,,,,,dummy_tbi0,0.734387926442251,0,9
+17,1,,3,,3,3,,,,,,,,4,,,1,0.885776417274072,1,3
+17,1,,8,,3,3,,,,,,,,,,,1,0.834956686677029,0,5
+18,1,,3,,3,3,,,,,,,,8,,,1,0.349485013837268,0,7
+19,1,,3,,3,3,,,,,,,,1,,,1,0.685964387039936,0,8
+19,1,,8,,3,3,,,,,,,,7,,,1,0.991550171404979,0,9
+20,1,,7,,3,3,,,,,,,,,,,1,0.734387926442251,0,10
