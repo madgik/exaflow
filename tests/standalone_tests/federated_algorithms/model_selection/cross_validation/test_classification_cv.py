@@ -20,7 +20,7 @@ def test_classification_cv_still_matches_identical_reference_folds(n_workers):
     parts = [data.iloc[idx] for idx in np.array_split(np.arange(len(data)), n_workers)]
 
     def worker(worker_id, agg_client):
-        return local_step(agg_client, parts[worker_id], "y", 1, ["x"], [], ["x"], 5)
+        return local_step(agg_client, parts[worker_id], "y", 1, ["x"], [], ["x"], 5, {})
 
     outputs = _simulate_federated_execution(n_workers, worker)
     folds = [list(KFold(5).split(part)) for part in parts]

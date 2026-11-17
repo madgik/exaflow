@@ -163,3 +163,8 @@ histograms.
 - Grouped histograms can be sparse when many grouping levels are selected.
 - Wilkinson binning prioritizes readable boundaries over preserving the exact
   requested number of bins.
+
+## Variable types and coding
+
+The histogram variable is numerical or categorical; categorical bins are the level codes (names from the enumeration labels). Grouping variables are categorical and are keyed by code.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

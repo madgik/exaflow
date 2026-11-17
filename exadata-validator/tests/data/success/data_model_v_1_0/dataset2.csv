@@ -1,6 +1,6 @@
 subjectcode,var2,var3,var4,dataset
-2,1,11,,dataset2
-2,2.0,12,22,dataset2
-3,1,13,23,dataset2
-4,1,14,24,dataset2
-3,2.0,15,25,dataset2
+1,1,11,,3
+1,2,12,22,3
+2,1,13,23,3
+3,1,14,24,3
+2,2,15,25,3

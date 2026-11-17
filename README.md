@@ -83,11 +83,24 @@ commands, testing matrix, risk register, and review checklists).
 
 - Examples
   ```
-  ./run_analysis -a pca -y leftamygdala lefthippocampus -d ppmi0 -m dementia:0.1
+  ./run_analysis -a pca -y leftamygdala lefthippocampus -d PPMI_0 -m dementia:0.1
   ```
   ```
-  ./run_analysis -a pearson_correlation -y leftamygdala lefthippocampus -d ppmi0 -m dementia:0.1 -p alpha 0.95
+  ./run_analysis -a pearson_correlation -y leftamygdala lefthippocampus -d PPMI_0 -m dementia:0.1 -p alpha 0.95
   ```
+
+## Data Types and Coding
+
+Continuous CDEs are stored as `DOUBLE` and discrete CDEs as `INTEGER`. Every
+categorical CDE (nominal, ordinal, binary, plus `dataset` and `visitid`) is
+stored as integer codes (binary `0`/`1`, nominal and ordinal from `1`) with the
+readable name kept as the enumeration label, so analysis requests use codes such
+as `positive_class` `1`. Datasets are the exception: requests name them by
+label, such as `-d EDSD_0`. `subjectid` and `subjectcode` are `discrete`
+whole numbers without enumerations, so subject identifiers are not published as
+category levels. See
+[`documentation/data-types-and-coding.md`](documentation/data-types-and-coding.md)
+for the storage types and how each algorithm codes its inputs.
 
 ## Algorithm Development
 

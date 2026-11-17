@@ -34,8 +34,8 @@ baseline hazard unspecified.
 
 | Parameter | Description | Default |
 |---|---|---|
-| `event_var` | Variable from `x` used to build the binary event vector. | Required |
-| `positive_class` | Event level mapped to `1`; other observed levels map to `0`. | Optional |
+| `event_var` | Variable from `x` used to build the binary event vector. Must be declared `binary`; `nominal` and `ordinal` variables are rejected, never converted. | Required |
+| `positive_class` | Level code of the binary event variable mapped to `1`; the other level maps to `0`. Must be one of the levels declared for `event_var`; nothing is inferred from the stored values. | Required |
 
 ## Statistical model
 
@@ -73,14 +73,17 @@ Input:
     time: follow-up duration
     event_var: event indicator source
     X: covariates
-    positive_class: optional event level
+    positive_class: event level code
 
 Step 1:
     Convert event_var to binary event values.
 
 Step 2:
     Build the covariate matrix:
-        one-hot encode categorical covariates
+        code categorical covariates by CDE type:
+            binary -> one 0/1 column (first declared level is 0)
+            ordinal -> one integer column in declared level order
+            nominal -> one-hot dummy columns
         include numerical covariates directly
 
 Step 3:
@@ -112,10 +115,11 @@ Output:
 ## Technical decisions
 
 - Breslow handling is used for tied event times.
-- Event variables stored as `0/1` or `false/true` are detected automatically.
-- `positive_class` is required for non-binary categorical event variables.
-- The event variable is not one-hot encoded; all other categorical covariates
-  are one-hot encoded.
+- `positive_class` is always required and must be a declared level code of the binary event variable. It is validated like logistic regression's `positive_class`, before any computation.
+- The event variable is not a covariate. Other categorical covariates are coded
+  by CDE type: `binary` as one 0/1 column (first declared level is 0, named
+  `var[level coded 1]`), `ordinal` as one integer column in declared level order,
+  `nominal` one-hot encoded.
 - Time values must be strictly positive.
 - Exponentiation is clipped for numerical stability.
 - Newton updates use regularization and a pseudo-inverse fallback when needed.
@@ -154,5 +158,10 @@ Breslow tie handling.
 - At least one observed event is required.
 - The proportional hazards assumption is not tested automatically.
 - Time-varying covariates are not supported.
-- Event coding must be binary after applying `positive_class`.
+- The event variable must be declared `binary`; it is never derived from a nominal variable.
 - High collinearity can make the information matrix unstable.
+
+## Variable types and coding
+
+`y` is the positive numerical follow-up time. `event_var` must be `binary`; `positive_class` is required, must be one of its declared codes, and is coded `1` (the other code is `0`). The event variable is never one-hot encoded. Other covariates are coded as in the shared page (`binary` 0/1, `ordinal` `0..K-1` with equal spacing, `nominal` one-hot); a `binary` or `ordinal` covariate with a single observed value raises an error.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

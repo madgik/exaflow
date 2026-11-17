@@ -48,8 +48,8 @@ ______________________________________________________________________
 
 The quartile values `q = [0.25, 0.5, 0.75]` are fixed and not exposed as a
 user parameter. The histogram strategy is determined automatically from the
-`sql_type` of `y`: `INT` variables use Wilkinson whole-number bin edges;
-`REAL` variables use equal-width bins.
+CDE `type` of `y`: `discrete` variables use Wilkinson whole-number bin edges;
+`continuous` variables use equal-width bins.
 
 **Outputs** (one entry per quartile)
 

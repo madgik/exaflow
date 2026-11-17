@@ -4,7 +4,9 @@ import pandas as pd
 from exaflow.algorithms.federated.compose.column_transformer import (
     FederatedColumnTransformer,
 )
-from exaflow.algorithms.federated.feature_engineering import FederatedOneHotEncoder
+from exaflow.algorithms.federated.feature_engineering._one_hot_encoder import (
+    _FederatedOneHotEncoder,
+)
 from exaflow.algorithms.federated.linear_model.ols import FederatedOLS
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
 from tests.standalone_tests.federated_algorithms.utils.dummy_agg_client import (
@@ -22,7 +24,7 @@ def test_pipeline_fit_transform_and_estimator():
 
     agg_client = DummyAggClient()
     column_transformer = FederatedColumnTransformer(
-        [("cat", FederatedOneHotEncoder(), ["sex"])],
+        [("cat", _FederatedOneHotEncoder(), ["sex"])],
         remainder="passthrough",
     )
     pipeline = FederatedPipeline(
@@ -59,7 +61,7 @@ def test_pipeline_transformers_only():
 
     agg_client = DummyAggClient()
     column_transformer = FederatedColumnTransformer(
-        [("cat", FederatedOneHotEncoder(), ["sex"])],
+        [("cat", _FederatedOneHotEncoder(), ["sex"])],
         remainder="passthrough",
     )
     pipeline = FederatedPipeline([("features", column_transformer)])

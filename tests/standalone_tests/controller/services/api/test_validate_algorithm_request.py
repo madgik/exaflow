@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from pydantic import ValidationError
 
 import exaflow.controller.services.api.analysis_request_validator as analysis_request_validator
+from exaflow import exareme3_algorithm_classes
 from exaflow.algorithms.exareme3.cluster.kmeans_cluster_creator import (
     KMeansClusterCreator,
 )
@@ -14,11 +15,16 @@ from exaflow.algorithms.exareme3.feature_engineering.categorical_column_creator 
 from exaflow.algorithms.exareme3.longitudinal.longitudinal_transformer import (
     LongitudinalTransformer,
 )
+from exaflow.algorithms.exareme3.missing_values.missing_values_handler import (
+    MissingValuesHandler,
+)
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import InputDataSpecification
 from exaflow.algorithms.specifications import InputDataStatType
 from exaflow.algorithms.specifications import InputDataType
 from exaflow.algorithms.specifications import ParameterDictValueType
+from exaflow.algorithms.specifications import ParameterEnumSpecification
+from exaflow.algorithms.specifications import ParameterEnumType
 from exaflow.algorithms.specifications import ParameterSpecification
 from exaflow.algorithms.specifications import ParameterType
 from exaflow.controller.http.error_handlers import register_error_handlers
@@ -52,47 +58,51 @@ class FakeWorkerLandscapeAggregator:
         return _cdes()
 
 
-def _cde(code, sql_type, *, categorical=False, enumerations=None):
+def _cde(code, cde_type, *, enumerations=None):
     return CommonDataElement(
         code=code,
         label=code,
-        sql_type=sql_type,
-        is_categorical=categorical,
+        type=cde_type,
         enumerations=enumerations,
     )
 
 
 def _cdes():
     return {
-        "age": _cde("age", "int"),
+        "age": _cde("age", "discrete"),
         "gender": _cde(
             "gender",
-            "text",
-            categorical=True,
-            enumerations={"M": "M", "F": "F"},
+            "nominal",
+            enumerations={"1": "M", "2": "F"},
         ),
         "diagnosis": _cde(
             "diagnosis",
-            "text",
-            categorical=True,
-            enumerations={"AD": "AD", "CN": "CN"},
+            "nominal",
+            enumerations={"1": "AD", "2": "CN"},
         ),
         "outcome": _cde(
             "outcome",
-            "text",
-            categorical=True,
-            enumerations={"yes": "yes", "no": "no"},
+            "nominal",
+            enumerations={"1": "yes", "2": "no"},
         ),
         "visitid": _cde(
             "visitid",
-            "text",
-            categorical=True,
-            enumerations={"BL": "BL", "FL1": "FL1"},
+            "nominal",
+            enumerations={"1": "BL", "2": "FL1"},
         ),
+        "stage": _cde("stage", "ordinal", enumerations={"1": "I", "2": "II"}),
+        "smoker": _cde("smoker", "binary", enumerations={"0": "n", "1": "y"}),
+        "notes": _cde("notes", "nominal"),
+        "dataset": _cde("dataset", "nominal", enumerations={"1": "dataset_a"}),
     }
 
 
-def _algorithm_spec(parameters=None):
+def _algorithm_spec(
+    parameters=None,
+    *,
+    y_stattypes=(InputDataStatType.NOMINAL,),
+    x_stattypes=(InputDataStatType.NOMINAL,),
+):
     return AlgorithmSpecification(
         name="sample_algorithm",
         desc="sample",
@@ -102,8 +112,8 @@ def _algorithm_spec(parameters=None):
         y=InputDataSpecification(
             label="Outcome",
             desc="Outcome variable.",
-            types=[InputDataType.TEXT],
-            stattypes=[InputDataStatType.NOMINAL],
+            types=[InputDataType.REAL, InputDataType.INT, InputDataType.TEXT],
+            stattypes=list(y_stattypes),
             required=True,
             min_count=1,
             max_count=1,
@@ -111,8 +121,8 @@ def _algorithm_spec(parameters=None):
         x=InputDataSpecification(
             label="Features",
             desc="Feature variables.",
-            types=[InputDataType.TEXT],
-            stattypes=[InputDataStatType.NOMINAL],
+            types=[InputDataType.REAL, InputDataType.INT, InputDataType.TEXT],
+            stattypes=list(x_stattypes),
             required=True,
             min_count=1,
         ),
@@ -217,7 +227,7 @@ def _risk_group_step(rules=None):
                         {
                             "id": "diagnosis",
                             "operator": "equal",
-                            "value": "AD",
+                            "value": 1,
                         }
                     ],
                 },
@@ -229,6 +239,177 @@ def _risk_group_step(rules=None):
 
 def test_valid_analysis_request_uses_inputdata_variables_and_algorithm_xy():
     _validate(_request())
+
+
+def _validate_stattypes(*, x, y, x_stattypes=None, y_stattypes=None):
+    spec = _algorithm_spec(
+        x_stattypes=x_stattypes or (InputDataStatType.NOMINAL,),
+        y_stattypes=y_stattypes or (InputDataStatType.NOMINAL,),
+    )
+    return _validate(
+        _request(x=x, y=y, variables=x + y),
+        algorithms_specs={"sample_algorithm": spec},
+    )
+
+
+ANY_CATEGORICAL = (
+    InputDataStatType.NOMINAL,
+    InputDataStatType.ORDINAL,
+    InputDataStatType.BINARY,
+)
+
+
+def test_slot_accepting_all_categorical_stattypes_accepts_each_categorical_cde():
+    _validate_stattypes(
+        x=["stage", "gender"],
+        y=["smoker"],
+        x_stattypes=ANY_CATEGORICAL,
+        y_stattypes=ANY_CATEGORICAL,
+    )
+
+
+@pytest.mark.parametrize("cde", ["stage", "smoker"])
+def test_nominal_slot_rejects_ordinal_and_binary_cdes(cde):
+    with pytest.raises(BadUserInput, match=f"'{cde}'.*only \\['nominal'\\]"):
+        _validate_stattypes(x=["gender"], y=[cde])
+
+
+@pytest.mark.parametrize("cde", ["gender", "stage"])
+def test_binary_slot_rejects_non_binary_categorical_cdes(cde):
+    with pytest.raises(BadUserInput, match=f"'{cde}'.*only \\['binary'\\]"):
+        _validate_stattypes(
+            x=["age"],
+            y=[cde],
+            x_stattypes=(InputDataStatType.NUMERICAL,),
+            y_stattypes=(InputDataStatType.BINARY,),
+        )
+
+
+def test_binary_slot_accepts_binary_cde():
+    _validate_stattypes(
+        x=["age"],
+        y=["smoker"],
+        x_stattypes=(InputDataStatType.NUMERICAL,),
+        y_stattypes=(InputDataStatType.BINARY,),
+    )
+
+
+def test_two_level_nominal_cde_is_not_accepted_as_binary():
+    # `gender` has exactly two levels but is declared nominal.
+    with pytest.raises(BadUserInput, match="'gender'.*has type 'nominal'"):
+        _validate_stattypes(
+            x=["age"],
+            y=["gender"],
+            x_stattypes=(InputDataStatType.NUMERICAL,),
+            y_stattypes=(InputDataStatType.BINARY,),
+        )
+
+
+@pytest.mark.parametrize("cde", ["gender", "smoker", "diagnosis"])
+def test_ordinal_slot_rejects_non_ordinal_categorical_cdes(cde):
+    with pytest.raises(BadUserInput, match=f"'{cde}'.*only \\['ordinal'\\]"):
+        _validate_stattypes(
+            x=["age"],
+            y=[cde],
+            x_stattypes=(InputDataStatType.NUMERICAL,),
+            y_stattypes=(InputDataStatType.ORDINAL,),
+        )
+
+
+def test_ordinal_slot_accepts_ordinal_cde():
+    _validate_stattypes(
+        x=["age"],
+        y=["stage"],
+        x_stattypes=(InputDataStatType.NUMERICAL,),
+        y_stattypes=(InputDataStatType.ORDINAL,),
+    )
+
+
+@pytest.mark.parametrize("cde", ["stage", "smoker", "gender"])
+def test_numerical_slot_rejects_every_categorical_cde(cde):
+    with pytest.raises(BadUserInput, match=f"'{cde}'.*should NOT be categorical"):
+        _validate_stattypes(
+            x=["age"],
+            y=[cde],
+            x_stattypes=(InputDataStatType.NUMERICAL,),
+            y_stattypes=(InputDataStatType.NUMERICAL,),
+        )
+
+
+def test_binary_slot_rejects_numerical_cde():
+    with pytest.raises(BadUserInput, match="'age'.*should be categorical"):
+        _validate_stattypes(
+            x=["stage"],
+            y=["age"],
+            y_stattypes=(InputDataStatType.BINARY,),
+            x_stattypes=ANY_CATEGORICAL,
+        )
+
+
+def _event_var_spec(variable_stattypes):
+    return {
+        "event_var": ParameterSpecification(
+            label="Event variable",
+            desc="Event variable.",
+            types=[ParameterType.TEXT],
+            required=True,
+            multiple=False,
+            enums=ParameterEnumSpecification(
+                type=ParameterEnumType.INPUT_VAR_NAMES, source=["x"]
+            ),
+            variable_stattypes=variable_stattypes,
+        )
+    }
+
+
+def _validate_event_var(event_var, variable_stattypes):
+    spec = _algorithm_spec(
+        _event_var_spec(variable_stattypes),
+        y_stattypes=(InputDataStatType.NUMERICAL,),
+        x_stattypes=ANY_CATEGORICAL,
+    )
+    return _validate(
+        _request(
+            x=["smoker", "gender"],
+            y=["age"],
+            variables=["smoker", "gender", "age"],
+            parameters={"event_var": event_var},
+        ),
+        algorithms_specs={"sample_algorithm": spec},
+    )
+
+
+def test_parameter_selected_variable_must_match_binary_stattype():
+    _validate_event_var("smoker", [InputDataStatType.BINARY])
+
+
+def test_parameter_selected_nominal_variable_is_rejected_for_binary_stattype():
+    with pytest.raises(
+        BadUserInput,
+        match="'gender'.*selected by parameter 'Event variable'.*only \\['binary'\\]",
+    ):
+        _validate_event_var("gender", [InputDataStatType.BINARY])
+
+
+def test_parameter_selected_variable_without_stattypes_is_not_type_checked():
+    _validate_event_var("gender", None)
+
+
+def test_variable_stattypes_requires_input_var_names_enums():
+    with pytest.raises(ValidationError, match="variable_stattypes"):
+        ParameterSpecification(
+            label="Param",
+            desc="Param.",
+            types=[ParameterType.TEXT],
+            required=True,
+            multiple=False,
+            variable_stattypes=[InputDataStatType.BINARY],
+        )
+
+
+def test_rejects_categorical_cde_without_enumerations():
+    with pytest.raises(BadUserInput, match="without enumerations"):
+        _validate(_request(y=["notes"], variables=["gender", "notes"]))
 
 
 def test_old_inputdata_xy_shape_fails_dto_validation():
@@ -309,7 +490,9 @@ def test_dict_parameter_with_filter_values_is_validated():
             }
         },
         parameters_specs={"rules": parameter},
-        inputdata=analysis_request_validator._build_source_inputdata(_request()),
+        inputdata=analysis_request_validator._build_source_inputdata(
+            _request(), _cdes()
+        ),
         data_model_cdes=_cdes(),
     )
 
@@ -338,8 +521,7 @@ def test_derived_categorical_cde_contains_rule_and_default_enumerations():
     assert transformed_cdes["risk_group"].model_dump() == {
         "code": "risk_group",
         "label": "risk_group",
-        "sql_type": "text",
-        "is_categorical": True,
+        "type": "nominal",
         "enumerations": {"high": "high", "medium": "medium", "low": "low"},
         "min": None,
         "max": None,
@@ -376,7 +558,7 @@ def test_preprocessing_filter_rejects_numeric_strings_for_numeric_cdes():
         }
     }
 
-    with pytest.raises(FilterError, match="age's type: int"):
+    with pytest.raises(FilterError, match="age's type: discrete"):
         _validate(_request(preprocessing=[_risk_group_step(rules=rules)]))
 
 
@@ -386,8 +568,8 @@ def test_longitudinal_fixed_cdes_are_available_for_parameter_validation():
             AnalysisPreprocessingStepDTO(
                 name="longitudinal_transformer",
                 parameters={
-                    "visit1": "BL",
-                    "visit2": "FL1",
+                    "visit1": "1",
+                    "visit2": "2",
                     "strategies": {
                         "age": "diff",
                         "gender": "first",
@@ -624,3 +806,135 @@ def test_training_only_request_runs_without_global_worker():
         smpc_enabled=False,
         smpc_optional=False,
     )
+
+
+def _real_algorithm_request(name, *, x, y, parameters):
+    return AnalysisRequestDTO(
+        inputdata=AnalysisInputDataDTO(
+            data_model=DATA_MODEL,
+            datasets=["dataset_a"],
+            variables=[*x, *y],
+        ),
+        preprocessing=[
+            AnalysisPreprocessingStepDTO(
+                name="missing_values_handler",
+                parameters={"strategies": {var: "drop" for var in [*x, *y]}},
+            )
+        ],
+        algorithm=AnalysisAlgorithmDTO(name=name, x=x, y=y, parameters=parameters),
+        flags={},
+    )
+
+
+def _validate_real_algorithm(name, **kwargs):
+    algorithm_class = exareme3_algorithm_classes[name]
+    return _validate(
+        _real_algorithm_request(name, **kwargs),
+        algorithms_specs={name: algorithm_class.get_specification()},
+        preprocessing_steps_specs={
+            "missing_values_handler": MissingValuesHandler.get_specification()
+        },
+    )
+
+
+def test_logistic_regression_accepts_a_binary_outcome():
+    _validate_real_algorithm(
+        "logistic_regression",
+        x=["age"],
+        y=["smoker"],
+        parameters={"positive_class": "1"},
+    )
+
+
+def test_logistic_regression_accepts_an_integer_positive_class():
+    _validate_real_algorithm(
+        "logistic_regression",
+        x=["age"],
+        y=["smoker"],
+        parameters={"positive_class": 1},
+    )
+
+
+def test_logistic_regression_rejects_an_undeclared_integer_positive_class():
+    with pytest.raises(BadUserInput, match="Positive class"):
+        _validate_real_algorithm(
+            "logistic_regression",
+            x=["age"],
+            y=["smoker"],
+            parameters={"positive_class": 7},
+        )
+
+
+@pytest.mark.parametrize("outcome", ["outcome", "gender", "stage"])
+def test_logistic_regression_rejects_a_non_binary_outcome(outcome):
+    with pytest.raises(BadUserInput, match=f"'{outcome}'.*only \\['binary'\\]"):
+        _validate_real_algorithm(
+            "logistic_regression",
+            x=["age"],
+            y=[outcome],
+            parameters={"positive_class": "yes"},
+        )
+
+
+def test_glmm_ordinal_accepts_an_ordinal_outcome_and_derives_the_order():
+    _validate_real_algorithm(
+        "glmm_ordinal",
+        x=["age", "gender"],
+        y=["stage"],
+        parameters={"grouping_var": ["gender"]},
+    )
+
+
+@pytest.mark.parametrize("outcome", ["outcome", "smoker"])
+def test_glmm_ordinal_rejects_a_non_ordinal_outcome(outcome):
+    with pytest.raises(BadUserInput, match=f"'{outcome}'.*only \\['ordinal'\\]"):
+        _validate_real_algorithm(
+            "glmm_ordinal",
+            x=["age", "gender"],
+            y=[outcome],
+            parameters={"grouping_var": ["gender"], "category_order": ["no", "yes"]},
+        )
+
+
+@pytest.mark.parametrize("event_var", ["gender", "stage"])
+def test_cox_regression_rejects_a_non_binary_event_variable(event_var):
+    with pytest.raises(BadUserInput, match=f"'{event_var}'.*selected by parameter"):
+        _validate_real_algorithm(
+            "cox_regression_classical",
+            x=[event_var, "smoker"],
+            y=["age"],
+            parameters={"event_var": event_var, "positive_class": "1"},
+        )
+
+
+def test_cox_regression_accepts_a_binary_event_variable():
+    _validate_real_algorithm(
+        "cox_regression_classical",
+        x=["smoker", "gender"],
+        y=["age"],
+        parameters={"event_var": "smoker", "positive_class": "1"},
+    )
+
+
+@pytest.mark.parametrize("name", ["cox_regression_classical", "cox_regression_stacked"])
+def test_cox_regression_requires_positive_class(name):
+    with pytest.raises(BadUserInput, match="Event of interest"):
+        _validate_real_algorithm(
+            name,
+            x=["smoker", "gender"],
+            y=["age"],
+            parameters={"event_var": "smoker"},
+        )
+
+
+def test_fisher_exact_rejects_a_nominal_variable_even_with_two_levels():
+    with pytest.raises(BadUserInput, match="'gender'.*only \\['binary'\\]"):
+        _validate_real_algorithm(
+            "fisher_exact", x=["gender"], y=["smoker"], parameters={}
+        )
+
+
+def test_source_inputdata_holds_dataset_codes_for_requested_labels():
+    inputdata = analysis_request_validator._build_source_inputdata(_request(), _cdes())
+
+    assert inputdata.datasets == ["1"]

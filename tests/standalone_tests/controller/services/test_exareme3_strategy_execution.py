@@ -44,7 +44,8 @@ def test_execute_runs_algorithm_off_the_event_loop_thread(monkeypatch):
     strategy._local_worker_tasks_handlers = []
     strategy._controller = types.SimpleNamespace(
         worker_landscape_aggregator=types.SimpleNamespace(
-            get_metadata=lambda data_model, variable_names: {}
+            get_metadata=lambda data_model, variable_names: {},
+            get_dataset_codes=lambda data_model, labels: list(labels),
         )
     )
 

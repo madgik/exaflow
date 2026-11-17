@@ -1,10 +1,15 @@
-﻿## One-Hot Encoder (FederatedOneHotEncoder)
+﻿## One-Hot Encoder (_FederatedOneHotEncoder)
 
-Implementation: [feature_engineering/one_hot_encoder.py](../feature_engineering/one_hot_encoder.py).
+> **Storage and coding.** Categorical CDEs are stored as integer codes (binary `0`/`1`, nominal and ordinal from `1`; `dataset` and `visitid` included; subject identifiers are discrete integers) and reach this code as text codes. See [Data Types, Storage and Variable Coding](../../../../documentation/data-types-and-coding.md).
+
+
+Implementation: [feature_engineering/_one_hot_encoder.py](../feature_engineering/_one_hot_encoder.py).
+
+> **Internal.** `_FederatedOneHotEncoder` is a private building block hardcoded inside the algorithms that need it. It is not exported, not an algorithm or preprocessing step, and not exposed by any specification or HTTP endpoint. Binary and ordinal variables are never produced from nominal ones with it.
 
 ### Name
 
-**One-Hot Encoder (FederatedOneHotEncoder)**
+**One-Hot Encoder (_FederatedOneHotEncoder)**
 
 ### Type
 
@@ -16,6 +21,8 @@ One-Hot Encoding transforms **categorical features** into **binary dummy variabl
 In a federated setting, we want the *same* encoding scheme as centralized one-hot encoding **without sharing raw data**, using only aggregated category discovery via union operation.
 
 ### When to use
+
+In the regression, Cox and mixed-model algorithms only `nominal` covariates are one-hot encoded; `binary` and `ordinal` covariates are integer coded (see `exareme3/utils/covariate_encoding.py`).
 
 Use One-Hot Encoder when:
 

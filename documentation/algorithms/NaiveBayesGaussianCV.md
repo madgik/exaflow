@@ -109,3 +109,8 @@ classification-metric tests.
 - All limitations of Gaussian Naive Bayes apply.
 - Cross-validation estimates performance for the selected fold split, not a
   final refit on all observations.
+
+## Variable types and coding
+
+`x` is numerical. `y` is categorical and the classes are its level codes in every fold. There is no covariate coding.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

@@ -24,6 +24,7 @@ from exaflow.algorithms.federated.model_selection.cross_validation.scorer_multic
     multiclass_classification_summary,
 )
 from exaflow.algorithms.federated.naive_bayes import FederatedGaussianNB
+from exaflow.algorithms.federated.utils import sort_levels
 
 VAR_SMOOTHING = 1e-9  # same as original GaussianNB _fit_global
 
@@ -53,8 +54,8 @@ class NaiveBayesGaussianCV(Algorithm):
             y=specs.InputDataSpecification(
                 label="Outcome",
                 desc="Nominal outcome variable.",
-                types=[specs.InputDataType.TEXT],
-                stattypes=[specs.InputDataStatType.NOMINAL],
+                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                stattypes=[*specs.CATEGORICAL_STATTYPES],
                 required=True,
                 max_count=1,
             ),
@@ -85,7 +86,7 @@ class NaiveBayesGaussianCV(Algorithm):
         y_var = self.y[0]
         x_vars = list(self.x)
         n_splits = self.get_parameter("n_splits")
-        labels = sorted(get_enum_codes(self.metadata, y_var))
+        labels = sort_levels(get_enum_codes(self.metadata, y_var))
 
         # Run CV UDF (with aggregation server)
         metrics = self.run_local_udf(

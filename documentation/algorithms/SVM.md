@@ -133,3 +133,8 @@ it averages fitted site-level parameters.
 - Equal site weighting can differ from observation-weighted pooled fitting.
 - The returned model parameters are averaged summaries and do not include
   support vectors or per-observation predictions.
+
+## Variable types and coding
+
+`x` is numerical. `y` is categorical and the classes are its level codes. There is no covariate coding.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

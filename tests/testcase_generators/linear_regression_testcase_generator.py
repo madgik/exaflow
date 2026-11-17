@@ -1,53 +1,41 @@
-import re
-
 import pandas as pd
-import statsmodels.formula.api as smf
+import statsmodels.api as sm
 
-from exaflow.algorithms.exareme3.linear_model.linear_regression import (
-    LinearRegressionResult,
-)
+from tests.testcase_generators.design_matrix import coded_design_matrix
 from tests.testcase_generators.testcase_generator import TestCaseGenerator
 
 
 class LinearRegressionTestCaseGenerator(TestCaseGenerator):
-    def compute_expected_output(self, input_data, _, __):
+    def compute_expected_output(self, input_data, _, metadata):
         y, X = input_data
 
         [yname] = y.columns
-        xnames = X.columns
-        formula = f"{yname}~{'+'.join(xnames)}"
-        data = pd.concat([y, X], axis=1)
+        data = pd.concat([y, X], axis=1).dropna()
+        design = sm.add_constant(
+            coded_design_matrix(data[X.columns], metadata), prepend=True
+        ).rename(columns={"const": "Intercept"})
+        model = sm.OLS(data[yname], design).fit()
+        dummy_xnames = list(design.columns)
 
-        model = smf.ols(formula, data=data, missing="drop").fit()
-
-        # NOTE: Statsmodels uses patsy to parse formula which names dummy variables
-        # using a "T" to signify "Treatment" (another name for dummy coding).
-        # The line below removes the "T" to match the dummy variable names from
-        # Exareme2. E.g. gender[T.F] -> gender[F]
-        dummy_xnames = [
-            re.sub(r"(\w+)\[T\.([\w\d-]+)\]", r"\1[\2]", name)
-            for name in model.model.exog_names
-        ]
-
-        result = LinearRegressionResult(
-            dependent_var=model.model.endog_names,
-            n_obs=model.nobs,
-            df_resid=model.df_resid,
-            df_model=model.df_model,
-            rse=model.mse_resid**0.5,
-            r_squared=model.rsquared,
-            r_squared_adjusted=model.rsquared_adj,
-            f_stat=model.fvalue,
-            f_pvalue=model.f_pvalue,
-            indep_vars=dummy_xnames,
-            coefficients=model.params.tolist(),
-            std_err=model.bse.tolist(),
-            t_stats=model.tvalues.tolist(),
-            pvalues=model.pvalues.tolist(),
-            lower_ci=model.conf_int().to_numpy().T.tolist()[0],
-            upper_ci=model.conf_int().to_numpy().T.tolist()[1],
-        )
-        return result.model_dump()
+        conf_int = model.conf_int().to_numpy().T.tolist()
+        return {
+            "dependent_var": yname,
+            "n_obs": int(model.nobs),
+            "df_resid": model.df_resid,
+            "df_model": model.df_model,
+            "rse": model.mse_resid**0.5,
+            "r_squared": model.rsquared,
+            "r_squared_adjusted": model.rsquared_adj,
+            "f_stat": model.fvalue,
+            "f_pvalue": model.f_pvalue,
+            "indep_vars": dummy_xnames,
+            "coefficients": model.params.tolist(),
+            "std_err": model.bse.tolist(),
+            "t_stats": model.tvalues.tolist(),
+            "pvalues": model.pvalues.tolist(),
+            "lower_ci": conf_int[0],
+            "upper_ci": conf_int[1],
+        }
 
 
 if __name__ == "__main__":

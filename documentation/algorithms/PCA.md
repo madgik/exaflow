@@ -141,3 +141,8 @@ difference.
 The separate PCA variant with per-variable transformations has been removed.
 Standard `pca` remains available with its existing behavior and does not accept
 a `data_transformation` parameter.
+
+## Variable types and coding
+
+Only numerical variables are accepted.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

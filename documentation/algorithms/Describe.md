@@ -142,3 +142,8 @@ with combined summaries computed from aggregated sufficient statistics.
   quantiles); per-dataset quartiles are exact.
 - Suppressed dataset-level summaries are represented with `null` data.
 - Category counts depend on available metadata levels for the combined summary.
+
+## Variable types and coding
+
+Numerical variables are summarised numerically. Categorical variables (`nominal`, `ordinal`, `binary`) report counts keyed by level code; the names come from the enumeration labels.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

@@ -1,6 +1,47 @@
+import re
 from enum import Enum
 
 VARCHAR_SIZE = 500
+
+
+class CDEType(str, Enum):
+    """Variable type of a common data element (CDE)."""
+
+    CONTINUOUS = "continuous"
+    DISCRETE = "discrete"
+    NOMINAL = "nominal"
+    ORDINAL = "ordinal"
+    BINARY = "binary"
+
+
+CATEGORICAL_CDE_TYPES = frozenset({CDEType.NOMINAL, CDEType.ORDINAL, CDEType.BINARY})
+# Every categorical CDE is stored as an integer (binary 0/1, nominal and ordinal
+# 1..K, the dataset CDE 1..N, visitid included); the enumeration label keeps the
+# readable name. Subject identifiers are discrete whole numbers, not categorical
+# codes. Categorical CDEs without enumerations are rejected when data is loaded.
+_INTEGER_CODE = re.compile(r"0|-?[1-9][0-9]*")
+
+
+def _enumeration_codes(enumerations):
+    if isinstance(enumerations, dict):
+        return [str(code) for code in enumerations]
+    return [
+        str(item["code"] if isinstance(item, dict) else item)
+        for item in enumerations or []
+    ]
+
+
+def is_integer_coded(code, cde_type, enumerations) -> bool:
+    """True when the CDE `code` is an integer code column.
+
+    `enumerations` is the CDE's enumerations (a code->label mapping or a list of
+    {"code", "label"} items). Derived categorical columns whose codes are text
+    (for example the categorical_column_creator output) are not integer coded.
+    """
+    if cde_type not in CATEGORICAL_CDE_TYPES:
+        return False
+    codes = _enumeration_codes(enumerations)
+    return bool(codes) and all(_INTEGER_CODE.fullmatch(c) for c in codes)
 
 
 class DType(Enum):
@@ -36,13 +77,22 @@ class DType(Enum):
 
     @classmethod
     def from_cde(cls, cde_type):
-        """Creates a DType from a common data element sql type."""
-        mapping = {
-            "int": cls.INT,
-            "real": cls.FLOAT,
-            "text": cls.STR,
-        }
-        return mapping[cde_type]
+        """Storage type of a CDE type: continuous is FLOAT, every other type
+        (discrete and the categorical types) is INT. Categorical CDEs are integer
+        codes; use `from_cde_variable` for derived text-coded categoricals."""
+        if cde_type == CDEType.CONTINUOUS:
+            return cls.FLOAT
+        return cls.INT
+
+    @classmethod
+    def from_cde_variable(cls, code, cde_type, enumerations):
+        """Like `from_cde`, but STR for derived categorical columns whose codes are
+        text (for example the categorical_column_creator output)."""
+        if cde_type in CATEGORICAL_CDE_TYPES and not is_integer_coded(
+            code, cde_type, enumerations
+        ):
+            return cls.STR
+        return cls.from_cde(cde_type)
 
     @classmethod
     def dtype2py(cls):

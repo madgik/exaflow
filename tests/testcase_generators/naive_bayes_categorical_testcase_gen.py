@@ -20,7 +20,11 @@ class CategoricalNBFitTestCaseGenerator(TestCaseGenerator):
         X = OrdinalEncoder(categories=xcat, dtype=int).fit_transform(X)
         y = OrdinalEncoder(categories=ycat, dtype=int).fit_transform(y)
 
-        nb = CategoricalNB(alpha=1, force_alpha=True)
+        # The algorithm reports every declared level, including levels absent from the
+        # data; sklearn would otherwise stop at the highest observed level.
+        nb = CategoricalNB(
+            alpha=1, force_alpha=True, min_categories=[len(cat) for cat in xcat]
+        )
         nb.fit(X, y.ravel())
 
         return {

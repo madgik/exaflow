@@ -26,6 +26,10 @@ from tests.testcase_generators.linear_regression_cv_testcase_generator import (
     LinearRegressionTestCaseGenerator,
 )
 
+GROUP_METADATA = {
+    "group": {"type": "nominal", "enumerations": {"0": "0", "1": "1", "2": "2"}}
+}
+
 
 @pytest.mark.parametrize("n_workers", [1, 3])
 @pytest.mark.parametrize("categorical", [False, True])
@@ -41,7 +45,14 @@ def test_cv_matches_reference_with_identical_local_folds(n_workers, categorical)
         part = parts[worker_id]
         if categorical:
             return local_step(
-                agg_client, part, "y", ["group", "x"], ["group"], ["x"], 5
+                agg_client,
+                part,
+                "y",
+                ["group", "x"],
+                ["group"],
+                ["x"],
+                5,
+                GROUP_METADATA,
             )
         return FederatedCrossValidator(
             estimator=FederatedOLS(),
@@ -90,7 +101,7 @@ def test_cv_matches_reference_with_identical_local_folds(n_workers, categorical)
         reference = generator.compute_expected_output(
             (data[["y"]], data[["group", "x"]] if categorical else data[["x"]]),
             {"n_splits": 5},
-            [{"code": "group", "isCategorical": True}],
+            [{"code": "group", "type": "nominal"}],
         )
         for metric, field in [
             ("rmse", "root_mean_sq_error"),
@@ -130,7 +141,7 @@ def test_response_renames_rmse_and_preserves_other_metric_summaries(
         ),
         x=["x"],
         y=["y"],
-        metadata={"x": {"is_categorical": False}},
+        metadata={"x": {"type": "continuous"}},
         parameters={"n_splits": 5},
     )
     result = json.loads(algorithm.run().model_dump_json())
@@ -149,7 +160,9 @@ def test_constant_categorical_predictor_keeps_intercept_only_error_metrics():
     data = pd.DataFrame({"group": [1] * 30, "y": np.arange(30, dtype=float)})
 
     def worker(worker_id, agg_client):
-        return local_step(agg_client, data, "y", ["group"], ["group"], [], 5)
+        return local_step(
+            agg_client, data, "y", ["group"], ["group"], [], 5, GROUP_METADATA
+        )
 
     metrics = _simulate_federated_execution(1, worker)[0]
     assert metrics["feature_names"] == ["Intercept"]

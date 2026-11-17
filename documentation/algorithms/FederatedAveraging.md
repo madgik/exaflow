@@ -103,3 +103,8 @@ count.
 - Equal weighting may not match sample-size-weighted training objectives.
 - Averaging independently trained parameters is not equivalent to fitting a
   single pooled model in general.
+
+## Variable types and coding
+
+Not applicable: this page describes a generic federation pattern and does not read CDEs by type.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

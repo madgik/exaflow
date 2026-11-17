@@ -1,6 +1,7 @@
 import pandas as pd
 
 from exaflow.algorithms.exareme3.statistics.describe import Variable
+from tests.testcase_generators.testcase_generator import NUMERICAL_CDE_TYPES
 from tests.testcase_generators.testcase_generator import TestCaseGenerator
 
 # TODO privacy threshold is hardcoded. Find beter solution.
@@ -13,11 +14,13 @@ class DesciptiveStatistics(TestCaseGenerator):
     dropna = False
 
     def compute_expected_output(self, data: pd.DataFrame, _, metadata: dict):
-        numerical_vars = [md["code"] for md in metadata if not md["isCategorical"]]
+        numerical_vars = [
+            md["code"] for md in metadata if md["type"] in NUMERICAL_CDE_TYPES
+        ]
         nominal_vars = [
             md["code"]
             for md in metadata
-            if md["isCategorical"] and md["code"] != "dataset"
+            if md["type"] not in NUMERICAL_CDE_TYPES and md["code"] != "dataset"
         ]
         vars = numerical_vars + nominal_vars
         enums = {

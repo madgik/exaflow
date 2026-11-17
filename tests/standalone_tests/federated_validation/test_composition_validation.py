@@ -8,11 +8,11 @@ from exaflow.algorithms.federated.compose.column_transformer import (
     FederatedColumnTransformer,
 )
 from exaflow.algorithms.federated.compose.passthrough import FederatedPassthrough
-from exaflow.algorithms.federated.feature_engineering.one_hot_encoder import (
-    FederatedOneHotEncoder,
+from exaflow.algorithms.federated.feature_engineering._one_hot_encoder import (
+    _FederatedOneHotEncoder,
 )
-from exaflow.algorithms.federated.feature_engineering.ordinal_encoder import (
-    FederatedOrdinalEncoder,
+from exaflow.algorithms.federated.feature_engineering._ordinal_encoder import (
+    _FederatedOrdinalEncoder,
 )
 from exaflow.algorithms.federated.model_selection.cross_validation.cross_validator import (
     FederatedCrossValidator,
@@ -36,7 +36,7 @@ from exaflow.algorithms.federated.utils import BadInputError
 
 
 @pytest.mark.parametrize(
-    "encoder", [FederatedOneHotEncoder, FederatedOrdinalEncoder, FederatedPassthrough]
+    "encoder", [_FederatedOneHotEncoder, _FederatedOrdinalEncoder, FederatedPassthrough]
 )
 def test_transformers_report_invalid_frame_types(encoder):
     with pytest.raises(BadInputError, match="DataFrame"):
@@ -45,7 +45,7 @@ def test_transformers_report_invalid_frame_types(encoder):
 
 def test_ordinal_unknown_policy_is_checked_even_for_empty_columns():
     client = Mock()
-    encoder = FederatedOrdinalEncoder(
+    encoder = _FederatedOrdinalEncoder(
         categories={"x": ["a"]}, handle_unknown="private-value"
     )
     with pytest.raises(BadInputError, match="handle_unknown"):
@@ -53,7 +53,7 @@ def test_ordinal_unknown_policy_is_checked_even_for_empty_columns():
     assert client.mock_calls == []
 
 
-@pytest.mark.parametrize("transformer", [FederatedOneHotEncoder, FederatedPassthrough])
+@pytest.mark.parametrize("transformer", [_FederatedOneHotEncoder, FederatedPassthrough])
 def test_numerical_conversion_errors_do_not_echo_data(transformer):
     with pytest.raises(BadInputError) as error:
         transformer().transform(
@@ -190,7 +190,7 @@ def test_direct_outlier_rules_are_validated(strategy, tail, fold):
 @pytest.mark.parametrize("categories", [["a", "a"], [None, "a"], None])
 def test_ordinal_category_order_is_checked_without_aggregation(categories):
     client = Mock()
-    encoder = FederatedOrdinalEncoder(categories={"x": categories})
+    encoder = _FederatedOrdinalEncoder(categories={"x": categories})
     with pytest.raises(BadInputError, match="Category ordering"):
         encoder.fit(
             agg_client=client, data=pd.DataFrame({"x": ["a"]}), categorical_vars=["x"]

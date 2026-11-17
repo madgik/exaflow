@@ -163,3 +163,8 @@ through `statsmodels.stats.libqsturng.psturng`.
 - The model assumes comparable within-group variances.
 - The pairwise comparison table is post-hoc and uses the fitted ANOVA residual
   mean square.
+
+## Variable types and coding
+
+`y` is numerical. `x` is one categorical variable (`nominal`, `ordinal` or `binary`); its levels are the groups and are reported by code. There is no covariate coding.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

@@ -129,3 +129,8 @@ correlation coefficients and p-values.
 - Confidence intervals rely on Fisher-z asymptotic approximation.
 - Pairwise missing-value behavior depends on the preprocessing selected before
   the algorithm runs.
+
+## Variable types and coding
+
+Only numerical variables are accepted.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

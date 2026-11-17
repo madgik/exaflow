@@ -3,20 +3,21 @@ import warnings
 
 import numpy as np
 import pandas as pd
-import statsmodels.formula.api as smf
+import statsmodels.api as sm
 from statsmodels.discrete.discrete_model import PerfectSeparationError
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
 from exaflow.algorithms.exareme3.linear_model.logistic_regression import (
     LogisticRegressionSummary,
 )
+from tests.testcase_generators.design_matrix import coded_design_matrix
 from tests.testcase_generators.testcase_generator import TestCaseGenerator
 
 warnings.filterwarnings("error")
 
 
 class LogisticRegressionTestCaseGenerator(TestCaseGenerator):
-    def compute_expected_output(self, input_data, input_parameters):
+    def compute_expected_output(self, input_data, input_parameters, metadata):
         y, X = input_data
         positive_class = input_parameters["positive_class"]
         ybin = (y == positive_class).astype(int)
@@ -26,10 +27,11 @@ class LogisticRegressionTestCaseGenerator(TestCaseGenerator):
             return
 
         [yname] = y.columns
-        xnames = X.columns
-        formula = f"{yname}~{'+'.join(xnames)}"
         data = pd.concat([ybin, X], axis=1)
         data.dropna(inplace=True)
+        design = sm.add_constant(
+            coded_design_matrix(data[X.columns], metadata), prepend=True
+        ).rename(columns={"const": "Intercept"})
 
         # reject if class counts are less than the number of columns of X
         positive_count = sum(data[yname])
@@ -46,7 +48,7 @@ class LogisticRegressionTestCaseGenerator(TestCaseGenerator):
             # statsmodels is very chatty so I suppress stdout. Remove next line
             # to see what is printed.
             sys.stdout = None
-            model = smf.logit(formula, data).fit()
+            model = sm.Logit(data[yname], design).fit()
             sys.stdout = sys.__stdout__
         except np.linalg.LinAlgError:
             # statsmodels throws an error when encountering a singular matrix.

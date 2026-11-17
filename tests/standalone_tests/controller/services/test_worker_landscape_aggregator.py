@@ -67,8 +67,7 @@ def _build_dataset_cde(
     return CommonDataElement(
         code="dataset",
         label="Dataset",
-        sql_type="text",
-        is_categorical=True,
+        type="nominal",
         enumerations=enumerations,
         min=min_value,
         max=max_value,
@@ -161,15 +160,13 @@ def mocked_data_models_cdes():
                     "dataset": CommonDataElement(
                         code="dataset",
                         label="Dataset",
-                        sql_type="text",
-                        is_categorical=True,
+                        type="nominal",
                         enumerations=dementia_enums,
                     ),
                     "alzheimerbroadcategory": CommonDataElement(
                         code="alzheimerbroadcategory",
                         label="Alzheimer Broad Category",
-                        sql_type="text",
-                        is_categorical=True,
+                        type="nominal",
                         enumerations={
                             "AD": "Alzheimer’s disease",
                             "CN": "Cognitively Normal",
@@ -180,8 +177,7 @@ def mocked_data_models_cdes():
                     "minimentalstate": CommonDataElement(
                         code="minimentalstate",
                         label="MMSE Total scores",
-                        sql_type="int",
-                        is_categorical=False,
+                        type="discrete",
                         min=0,
                         max=30,
                     ),
@@ -192,15 +188,13 @@ def mocked_data_models_cdes():
                     "dataset": CommonDataElement(
                         code="dataset",
                         label="Dataset",
-                        sql_type="text",
-                        is_categorical=True,
+                        type="nominal",
                         enumerations=tbi_enums,
                     ),
                     "gender_type": CommonDataElement(
                         code="gender_type",
                         label="Gender",
-                        sql_type="text",
-                        is_categorical=True,
+                        type="nominal",
                         enumerations={
                             "M": "Male",
                             "F": "Female",
@@ -432,16 +426,16 @@ def get_parametrization_cases():
         datasets_locations=DatasetsLocations(
             datasets_locations={
                 "data_model:1": {
-                    "dataset1": "localworker1",
-                    "dataset2": "localworker1",
-                    "dataset3": "localworker2",
-                    "dataset4": "localworker2",
-                    "dataset5": "localworker3",
-                    "dataset6": "localworker3",
+                    "DATASET1": "localworker1",
+                    "DATASET2": "localworker1",
+                    "DATASET3": "localworker2",
+                    "DATASET4": "localworker2",
+                    "DATASET5": "localworker3",
+                    "DATASET6": "localworker3",
                 },
                 "data_model:2": {
-                    "dataset1": "localworker1",
-                    "dataset2": "localworker3",
+                    "DATASET1": "localworker1",
+                    "DATASET2": "localworker3",
                 },
             }
         ),
@@ -534,14 +528,14 @@ def get_parametrization_cases():
         datasets_locations=DatasetsLocations(
             datasets_locations={
                 "data_model:1": {
-                    "dataset3": "localworker2",
-                    "dataset4": "localworker2",
-                    "dataset5": "localworker3",
-                    "dataset6": "localworker3",
+                    "DATASET3": "localworker2",
+                    "DATASET4": "localworker2",
+                    "DATASET5": "localworker3",
+                    "DATASET6": "localworker3",
                 },
                 "data_model:2": {
-                    "dataset1": "localworker1",
-                    "dataset2": "localworker3",
+                    "DATASET1": "localworker1",
+                    "DATASET2": "localworker3",
                 },
             }
         ),
@@ -557,8 +551,7 @@ def get_parametrization_cases():
                             "age": CommonDataElement(
                                 code="age",
                                 label="Age",
-                                sql_type="int",
-                                is_categorical=False,
+                                type="discrete",
                                 min=0,
                                 max=130,
                             )
@@ -575,8 +568,7 @@ def get_parametrization_cases():
                             "age": CommonDataElement(
                                 code="age",
                                 label="Age",
-                                sql_type="int",
-                                is_categorical=False,
+                                type="discrete",
                                 min=1,
                                 max=130,
                             )
@@ -610,8 +602,8 @@ def get_parametrization_cases():
         datasets_locations=DatasetsLocations(
             datasets_locations={
                 "data_model:2": {
-                    "dataset1": "localworker1",
-                    "dataset2": "localworker3",
+                    "DATASET1": "localworker1",
+                    "DATASET2": "localworker3",
                 }
             }
         ),
@@ -659,7 +651,7 @@ def get_parametrization_cases():
         datasets_locations=DatasetsLocations(
             datasets_locations={
                 "data_model:2": {
-                    "dataset2": "localworker3",
+                    "DATASET2": "localworker3",
                 }
             }
         ),
@@ -740,12 +732,12 @@ def get_parametrization_cases():
         datasets_locations=DatasetsLocations(
             datasets_locations={
                 "data_model:1": {
-                    "dataset1": "localworker1",
-                    "dataset2": "localworker1",
-                    "dataset3": "localworker2",
-                    "dataset4": "localworker2",
-                    "dataset5": "localworker3",
-                    "dataset6": "localworker3",
+                    "DATASET1": "localworker1",
+                    "DATASET2": "localworker1",
+                    "DATASET3": "localworker2",
+                    "DATASET4": "localworker2",
+                    "DATASET5": "localworker3",
+                    "DATASET6": "localworker3",
                 }
             }
         ),
@@ -882,14 +874,12 @@ def test_crunch_data_model_registry_data_includes_datasets_variables(
                                 "var1": CommonDataElement(
                                     code="var1",
                                     label="Variable 1",
-                                    sql_type="text",
-                                    is_categorical=False,
+                                    type="nominal",
                                 ),
                                 "var2": CommonDataElement(
                                     code="var2",
                                     label="Variable 2",
-                                    sql_type="text",
-                                    is_categorical=False,
+                                    type="nominal",
                                 ),
                             }
                         ),
@@ -903,7 +893,7 @@ def test_crunch_data_model_registry_data_includes_datasets_variables(
         metadata, worker_landscape_aggregator._logger
     )
     assert dmr.datasets_variables.datasets_variables == {
-        "data_model:1": {"dataset1": ["var1", "var2"]}
+        "data_model:1": {"DATASET1": ["var1", "var2"]}
     }
 
 
@@ -936,8 +926,7 @@ def test_crunch_data_model_registry_data_omits_datasets_without_variables(
                                 "var1": CommonDataElement(
                                     code="var1",
                                     label="Variable 1",
-                                    sql_type="text",
-                                    is_categorical=False,
+                                    type="nominal",
                                 ),
                             }
                         ),
@@ -960,7 +949,7 @@ def test_crunch_data_model_registry_data_omits_datasets_without_variables(
         metadata, worker_landscape_aggregator._logger
     )
     assert dmr.datasets_variables.datasets_variables == {
-        "data_model:1": {"known": ["var1"]},
+        "data_model:1": {"KNOWN": ["var1"]},
         "data_model:2": {},
     }
 
@@ -1273,3 +1262,12 @@ def test_local_worker_task_handlers_come_from_one_snapshot():
 
     assert handlers == [("req-1", "localworker1")]
     assert seen["call"] == ("dementia:0.1", ["ppmi0"])
+
+
+def test_get_dataset_codes_translates_labels_to_stored_codes():
+    wla = WorkerLandscapeAggregator.__new__(WorkerLandscapeAggregator)
+    wla.get_cdes = lambda data_model: {
+        "dataset": _build_dataset_cde({"1": "PPMI", "12": "EDSD"})
+    }
+
+    assert wla.get_dataset_codes("data_model:1", ["EDSD", "PPMI"]) == ["12", "1"]

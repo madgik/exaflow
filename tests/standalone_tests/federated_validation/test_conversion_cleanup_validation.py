@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from exaflow.algorithms.federated.feature_engineering.ordinal_encoder import (
-    FederatedOrdinalEncoder,
+from exaflow.algorithms.federated.feature_engineering._ordinal_encoder import (
+    _FederatedOrdinalEncoder,
 )
 from exaflow.algorithms.federated.mixed_effects import mixed_effects_utils
 from exaflow.algorithms.federated.utils import BadInputError
@@ -140,7 +140,7 @@ def test_category_validation_returns_a_reusable_dtype_in_the_supplied_order():
 @pytest.mark.parametrize("categories", [None, ["a", "a"], ["a", None], [np.nan]])
 def test_ordinal_transform_validates_category_mutations_after_fit(categories):
     data = pd.DataFrame({"x": ["a", "b"]})
-    encoder = FederatedOrdinalEncoder(categories={"x": ["a", "b"]})
+    encoder = _FederatedOrdinalEncoder(categories={"x": ["a", "b"]})
     encoder.fit(agg_client=None, data=data, categorical_vars=["x"])
     encoder.categories_["x"] = categories
 
@@ -150,7 +150,7 @@ def test_ordinal_transform_validates_category_mutations_after_fit(categories):
 
 def test_ordinal_transform_keeps_category_order_and_unknown_sentinels():
     data = pd.DataFrame({"x": ["a", "b", None, "unknown"]})
-    encoder = FederatedOrdinalEncoder(categories={"x": ["b", "a"]}, unknown_value=-2)
+    encoder = _FederatedOrdinalEncoder(categories={"x": ["b", "a"]}, unknown_value=-2)
     encoder.fit(agg_client=None, data=data, categorical_vars=["x"])
     np.testing.assert_array_equal(
         encoder.transform(data, categorical_vars=["x"]).reshape(-1), [1, 0, -2, -2]
@@ -158,7 +158,7 @@ def test_ordinal_transform_keeps_category_order_and_unknown_sentinels():
 
 
 def test_ordinal_transform_rejects_unknown_values_when_requested():
-    encoder = FederatedOrdinalEncoder(categories={"x": ["a"]}, handle_unknown="error")
+    encoder = _FederatedOrdinalEncoder(categories={"x": ["a"]}, handle_unknown="error")
     encoder.fit(
         agg_client=None, data=pd.DataFrame({"x": ["a"]}), categorical_vars=["x"]
     )
@@ -167,7 +167,7 @@ def test_ordinal_transform_rejects_unknown_values_when_requested():
 
 
 def test_ordinal_transform_keeps_missing_column_sentinels():
-    encoder = FederatedOrdinalEncoder(categories={"x": ["a"]})
+    encoder = _FederatedOrdinalEncoder(categories={"x": ["a"]})
     encoder.fit(
         agg_client=None, data=pd.DataFrame({"x": ["a"]}), categorical_vars=["x"]
     )

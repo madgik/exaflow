@@ -7,21 +7,22 @@ from pydantic import BaseModel
 
 from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
-from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.compose.column_transformer import (
-    FederatedColumnTransformer,
+from exaflow.algorithms.exareme3.utils.covariate_encoding import (
+    build_covariate_transformer,
 )
-from exaflow.algorithms.federated.feature_engineering import FederatedOneHotEncoder
+from exaflow.algorithms.exareme3.utils.positive_class import encode_positive_class
+from exaflow.algorithms.exareme3.utils.positive_class import (
+    require_binary_positive_class,
+)
+from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.linear_model.cox_regression_stacked import (
     ALLOWED_TIME_GRID_STRATEGIES,
 )
 from exaflow.algorithms.federated.linear_model.cox_regression_stacked import (
     FederatedStackedCoxRegression,
 )
-from exaflow.algorithms.federated.linear_model.logistic_regression import (
-    FederatedLogisticRegression,
-)
 from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.datatypes import CATEGORICAL_CDE_TYPES
 
 
 class StackedCoxRegressionSummary(BaseModel):
@@ -71,19 +72,21 @@ class StackedCoxRegression(Algorithm):
                 "covariates in x. The 'event_var' setting identifies which x "
                 "variable is used to build the binary event vector; all other "
                 "selected x variables are modeled as covariates.\n\n"
-                "The event variable is never one-hot encoded. It is converted "
-                "to a single binary event vector where 1 means the selected "
-                "event occurred and 0 means censoring or any other category. "
-                "Variables stored as 0/1 or false/true are detected "
-                "automatically. Use 'positive_class' when the event variable is "
-                "categorical, such as diagnosis category or vital status; that "
-                "level is converted to event=1 and all other observed levels "
-                "are converted to event=0. Because 'event_var' is selected "
-                "from a multi-variable x input, the current specification "
-                "schema cannot expose 'positive_class' as a dynamic dropdown "
-                "from the selected event variable.\n\n"
-                "Categorical covariates are one-hot encoded before stacking. "
-                "The time_grid_strategy parameter controls how event-time "
+                "The event variable must be declared as binary in the data "
+                "model; nominal and ordinal variables are rejected and never "
+                "collapsed into an event indicator. It is never one-hot "
+                "encoded. 'positive_class' is required and must be one of the "
+                "level codes declared for the event variable; that level "
+                "means the event occurred (event=1) and the other level is "
+                "event=0. Nothing is inferred from the stored values. Because "
+                "'event_var' is selected from a multi-variable x input, the "
+                "current specification schema cannot expose 'positive_class' "
+                "as a dynamic dropdown, so the level is validated against the "
+                "event variable's declared levels when the analysis runs.\n\n"
+                "Nominal covariates are one-hot encoded with the first sorted "
+                "level as reference; binary covariates become one 0/1 column in "
+                "declared level order and ordinal covariates one integer column "
+                "in declared order. The time_grid_strategy parameter controls how event-time "
                 "bins are constructed, and n_time_bins is used only for the "
                 "uniform time-grid strategy.\n\n"
                 "The result includes covariate coefficients, approximate "
@@ -117,7 +120,7 @@ class StackedCoxRegression(Algorithm):
                 ],
                 stattypes=[
                     specs.InputDataStatType.NUMERICAL,
-                    specs.InputDataStatType.NOMINAL,
+                    *specs.CATEGORICAL_STATTYPES,
                 ],
                 required=True,
                 min_count=2,
@@ -125,10 +128,14 @@ class StackedCoxRegression(Algorithm):
             parameters={
                 "event_var": specs.ParameterSpecification(
                     label="Event variable",
-                    desc="Variable from x used to build the binary event vector.",
+                    desc=(
+                        "Binary variable from x used to build the event "
+                        "vector. Only variables declared as binary are accepted."
+                    ),
                     types=[specs.ParameterType.TEXT],
                     required=True,
                     multiple=False,
+                    variable_stattypes=[specs.InputDataStatType.BINARY],
                     enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_NAMES,
                         source=["x"],
@@ -137,11 +144,12 @@ class StackedCoxRegression(Algorithm):
                 "positive_class": specs.ParameterSpecification(
                     label="Event of interest",
                     desc=(
-                        "Event level mapped to 1; other observed levels are "
-                        "mapped to 0."
+                        "Level code of the binary event variable mapped to 1; "
+                        "the other level is mapped to 0. It must be one of the "
+                        "levels declared for the event variable."
                     ),
                     types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
-                    required=False,
+                    required=True,
                     multiple=False,
                 ),
                 "time_grid_strategy": specs.ParameterSpecification(
@@ -183,6 +191,9 @@ class StackedCoxRegression(Algorithm):
             raise BadInputError(
                 "event_var must refer to one of the selected x variables."
             )
+        require_binary_positive_class(
+            self.metadata, event_var, positive_class, role="event variable"
+        )
 
         covariate_vars = [var for var in self.x if var != event_var]
         if not covariate_vars:
@@ -191,10 +202,14 @@ class StackedCoxRegression(Algorithm):
             )
 
         categorical_vars = [
-            var for var in covariate_vars if self.metadata[var]["is_categorical"]
+            var
+            for var in covariate_vars
+            if self.metadata[var]["type"] in CATEGORICAL_CDE_TYPES
         ]
         numerical_vars = [
-            var for var in covariate_vars if not self.metadata[var]["is_categorical"]
+            var
+            for var in covariate_vars
+            if self.metadata[var]["type"] not in CATEGORICAL_CDE_TYPES
         ]
 
         model_stats = self.run_local_udf(
@@ -227,48 +242,6 @@ def _validate_time_grid_strategy(time_grid_strategy: str) -> None:
         )
 
 
-def _to_binary_event_array(series, *, positive_class, agg_client) -> np.ndarray:
-    non_null = series.dropna()
-    if non_null.empty:
-        raise BadInputError("Event indicator contains only missing values.")
-
-    global_levels = list(agg_client.union(non_null.tolist()))
-    if positive_class is not None:
-        coerced = FederatedLogisticRegression.coerce_positive_class(
-            series,
-            positive_class,
-        )
-        coerced_global_levels = {
-            FederatedLogisticRegression.coerce_positive_class(series, level)
-            for level in global_levels
-        }
-        if coerced not in coerced_global_levels:
-            raise BadInputError(
-                "positive_class for event_var should match one of the observed "
-                "event variable levels."
-            )
-        return series.eq(coerced).to_numpy(dtype=float, copy=False)
-
-    try:
-        numeric_levels = np.asarray(global_levels, dtype=float)
-    except (TypeError, ValueError):
-        numeric_levels = None
-
-    if (
-        numeric_levels is not None
-        and np.isin(np.unique(numeric_levels), [0.0, 1.0]).all()
-    ):
-        return series.astype(float).to_numpy(copy=False)
-
-    if set(global_levels).issubset({False, True}):
-        return series.astype(float).to_numpy(copy=False)
-
-    raise BadInputError(
-        "Event variable must be stored as 0/1 or false/true, or positive_class "
-        "must be provided to define which observed level maps to event=1."
-    )
-
-
 @exareme3_udf(with_aggregation_server=True)
 def cox_regression_stacked_local_step(
     agg_client,
@@ -280,13 +253,11 @@ def cox_regression_stacked_local_step(
     numerical_vars,
     time_grid_strategy,
     n_time_bins,
+    metadata,
 ):
     _validate_time_grid_strategy(time_grid_strategy)
 
-    transformer = FederatedColumnTransformer(
-        [("cat", FederatedOneHotEncoder(), categorical_vars)],
-        remainder="passthrough",
-    )
+    transformer = build_covariate_transformer(categorical_vars, metadata)
     transformer.fit(
         agg_client=agg_client,
         data=data,
@@ -303,11 +274,7 @@ def cox_regression_stacked_local_step(
         numerical_vars=numerical_vars,
     )
     times = data[time_var].to_numpy(dtype=float, copy=False)
-    events = _to_binary_event_array(
-        data[event_var],
-        positive_class=positive_class,
-        agg_client=agg_client,
-    )
+    events = encode_positive_class(data[event_var], positive_class)
 
     y_survival = np.column_stack([times.astype(float), events.astype(float)])
 

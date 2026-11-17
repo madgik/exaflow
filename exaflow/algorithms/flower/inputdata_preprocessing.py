@@ -6,6 +6,7 @@ from math import pow
 from typing import Optional
 
 import flwr as fl
+import numpy as np
 import requests
 from flwr.common.logger import FLOWER_LOGGER
 from sklearn import preprocessing
@@ -29,6 +30,9 @@ def preprocess_data(inputdata, full_data):
     # Select features and target based on inputdata configuration
     features = full_data[inputdata.x]  # This should be a DataFrame
     target = full_data[inputdata.y].values.ravel()  # Flatten the array if it's 2D
+
+    # Categorical CSV columns hold integer codes; the enumerations are text codes.
+    target = np.array([str(int(value)) for value in target])
 
     # Encode target variable
     label_encoder = preprocessing.LabelEncoder()

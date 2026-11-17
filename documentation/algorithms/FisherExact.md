@@ -27,8 +27,8 @@ under fixed margins.
 
 | Input | Description |
 |---|---|
-| `y` | Binary nominal outcome variable. |
-| `x` | Binary nominal factor variable. |
+| `y` | Binary outcome variable. Only variables declared `binary` are accepted; a two-level `nominal` variable is rejected. |
+| `x` | Binary factor variable. Only variables declared `binary` are accepted; a two-level `nominal` variable is rejected. |
 
 ### Parameters
 
@@ -126,3 +126,8 @@ Reference behavior is aligned with SciPy's default Fisher exact test.
 - The test is intended for a 2 by 2 contingency table.
 - The p-value conditions on fixed row and column margins.
 - The odds ratio can be infinite or undefined when cells contain zeros.
+
+## Variable types and coding
+
+`x` and `y` must both be `binary` (codes `0` and `1`); a `nominal` variable with two levels is rejected. The 2x2 table is built from the 0/1 codes.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

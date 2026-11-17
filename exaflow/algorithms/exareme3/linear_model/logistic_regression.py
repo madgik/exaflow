@@ -4,15 +4,19 @@ from pydantic import BaseModel
 
 from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
-from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.compose.column_transformer import (
-    FederatedColumnTransformer,
+from exaflow.algorithms.exareme3.utils.covariate_encoding import (
+    build_covariate_transformer,
 )
-from exaflow.algorithms.federated.feature_engineering import FederatedOneHotEncoder
+from exaflow.algorithms.exareme3.utils.positive_class import encode_positive_class
+from exaflow.algorithms.exareme3.utils.positive_class import (
+    require_binary_positive_class,
+)
+from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.linear_model.logistic_regression import (
     FederatedLogisticRegression,
 )
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
+from exaflow.datatypes import CATEGORICAL_CDE_TYPES
 
 
 class LogisticRegressionSummary(BaseModel):
@@ -50,7 +54,10 @@ class LogisticRegression(Algorithm):
                 "numerical and/or categorical covariates. The dependent "
                 "variable is converted to binary by assigning 1 to the "
                 "selected positive class and 0 to all other classes. "
-                "Categorical covariates are one-hot encoded before estimation.\n\n"
+                "Nominal covariates are one-hot encoded with the first sorted "
+                "level as reference; binary covariates become one 0/1 column "
+                "in declared level order and ordinal covariates one integer "
+                "column in declared order.\n\n"
                 "The model includes an intercept and estimates coefficients by "
                 "maximizing the binomial log-likelihood with the logistic link "
                 "function. The positive class is selected using the "
@@ -69,9 +76,12 @@ class LogisticRegression(Algorithm):
             required_preprocessing=["missing_values_handler"],
             y=specs.InputDataSpecification(
                 label="Outcome",
-                desc="Nominal outcome converted using the positive class.",
-                types=[specs.InputDataType.TEXT],
-                stattypes=[specs.InputDataStatType.NOMINAL],
+                desc=(
+                    "Binary outcome. Only variables declared as binary are "
+                    "accepted; nominal variables are rejected, never converted."
+                ),
+                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.BINARY],
                 required=True,
                 max_count=1,
             ),
@@ -85,7 +95,7 @@ class LogisticRegression(Algorithm):
                 ],
                 stattypes=[
                     specs.InputDataStatType.NUMERICAL,
-                    specs.InputDataStatType.NOMINAL,
+                    *specs.CATEGORICAL_STATTYPES,
                 ],
                 required=True,
             ),
@@ -109,12 +119,17 @@ class LogisticRegression(Algorithm):
     def run(self):
         positive_class = self.get_parameter("positive_class")
         y_var = self.y[0]
+        require_binary_positive_class(
+            self.metadata, y_var, positive_class, role="outcome"
+        )
         x_vars = list(self.x)
         categorical_vars = [
-            var for var in x_vars if self.metadata[var]["is_categorical"]
+            var for var in x_vars if self.metadata[var]["type"] in CATEGORICAL_CDE_TYPES
         ]
         numerical_vars = [
-            var for var in x_vars if not self.metadata[var]["is_categorical"]
+            var
+            for var in x_vars
+            if self.metadata[var]["type"] not in CATEGORICAL_CDE_TYPES
         ]
 
         model_stats = self.run_local_udf(
@@ -162,21 +177,16 @@ def local_step(
     x_vars,
     categorical_vars,
     numerical_vars,
+    metadata,
 ):
-    transformer = FederatedColumnTransformer(
-        [("cat", FederatedOneHotEncoder(), categorical_vars)],
-        remainder="passthrough",
-    )
+    transformer = build_covariate_transformer(categorical_vars, metadata)
     pipeline = FederatedPipeline(
         [
             ("features", transformer),
             ("model", FederatedLogisticRegression(fit_intercept=True)),
         ]
     )
-    positive_class = FederatedLogisticRegression.coerce_positive_class(
-        data[y_var], positive_class
-    )
-    y = data[y_var].eq(positive_class).to_numpy(dtype=float, copy=False)
+    y = encode_positive_class(data[y_var], positive_class)
     results = pipeline.fit(
         agg_client=agg_client,
         data=data,

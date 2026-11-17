@@ -10,6 +10,9 @@ from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import model_validator
 
+from exaflow.datatypes import CATEGORICAL_CDE_TYPES
+from exaflow.datatypes import CDEType
+
 
 @unique
 class AlgorithmType(Enum):
@@ -32,8 +35,36 @@ class InputDataType(Enum):
 
 @unique
 class InputDataStatType(Enum):
+    """Statistical type an input slot accepts.
+
+    Slots match CDEs one-to-one: a ``continuous``/``discrete`` CDE only satisfies
+    ``NUMERICAL``, a ``nominal`` CDE only ``NOMINAL``, an ``ordinal`` CDE only
+    ``ORDINAL`` and a ``binary`` CDE only ``BINARY``. A slot that accepts several
+    categorical kinds has to list each of them.
+    """
+
     NUMERICAL = "numerical"
     NOMINAL = "nominal"
+    ORDINAL = "ordinal"
+    BINARY = "binary"
+
+
+# For slots that take any categorical variable, e.g. covariates that are dummy
+# coded or grouping variables. Slots that require binary or ordinal semantics
+# must NOT use this and list BINARY or ORDINAL alone.
+CATEGORICAL_STATTYPES = (
+    InputDataStatType.NOMINAL,
+    InputDataStatType.ORDINAL,
+    InputDataStatType.BINARY,
+)
+
+STATTYPE_PER_CDE_TYPE = {
+    CDEType.CONTINUOUS: InputDataStatType.NUMERICAL,
+    CDEType.DISCRETE: InputDataStatType.NUMERICAL,
+    CDEType.NOMINAL: InputDataStatType.NOMINAL,
+    CDEType.ORDINAL: InputDataStatType.ORDINAL,
+    CDEType.BINARY: InputDataStatType.BINARY,
+}
 
 
 @unique
@@ -172,6 +203,20 @@ class ParameterSpecification(ImmutableBaseModel):
     dict_values_enums: Optional[ParameterEnumSpecification] = None
     min: Optional[float] = None
     max: Optional[float] = None
+    # Only for parameters that select an input variable (INPUT_VAR_NAMES enums):
+    # the selected variable must match one of these stattypes exactly.
+    variable_stattypes: Optional[List[InputDataStatType]] = None
+
+    @model_validator(mode="after")
+    def validate_variable_stattypes(self):
+        if self.variable_stattypes is not None and (
+            self.enums is None or self.enums.type != ParameterEnumType.INPUT_VAR_NAMES
+        ):
+            raise ValueError(
+                f"In parameter '{self.label}', 'variable_stattypes' requires "
+                "enums of type 'input_var_names'."
+            )
+        return self
 
 
 class PreprocessingOutputEnumerationsSpecification(ImmutableBaseModel):
@@ -201,23 +246,15 @@ class PreprocessingOutputEnumerationsSpecification(ImmutableBaseModel):
 class PreprocessingOutputColumnSpecification(ImmutableBaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    type: InputDataType
-    stattype: InputDataStatType
+    type: CDEType
     column_count_param: Optional[str] = Field(default=None, min_length=1, pattern=r"\S")
     enumerations: Optional[PreprocessingOutputEnumerationsSpecification] = None
 
     @model_validator(mode="after")
     def validate_column_type(self):
-        nominal = self.stattype == InputDataStatType.NOMINAL
-        allowed = (
-            (InputDataType.TEXT, InputDataType.INT)
-            if nominal
-            else (InputDataType.INT, InputDataType.REAL)
-        )
-        if self.type not in allowed:
-            raise ValueError("Unsupported output type and stattype combination.")
-        if nominal != (self.enumerations is not None):
-            raise ValueError("Only nominal outputs require enumerations.")
+        categorical = self.type in CATEGORICAL_CDE_TYPES
+        if categorical != (self.enumerations is not None):
+            raise ValueError("Only categorical outputs require enumerations.")
         return self
 
 
