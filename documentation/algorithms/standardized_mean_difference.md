@@ -74,3 +74,8 @@ Standalone tests compare direct and grouped results with NumPy and pandas sample
 ## Limitations
 
 The calculation assumes the pooled-variance definition is suitable for the compared groups. It does not provide confidence intervals, hypothesis-test p-values, bias correction, or an unequal-variance effect-size variant. The number of returned comparisons grows quadratically with the number of eligible categories.
+
+## Variable types and coding
+
+`y` is numerical. `x` is a categorical variable; groups are its level codes, ordered by sorted code, and pairs are reported by code.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

@@ -32,14 +32,14 @@ outcome classes are encoded as `0`.
 
 | Input | Description |
 |---|---|
-| `y` | Nominal outcome variable converted to binary using `positive_class`. |
+| `y` | Binary outcome variable. Only variables declared `binary` are accepted; `nominal` and `ordinal` variables are rejected, never converted. |
 | `x` | One or more numerical or categorical covariates. |
 
 ### Parameters
 
 | Parameter | Description | Default |
 |---|---|---|
-| `positive_class` | Outcome category treated as the positive outcome. | Required |
+| `positive_class` | One of the two declared levels of `y`, treated as the positive outcome. | Required |
 
 ## Statistical model
 
@@ -67,7 +67,7 @@ Aggregated quantities drive Newton-style coefficient updates.
 
 | Quantity | Purpose |
 |---|---|
-| Global categorical levels | Align one-hot encoded covariate columns. |
+| Global nominal levels | Align one-hot encoded columns of nominal covariates. |
 | Number of observations | Validate model size and compute fit statistics. |
 | Number of positive outcomes | Validate class support and compute null log-likelihood. |
 | Gradient vector | Update coefficients. |
@@ -78,9 +78,9 @@ Aggregated quantities drive Newton-style coefficient updates.
 
 ```text
 Input:
-    y: nominal outcome
+    y: binary outcome
     X: covariates
-    positive_class: category mapped to 1
+    positive_class: level of y mapped to 1
 
 Step 1:
     Convert y to binary:
@@ -89,7 +89,10 @@ Step 1:
 
 Step 2:
     Build the design matrix:
-        one-hot encode categorical covariates
+        code categorical covariates by CDE type:
+            binary -> one 0/1 column (first declared level is 0)
+            ordinal -> one integer column in declared level order
+            nominal -> one-hot dummy columns
         include numerical covariates directly
         add an intercept
 
@@ -122,7 +125,13 @@ Output:
 ## Technical decisions
 
 - An intercept is always included.
-- Categorical covariates are one-hot encoded with globally aligned categories.
+- Categorical covariates are coded by CDE type. A `binary` covariate is one 0/1
+  column (the first level declared in the data model is 0, the second is 1) named
+  `var[level coded 1]`. An `ordinal` covariate is one integer column
+  (`0..K-1` in the declared level order) that keeps the variable name. A
+  `nominal` covariate is one-hot encoded with globally aligned categories. A
+  missing value or an undeclared level in a binary or ordinal covariate raises an
+  error. Columns are ordered nominal dummies, binary, ordinal, numerical.
 - The optimizer uses Newton updates.
 - `MAX_ITER` is 50 and convergence tolerance is `1e-4` on the maximum absolute
   gradient component.
@@ -185,3 +194,8 @@ Newton optimizer and an intercept.
 - Complete or quasi-complete separation can prevent convergence.
 - The model can fail when observations or class counts are too small relative to
   the number of predictors.
+
+## Variable types and coding
+
+`y` must be `binary`. `positive_class` is required and must be one of the codes declared for `y` (for example `"1"`); that code is the outcome `1`, the other code is `0`. Covariates are coded as in the shared page (`binary` 0/1, `ordinal` `0..K-1` with equal spacing, `nominal` one-hot); a `binary` or `ordinal` covariate with a single observed value raises an error.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

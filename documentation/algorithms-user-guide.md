@@ -345,9 +345,12 @@ The migrated flows share a small set of helpers to keep `run()` methods tidy:
   `require_dependent_var`, `require_covariates`, `require_exact_covariates`)
   that raise `BadUserInput` (from `exaflow.worker_communication`) with a
   meaningful error message.
+- Categorical CDEs are stored as integer codes and reach algorithms as text
+  codes; see [Data Types, Storage and Variable Coding](data-types-and-coding.md)
+  for the storage types, covariate coding and the `positive_class` convention.
 - `metadata_utils.validate_metadata_vars` and
   `validate_metadata_enumerations` assert that the `metadata` dictionary
-  contains the keys needed by the algorithm (primarily `is_categorical` and
+  contains the keys needed by the algorithm (primarily the CDE `type` and
   category enumerations).
 - `preprocessing.get_dummy_categories` runs a helper UDF (usually something
   like `logistic_collect_categorical_levels`) on every worker to discover the

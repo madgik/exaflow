@@ -86,7 +86,7 @@ uv run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algo
 Run an analysis through the helper CLI:
 
 ```bash
-./run_analysis -a pca -y leftamygdala lefthippocampus -d ppmi0 -m dementia:0.1
+./run_analysis -a pca -y leftamygdala lefthippocampus -d PPMI_0 -m dementia:0.1
 ```
 
 Full install, build, test, deployment, and Kubernetes command lists live in

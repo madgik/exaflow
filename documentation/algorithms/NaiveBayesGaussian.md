@@ -131,3 +131,8 @@ parameters computed from aggregated class-feature statistics.
 - The method assumes conditional independence of features given the class.
 - Each feature is modeled as Gaussian within each class.
 - Strongly non-Gaussian feature distributions can reduce classifier quality.
+
+## Variable types and coding
+
+`x` is numerical. `y` is categorical and the classes are its level codes. There is no covariate coding.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

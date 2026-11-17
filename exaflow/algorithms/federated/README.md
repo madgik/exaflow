@@ -69,7 +69,7 @@ Existing algorithm/production tests and fixtures remain unchanged.
 - [GAUSSIAN_NAIVE_BAYES](docs/gaussian_naive_bayes.md)
 - [CATEGORICAL_NAIVE_BAYES](docs/categorical_naive_bayes.md)
 
-## feature_engineering
+## feature_engineering (internal building blocks, not public API)
 
 - [ONE_HOT_ENCODER](docs/one_hot_encoder.md)
 - [ORDINAL_ENCODER](docs/ordinal_encoder.md)

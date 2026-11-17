@@ -136,3 +136,8 @@ additive smoothing.
 - Unknown categories at prediction time are ignored rather than assigned a
   learned probability.
 - Category ordering must remain aligned between fitting and prediction.
+
+## Variable types and coding
+
+`x` and `y` are categorical and are used by level code; the classes in the result are the `y` codes. Every declared level of an `x` variable gets a count column, including levels absent from the data. There is no one-hot or numeric coding.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

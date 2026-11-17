@@ -80,7 +80,14 @@ are resolved recursively; duplicate filenames are rejected.
 
   - `inputdata` is the Pydantic model in
     `exaflow/algorithms/utils/inputdata_utils.Inputdata`.
-  - `metadata` is `dict[var] -> {is_categorical: bool, enumerations: {...}}`.
+  - `metadata` is `dict[var] -> {type: str, enumerations: {...}}`, where `type`
+    is a CDE type; `CATEGORICAL_CDE_TYPES` in `exaflow.datatypes` lists the
+    categorical ones. Categorical CDEs (nominal, ordinal, binary, `dataset`,
+    `subjectid`, `visitid`) are stored as integers (binary 0/1, others from 1)
+    and the worker hands them to the algorithm as text codes (`"1"`, `None` for
+    missing); the readable name is the enumeration label. Parameters that name
+    a level take the code as a string. See
+    [Data Types, Storage and Variable Coding](../../../documentation/data-types-and-coding.md).
   - `parameters` is a plain dict validated against the specification.
 
 ## Specifications
@@ -129,7 +136,7 @@ are resolved recursively; duplicate filenames are rejected.
 ## Preprocessing and metadata helpers
 
 - Metadata validation: `metadata_utils.validate_metadata_vars` (requires
-  `is_categorical`), `validate_metadata_enumerations` (requires `enumerations`).
+  `type`), `validate_metadata_enumerations` (requires `enumerations`).
 - Variable checks: `validation_utils` has `require_dependent_var`,
   `require_covariates`, and exact-count variants.
 - Dummy encoding: use `preprocessing.get_dummy_categories` with
