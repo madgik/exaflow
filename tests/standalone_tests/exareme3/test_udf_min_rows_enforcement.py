@@ -44,7 +44,7 @@ def _system_args(**extra):
     return SimpleNamespace(
         context_id="ctx-min-rows",
         preprocessing=[],
-        metadata={"x": {"is_categorical": False}},
+        metadata={"x": {"type": "continuous"}},
         inputdata=None,
         add_dataset_variable=False,
         **extra,

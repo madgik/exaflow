@@ -79,7 +79,8 @@ def build_strategy(strategy_cls, algorithm_name="sample_algo"):
     strategy._controller = types.SimpleNamespace(
         task_timeout=300,
         worker_landscape_aggregator=types.SimpleNamespace(
-            get_metadata=lambda data_model, variable_names: {}
+            get_metadata=lambda data_model, variable_names: {},
+            get_dataset_codes=lambda data_model, labels: list(labels),
         ),
     )
     return strategy

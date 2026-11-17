@@ -6,7 +6,9 @@ from exaflow.algorithms.federated.compose.column_transformer import (
 )
 from exaflow.algorithms.federated.compose.column_transformer import make_column_selector
 from exaflow.algorithms.federated.compose.passthrough import FederatedPassthrough
-from exaflow.algorithms.federated.feature_engineering import FederatedOneHotEncoder
+from exaflow.algorithms.federated.feature_engineering._one_hot_encoder import (
+    _FederatedOneHotEncoder,
+)
 
 
 class DummyAggClient:
@@ -27,7 +29,7 @@ def test_column_transformer_feature_names_and_shape():
 
     agg_client = DummyAggClient(values_per_call=[["F", "M", "O"]])
     transformer = FederatedColumnTransformer(
-        [("cat", FederatedOneHotEncoder(), ["sex"])],
+        [("cat", _FederatedOneHotEncoder(), ["sex"])],
         remainder="passthrough",
     )
     transformer.fit(
@@ -61,7 +63,7 @@ def test_column_transformer_handles_missing_and_prefix():
 
     agg_client = DummyAggClient(values_per_call=[["F", "M"]])
     transformer = FederatedColumnTransformer(
-        [("cat", FederatedOneHotEncoder(), ["sex"])],
+        [("cat", _FederatedOneHotEncoder(), ["sex"])],
         prefix_feature_names=True,
         remainder="passthrough",
     )
@@ -125,7 +127,7 @@ def test_column_transformer_selector_callable():
     agg_client = DummyAggClient(values_per_call=[["F", "M"]])
     selector = make_column_selector(dtype_include=["category", "object"])
     transformer = FederatedColumnTransformer(
-        [("cat", FederatedOneHotEncoder(), selector)],
+        [("cat", _FederatedOneHotEncoder(), selector)],
         remainder="passthrough",
     )
     transformer.fit(

@@ -12,7 +12,7 @@ GLMM_ORDINAL_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2"],
+                    "datasets": ["PPMI_0", "PPMI_1", "PPMI_2"],
                     "filters": None,
                     "variables": [
                         "lefthippocampus",
@@ -28,11 +28,11 @@ GLMM_ORDINAL_CASES = [
                     "parameters": {
                         "grouping_var": ["dataset"],
                         "category_order": [
-                            "-50y",
-                            "50-59y",
-                            "60-69y",
-                            "70-79y",
-                            "+80y",
+                            "1",
+                            "2",
+                            "3",
+                            "4",
+                            "5",
                         ],
                     },
                 },
@@ -47,7 +47,7 @@ GLMM_ORDINAL_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2"],
+                    "datasets": ["PPMI_0", "PPMI_1", "PPMI_2"],
                     "filters": None,
                     "variables": ["lefthippocampus", "dataset", "agegroup"],
                 },
@@ -58,11 +58,11 @@ GLMM_ORDINAL_CASES = [
                     "parameters": {
                         "grouping_var": ["dataset"],
                         "category_order": [
-                            "-50y",
-                            "50-59y",
-                            "60-69y",
-                            "70-79y",
-                            "+80y",
+                            "1",
+                            "2",
+                            "3",
+                            "4",
+                            "5",
                         ],
                     },
                 },
@@ -77,7 +77,7 @@ GLMM_ORDINAL_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2"],
+                    "datasets": ["PPMI_0", "PPMI_1", "PPMI_2"],
                     "filters": None,
                     "variables": [
                         "lefthippocampus",
@@ -93,11 +93,11 @@ GLMM_ORDINAL_CASES = [
                     "parameters": {
                         "grouping_var": ["dataset"],
                         "category_order": [
-                            "-50y",
-                            "50-59y",
-                            "60-69y",
-                            "70-79y",
-                            "+80y",
+                            "1",
+                            "2",
+                            "3",
+                            "4",
+                            "5",
                         ],
                     },
                 },
@@ -113,10 +113,10 @@ GLMM_ORDINAL_CASES = [
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "ppmi0",
-                        "ppmi1",
-                        "ppmi2",
-                        "desd-synthdata1",
+                        "PPMI_0",
+                        "PPMI_1",
+                        "PPMI_2",
+                        "DESD-synthdata_1",
                     ],
                     "filters": None,
                     "variables": [
@@ -139,11 +139,11 @@ GLMM_ORDINAL_CASES = [
                     "parameters": {
                         "grouping_var": ["dataset"],
                         "category_order": [
-                            "-50y",
-                            "50-59y",
-                            "60-69y",
-                            "70-79y",
-                            "+80y",
+                            "1",
+                            "2",
+                            "3",
+                            "4",
+                            "5",
                         ],
                     },
                 },
@@ -158,7 +158,7 @@ GLMM_ORDINAL_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "desd-synthdata1"],
+                    "datasets": ["PPMI_0", "PPMI_1", "DESD-synthdata_1"],
                     "filters": None,
                     "variables": [
                         "lefthippocampus",
@@ -174,11 +174,11 @@ GLMM_ORDINAL_CASES = [
                     "parameters": {
                         "grouping_var": ["dataset"],
                         "category_order": [
-                            "-50y",
-                            "50-59y",
-                            "60-69y",
-                            "70-79y",
-                            "+80y",
+                            "1",
+                            "2",
+                            "3",
+                            "4",
+                            "5",
                         ],
                     },
                 },
@@ -193,7 +193,7 @@ GLMM_ORDINAL_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2"],
+                    "datasets": ["PPMI_0", "PPMI_1", "PPMI_2"],
                     "filters": None,
                     "variables": [
                         "lefthippocampus",
@@ -209,11 +209,11 @@ GLMM_ORDINAL_CASES = [
                     "parameters": {
                         "grouping_var": ["gender"],
                         "category_order": [
-                            "-50y",
-                            "50-59y",
-                            "60-69y",
-                            "70-79y",
-                            "+80y",
+                            "1",
+                            "2",
+                            "3",
+                            "4",
+                            "5",
                         ],
                     },
                 },
@@ -228,7 +228,7 @@ GLMM_ORDINAL_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "desd-synthdata1"],
+                    "datasets": ["PPMI_0", "PPMI_1", "DESD-synthdata_1"],
                     "filters": None,
                     "variables": [
                         "lefthippocampus",
@@ -244,11 +244,11 @@ GLMM_ORDINAL_CASES = [
                     "parameters": {
                         "grouping_var": ["alzheimerbroadcategory"],
                         "category_order": [
-                            "-50y",
-                            "50-59y",
-                            "60-69y",
-                            "70-79y",
-                            "+80y",
+                            "1",
+                            "2",
+                            "3",
+                            "4",
+                            "5",
                         ],
                     },
                 },
@@ -263,7 +263,7 @@ GLMM_ORDINAL_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2"],
+                    "datasets": ["PPMI_0", "PPMI_1", "PPMI_2"],
                     "filters": None,
                     "variables": ["lefthippocampus", "dataset", "agegroup"],
                 },
@@ -274,16 +274,16 @@ GLMM_ORDINAL_CASES = [
                     "parameters": {
                         "grouping_var": ["dataset"],
                         "category_order": [
-                            "50-59y",
-                            "60-69y",
-                            "70-79y",
-                            "+80y",
+                            "2",
+                            "3",
+                            "4",
+                            "5",
                         ],
                     },
                 },
             },
             "expected_status": 460,
-            "expected_message": r"category_order.*does not cover all observed y categories",
+            "expected_message": r"Parameter 'category_order'.*does not match the order declared for ordinal variable 'agegroup'",
         },
         id="incomplete_category_order",
     ),
@@ -293,7 +293,7 @@ GLMM_ORDINAL_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1", "ppmi2"],
+                    "datasets": ["PPMI_0", "PPMI_1", "PPMI_2"],
                     "filters": None,
                     "variables": ["lefthippocampus", "dataset", "agegroup"],
                 },
@@ -304,17 +304,17 @@ GLMM_ORDINAL_CASES = [
                     "parameters": {
                         "grouping_var": ["dataset"],
                         "category_order": [
-                            "-50y",
-                            "50-59y",
-                            "60-69y",
-                            "60-69y",
-                            "+80y",
+                            "1",
+                            "2",
+                            "3",
+                            "3",
+                            "5",
                         ],
                     },
                 },
             },
             "expected_status": 460,
-            "expected_message": r"Parameter 'category_order' must not contain duplicates",
+            "expected_message": r"Parameter 'category_order'.*does not match the order declared for ordinal variable 'agegroup'",
         },
         id="duplicate_category_order",
     ),
@@ -324,7 +324,7 @@ GLMM_ORDINAL_CASES = [
             "request": {
                 "inputdata": {
                     "data_model": "dementia:0.1",
-                    "datasets": ["ppmi0", "ppmi1"],
+                    "datasets": ["PPMI_0", "PPMI_1"],
                     "filters": None,
                     "variables": ["lefthippocampus", "leftamygdala", "agegroup"],
                 },
@@ -335,11 +335,11 @@ GLMM_ORDINAL_CASES = [
                     "parameters": {
                         "grouping_var": ["dataset"],
                         "category_order": [
-                            "-50y",
-                            "50-59y",
-                            "60-69y",
-                            "70-79y",
-                            "+80y",
+                            "1",
+                            "2",
+                            "3",
+                            "4",
+                            "5",
                         ],
                     },
                 },

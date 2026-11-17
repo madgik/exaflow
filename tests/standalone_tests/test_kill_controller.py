@@ -420,6 +420,9 @@ def test_kill_controller_recognizes_versioned_python(command):
 
     with (
         mock.patch.object(tasks, "run", side_effect=fake_run),
+        # pid 333 is fake: without this the poll checks the real pid 333 and,
+        # with the frozen clock above, spins forever when that process exists.
+        mock.patch.object(tasks, "_pid_alive", return_value=False),
         mock.patch.object(tasks, "sleep", return_value=None),
         mock.patch("tasks.time.monotonic", return_value=0.0),
         mock.patch.object(tasks, "get_controller_port", return_value=5000),

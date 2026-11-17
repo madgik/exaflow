@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from exaflow.algorithms.federated.feature_engineering.ordinal_encoder import (
-    FederatedOrdinalEncoder,
+from exaflow.algorithms.federated.feature_engineering._ordinal_encoder import (
+    _FederatedOrdinalEncoder,
 )
 
 
@@ -16,7 +16,7 @@ def test_ordinal_encoder_strict_unknown_raises():
     data = pd.DataFrame({"sex": np.array(["M", "F"], dtype=object)})
     categories = {"sex": ["F", "M"]}
 
-    encoder = FederatedOrdinalEncoder(
+    encoder = _FederatedOrdinalEncoder(
         categories=categories,
         handle_unknown="error",
     )
@@ -39,7 +39,7 @@ def test_ordinal_encoder_unknown_maps_to_default():
     data = pd.DataFrame({"sex": np.array(["M", "F"], dtype=object)})
     categories = {"sex": ["F", "M"]}
 
-    encoder = FederatedOrdinalEncoder(
+    encoder = _FederatedOrdinalEncoder(
         categories=categories,
         handle_unknown="ignore",
         unknown_value=-1,
@@ -58,11 +58,33 @@ def test_ordinal_encoder_unknown_maps_to_default():
     assert X.tolist() == [[0], [-1]]
 
 
+def test_ordinal_encoder_missing_column_raises_under_strict_handling():
+    data = pd.DataFrame({"sex": np.array(["M", "F"], dtype=object)})
+    categories = {"sex": ["F", "M"]}
+
+    encoder = _FederatedOrdinalEncoder(
+        categories=categories,
+        handle_unknown="error",
+    )
+    encoder.fit(
+        agg_client=DummyAggClient(),
+        data=data,
+        categorical_vars=["sex"],
+    )
+
+    with pytest.raises(ValueError, match="Missing column 'sex'"):
+        encoder.transform(
+            pd.DataFrame({"other": np.array(["A", "B"], dtype=object)}),
+            categorical_vars=["sex"],
+            numerical_vars=[],
+        )
+
+
 def test_ordinal_encoder_missing_column_uses_unknown_value():
     data = pd.DataFrame({"sex": np.array(["M", "F"], dtype=object)})
     categories = {"sex": ["F", "M"]}
 
-    encoder = FederatedOrdinalEncoder(categories=categories)
+    encoder = _FederatedOrdinalEncoder(categories=categories)
     encoder.fit(
         agg_client=DummyAggClient(),
         data=data,

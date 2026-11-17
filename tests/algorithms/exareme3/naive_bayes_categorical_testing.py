@@ -7,8 +7,8 @@ from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.metadata_enums import get_enum_codes
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.feature_engineering.ordinal_encoder import (
-    FederatedOrdinalEncoder,
+from exaflow.algorithms.federated.feature_engineering._ordinal_encoder import (
+    _FederatedOrdinalEncoder,
 )
 from exaflow.algorithms.federated.naive_bayes import FederatedCategoricalNB
 from exaflow.worker_communication import BadUserInput
@@ -92,7 +92,7 @@ def categorical_nb_predict_udf(
 ):
     df = _prepare_dataframe(data, x_vars, y_var)
 
-    encoder = FederatedOrdinalEncoder(
+    encoder = _FederatedOrdinalEncoder(
         categories=categories,
         handle_unknown="error",
     )

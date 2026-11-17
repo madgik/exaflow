@@ -144,8 +144,7 @@ def aggregator(monkeypatch):
     cde = CommonDataElement(
         code="variable",
         label="Variable",
-        sql_type="int",
-        is_categorical=False,
+        type="discrete",
     )
     fake = FakeWorkerLandscapeAggregator(
         datasets={"data_model": ["dataset"]},

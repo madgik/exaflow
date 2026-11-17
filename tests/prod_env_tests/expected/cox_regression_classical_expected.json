@@ -11,7 +11,7 @@
                     ],
                     "filters": null,
                     "variables": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "lefthippocampus",
                         "leftamygdala",
                         "timesincebaseline"
@@ -21,11 +21,11 @@
                     {
                         "name": "longitudinal_transformer",
                         "parameters": {
-                            "visit1": "BL",
-                            "visit2": "FL2",
+                            "visit1": "1",
+                            "visit2": "3",
                             "strategies": {
                                 "timesincebaseline": "second",
-                                "alzheimerbroadcategory": "second",
+                                "alzheimerstatus": "second",
                                 "lefthippocampus": "first",
                                 "leftamygdala": "first"
                             }
@@ -34,7 +34,7 @@
                 ],
                 "algorithm": {
                     "x": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "lefthippocampus",
                         "leftamygdala"
                     ],
@@ -42,8 +42,8 @@
                         "timesincebaseline"
                     ],
                     "parameters": {
-                        "event_var": "alzheimerbroadcategory",
-                        "positive_class": "AD"
+                        "event_var": "alzheimerstatus",
+                        "positive_class": "0"
                     }
                 }
             },
@@ -60,7 +60,7 @@
                     ],
                     "filters": null,
                     "variables": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "gender",
                         "agegroup",
                         "lefthippocampus",
@@ -71,11 +71,11 @@
                     {
                         "name": "longitudinal_transformer",
                         "parameters": {
-                            "visit1": "BL",
-                            "visit2": "FL2",
+                            "visit1": "1",
+                            "visit2": "3",
                             "strategies": {
                                 "timesincebaseline": "second",
-                                "alzheimerbroadcategory": "second",
+                                "alzheimerstatus": "second",
                                 "gender": "first",
                                 "agegroup": "first",
                                 "lefthippocampus": "diff"
@@ -85,7 +85,7 @@
                 ],
                 "algorithm": {
                     "x": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "gender",
                         "agegroup",
                         "lefthippocampus"
@@ -94,8 +94,8 @@
                         "timesincebaseline"
                     ],
                     "parameters": {
-                        "event_var": "alzheimerbroadcategory",
-                        "positive_class": "AD"
+                        "event_var": "alzheimerstatus",
+                        "positive_class": "0"
                     }
                 }
             },
@@ -112,7 +112,7 @@
                     ],
                     "filters": null,
                     "variables": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "leftamygdala",
                         "righthippocampus",
                         "timesincebaseline"
@@ -122,11 +122,11 @@
                     {
                         "name": "longitudinal_transformer",
                         "parameters": {
-                            "visit1": "BL",
-                            "visit2": "FL2",
+                            "visit1": "1",
+                            "visit2": "3",
                             "strategies": {
                                 "timesincebaseline": "second",
-                                "alzheimerbroadcategory": "second",
+                                "alzheimerstatus": "second",
                                 "leftamygdala": "first",
                                 "righthippocampus": "first"
                             }
@@ -135,7 +135,7 @@
                 ],
                 "algorithm": {
                     "x": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "leftamygdala",
                         "righthippocampus"
                     ],
@@ -143,8 +143,8 @@
                         "timesincebaseline"
                     ],
                     "parameters": {
-                        "event_var": "alzheimerbroadcategory",
-                        "positive_class": "Other"
+                        "event_var": "alzheimerstatus",
+                        "positive_class": "1"
                     }
                 }
             },
@@ -161,7 +161,7 @@
                     ],
                     "filters": null,
                     "variables": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "gender",
                         "leftamygdala",
                         "lefthippocampus",
@@ -172,11 +172,11 @@
                     {
                         "name": "longitudinal_transformer",
                         "parameters": {
-                            "visit1": "BL",
-                            "visit2": "FL2",
+                            "visit1": "1",
+                            "visit2": "3",
                             "strategies": {
                                 "timesincebaseline": "second",
-                                "alzheimerbroadcategory": "second",
+                                "alzheimerstatus": "second",
                                 "gender": "first",
                                 "leftamygdala": "diff",
                                 "lefthippocampus": "first"
@@ -186,7 +186,7 @@
                 ],
                 "algorithm": {
                     "x": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "gender",
                         "leftamygdala",
                         "lefthippocampus"
@@ -195,8 +195,8 @@
                         "timesincebaseline"
                     ],
                     "parameters": {
-                        "event_var": "alzheimerbroadcategory",
-                        "positive_class": "AD"
+                        "event_var": "alzheimerstatus",
+                        "positive_class": "0"
                     }
                 }
             },
@@ -213,7 +213,7 @@
                     ],
                     "filters": null,
                     "variables": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "agegroup",
                         "leftamygdala",
                         "righthippocampus",
@@ -224,11 +224,11 @@
                     {
                         "name": "longitudinal_transformer",
                         "parameters": {
-                            "visit1": "BL",
-                            "visit2": "FL2",
+                            "visit1": "1",
+                            "visit2": "3",
                             "strategies": {
                                 "timesincebaseline": "second",
-                                "alzheimerbroadcategory": "second",
+                                "alzheimerstatus": "second",
                                 "agegroup": "first",
                                 "leftamygdala": "first",
                                 "righthippocampus": "diff"
@@ -238,7 +238,7 @@
                 ],
                 "algorithm": {
                     "x": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "agegroup",
                         "leftamygdala",
                         "righthippocampus"
@@ -247,8 +247,8 @@
                         "timesincebaseline"
                     ],
                     "parameters": {
-                        "event_var": "alzheimerbroadcategory",
-                        "positive_class": "AD"
+                        "event_var": "alzheimerstatus",
+                        "positive_class": "0"
                     }
                 }
             },
@@ -265,7 +265,7 @@
                     ],
                     "filters": null,
                     "variables": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "lefthippocampus",
                         "leftamygdala",
                         "rightpcggposteriorcingulategyrus",
@@ -276,11 +276,11 @@
                     {
                         "name": "longitudinal_transformer",
                         "parameters": {
-                            "visit1": "BL",
-                            "visit2": "FL2",
+                            "visit1": "1",
+                            "visit2": "3",
                             "strategies": {
                                 "timesincebaseline": "second",
-                                "alzheimerbroadcategory": "second",
+                                "alzheimerstatus": "second",
                                 "lefthippocampus": "diff",
                                 "leftamygdala": "first",
                                 "rightpcggposteriorcingulategyrus": "diff"
@@ -290,7 +290,7 @@
                 ],
                 "algorithm": {
                     "x": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "lefthippocampus",
                         "leftamygdala",
                         "rightpcggposteriorcingulategyrus"
@@ -299,8 +299,8 @@
                         "timesincebaseline"
                     ],
                     "parameters": {
-                        "event_var": "alzheimerbroadcategory",
-                        "positive_class": "Other"
+                        "event_var": "alzheimerstatus",
+                        "positive_class": "1"
                     }
                 }
             },
@@ -317,7 +317,7 @@
                     ],
                     "filters": null,
                     "variables": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "gender",
                         "cerebellarvermallobulesviiix",
                         "leftacgganteriorcingulategyrus",
@@ -328,11 +328,11 @@
                     {
                         "name": "longitudinal_transformer",
                         "parameters": {
-                            "visit1": "BL",
-                            "visit2": "FL2",
+                            "visit1": "1",
+                            "visit2": "3",
                             "strategies": {
                                 "timesincebaseline": "second",
-                                "alzheimerbroadcategory": "second",
+                                "alzheimerstatus": "second",
                                 "gender": "first",
                                 "cerebellarvermallobulesviiix": "first",
                                 "leftacgganteriorcingulategyrus": "diff"
@@ -342,7 +342,7 @@
                 ],
                 "algorithm": {
                     "x": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "gender",
                         "cerebellarvermallobulesviiix",
                         "leftacgganteriorcingulategyrus"
@@ -351,8 +351,8 @@
                         "timesincebaseline"
                     ],
                     "parameters": {
-                        "event_var": "alzheimerbroadcategory",
-                        "positive_class": "AD"
+                        "event_var": "alzheimerstatus",
+                        "positive_class": "0"
                     }
                 }
             },
@@ -369,7 +369,7 @@
                     ],
                     "filters": null,
                     "variables": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "agegroup",
                         "cerebellarvermallobulesviiix",
                         "rightpcggposteriorcingulategyrus",
@@ -380,11 +380,11 @@
                     {
                         "name": "longitudinal_transformer",
                         "parameters": {
-                            "visit1": "BL",
-                            "visit2": "FL2",
+                            "visit1": "1",
+                            "visit2": "3",
                             "strategies": {
                                 "timesincebaseline": "second",
-                                "alzheimerbroadcategory": "second",
+                                "alzheimerstatus": "second",
                                 "agegroup": "first",
                                 "cerebellarvermallobulesviiix": "diff",
                                 "rightpcggposteriorcingulategyrus": "first"
@@ -394,7 +394,7 @@
                 ],
                 "algorithm": {
                     "x": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "agegroup",
                         "cerebellarvermallobulesviiix",
                         "rightpcggposteriorcingulategyrus"
@@ -403,8 +403,8 @@
                         "timesincebaseline"
                     ],
                     "parameters": {
-                        "event_var": "alzheimerbroadcategory",
-                        "positive_class": "Other"
+                        "event_var": "alzheimerstatus",
+                        "positive_class": "1"
                     }
                 }
             },
@@ -421,7 +421,7 @@
                     ],
                     "filters": null,
                     "variables": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "leftamygdala",
                         "leftacgganteriorcingulategyrus",
                         "lefthippocampus",
@@ -432,11 +432,11 @@
                     {
                         "name": "longitudinal_transformer",
                         "parameters": {
-                            "visit1": "BL",
-                            "visit2": "FL2",
+                            "visit1": "1",
+                            "visit2": "3",
                             "strategies": {
                                 "timesincebaseline": "second",
-                                "alzheimerbroadcategory": "second",
+                                "alzheimerstatus": "second",
                                 "leftamygdala": "diff",
                                 "leftacgganteriorcingulategyrus": "first",
                                 "lefthippocampus": "first"
@@ -446,7 +446,7 @@
                 ],
                 "algorithm": {
                     "x": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "leftamygdala",
                         "leftacgganteriorcingulategyrus",
                         "lefthippocampus"
@@ -455,8 +455,8 @@
                         "timesincebaseline"
                     ],
                     "parameters": {
-                        "event_var": "alzheimerbroadcategory",
-                        "positive_class": "AD"
+                        "event_var": "alzheimerstatus",
+                        "positive_class": "0"
                     }
                 }
             },
@@ -473,7 +473,7 @@
                     ],
                     "filters": null,
                     "variables": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "gender",
                         "agegroup",
                         "leftamygdala",
@@ -485,11 +485,11 @@
                     {
                         "name": "longitudinal_transformer",
                         "parameters": {
-                            "visit1": "BL",
-                            "visit2": "FL2",
+                            "visit1": "1",
+                            "visit2": "3",
                             "strategies": {
                                 "timesincebaseline": "second",
-                                "alzheimerbroadcategory": "second",
+                                "alzheimerstatus": "second",
                                 "gender": "first",
                                 "agegroup": "first",
                                 "leftamygdala": "first",
@@ -500,7 +500,7 @@
                 ],
                 "algorithm": {
                     "x": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "gender",
                         "agegroup",
                         "leftamygdala",
@@ -510,8 +510,8 @@
                         "timesincebaseline"
                     ],
                     "parameters": {
-                        "event_var": "alzheimerbroadcategory",
-                        "positive_class": "Other"
+                        "event_var": "alzheimerstatus",
+                        "positive_class": "1"
                     }
                 }
             },

@@ -103,29 +103,25 @@ def _metadata():
         "age": {
             "code": "age",
             "label": "age",
-            "sql_type": "real",
-            "is_categorical": False,
+            "type": "continuous",
             "enumerations": None,
         },
         "bmi": {
             "code": "bmi",
             "label": "bmi",
-            "sql_type": "real",
-            "is_categorical": False,
+            "type": "continuous",
             "enumerations": None,
         },
         "crp": {
             "code": "crp",
             "label": "crp",
-            "sql_type": "real",
-            "is_categorical": False,
+            "type": "continuous",
             "enumerations": None,
         },
         OUTCOME: {
             "code": OUTCOME,
             "label": OUTCOME,
-            "sql_type": "text",
-            "is_categorical": True,
+            "type": "nominal",
             "enumerations": {"yes": "yes", "no": "no"},
         },
     }
@@ -212,8 +208,7 @@ def test_pca_pc1_is_consumed_by_logistic_in_the_standalone_flow():
     assert transformed_metadata["pca_PC1"] == {
         "code": "pca_PC1",
         "label": "pca_PC1",
-        "sql_type": "real",
-        "is_categorical": False,
+        "type": "continuous",
     }
 
     result = _run_logistic(
@@ -236,8 +231,7 @@ def test_pca_pc1_and_pc2_are_consumed_by_logistic_in_the_standalone_flow():
 
     assert {"pca_PC1", "pca_PC2"}.issubset(transformed.columns)
     assert all(
-        transformed_metadata[code]["sql_type"] == "real"
-        and transformed_metadata[code]["is_categorical"] is False
+        transformed_metadata[code]["type"] == "continuous"
         for code in ("pca_PC1", "pca_PC2")
     )
 
