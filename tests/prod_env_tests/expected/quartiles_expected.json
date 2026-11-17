@@ -6,11 +6,11 @@
         "inputdata": {
           "data_model": "dementia:0.1",
           "datasets": [
-            "edsd0",
-            "edsd2",
-            "edsd3",
-            "ppmi3",
-            "desd-synthdata1"
+            "12",
+            "14",
+            "15",
+            "4",
+            "24"
           ],
           "filters": null,
           "variables": [

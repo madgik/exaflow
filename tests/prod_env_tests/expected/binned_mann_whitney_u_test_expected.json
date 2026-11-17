@@ -5,11 +5,11 @@
         "inputdata": {
           "data_model": "dementia:0.1",
           "datasets": [
-            "edsd0",
-            "edsd2",
-            "edsd3",
-            "ppmi3",
-            "desd-synthdata1"
+            "12",
+            "14",
+            "15",
+            "4",
+            "24"
           ],
           "filters": null,
           "variables": [
@@ -26,8 +26,8 @@
           ],
           "parameters": {
             "alt_hypothesis": "two-sided",
-            "groupA": "edsd0",
-            "groupB": "ppmi3",
+            "groupA": "12",
+            "groupB": "4",
             "num_bins": 40
           }
         },
@@ -46,11 +46,11 @@
         "inputdata": {
           "data_model": "dementia:0.1",
           "datasets": [
-            "edsd0",
-            "edsd2",
-            "edsd3",
-            "ppmi3",
-            "desd-synthdata1"
+            "12",
+            "14",
+            "15",
+            "4",
+            "24"
           ],
           "filters": null,
           "variables": [
@@ -67,8 +67,8 @@
           ],
           "parameters": {
             "alt_hypothesis": "greater",
-            "groupA": "edsd2",
-            "groupB": "desd-synthdata1",
+            "groupA": "14",
+            "groupB": "24",
             "num_bins": 40
           }
         },

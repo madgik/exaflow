@@ -4,29 +4,82 @@
       "input": {
         "inputdata": {
           "data_model": "dementia:0.1",
-          "datasets": ["edsd0", "edsd2", "edsd3", "ppmi3", "desd-synthdata1"],
+          "datasets": [
+            "12",
+            "14",
+            "15",
+            "4",
+            "24"
+          ],
           "filters": null,
-          "variables": ["dataset", "lefthippocampus"]
+          "variables": [
+            "dataset",
+            "lefthippocampus"
+          ]
         },
         "algorithm": {
-          "x": ["dataset"],
-          "y": ["lefthippocampus"],
+          "x": [
+            "dataset"
+          ],
+          "y": [
+            "lefthippocampus"
+          ],
           "parameters": {}
         },
         "test_case_num": 0
       },
       "output": {
         "comparisons": [
-          {"group1": "desd-synthdata1", "group2": "edsd0", "smd": 0.6710643125735621},
-          {"group1": "desd-synthdata1", "group2": "edsd2", "smd": 0.3537767422354016},
-          {"group1": "desd-synthdata1", "group2": "edsd3", "smd": 0.011792013636213171},
-          {"group1": "desd-synthdata1", "group2": "ppmi3", "smd": -0.5913434169268196},
-          {"group1": "edsd0", "group2": "edsd2", "smd": -0.3150792809397736},
-          {"group1": "edsd0", "group2": "edsd3", "smd": -0.6509274242791167},
-          {"group1": "edsd0", "group2": "ppmi3", "smd": -1.502242948685167},
-          {"group1": "edsd2", "group2": "edsd3", "smd": -0.33272459683066496},
-          {"group1": "edsd2", "group2": "ppmi3", "smd": -1.0126256427628888},
-          {"group1": "edsd3", "group2": "ppmi3", "smd": -0.6208642436294063}
+          {
+            "group1": "12",
+            "group2": "14",
+            "smd": -0.3150792809397736
+          },
+          {
+            "group1": "12",
+            "group2": "15",
+            "smd": -0.6509274242791167
+          },
+          {
+            "group1": "12",
+            "group2": "24",
+            "smd": -0.6710643125735621
+          },
+          {
+            "group1": "12",
+            "group2": "4",
+            "smd": -1.502242948685167
+          },
+          {
+            "group1": "14",
+            "group2": "15",
+            "smd": -0.33272459683066496
+          },
+          {
+            "group1": "14",
+            "group2": "24",
+            "smd": -0.3537767422354016
+          },
+          {
+            "group1": "14",
+            "group2": "4",
+            "smd": -1.0126256427628888
+          },
+          {
+            "group1": "15",
+            "group2": "24",
+            "smd": -0.011792013636213171
+          },
+          {
+            "group1": "15",
+            "group2": "4",
+            "smd": -0.6208642436294063
+          },
+          {
+            "group1": "24",
+            "group2": "4",
+            "smd": -0.5913434169268196
+          }
         ]
       }
     }

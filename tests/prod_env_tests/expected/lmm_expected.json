@@ -6,9 +6,9 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "ppmi0",
-                        "ppmi1",
-                        "desd-synthdata0"
+                        "1",
+                        "2",
+                        "23"
                     ],
                     "filters": null,
                     "variables": [

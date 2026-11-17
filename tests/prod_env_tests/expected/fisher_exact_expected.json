@@ -6,19 +6,19 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "edsd0",
-                        "ppmi0"
+                        "12",
+                        "1"
                     ],
                     "filters": null,
                     "variables": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "gender"
                     ]
                 },
                 "preprocessing": null,
                 "algorithm": {
                     "x": [
-                        "alzheimerbroadcategory"
+                        "alzheimerstatus"
                     ],
                     "y": [
                         "gender"
@@ -37,8 +37,8 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "edsd0",
-                        "ppmi0"
+                        "12",
+                        "1"
                     ],
                     "filters": {
                         "condition": "AND",
@@ -46,25 +46,25 @@
                             {
                                 "id": "alzheimerbroadcategory",
                                 "field": "alzheimerbroadcategory",
-                                "type": "string",
-                                "input": "text",
+                                "type": "integer",
+                                "input": "number",
                                 "operator": "in",
                                 "value": [
-                                    "AD",
-                                    "Other"
+                                    1,
+                                    3
                                 ]
                             }
                         ]
                     },
                     "variables": [
-                        "alzheimerbroadcategory",
+                        "alzheimerstatus",
                         "gender"
                     ]
                 },
                 "preprocessing": null,
                 "algorithm": {
                     "x": [
-                        "alzheimerbroadcategory"
+                        "alzheimerstatus"
                     ],
                     "y": [
                         "gender"

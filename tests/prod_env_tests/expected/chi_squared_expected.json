@@ -6,8 +6,8 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "edsd0",
-                        "ppmi0"
+                        "12",
+                        "1"
                     ],
                     "filters": null,
                     "variables": [

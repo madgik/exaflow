@@ -6,18 +6,18 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "ppmi0",
-                        "desd-synthdata0",
-                        "desd-synthdata6",
-                        "edsd5",
-                        "ppmi1",
-                        "ppmi5",
-                        "desd-synthdata7",
-                        "edsd2",
-                        "ppmi9",
-                        "edsd7",
-                        "desd-synthdata5",
-                        "edsd9"
+                        "1",
+                        "23",
+                        "29",
+                        "17",
+                        "2",
+                        "6",
+                        "30",
+                        "14",
+                        "10",
+                        "19",
+                        "28",
+                        "21"
                     ],
                     "filters": null,
                     "variables": [
@@ -56,26 +56,26 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "edsd4",
-                        "edsd9",
-                        "ppmi4",
-                        "edsd8",
-                        "desd-synthdata9",
-                        "edsd5",
-                        "edsd3",
-                        "ppmi5",
-                        "edsd7",
-                        "ppmi7",
-                        "edsd1",
-                        "ppmi0",
-                        "desd-synthdata8",
-                        "desd-synthdata6",
-                        "ppmi1",
-                        "desd-synthdata3",
-                        "desd-synthdata7",
-                        "ppmi9",
-                        "desd-synthdata4",
-                        "desd-synthdata5"
+                        "16",
+                        "21",
+                        "5",
+                        "20",
+                        "32",
+                        "17",
+                        "15",
+                        "6",
+                        "19",
+                        "8",
+                        "13",
+                        "1",
+                        "31",
+                        "29",
+                        "2",
+                        "26",
+                        "30",
+                        "10",
+                        "27",
+                        "28"
                     ],
                     "filters": null,
                     "variables": [
@@ -114,7 +114,7 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "edsd4"
+                        "16"
                     ],
                     "filters": null,
                     "variables": [
@@ -153,8 +153,8 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "edsd0",
-                        "edsd4"
+                        "12",
+                        "16"
                     ],
                     "filters": null,
                     "variables": [
@@ -193,7 +193,7 @@
                 "inputdata": {
                     "data_model": "dementia:0.1",
                     "datasets": [
-                        "edsd5"
+                        "17"
                     ],
                     "filters": null,
                     "variables": [
