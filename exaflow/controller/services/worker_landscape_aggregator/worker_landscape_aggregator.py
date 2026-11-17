@@ -85,7 +85,7 @@ class DatasetsLocations(ImmutableBaseModel):
     """
     A dictionary representation of the locations of each dataset in the federation.
     Key values are data models because a dataset may be available in multiple data_models.
-    Values are Dictionaries of datasets and their locations.
+    Values are Dictionaries of dataset labels and their locations.
     """
 
     datasets_locations: Optional[Dict[str, Dict[str, str]]] = Field(
@@ -97,7 +97,7 @@ class DatasetsVariables(ImmutableBaseModel):
     """
     A dictionary representation of the available variables per dataset in the federation.
     Key values are data models because a dataset may be available in multiple data_models.
-    Values are dictionaries where the keys are dataset codes and the values are lists of variables.
+    Values are dictionaries where the keys are dataset labels and the values are lists of variables.
     """
 
     datasets_variables: Optional[Dict[str, Dict[str, List[str]]]] = Field(
@@ -550,6 +550,14 @@ class WorkerLandscapeAggregator:
         }
         return metadata
 
+    def get_dataset_codes(self, data_model: str, labels: List[str]) -> List[str]:
+        """The codes stored in the data for the given dataset labels.
+
+        Datasets are identified by label in the registry and in requests. The
+        data hold the integer code, so labels are translated before dispatch.
+        """
+        return dataset_codes(self.get_cdes(data_model), labels)
+
     def get_cdes_per_data_model(self) -> DataModelsCDES:
         return self._registries.data_model_registry.data_models_cdes
 
@@ -764,6 +772,15 @@ class WorkerLandscapeAggregator:
         )
 
 
+def dataset_codes(
+    data_model_cdes: Dict[str, CommonDataElement], labels: List[str]
+) -> List[str]:
+    """Translate dataset labels to codes through the dataset enumerations."""
+    enumerations = data_model_cdes["dataset"].enumerations
+    code_per_label = {label: code for code, label in enumerations.items()}
+    return [code_per_label[label] for label in labels]
+
+
 def _map_concurrently(fn, items) -> list:
     """Apply fn to every item in parallel threads, preserving order.
 
@@ -826,16 +843,16 @@ def _remove_duplicate_datasets(
             model_metadata,
         ) in data_models_metadata.data_models_metadata.items():
             for dataset in model_metadata.dataset_infos:
-                if dataset.code in dataset_to_workers[data_model]:
-                    dataset_to_workers[data_model][dataset.code].add(worker)
+                if dataset.label in dataset_to_workers[data_model]:
+                    dataset_to_workers[data_model][dataset.label].add(worker)
                     _log_duplicated_dataset(
-                        list(dataset_to_workers[data_model][dataset.code]),
+                        list(dataset_to_workers[data_model][dataset.label]),
                         data_model,
                         dataset,
                         logger,
                     )
                 else:
-                    dataset_to_workers[data_model][dataset.code].add(worker)
+                    dataset_to_workers[data_model][dataset.label].add(worker)
 
     # Second pass to create new instances without duplicates
     for (
@@ -849,7 +866,7 @@ def _remove_duplicate_datasets(
         ) in data_models_metadata.data_models_metadata.items():
             unique_datasets = []
             for dataset in model_metadata.dataset_infos:
-                if len(dataset_to_workers[data_model][dataset.code]) == 1:
+                if len(dataset_to_workers[data_model][dataset.label]) == 1:
                     unique_datasets.append(dataset)
             updated_data_models_metadata[data_model] = DataModelMetadata(
                 dataset_infos=unique_datasets,
@@ -908,8 +925,7 @@ def _aggregate_data_models_cdes(
             new_dataset_cde = CommonDataElement(
                 code=dataset_cde.code,
                 label=dataset_cde.label,
-                sql_type=dataset_cde.sql_type,
-                is_categorical=dataset_cde.is_categorical,
+                type=dataset_cde.type,
                 enumerations=data_models_dataset_enumerations[data_model],
                 min=dataset_cde.min,
                 max=dataset_cde.max,
@@ -960,7 +976,7 @@ def _extract_datasets_locations(
             model_metadata,
         ) in data_models_metadata.data_models_metadata.items():
             for dataset in model_metadata.dataset_infos:
-                datasets_locations_dict[data_model][dataset.code] = worker_id
+                datasets_locations_dict[data_model][dataset.label] = worker_id
     return DatasetsLocations(datasets_locations=datasets_locations_dict)
 
 
@@ -982,7 +998,7 @@ def _extract_datasets_variables(
                 # No variable info means "unknown", so the dataset is left out.
                 variables = getattr(dataset, "variables", None)
                 if variables:
-                    model_variables[dataset.code] = list(variables)
+                    model_variables[dataset.label] = list(variables)
 
     return DatasetsVariables(datasets_variables=datasets_variables_dict)
 
@@ -1144,6 +1160,6 @@ def _log_incompatible_data_models(workers, data_model, conflicting_cdes, logger)
 
 def _log_duplicated_dataset(workers, data_model, dataset, logger):
     logger.info(
-        f"Dataset '{dataset.code}' of the data_model: '{data_model}' is not unique in the federation. "
+        f"Dataset '{dataset.label}' of the data_model: '{data_model}' is not unique in the federation. "
         f"Workers that contain the dataset: '[{', '.join(workers)}]'"
     )
