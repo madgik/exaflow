@@ -67,6 +67,7 @@ class ParameterSpecificationDTO(ImmutableBaseModel):
     dict_values_enums: Optional[ParameterEnumSpecificationDTO] = None
     min: Optional[float] = None
     max: Optional[float] = None
+    variable_stattypes: Optional[List[InputDataStatType]] = None
 
 
 class PreprocessingOutputsSpecificationDTO(ImmutableBaseModel):
@@ -230,6 +231,7 @@ def _convert_parameter_specification_to_dto(spec: ParameterSpecification):
         ),
         min=spec.min,
         max=spec.max,
+        variable_stattypes=spec.variable_stattypes,
     )
 
 
