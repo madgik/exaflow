@@ -13,7 +13,7 @@ from exaflow.algorithms.federated.validation import as_numeric_array
 from exaflow.algorithms.federated.validation import check_dataframe
 
 
-class FederatedOneHotEncoder(FederatedTransformer):
+class _FederatedOneHotEncoder(FederatedTransformer):
     """Federated one-hot encoder without intercept support."""
 
     def __init__(self) -> None:
