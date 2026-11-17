@@ -11,12 +11,15 @@ from exaflow.algorithms.exareme3.mixed_effects.mixed_effects_common import (
     split_grouping_var,
 )
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
-from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.compose.column_transformer import (
-    FederatedColumnTransformer,
+from exaflow.algorithms.exareme3.utils.cde_types import declared_levels
+from exaflow.algorithms.exareme3.utils.cde_types import require_cde_type
+from exaflow.algorithms.exareme3.utils.covariate_encoding import (
+    build_covariate_transformer,
 )
-from exaflow.algorithms.federated.feature_engineering import FederatedOneHotEncoder
+from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.mixed_effects import FederatedGLMMOrdinal
+from exaflow.datatypes import CDEType
+from exaflow.worker_communication import BadUserInput
 
 
 class GLMMOrdinalResult(BaseModel):
@@ -63,16 +66,19 @@ class GLMMOrdinal(Algorithm):
             documentation=(
                 "Fits an ordinal generalized linear mixed model with fixed "
                 "covariate effects and a random-intercept grouping factor. The "
-                "dependent variable categories are interpreted using the "
-                "explicitly provided order. This model is not a general-purpose "
-                "count model.\n\n"
+                "dependent variable must be a variable declared as ordinal in "
+                "the data model; nominal and binary variables are rejected and "
+                "never converted. Its categories are ordered as the data model "
+                "declares them. This model is not a general-purpose count "
+                "model.\n\n"
                 "The 'grouping_var' setting selects one variable from x used as "
                 "the random-intercept grouping factor, or two variables used to "
                 "build one composite nested-like grouping factor. Composite "
                 "grouping still estimates a single random-intercept variance "
                 "component.\n\n"
-                "The 'category_order' setting provides y categories from lowest "
-                "to highest outcome level.\n\n"
+                "The optional 'category_order' setting must match the order the "
+                "data model declares for y, from lowest to highest outcome "
+                "level. It cannot reorder or define an order for the outcome.\n\n"
                 "The result includes threshold coefficients, fixed-effect "
                 "coefficients with standard errors, z-scores, p-values, "
                 "confidence intervals, random-effect variance, log-likelihood, "
@@ -88,17 +94,14 @@ class GLMMOrdinal(Algorithm):
             y=specs.InputDataSpecification(
                 label="Ordered outcome",
                 desc=(
-                    "A unique ordered categorical or integer-coded ordered "
-                    "outcome. The category order must be provided "
-                    "explicitly by the 'category_order' parameter. This "
-                    "is not intended as a general-purpose count-model "
-                    "interface."
+                    "A single ordinal outcome. Only variables declared as "
+                    "ordinal are accepted; nominal variables are rejected, "
+                    "never converted. The category order is the one declared "
+                    "in the data model. This is not intended as a "
+                    "general-purpose count-model interface."
                 ),
-                types=[specs.InputDataType.INT, specs.InputDataType.TEXT],
-                stattypes=[
-                    specs.InputDataStatType.NOMINAL,
-                    specs.InputDataStatType.NUMERICAL,
-                ],
+                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.ORDINAL],
                 required=True,
                 max_count=1,
             ),
@@ -114,7 +117,7 @@ class GLMMOrdinal(Algorithm):
                 ],
                 stattypes=[
                     specs.InputDataStatType.NUMERICAL,
-                    specs.InputDataStatType.NOMINAL,
+                    *specs.CATEGORICAL_STATTYPES,
                 ],
                 required=True,
                 min_count=2,
@@ -136,9 +139,14 @@ class GLMMOrdinal(Algorithm):
                 ),
                 "category_order": specs.ParameterSpecification(
                     label="Ordinal category order",
-                    desc="Ordered outcome levels from lowest to highest.",
+                    desc=(
+                        "Ordered outcome levels from lowest to highest. When "
+                        "provided it must equal the order declared for the "
+                        "outcome in the data model; when omitted the declared "
+                        "order is used."
+                    ),
                     types=[specs.ParameterType.TEXT, specs.ParameterType.INT],
-                    required=True,
+                    required=False,
                     multiple=True,
                 ),
             },
@@ -146,10 +154,24 @@ class GLMMOrdinal(Algorithm):
             components=[specs.ComponentType.AGGREGATION_SERVER],
         )
 
+    def _resolve_category_order(self, y_var: str) -> List[str]:
+        declared = declared_levels(self.metadata, y_var)
+        requested = self.get_parameter("category_order")
+        if requested is None:
+            return declared
+        if [str(level) for level in requested] != declared:
+            raise BadUserInput(
+                f"Parameter 'category_order' {list(requested)} does not match the "
+                f"order declared for ordinal variable '{y_var}': {declared}. The "
+                "order is defined by the data model and cannot be overridden."
+            )
+        return declared
+
     def run(self):
         y_var = self.y[0]
         grouping_var = self.get_parameter("grouping_var")
-        category_order = self.get_parameter("category_order")
+        require_cde_type(self.metadata, y_var, CDEType.ORDINAL, role="outcome")
+        category_order = self._resolve_category_order(y_var)
         categorical_vars, numerical_vars = split_grouping_var(
             self.x, grouping_var, self.metadata
         )
@@ -202,11 +224,9 @@ def glmm_ordinal_local_step(
     category_order,
     categorical_vars,
     numerical_vars,
+    metadata,
 ):
-    transformer = FederatedColumnTransformer(
-        [("cat", FederatedOneHotEncoder(), categorical_vars)],
-        remainder="passthrough",
-    )
+    transformer = build_covariate_transformer(categorical_vars, metadata)
     transformer.fit(
         agg_client=agg_client,
         data=data,

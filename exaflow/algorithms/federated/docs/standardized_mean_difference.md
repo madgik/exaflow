@@ -1,5 +1,7 @@
 # Standardized Mean Difference
 
+> **Storage and coding.** Categorical CDEs are stored as integer codes (binary `0`/`1`, nominal and ordinal from `1`; `dataset` and `visitid` included; subject identifiers are discrete integers) and reach this code as text codes. See [Data Types, Storage and Variable Coding](../../../../documentation/data-types-and-coding.md).
+
 `FederatedStandardizedMeanDifference` computes Cohen's d for independent groups from aggregated sufficient statistics. Raw observations remain local; only counts, sums, and squared deviations are combined.
 
 ## Inputs

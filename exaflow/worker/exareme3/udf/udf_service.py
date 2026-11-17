@@ -6,6 +6,7 @@ from typing import List
 from typing import Optional
 
 import grpc
+import pandas as pd
 
 from exaflow import exareme3_preprocessing_step_classes
 from exaflow.aggregation_clients.exareme3_udf_aggregation_client import (
@@ -16,6 +17,9 @@ from exaflow.algorithms.exareme3.utils.registry import AGGREGATION_CLIENT_PARAME
 from exaflow.algorithms.exareme3.utils.registry import exareme3_registry
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.utils.pandas_utils import convert_to_pandas_dataframe
+from exaflow.column_names import DATASET_COL
+from exaflow.column_names import VISIT_ID_COL
+from exaflow.datatypes import is_integer_coded
 from exaflow.worker import config as worker_config
 from exaflow.worker.exareme3.lazy_aggregation import lazy_agg
 from exaflow.worker.exareme3.udf.udf_db import load_algorithm_arrow_table
@@ -24,6 +28,11 @@ from exaflow.worker.utils.logger import initialise_logger
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import InsufficientDataError
 from exaflow.worker_communication import RunUdfSystemArgs
+
+# Categorical columns stored as integer codes. The discrete subject identifier is
+# deliberately left as integers. Preprocessing steps (the longitudinal transformer)
+# load some of these without the request carrying their metadata.
+INTEGER_CODED_COLUMNS = frozenset({DATASET_COL, VISIT_ID_COL})
 
 
 @initialise_logger
@@ -160,6 +169,30 @@ def _load_worker_data_for_udf(
     )
 
 
+def integer_codes_to_text(data, metadata: dict):
+    """Present the stored integer category codes as text codes inside the UDF.
+
+    Categorical variables (and the dataset) are INTEGER columns in DuckDB, while
+    the enumeration codes in the metadata, algorithm parameters such as
+    positive_class and groupA, and every result keyed by level are text codes.
+    The columns are converted once here, with missing values kept as None, so
+    each algorithm compares like with like. Derived text-coded categorical
+    columns are untouched.
+    """
+    for column in data.columns:
+        variable = metadata.get(column) or {}
+        if column not in INTEGER_CODED_COLUMNS and not is_integer_coded(
+            column, variable.get("type"), variable.get("enumerations")
+        ):
+            continue
+        series = data[column]
+        if not pd.api.types.is_numeric_dtype(series):
+            continue
+        text = series.astype("Int64").astype("string").astype(object)
+        data[column] = text.where(series.notna(), None)
+    return data
+
+
 def _check_min_rows_or_raise(
     *,
     data,
@@ -201,7 +234,7 @@ def _apply_preprocessing_steps_to_data_and_metadata(
     check_min_rows: bool,
     agg_client: Optional[AggregationClient],
 ):
-    data = convert_to_pandas_dataframe(data)
+    data = integer_codes_to_text(convert_to_pandas_dataframe(data), metadata)
     _check_min_rows_or_raise(
         data=data,
         check_min_rows=check_min_rows,

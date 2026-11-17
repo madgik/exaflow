@@ -47,8 +47,8 @@ class LinearSVM(Algorithm):
             y=specs.InputDataSpecification(
                 label="Target",
                 desc="Nominal target variable defining the classes.",
-                types=[specs.InputDataType.TEXT],
-                stattypes=[specs.InputDataStatType.NOMINAL],
+                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                stattypes=[*specs.CATEGORICAL_STATTYPES],
                 required=True,
             ),
             x=specs.InputDataSpecification(

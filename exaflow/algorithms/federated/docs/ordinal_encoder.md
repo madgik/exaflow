@@ -1,10 +1,16 @@
-﻿## Ordinal Encoder (FederatedOrdinalEncoder)
+﻿## Ordinal Encoder (\_FederatedOrdinalEncoder)
 
-Implementation: [feature_engineering/ordinal_encoder.py](../feature_engineering/ordinal_encoder.py).
+> **Storage and coding.** Categorical CDEs are stored as integer codes (binary `0`/`1`, nominal and ordinal from `1`; `dataset` and `visitid` included; subject identifiers are discrete integers) and reach this code as text codes. See [Data Types, Storage and Variable Coding](../../../../documentation/data-types-and-coding.md).
+
+Implementation: [feature_engineering/\_ordinal_encoder.py](../feature_engineering/_ordinal_encoder.py).
+
+> **Internal.** `_FederatedOrdinalEncoder` is a private building block hardcoded inside the algorithms that need it. It is not exported, not an algorithm or preprocessing step, and not exposed by any specification or HTTP endpoint. Binary and ordinal variables are never produced from nominal ones with it.
+
+> **Covariate coding.** The regression, Cox and mixed-model algorithms code `ordinal` covariates with this encoder (integers `0..K-1` in the declared level order) and `binary` covariates with it as one 0/1 column (first declared level 0). `exareme3/utils/covariate_encoding.py` (`build_covariate_transformer`) is the single place that picks the coding by CDE type. With `handle_unknown="error"` a missing value or an undeclared level raises `BadInputError`.
 
 ### Name
 
-**Ordinal Encoder (FederatedOrdinalEncoder)**
+**Ordinal Encoder (\_FederatedOrdinalEncoder)**
 
 ### Type
 

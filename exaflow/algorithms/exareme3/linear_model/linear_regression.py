@@ -5,13 +5,13 @@ from pydantic import BaseModel
 
 from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
-from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.compose.column_transformer import (
-    FederatedColumnTransformer,
+from exaflow.algorithms.exareme3.utils.covariate_encoding import (
+    build_covariate_transformer,
 )
-from exaflow.algorithms.federated.feature_engineering import FederatedOneHotEncoder
+from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.linear_model.ols import FederatedOLS
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
+from exaflow.datatypes import CATEGORICAL_CDE_TYPES
 
 
 class LinearRegressionResult(BaseModel):
@@ -91,8 +91,11 @@ class LinearRegression(Algorithm):
             documentation=(
                 "Fits an ordinary least squares (OLS) linear regression model "
                 "for a numerical outcome using numerical and/or categorical "
-                "covariates. Categorical covariates are one-hot encoded before "
-                "estimation and the model includes an intercept.\n\n"
+                "covariates. Nominal covariates are one-hot encoded with the first "
+                "sorted level as reference; binary covariates become one 0/1 "
+                "column in declared level order and ordinal covariates one "
+                "integer column in declared order. The model includes an "
+                "intercept.\n\n"
                 "The result includes global coefficients, standard errors, "
                 "t-tests, p-values, confidence intervals, residual and model "
                 "degrees of freedom, residual standard error, R-squared values, "
@@ -123,7 +126,7 @@ class LinearRegression(Algorithm):
                 ],
                 stattypes=[
                     specs.InputDataStatType.NUMERICAL,
-                    specs.InputDataStatType.NOMINAL,
+                    *specs.CATEGORICAL_STATTYPES,
                 ],
                 required=True,
             ),
@@ -135,10 +138,12 @@ class LinearRegression(Algorithm):
         y_var = self.y[0]
         x_vars = list(self.x)
         categorical_vars = [
-            var for var in x_vars if self.metadata[var]["is_categorical"]
+            var for var in x_vars if self.metadata[var]["type"] in CATEGORICAL_CDE_TYPES
         ]
         numerical_vars = [
-            var for var in x_vars if not self.metadata[var]["is_categorical"]
+            var
+            for var in x_vars
+            if self.metadata[var]["type"] not in CATEGORICAL_CDE_TYPES
         ]
 
         model_stats = self.run_local_udf(
@@ -190,11 +195,9 @@ def local_step(
     x_vars,
     categorical_vars,
     numerical_vars,
+    metadata,
 ):
-    transformer = FederatedColumnTransformer(
-        [("cat", FederatedOneHotEncoder(), categorical_vars)],
-        remainder="passthrough",
-    )
+    transformer = build_covariate_transformer(categorical_vars, metadata)
     pipeline = FederatedPipeline(
         [
             ("features", transformer),

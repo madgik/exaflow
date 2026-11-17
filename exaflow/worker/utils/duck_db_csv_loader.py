@@ -9,6 +9,8 @@ from typing import NamedTuple
 import duckdb
 
 from exaflow.column_names import DATASET_COL
+from exaflow.datatypes import CDEType
+from exaflow.datatypes import is_integer_coded
 from exaflow.worker import config as worker_config
 from exaflow.worker.utils.logger import init_logger
 
@@ -69,30 +71,41 @@ def _collect_all_variables(metadata: dict) -> list[dict]:
     return _walk(metadata)
 
 
-_SQL_TYPE_TO_DUCKDB = {
-    "text": "VARCHAR",
-    "int": "INTEGER",
-    "real": "DOUBLE",
-}
-
-
 def _build_column_types(metadata: dict) -> dict[str, str]:
     """Map each variable code to its DuckDB column type.
 
-    Categorical variables are always stored as VARCHAR regardless of their
-    declared ``sql_type`` so that nominal codes are never silently cast to
-    integers or floats by DuckDB's type inference.
+    continuous is DOUBLE and discrete is INTEGER (subject identifiers are
+    discrete whole numbers). Every categorical variable (nominal, ordinal,
+    binary, the dataset CDE and visitid included) is stored as INTEGER codes,
+    the readable name living in the enumeration label. A categorical variable
+    without enumerations, or whose enumeration codes are not integers, is
+    rejected: there is no text fallback.
     """
+    valid_types = [member.value for member in CDEType]
     column_types: dict[str, str] = {}
     for var in _collect_all_variables(metadata):
         code = var.get("code")
         if not code:
             continue
-        if var.get("isCategorical"):
-            column_types[code] = "VARCHAR"
+        cde_type = var.get("type")
+        if cde_type not in valid_types:
+            raise ValueError(
+                f"The CDE '{code}' has invalid type '{cde_type}'; "
+                f"valid types are: {valid_types}."
+            )
+        if cde_type == CDEType.CONTINUOUS:
+            column_type = "DOUBLE"
+        elif cde_type == CDEType.DISCRETE:
+            column_type = "INTEGER"
+        elif is_integer_coded(code, cde_type, var.get("enumerations")):
+            column_type = "INTEGER"
         else:
-            sql_type = var.get("sql_type", "text")
-            column_types[code] = _SQL_TYPE_TO_DUCKDB.get(sql_type, "VARCHAR")
+            raise ValueError(
+                f"The categorical CDE '{code}' of type '{cde_type}' must declare "
+                "enumerations with integer codes; categorical CDEs are stored "
+                "as integer codes and there is no text fallback."
+            )
+        column_types[code] = column_type
     return column_types
 
 
@@ -114,6 +127,25 @@ def _load_variables_metadata(
         )
 
 
+def _dataset_sort_key(dataset_code: str):
+    return (
+        (0, int(dataset_code), "") if dataset_code.isdigit() else (1, 0, dataset_code)
+    )
+
+
+def _dataset_labels(metadata: dict) -> dict[str, str]:
+    """Dataset code -> readable name, from the dataset CDE enumerations."""
+    for variable in _collect_all_variables(metadata):
+        if variable.get("code") == DATASET_COL:
+            enumerations = variable.get("enumerations") or []
+            if isinstance(enumerations, dict):
+                return {str(code): label for code, label in enumerations.items()}
+            return {
+                str(enum.get("code")): enum.get("label", "") for enum in enumerations
+            }
+    return {}
+
+
 def _build_dataset_properties(csv_columns: list[str], cde_codes: set[str]) -> dict:
     """CSV header columns that are CDEs, in header order."""
     variables = [column for column in csv_columns if column in cde_codes]
@@ -122,7 +154,6 @@ def _build_dataset_properties(csv_columns: list[str], cde_codes: set[str]) -> di
 
 def _reformat_metadata(metadata: dict) -> dict:
     new_key_assign = {
-        "isCategorical": "is_categorical",
         "minValue": "min",
         "maxValue": "max",
     }
@@ -369,8 +400,15 @@ def load_all_csvs_from_data_folder(request_id: str) -> str:
                 ],
             )
 
-            assigned_datasets = sorted(dataset_csv_map.keys())
+            assigned_datasets = sorted(dataset_csv_map.keys(), key=_dataset_sort_key)
             cde_codes = set(_build_column_types(metadata))
+            dataset_labels = _dataset_labels(metadata)
+            # Datasets are identified by label across the federation.
+            if len(set(dataset_labels.values())) != len(dataset_labels):
+                raise ValueError(
+                    f"Data model '{code}:{version}' declares the same dataset "
+                    "label for more than one dataset code."
+                )
 
             for dataset_code in assigned_datasets:
                 dataset_id += 1
@@ -391,7 +429,7 @@ def load_all_csvs_from_data_folder(request_id: str) -> str:
                         dataset_id,
                         data_model_id,
                         dataset_code,
-                        dataset_code,
+                        dataset_labels.get(dataset_code, dataset_code),
                         "ENABLED",
                         str(dataset_csv_path),
                         json.dumps(dataset_properties),

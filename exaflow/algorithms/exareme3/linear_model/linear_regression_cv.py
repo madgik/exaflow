@@ -6,12 +6,11 @@ from pydantic import BaseModel
 
 from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
+from exaflow.algorithms.exareme3.utils.covariate_encoding import (
+    build_covariate_transformer,
+)
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated import FederatedOLS
-from exaflow.algorithms.federated.compose.column_transformer import (
-    FederatedColumnTransformer,
-)
-from exaflow.algorithms.federated.feature_engineering import FederatedOneHotEncoder
 from exaflow.algorithms.federated.model_selection.cross_validation.cross_validator import (
     FederatedCrossValidator,
 )
@@ -22,6 +21,7 @@ from exaflow.algorithms.federated.model_selection.cross_validation.splitter_kfol
     FederatedKFoldSplitter,
 )
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
+from exaflow.datatypes import CATEGORICAL_CDE_TYPES
 
 ALPHA = 0.05
 
@@ -58,7 +58,10 @@ class LinearRegressionCV(Algorithm):
                 "Evaluates a linear regression model with K-fold "
                 "cross-validation. Each fold trains a model and reports "
                 "metrics over held-out data. Nominal predictors are one-hot "
-                "encoded with a consistent global schema.\n\n"
+                "encoded with the first sorted level as reference and a "
+                "consistent global schema; binary predictors become one 0/1 "
+                "column in declared level order and ordinal predictors one "
+                "integer column in declared order.\n\n"
                 "The 'n_splits' setting controls the number of cross-validation "
                 "folds. It must be between 2 and 20. Default is 5.\n\n"
                 "Results contain root_mean_sq_error (RMSE), r_squared, "
@@ -99,7 +102,7 @@ class LinearRegressionCV(Algorithm):
                 ],
                 stattypes=[
                     specs.InputDataStatType.NUMERICAL,
-                    specs.InputDataStatType.NOMINAL,
+                    *specs.CATEGORICAL_STATTYPES,
                 ],
                 required=True,
             ),
@@ -124,10 +127,12 @@ class LinearRegressionCV(Algorithm):
         n_splits = int(self.get_parameter("n_splits"))
         x_vars = list(self.x)
         categorical_vars = [
-            var for var in x_vars if self.metadata[var]["is_categorical"]
+            var for var in x_vars if self.metadata[var]["type"] in CATEGORICAL_CDE_TYPES
         ]
         numerical_vars = [
-            var for var in x_vars if not self.metadata[var]["is_categorical"]
+            var
+            for var in x_vars
+            if self.metadata[var]["type"] not in CATEGORICAL_CDE_TYPES
         ]
 
         metrics = self.run_local_udf(
@@ -166,6 +171,7 @@ def local_step(
     categorical_vars,
     numerical_vars,
     n_splits,
+    metadata,
 ):
     """
     Run K-fold CV locally on each worker, but use agg_client to:
@@ -175,13 +181,27 @@ def local_step(
 
     Returns identical global metrics from every worker.
     """
+    # Fitted on the full filtered data first, so a covariate with a single
+    # observed value fails the analysis before any fold runs.
+    feature_transformer = build_covariate_transformer(categorical_vars, metadata)
+    feature_transformer.fit(
+        agg_client=agg_client,
+        data=data,
+        categorical_vars=categorical_vars,
+        numerical_vars=numerical_vars,
+    )
+    feature_names = feature_transformer.get_feature_names_out(
+        categorical_vars=categorical_vars,
+        numerical_vars=numerical_vars,
+    )
+    feature_names = ["Intercept"] + feature_names
+
     cv_pipeline = FederatedPipeline(
         [
             (
                 "features",
-                FederatedColumnTransformer(
-                    [("cat", FederatedOneHotEncoder(), categorical_vars)],
-                    remainder="passthrough",
+                build_covariate_transformer(
+                    categorical_vars, metadata, check_observed_variation=False
                 ),
             ),
             ("model", FederatedOLS(fit_intercept=True)),
@@ -203,23 +223,6 @@ def local_step(
         numerical_vars=numerical_vars,
         agg_client=agg_client,
     )
-
-    # Get global feature names
-    feature_transformer = FederatedColumnTransformer(
-        [("cat", FederatedOneHotEncoder(), categorical_vars)],
-        remainder="passthrough",
-    )
-    feature_transformer.fit(
-        agg_client=agg_client,
-        data=data,
-        categorical_vars=categorical_vars,
-        numerical_vars=numerical_vars,
-    )
-    feature_names = feature_transformer.get_feature_names_out(
-        categorical_vars=categorical_vars,
-        numerical_vars=numerical_vars,
-    )
-    feature_names = ["Intercept"] + feature_names
 
     metrics["feature_names"] = feature_names
     return metrics

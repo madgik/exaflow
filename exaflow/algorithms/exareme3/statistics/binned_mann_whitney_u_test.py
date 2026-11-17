@@ -54,8 +54,8 @@ class BinnedMannWhitneyUTest(Algorithm):
             x=specs.InputDataSpecification(
                 label="Grouping variable",
                 desc="Categorical variable containing the two groups.",
-                types=[specs.InputDataType.TEXT],
-                stattypes=[specs.InputDataStatType.NOMINAL],
+                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                stattypes=[*specs.CATEGORICAL_STATTYPES],
                 required=True,
                 max_count=1,
             ),
