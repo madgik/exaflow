@@ -3,86 +3,96 @@
         "label": "The Data Model",
         "version": "1.0",
         "variables": [
-            {
-                "isCategorical": false,
-                "code": "var1",
-                "sql_type": "text",
-                "description": "",
-                "label": "Variable 1",
-                "methodology": "",
-                "type": "nominal"
-            },
-            {
-                "isCategorical": false,
-                "label": "subjectcode",
-                "code": "subjectcode",
-                "sql_type": "text",
-                "description": "",
-                "methodology": "",
-                "type": "nominal"
-            },
-            {
-                "isCategorical": true,
-                "code": "var2",
-                "sql_type": "text",
-                "description": "",
-                "enumerations": [
-                    {"code": "l10", "label": "Level10"},
-                    {"code": "l20", "label": "Level20"}
-                ],
-                "label": "Variable 2",
-                "methodology": "",
-                "type": "nominal"
-            },
-            {
-                "isCategorical": true,
-                "code": "dataset",
-                "sql_type": "text",
-                "description": "",
-                "enumerations": [
-                    {"code": "dataset10", "label": "Dataset 10"},
-                    {"code": "dataset20", "label": "Dataset 20"}
-                ],
-                "label": "Dataset",
-                "methodology": "",
-                "type": "nominal"
-            }
-        ],
-        "groups": [
-            {
-                "name": "group",
-                "label": "The Group",
-                "variables": [
-                    {
-                        "isCategorical": false,
-                        "code": "var3",
-                        "sql_type": "real",
-                        "minValue": 0,
-                        "maxValue": 100,
+                {
+                        "code": "var1",
                         "description": "",
-                        "label": "Variable 3",
+                        "label": "Variable 1",
+                        "methodology": "",
+                        "type": "nominal",
+                        "enumerations": [
+                                {
+                                        "code": "1",
+                                        "label": "l10"
+                                },
+                                {
+                                        "code": "2",
+                                        "label": "l20"
+                                }
+                        ]
+                },
+                {
+                        "label": "subjectcode",
+                        "code": "subjectcode",
+                        "description": "",
+                        "methodology": "",
+                        "type": "discrete"
+                },
+                {
+                        "code": "var2",
+                        "description": "",
+                        "enumerations": [
+                                {
+                                        "code": "1",
+                                        "label": "Level10"
+                                },
+                                {
+                                        "code": "2",
+                                        "label": "Level20"
+                                }
+                        ],
+                        "label": "Variable 2",
                         "methodology": "",
                         "type": "nominal"
-                    }
-                ],
-                "groups": [
-                    {
-                        "name": "inner_group",
-                        "label": "The Inner Group",
+                },
+                {
+                        "code": "dataset",
+                        "description": "",
+                        "enumerations": [
+                                {
+                                        "code": "1",
+                                        "label": "Dataset 10"
+                                },
+                                {
+                                        "code": "2",
+                                        "label": "Dataset 20"
+                                }
+                        ],
+                        "label": "Dataset",
+                        "methodology": "",
+                        "type": "nominal"
+                }
+        ],
+        "groups": [
+                {
+                        "name": "group",
+                        "label": "The Group",
                         "variables": [
-                            {
-                                "isCategorical": false,
-                                "code": "var4",
-                                "sql_type": "int",
-                                "units": "years",
-                                "description": "",
-                                "label": "Variable 4",
-                                "methodology": "",
-                                "type": "nominal"
-                            }
+                                {
+                                        "code": "var3",
+                                        "minValue": 0,
+                                        "maxValue": 100,
+                                        "description": "",
+                                        "label": "Variable 3",
+                                        "methodology": "",
+                                        "type": "continuous"
+                                }
+                        ],
+                        "groups": [
+                                {
+                                        "name": "inner_group",
+                                        "label": "The Inner Group",
+                                        "variables": [
+                                                {
+                                                        "code": "var4",
+                                                        "units": "years",
+                                                        "description": "",
+                                                        "label": "Variable 4",
+                                                        "methodology": "",
+                                                        "type": "discrete"
+                                                }
+                                        ]
+                                }
                         ]
-                    }
-                ]
-            }
+                }
         ]
-    }
+}
