@@ -12,9 +12,9 @@ def make_test_input(visit1: str, visit2: str) -> dict:
             "data_model": "longitudinal_dementia:0.1",
             "variables": ["agegroup", "lefthippocampus"],
             "datasets": [
-                "longitudinal_dementia0",
-                "longitudinal_dementia1",
-                "longitudinal_dementia2",
+                "1",
+                "2",
+                "3",
             ],
             "filters": None,
         },
@@ -61,7 +61,7 @@ def assert_valid_anova_response(result: dict):
 
 
 def test_anova_oneway_longitudinal_bl_fl4():
-    test_input = make_test_input(visit1="BL", visit2="FL4")
+    test_input = make_test_input(visit1="1", visit2="5")
     response = analysis_request(algorithm_name, test_input)
     result = parse_response(response)
 
@@ -69,7 +69,7 @@ def test_anova_oneway_longitudinal_bl_fl4():
 
 
 def test_anova_oneway_longitudinal_bl_fl1():
-    test_input = make_test_input(visit1="BL", visit2="FL1")
+    test_input = make_test_input(visit1="1", visit2="2")
     response = analysis_request(algorithm_name, test_input)
     result = parse_response(response)
 

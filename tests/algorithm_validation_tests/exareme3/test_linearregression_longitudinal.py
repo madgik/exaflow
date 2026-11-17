@@ -10,9 +10,9 @@ def make_test_input(visit1: str, visit2: str) -> dict:
             "data_model": "longitudinal_dementia:0.1",
             "variables": ["righthippocampus", "agegroup", "gender", "lefthippocampus"],
             "datasets": [
-                "longitudinal_dementia0",
-                "longitudinal_dementia1",
-                "longitudinal_dementia2",
+                "1",
+                "2",
+                "3",
             ],
             "filters": None,
         },
@@ -40,7 +40,7 @@ def make_test_input(visit1: str, visit2: str) -> dict:
 
 
 def test_linearregression_algorithm_27nobs():
-    test_input_27nobs = make_test_input(visit1="BL", visit2="FL4")
+    test_input_27nobs = make_test_input(visit1="1", visit2="5")
     response = analysis_request(algorithm_name, test_input_27nobs)
     result = parse_response(response)
 
@@ -48,16 +48,14 @@ def test_linearregression_algorithm_27nobs():
     assert result["dependent_var"] == "lefthippocampus"
     assert result["indep_vars"] == [
         "Intercept",
-        "agegroup[50-59y]",
-        "agegroup[60-69y]",
-        "agegroup[70-79y]",
-        "gender[M]",
+        "gender[1]",
+        "agegroup",
         "righthippocampus",
     ]
 
 
 def test_linearregression_algorithm_81nobs():
-    test_input_81nobs = make_test_input(visit1="BL", visit2="FL1")
+    test_input_81nobs = make_test_input(visit1="1", visit2="2")
     response = analysis_request(algorithm_name, test_input_81nobs)
     result = parse_response(response)
 
@@ -65,9 +63,7 @@ def test_linearregression_algorithm_81nobs():
     assert result["dependent_var"] == "lefthippocampus"
     assert result["indep_vars"] == [
         "Intercept",
-        "agegroup[50-59y]",
-        "agegroup[60-69y]",
-        "agegroup[70-79y]",
-        "gender[M]",
+        "gender[1]",
+        "agegroup",
         "righthippocampus",
     ]

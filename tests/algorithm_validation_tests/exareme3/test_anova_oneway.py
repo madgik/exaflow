@@ -41,7 +41,7 @@ def test_anova_algorithm_not_enough_categories():
         "inputdata": {
             "variables": ["ppmicategory", "lefthippocampus"],
             "data_model": "dementia:0.1",
-            "datasets": ["ppmi0"],
+            "datasets": ["1"],
             "filters": None,
         },
         "algorithm": {
