@@ -15,8 +15,7 @@ def data_models():
             "test_age_value": CommonDataElement(
                 code="test_age_value",
                 label="test test_age_value",
-                sql_type="int",
-                is_categorical=False,
+                type="discrete",
                 enumerations=None,
                 min=0,
                 max=130,
@@ -24,14 +23,13 @@ def data_models():
             "test_pupil_reactivity_right_eye_result": CommonDataElement(
                 code="test_pupil_reactivity_right_eye_result",
                 label="test test_pupil_reactivity_right_eye_result",
-                sql_type="text",
-                is_categorical=True,
+                type="nominal",
                 enumerations={
-                    "Sluggish": "Sluggish",
-                    "Nonreactive": "Nonreactive",
-                    "Brisk": "Brisk",
-                    "Untestable": "Untestable",
-                    "Unknown": "Unknown",
+                    "1": "Sluggish",
+                    "2": "Nonreactive",
+                    "3": "Brisk",
+                    "4": "Untestable",
+                    "5": "Unknown",
                 },
                 min=None,
                 max=None,
@@ -39,8 +37,7 @@ def data_models():
             "test_mortality_core": CommonDataElement(
                 code="test_mortality_core",
                 label="test_mortality_core",
-                sql_type="real",
-                is_categorical=False,
+                type="continuous",
                 enumerations=None,
                 min=None,
                 max=None,
@@ -48,8 +45,7 @@ def data_models():
             "test_gose_score": CommonDataElement(
                 code="test_gose_score",
                 label="test_gose_score",
-                sql_type="text",
-                is_categorical=True,
+                type="nominal",
                 enumerations={
                     "1": "Dead",
                     "2": "Vegetative State",
@@ -66,24 +62,11 @@ def data_models():
             "test_gcs_total_score": CommonDataElement(
                 code="test_gcs_total_score",
                 label="test_gcs_total_score",
-                sql_type="text",
-                is_categorical=True,
+                type="nominal",
                 enumerations={
-                    "3": "3",
-                    "4": "4",
-                    "5": "5",
-                    "6": "6",
-                    "7": "7",
-                    "8": "8",
-                    "9": "9",
-                    "10": "10",
-                    "11": "11",
-                    "12": "12",
-                    "13": "13",
-                    "14": "14",
-                    "15": "15",
-                    "untestable": "untestable",
-                    "unknown": "unknown",
+                    **{str(code): str(code + 2) for code in range(1, 14)},
+                    "14": "untestable",
+                    "15": "unknown",
                 },
                 min=None,
                 max=None,
@@ -91,11 +74,10 @@ def data_models():
             "test_gender_type": CommonDataElement(
                 code="test_gender_type",
                 label="test_gender_type",
-                sql_type="text",
-                is_categorical=True,
+                type="binary",
                 enumerations={
-                    "M": "Male",
-                    "F": "Female",
+                    "0": "Male",
+                    "1": "Female",
                 },
                 min=None,
                 max=None,
@@ -132,14 +114,14 @@ all_success_cases = [
                     "type": "string",
                     "input": "text",
                     "operator": "not_equal",
-                    "value": "Nonreactive",
+                    "value": 2,
                 }
             ],
             "valid": True,
         },
         (
             '("test_pupil_reactivity_right_eye_result" <> ?)',
-            ["Nonreactive"],
+            [2],
         ),
     ),
     (
@@ -160,14 +142,14 @@ all_success_cases = [
                     "type": "string",
                     "input": "text",
                     "operator": "not_equal",
-                    "value": "Nonreactive",
+                    "value": 2,
                 },
             ],
             "valid": True,
         },
         (
             '("test_age_value" = ? OR "test_pupil_reactivity_right_eye_result" <> ?)',
-            [17, "Nonreactive"],
+            [17, 2],
         ),
     ),
     (
@@ -279,12 +261,12 @@ all_success_cases = [
                     "type": "string",
                     "input": "text",
                     "operator": "in",
-                    "value": ["F", "M"],
+                    "value": [1, 0],
                 }
             ],
             "valid": True,
         },
-        ('("test_gender_type" IN (?, ?))', ["F", "M"]),
+        ('("test_gender_type" IN (?, ?))', [1, 0]),
     ),
     (
         {
@@ -299,7 +281,7 @@ all_success_cases = [
                             "type": "string",
                             "input": "text",
                             "operator": "equal",
-                            "value": "F",
+                            "value": 1,
                         },
                         {
                             "condition": "AND",
@@ -333,7 +315,7 @@ all_success_cases = [
                             "type": "string",
                             "input": "text",
                             "operator": "not_equal",
-                            "value": "F",
+                            "value": 1,
                         },
                         {
                             "condition": "AND",
@@ -367,7 +349,7 @@ all_success_cases = [
             '"test_gose_score" IS NOT NULL)) OR ("test_gender_type" <> ? AND '
             '("test_mortality_core" > ? AND "test_mortality_core" <= ?))'
             ")",
-            ["F", 20, 30, "F", 0.5, 0.8],
+            [1, 20, 30, 1, 0.5, 0.8],
         ),
     ),
 ]
@@ -619,8 +601,7 @@ def _text_column_cdes():
         "s": CommonDataElement(
             code="s",
             label="s",
-            sql_type="text",
-            is_categorical=False,
+            type="nominal",
             enumerations=None,
         )
     }
