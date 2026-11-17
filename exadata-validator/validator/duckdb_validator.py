@@ -13,7 +13,8 @@ from validator.dataelements import flatten_cdes
 from validator.dataelements import get_cdes_with_enumerations
 from validator.dataelements import get_cdes_with_min_max
 from validator.dataelements import get_dataset_enums
-from validator.dataelements import get_sql_type_per_column
+from validator.dataelements import get_integer_coded_columns
+from validator.dataelements import get_type_per_column
 from validator.exceptions import InvalidDatasetError
 from validator.reporting import ValidationIssue
 
@@ -55,7 +56,8 @@ class DuckDBDatasetValidator:
     def __init__(self, data_model_metadata: dict, threads: int | None = None) -> None:
         cdes_list = flatten_cdes(copy.deepcopy(data_model_metadata))
         self._cdes = {cde.code: cde for cde in cdes_list}
-        self._sql_type_per_column = get_sql_type_per_column(self._cdes)
+        self._type_per_column = get_type_per_column(self._cdes)
+        self._integer_coded_columns = get_integer_coded_columns(self._cdes)
         self._dataset_enumerations = list(get_dataset_enums(self._cdes).keys())
         self._longitudinal = bool(data_model_metadata.get("longitudinal", False))
         self._threads = threads if threads is not None else (os.cpu_count() or 1)
@@ -125,9 +127,7 @@ class DuckDBDatasetValidator:
                 )
             )
 
-        unknown_columns = (
-            set(columns) - set(self._sql_type_per_column.keys()) - {"row_id"}
-        )
+        unknown_columns = set(columns) - set(self._type_per_column.keys()) - {"row_id"}
         for column in sorted(unknown_columns):
             suggestion = self._get_column_suggestion(column)
             message = f"Column '{column}' is not present in the CDEs."
@@ -161,7 +161,7 @@ class DuckDBDatasetValidator:
 
     def _get_column_suggestion(self, unknown_column: str) -> str | None:
         candidates = [
-            column for column in self._sql_type_per_column.keys() if column != "row_id"
+            column for column in self._type_per_column.keys() if column != "row_id"
         ]
         matches = difflib.get_close_matches(unknown_column, candidates, n=1, cutoff=0.7)
         return matches[0] if matches else None
@@ -169,11 +169,15 @@ class DuckDBDatasetValidator:
     def _build_fused_checks(self, columns: list[str]) -> list[_FusedCheck]:
         checks: list[_FusedCheck] = []
 
-        type_mapping = {"int": "BIGINT", "real": "DOUBLE"}
+        # Discrete values and the integer category codes (binary, nominal,
+        # ordinal and the dataset) are cast to BIGINT; the CSV is read as text.
         for column in columns:
-            sql_type = self._sql_type_per_column.get(column)
-            cast_type = type_mapping.get(sql_type)
-            if not cast_type:
+            cde_type = self._type_per_column.get(column)
+            if cde_type == "discrete" or column in self._integer_coded_columns:
+                cast_type = "BIGINT"
+            elif cde_type == "continuous":
+                cast_type = "DOUBLE"
+            else:
                 continue
 
             quoted_column = _quote_identifier(column)
@@ -184,10 +188,19 @@ class DuckDBDatasetValidator:
                     column=column,
                     condition_sql=(
                         f"{quoted_column} IS NOT NULL "
-                        f"AND TRY_CAST({quoted_column} AS {cast_type}) IS NULL"
+                        f"AND (TRY_CAST({quoted_column} AS {cast_type}) IS NULL"
+                        + (
+                            # DuckDB rounds '1.5' to 2; category codes must be
+                            # written as plain integers.
+                            f" OR NOT regexp_full_match({quoted_column}, '-?[0-9]+')"
+                            if cde_type == "discrete"
+                            or column in self._integer_coded_columns
+                            else ""
+                        )
+                        + ")"
                     ),
                     sample_expression_sql=quoted_column,
-                    message_factory=lambda count, sample, c=column, t=sql_type: (
+                    message_factory=lambda count, sample, c=column, t=cde_type: (
                         f"Column '{c}' has invalid {t} values "
                         f"(count={count}, example={sample!r})."
                     ),
@@ -239,16 +252,24 @@ class DuckDBDatasetValidator:
             if not allowed_values:
                 continue
             quoted_column = _quote_identifier(column)
-            in_list = _format_in_list(allowed_values)
             allowed_display = _format_allowed_values(allowed_values)
+            if column in self._integer_coded_columns:
+                # Compare as integers; values that are not integers at all are
+                # reported by the type check above.
+                cast_column = f"TRY_CAST({quoted_column} AS BIGINT)"
+                in_list = ", ".join(str(int(value)) for value in allowed_values)
+                invalid_condition = (
+                    f"{cast_column} IS NOT NULL AND {cast_column} NOT IN ({in_list})"
+                )
+            else:
+                in_list = _format_in_list(allowed_values)
+                invalid_condition = f"{quoted_column} IS NOT NULL AND {quoted_column} NOT IN ({in_list})"
             checks.append(
                 _FusedCheck(
                     key=f"enum_{column}",
                     rule="enum.invalid",
                     column=column,
-                    condition_sql=(
-                        f"{quoted_column} IS NOT NULL AND {quoted_column} NOT IN ({in_list})"
-                    ),
+                    condition_sql=invalid_condition,
                     sample_expression_sql=quoted_column,
                     message_factory=lambda count, sample, c=column, allowed=allowed_display: (
                         f"Column '{c}' has invalid categorical value(s). "
@@ -259,14 +280,17 @@ class DuckDBDatasetValidator:
             )
 
         if "dataset" in columns:
-            in_list = _format_in_list(self._dataset_enumerations)
+            in_list = ", ".join(str(int(value)) for value in self._dataset_enumerations)
             dataset_allowed_display = _format_allowed_values(self._dataset_enumerations)
             checks.append(
                 _FusedCheck(
                     key="dataset_enum",
                     rule="dataset.enum",
                     column="dataset",
-                    condition_sql=f"dataset IS NOT NULL AND dataset NOT IN ({in_list})",
+                    condition_sql=(
+                        "TRY_CAST(dataset AS BIGINT) IS NOT NULL "
+                        f"AND TRY_CAST(dataset AS BIGINT) NOT IN ({in_list})"
+                    ),
                     sample_expression_sql="dataset",
                     message_factory=lambda count, sample, allowed=dataset_allowed_display: (
                         "Column 'dataset' has value(s) not declared in CDEsMetadata "
