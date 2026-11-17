@@ -109,3 +109,8 @@ fixtures and classification-metric tests.
 - All limitations of categorical Naive Bayes apply.
 - Cross-validation estimates performance for the selected fold split, not a
   final refit on all observations.
+
+## Variable types and coding
+
+`x` and `y` are categorical and are used by level code, as in categorical naive Bayes. Every declared level of an `x` variable gets a count column in each fold.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

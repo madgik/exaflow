@@ -284,3 +284,8 @@ Important differences from common scikit-learn defaults:
 - K-means does not infer diagnosis, prognosis, treatment effect, or causality.
 - Clusters produced from baseline covariates should be treated as hypotheses or
   covariates, not as final clinical labels.
+
+## Variable types and coding
+
+Only numerical variables are accepted.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

@@ -1,5 +1,8 @@
 ﻿## 1. describe.py - FederatedDescribe
 
+> **Storage and coding.** Categorical CDEs are stored as integer codes (binary `0`/`1`, nominal and ordinal from `1`; `dataset` and `visitid` included; subject identifiers are discrete integers) and reach this code as text codes. See [Data Types, Storage and Variable Coding](../../../../documentation/data-types-and-coding.md).
+
+
 ### Name
 
 **Descriptive Statistics (FederatedDescribe)**

@@ -91,13 +91,13 @@ uv run inv attach --worker localworker1
 Run an analysis request:
 
 ```bash
-./run_analysis -a pca -y leftamygdala lefthippocampus -d ppmi0 -m dementia:0.1
+./run_analysis -a pca -y leftamygdala lefthippocampus -d 1 -m dementia:0.1
 ```
 
 Dry-run an analysis request:
 
 ```bash
-./run_analysis -a pca -y leftamygdala lefthippocampus -d ppmi0 -m dementia:0.1 -n
+./run_analysis -a pca -y leftamygdala lefthippocampus -d 1 -m dementia:0.1 -n
 ```
 
 ## Build

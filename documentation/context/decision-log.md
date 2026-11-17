@@ -25,6 +25,38 @@ Date:
 
 ## Accepted Decisions
 
+### Decision: CDE Metadata Carries a Single Variable Type
+
+Status: Accepted
+
+Context: The MIP variable-type refactor drops `sql_type` and `isCategorical`
+from `CDEsMetadata.json`; `type` alone carries the classification.
+
+Decision: CDEs carry `type` in `continuous`, `discrete`, `nominal`, `ordinal`,
+`binary` (`exaflow.datatypes.CDEType`). Storage and categorical status are
+derived from it: `continuous` is DOUBLE, `discrete` is INTEGER, categorical types
+are integer codes (`CATEGORICAL_CDE_TYPES`; see the later integer-code decision). Metadata dicts, the worker proto,
+`GET /cdes_metadata`, and preprocessing output columns use `type` only.
+Algorithm input specifications keep `types`/`stattypes`; the controller maps CDE
+types onto them. Categorical CDEs without enumerations (former free-text `text`
+columns) are rejected as algorithm inputs. `exadata-validator` rejects
+numerical CDEs with enumerations, categorical CDEs with `minValue`/`maxValue`,
+fractional `discrete` bounds, and `binary` CDEs without exactly two
+enumerations.
+
+Consequences: Not backwards compatible. Old data models must be migrated
+(`real` → `continuous`, `integer` → `discrete`, `nominal`/`text` → `nominal`,
+drop `sql_type`/`isCategorical`, drop empty enumerations). Controller and
+workers must be upgraded together. Platform backend/UI consumers of
+`sql_type`/`is_categorical` must switch to `type`.
+
+Files affected: `exaflow/datatypes.py`, `exaflow/worker_communication.py`,
+`exaflow/protos/worker/worker.proto`, `exaflow/worker/utils/duck_db_csv_loader.py`,
+`exaflow/controller/services/api/analysis_request_validator.py`,
+`exaflow/algorithms/specifications.py`, `exadata-validator/validator/dataelements.py`.
+
+Date: 2026-10-26
+
 ### Decision: Bound Controller Analyses and Keep Liveness Off That Pool
 
 Status: Accepted
@@ -64,6 +96,40 @@ Files affected: `exaflow/controller/services/analysis_execution.py`,
 `documentation/api-specification.md`.
 
 Date: 2026-10-24
+
+### Decision: Match Binary and Ordinal Inputs to CDE Types Exactly
+
+Status: Accepted
+
+Context: With the CDE variable-type refactor, binary and ordinal variables are
+declared in the data model, but algorithm slots only distinguished numerical
+from nominal. Algorithms that need a binary or ordinal variable accepted any
+nominal variable and converted it (`positive_class` collapsing a multi-level
+nominal into 0/1, a user supplied `category_order` ranking a nominal variable).
+
+Decision: `InputDataStatType` gains `binary` and `ordinal`. A slot matches CDE
+types one-to-one; a nominal CDE never satisfies a `binary` or `ordinal` slot.
+Slots that take any categorical variable (covariates, grouping variables,
+generic class labels) list `nominal`, `ordinal` and `binary` explicitly.
+`logistic_regression`, `logistic_regression_cv`, `glmm_binary` (outcome) and
+`fisher_exact` (both variables) require `binary`; `glmm_ordinal` (outcome)
+requires `ordinal`. Cox event variables are chosen with a parameter, so
+`ParameterSpecification.variable_stattypes` requires `binary` for `event_var`.
+The controller validates all of these and the algorithms repeat the check
+(`algorithms/exareme3/utils/cde_types.py`). `positive_class` selects one of the
+two declared levels and never collapses levels. `glmm_ordinal` takes its level
+order from the data model; `category_order` is optional and must equal it.
+`FederatedOneHotEncoder` and `FederatedOrdinalEncoder` stay inside the
+algorithms as private modules and are not exported.
+
+Consequences: Requests that passed a multi-level nominal variable as the outcome
+of these algorithms are now rejected. Specification JSON gains `binary` and
+`ordinal` stattypes and `variable_stattypes`; clients that filter variables by
+`stattypes` must match CDE `type` values exactly. No explicit transformation
+produces a binary or ordinal CDE yet, so callers need such variables in the
+data model.
+
+Date: 2026-11-14
 
 ### Decision: Organize Federated Implementations by Domain
 
@@ -155,6 +221,129 @@ Files affected: The shared CV/scorer modules, linear regression CV runtime,
 tests and fixtures, and `documentation/algorithms/linear_regression_cv.md`.
 
 Date: 2026-10-02
+
+### Decision: Code Binary and Ordinal Covariates as Integers
+
+Status: Accepted
+
+Context: Binary and ordinal CDEs are stored as text, and the regression
+algorithms one-hot encoded every categorical covariate. A binary covariate
+became a dummy column named after the alphabetically later level, and an
+ordinal covariate lost its level order and became `K-1` dummy columns.
+
+Decision: `linear_regression`, `linear_regression_cv`, `logistic_regression`,
+`logistic_regression_cv`, `cox_regression_classical`, `cox_regression_stacked`,
+`lmm`, `glmm_binary` and `glmm_ordinal` build their covariate columns with
+`build_covariate_transformer` (`algorithms/exareme3/utils/covariate_encoding.py`),
+which picks the coding from the CDE type in the worker metadata. `binary` is one
+0/1 column: the first level declared in the data model is 0, the second is 1, and
+the column is named `var[level coded 1]`. `ordinal` is one integer column
+`0..K-1` following the declared level order, keeping the variable name.
+`nominal` stays one-hot encoded with the first sorted level as reference,
+including nominal variables with two levels. Binary and ordinal coding reuses the
+private `_FederatedOrdinalEncoder` with the declared levels and
+`handle_unknown="error"`, so a missing value or an undeclared level raises
+`BadInputError` instead of being coded. Design matrix columns are ordered
+nominal dummies, binary, ordinal, numerical. Cross-validation variants use the
+same coding in every fold and in the final feature names.
+
+Consequences: Coefficient names and counts change for models that use `gender`,
+`alzheimerstatus`, `agegroup` or other binary and ordinal CDEs as covariates;
+binary coefficients flip sign when the declared first level is the alphabetically
+later one, and ordinal covariates now report one slope per level step. A
+binary or ordinal covariate with fewer than two distinct observed values after
+filtering (united across all workers) stops the analysis with a `BadUserInput`
+naming the covariate and its single value, for example "Covariate 'gender' has
+only one observed value (1) after filtering; it cannot be estimated. Remove it or
+change the filters." There is no warning or drop path. The check runs when the
+covariate transformer is fitted, so it covers all nine algorithms; the CV
+algorithms fit it on the full filtered data before any fold runs, and a collapse
+inside a single fold would also raise. Nominal covariates are not checked. Expected outputs of
+`tests/algorithm_validation_tests/exareme3/expected/linear_regression_expected.json`
+were regenerated for the 14 cases with such covariates.
+
+Files affected: `exaflow/algorithms/exareme3/utils/covariate_encoding.py`, the
+nine algorithms above, `tests/testcase_generators/design_matrix.py`,
+`documentation/algorithms/`.
+
+Date: 2026-11-14
+
+### Decision: Store Categorical CDEs and Datasets as Integer Codes
+
+Status: Accepted
+
+Context: Nominal, ordinal and binary CDEs and the `dataset` CDE were VARCHAR
+columns holding readable names, so DuckDB, the validator and the test data all
+depended on free-text codes.
+
+Decision: Only `continuous` is DOUBLE and `discrete` INTEGER; every categorical
+CDE is an INTEGER column (`DType.from_cde` is `INT` for all non-continuous
+types), with no text exceptions. `binary` codes are exactly `0` and `1`; `nominal`
+and `ordinal` codes are integers from `1`; `dataset` codes are integers `1..N`
+per data model. The enumeration label carries the readable name. `visitid` and
+`dataset` stay integer-coded nominal variables. `subjectid` and `subjectcode` are
+`discrete` whole numbers without enumerations, so subject identifiers are not
+published as category levels (the longitudinal transformer's `visit1`/`visit2`
+take visit codes such as `"1"`; the label, e.g. `BL`, is only a name). A categorical CDE without enumerations, or
+with non-integer codes, is rejected by the exadata-validator and by the worker's
+CSV loader (`_build_column_types`); there is no VARCHAR fallback. The
+exadata-validator also rejects binary codes other than 0/1 and nominal, ordinal
+or dataset codes below 1, both in `CDEsMetadata.json` and in the CSV values.
+Inside the worker, `integer_codes_to_text` turns the integer columns back into
+text codes right after the Arrow to pandas conversion, so algorithm parameters
+(`positive_class`, `groupA`, `category_order`), metadata enumeration keys and
+level-keyed results stay text codes (`"1"`, `"0"`) and nominal one-hot feature
+names carry the code (`alzheimerbroadcategory[2]`).
+
+API contract: `datasets` and `validation_datasets` stay lists of strings holding
+the numeric code (`"12"`). `GET /datasets` returns those codes; the readable
+name is the `label` of the `dataset` enumeration in `GET /cdes_metadata` and in
+the worker `datasets.label` column. Filter rules on categorical CDEs and on
+`dataset` must use integer values. Algorithm parameters that name a level use
+the code as a string.
+
+Migration: none. Existing deployed data is not migrated; only newly loaded
+data uses the new types and integer codes. No migration script is provided.
+
+Consequences: Every data model must be recoded and revalidated before loading,
+and clients that send dataset or level names, or read result keys by name, must
+send and read codes (labels come from the CDE metadata). Controller and workers
+deploy together. Rollback restores the previous revision and the name-coded data.
+The CSV file names are unchanged. Validation and prod fixtures were recoded
+mechanically; outputs whose row order depends on level order need regeneration.
+
+Files affected: `exaflow/datatypes.py`, the CSV loader, the UDF DB and service
+layers, the controller type mapping, the algorithm specs, `exadata-validator`,
+`tests/test_data`, and the validation and prod fixtures.
+
+Date: 2026-11-16
+
+### Decision: Compare Categorical Levels in Declared Order and Require positive_class
+
+Status: Accepted
+
+Context: `CommonDataElement.__eq__` compared enumerations as dicts, so workers
+declaring the same levels in a different order were treated as compatible even
+though the order defines ordinal ranks and binary 0/1 coding. The Cox regressions
+also inferred the event level from 0/1 or false/true values when
+`positive_class` was omitted, unlike logistic regression.
+
+Decision: Categorical CDEs (nominal, ordinal and binary) compare enumerations in
+declared order; a mismatch makes the data model incompatible and it is dropped
+and logged by the worker landscape aggregator. The `dataset` CDE keeps its
+exception: its enumerations may differ between workers. `positive_class` is
+required for logistic regression (plain and cross-validated), the binary GLMM
+and both Cox regressions and must be a level declared for the binary variable;
+nothing is inferred. The specification mechanism cannot source the Cox enum from
+`event_var` (it supports one `x` or `y` variable), so the level is validated in
+`run()` before any UDF, with the same helper logistic regression uses
+(`exareme3/utils/positive_class.py`).
+
+Consequences: Requests that omit Cox `positive_class` are rejected. Heterogeneous
+level order across workers removes the data model from the federation until the
+order is aligned.
+
+Date: 2026-11-16
 
 ## Inferred Decisions
 

@@ -231,3 +231,8 @@ focused preprocessing and downstream algorithm tests.
 - Difference transformations require numerical variables.
 - Preprocessing should be chosen to match the scientific interpretation of the
   downstream analysis.
+
+## Variable types and coding
+
+Preprocessing steps work on the stored types: `visit1`/`visit2` of the longitudinal transformer are visit codes (strings such as `"1"`; the label, for example `BL`, is only a name). `subjectid` is a `discrete` whole number without enumerations and is not published as a category level; `visitid` and `dataset` stay integer-coded nominal variables.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

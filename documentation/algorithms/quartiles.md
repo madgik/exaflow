@@ -81,7 +81,7 @@ interpolating.
 
 - `y` accepts at most one variable (`max_count=1`).
 - The three quartiles Q1/Q2/Q3 are always computed; there is no `q` parameter.
-- Integer mode is derived automatically from the `sql_type` of `y`; no flag is
+- Integer mode is derived automatically from the CDE `type` of `y` (`discrete`); no flag is
   needed from the caller.
 - The algorithm performs `max_iterations` federated histogram round-trips per
   quartile. All three quartiles are computed within a single aggregation
@@ -94,3 +94,8 @@ interpolating.
 #### Algorithm Implementation
 
 [Quartiles (Histogram-Based)](../../exaflow/algorithms/exareme3/statistics/quartiles.py)
+
+## Variable types and coding
+
+Only a numerical variable is accepted.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.
