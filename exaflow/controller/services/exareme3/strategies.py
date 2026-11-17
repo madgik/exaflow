@@ -64,10 +64,21 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
         return transformed_inputdata, transformed_metadata
 
     async def execute(self) -> str:
+        # Requests name datasets by label; workers filter on the stored codes.
+        request_inputdata = self._analysis_request_dto.inputdata
+        wla = self._controller.worker_landscape_aggregator
         source_inputdata = Inputdata(
-            data_model=self._analysis_request_dto.inputdata.data_model,
-            datasets=self._analysis_request_dto.inputdata.datasets,
-            validation_datasets=self._analysis_request_dto.inputdata.validation_datasets,
+            data_model=request_inputdata.data_model,
+            datasets=wla.get_dataset_codes(
+                request_inputdata.data_model, request_inputdata.datasets
+            ),
+            validation_datasets=(
+                wla.get_dataset_codes(
+                    request_inputdata.data_model, request_inputdata.validation_datasets
+                )
+                if request_inputdata.validation_datasets
+                else None
+            ),
             filters=self._analysis_request_dto.inputdata.filters,
             variables=self._analysis_request_dto.inputdata.variables,
         )

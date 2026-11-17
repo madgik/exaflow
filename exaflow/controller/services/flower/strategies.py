@@ -26,11 +26,16 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
             raise GlobalWorkerUnavailableError()
         async with self._controller.algorithm_execution_lock:
             data_model = self._analysis_request_dto.inputdata.data_model
-            datasets = self._analysis_request_dto.inputdata.datasets + (
-                self._analysis_request_dto.inputdata.validation_datasets
-                if self._analysis_request_dto.inputdata.validation_datasets
-                else []
+            # Requests name datasets by label; workers filter on the stored codes.
+            wla = self._controller.worker_landscape_aggregator
+            training_datasets = wla.get_dataset_codes(
+                data_model, self._analysis_request_dto.inputdata.datasets
             )
+            validation_datasets = wla.get_dataset_codes(
+                data_model,
+                self._analysis_request_dto.inputdata.validation_datasets or [],
+            )
+            datasets = training_datasets + validation_datasets
 
             await self._safe_worker_call(
                 "garbage collect on global worker",
@@ -45,6 +50,8 @@ class FlowerStrategy(AlgorithmExecutionStrategyI):
             self._controller.flower_execution_info.set_inputdata(
                 inputdata={
                     **self._analysis_request_dto.inputdata.model_dump(),
+                    "datasets": training_datasets,
+                    "validation_datasets": validation_datasets or None,
                     "x": self._analysis_request_dto.algorithm.x,
                     "y": self._analysis_request_dto.algorithm.y,
                 }
