@@ -45,6 +45,13 @@ def load_algorithm_arrow_table(
     return _fetch_with_duckdb(inputdata, required_columns)
 
 
+def _dataset_literal(value) -> str:
+    try:
+        return str(int(value))
+    except (TypeError, ValueError):
+        return quote_literal(value)
+
+
 def _fetch_with_duckdb(inputdata: Inputdata, required_columns: Set[str]) -> pa.Table:
     import duckdb
 
@@ -60,7 +67,9 @@ def _fetch_with_duckdb(inputdata: Inputdata, required_columns: Set[str]) -> pa.T
 
     where_clauses = []
     params: list = []
-    datasets_clause = ", ".join(quote_literal(value) for value in datasets)
+    # Dataset codes are integers in the data table (the names are enumeration
+    # labels), so they are compared as integers.
+    datasets_clause = ", ".join(_dataset_literal(value) for value in datasets)
     where_clauses.append(f"{quote_identifier(DATASET_COL)} IN ({datasets_clause})")
 
     if inputdata.filters:
