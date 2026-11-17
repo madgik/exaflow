@@ -55,7 +55,7 @@ class StandardizedMeanDifference(Algorithm):
                 label="Grouping variable",
                 desc="Categorical variable defining the groups compared pairwise.",
                 types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NOMINAL],
+                stattypes=[*specs.CATEGORICAL_STATTYPES],
                 required=True,
                 max_count=1,
             ),

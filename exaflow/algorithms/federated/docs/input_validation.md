@@ -1,5 +1,7 @@
 # Federated package input validation
 
+> **Storage and coding.** Categorical CDEs are stored as integer codes (binary `0`/`1`, nominal and ordinal from `1`; `dataset` and `visitid` included; subject identifiers are discrete integers) and reach this code as text codes. See [Data Types, Storage and Variable Coding](../../../../documentation/data-types-and-coding.md).
+
 Validation is local and raises `BadInputError`, a `ValueError` subclass. Expected
 conversion failures are reported without echoing row values. The package does
 not coordinate error propagation or cancellation: callers own the distributed

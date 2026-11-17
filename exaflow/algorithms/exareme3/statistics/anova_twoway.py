@@ -62,8 +62,8 @@ class AnovaTwoWay(Algorithm):
             x=specs.InputDataSpecification(
                 label="Factors",
                 desc="Two categorical factors.",
-                types=[specs.InputDataType.TEXT],
-                stattypes=[specs.InputDataStatType.NOMINAL],
+                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                stattypes=[*specs.CATEGORICAL_STATTYPES],
                 required=True,
                 min_count=2,
                 max_count=2,

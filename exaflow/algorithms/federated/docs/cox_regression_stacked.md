@@ -1,5 +1,7 @@
 ## Cox Regression Stacked (FederatedStackedCoxRegression)
 
+> **Storage and coding.** Categorical CDEs are stored as integer codes (binary `0`/`1`, nominal and ordinal from `1`; `dataset` and `visitid` included; subject identifiers are discrete integers) and reach this code as text codes. See [Data Types, Storage and Variable Coding](../../../../documentation/data-types-and-coding.md).
+
 ### Name
 
 **Cox Regression Stacked (FederatedStackedCoxRegression)**
@@ -30,7 +32,7 @@ Use this model when:
 Be careful when:
 
 - you require exact classical Cox partial-likelihood fitting
-- the event indicator is not binary and `positive_class` is omitted
+- `positive_class` is not a declared level of the event variable
 - there are too few observed events
 - the chosen time grid is too coarse for the event process
 - time-varying covariates are required

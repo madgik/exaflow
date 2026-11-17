@@ -10,7 +10,9 @@ from exaflow.algorithms.exareme3.naive_bayes.naive_bayes_common import (
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.metadata_enums import get_enum_codes
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.feature_engineering import FederatedOrdinalEncoder
+from exaflow.algorithms.federated.feature_engineering._ordinal_encoder import (
+    _FederatedOrdinalEncoder,
+)
 from exaflow.algorithms.federated.model_selection.cross_validation import (
     FederatedCrossValidator,
 )
@@ -28,6 +30,7 @@ from exaflow.algorithms.federated.model_selection.cross_validation.scorer_multic
 )
 from exaflow.algorithms.federated.naive_bayes import FederatedCategoricalNB
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
+from exaflow.algorithms.federated.utils import sort_levels
 
 
 class NaiveBayesCategorical(Algorithm):
@@ -56,16 +59,16 @@ class NaiveBayesCategorical(Algorithm):
             y=specs.InputDataSpecification(
                 label="Outcome",
                 desc="Nominal outcome variable.",
-                types=[specs.InputDataType.TEXT],
-                stattypes=[specs.InputDataStatType.NOMINAL],
+                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                stattypes=[*specs.CATEGORICAL_STATTYPES],
                 required=True,
                 max_count=1,
             ),
             x=specs.InputDataSpecification(
                 label="Features",
                 desc="Nominal features used for classification.",
-                types=[specs.InputDataType.TEXT],
-                stattypes=[specs.InputDataStatType.NOMINAL],
+                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                stattypes=[*specs.CATEGORICAL_STATTYPES],
                 required=True,
             ),
             parameters={
@@ -89,7 +92,8 @@ class NaiveBayesCategorical(Algorithm):
         x_vars = list(self.x)
         n_splits = self.get_parameter("n_splits")
         categories: Dict[str, List[str]] = {
-            var: sorted(get_enum_codes(self.metadata, var)) for var in x_vars + [y_var]
+            var: sort_levels(get_enum_codes(self.metadata, var))
+            for var in x_vars + [y_var]
         }
 
         metrics = self.run_local_udf(
@@ -152,7 +156,7 @@ def local_step(
         [
             (
                 "features",
-                FederatedOrdinalEncoder(
+                _FederatedOrdinalEncoder(
                     categories=categories,
                     handle_unknown="error",
                 ),

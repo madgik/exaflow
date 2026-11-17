@@ -10,6 +10,7 @@ from exaflow.algorithms.federated.statistics.percentile import Percentile
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
+from exaflow.datatypes import CDEType
 
 _QUARTILE_VALUES = [0.25, 0.5, 0.75]
 
@@ -77,10 +78,7 @@ class QuartilesAlgorithm(Algorithm):
             num_bins = default_bins
         num_bins = int(num_bins)
         y_var = self.y[0]
-        is_integer = (
-            self.metadata.get(y_var, {}).get("sql_type")
-            == specs.InputDataType.INT.value
-        )
+        is_integer = self.metadata.get(y_var, {}).get("type") == CDEType.DISCRETE
 
         result = self.run_local_udf(
             func=local_step,

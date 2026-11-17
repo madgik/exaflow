@@ -1,5 +1,7 @@
 ﻿## Gaussian Naive Bayes (FederatedGaussianNB)
 
+> **Storage and coding.** Categorical CDEs are stored as integer codes (binary `0`/`1`, nominal and ordinal from `1`; `dataset` and `visitid` included; subject identifiers are discrete integers) and reach this code as text codes. See [Data Types, Storage and Variable Coding](../../../../documentation/data-types-and-coding.md).
+
 ### Name
 
 **Gaussian Naive Bayes (FederatedGaussianNB)**
@@ -17,65 +19,63 @@ In a federated setting, we want the *same* class priors, means, and variances as
 
 Use Gaussian Naive Bayes when:
 
-* you need **multi-class classification** with probabilistic outputs
-* features are **continuous/numerical** and approximately Gaussian per class
-* you have small to moderate sample sizes
-* features are (approximately) conditionally independent given the class
-* you want a fast, simple baseline classifier
+- you need **multi-class classification** with probabilistic outputs
+- features are **continuous/numerical** and approximately Gaussian per class
+- you have small to moderate sample sizes
+- features are (approximately) conditionally independent given the class
+- you want a fast, simple baseline classifier
 
 ### When NOT to use
 
 Avoid / be careful when:
 
-* features are categorical (use Categorical Naive Bayes instead)
-* features are highly correlated (violates independence assumption)
-* feature distributions are very non-Gaussian (consider transformations)
-* you need complex decision boundaries (NB assumes simple boundaries)
-* privacy is critical beyond aggregate statistics
+- features are categorical (use Categorical Naive Bayes instead)
+- features are highly correlated (violates independence assumption)
+- feature distributions are very non-Gaussian (consider transformations)
+- you need complex decision boundaries (NB assumes simple boundaries)
+- privacy is critical beyond aggregate statistics
 
----
+______________________________________________________________________
 
 ### Inputs / Outputs
 
-| Item              | Description                                                  |
+| Item | Description |
 | ----------------- | ------------------------------------------------------------ |
-| **X**             | Feature matrix, shape `(n_local, p)`                         |
-| **y**             | Class labels, shape `(n_local,)`                             |
-| **x_vars**        | List of feature variable names                               |
-| **labels**        | List of expected class labels                                |
-| **var_smoothing** | Variance smoothing parameter (default: 1e-9)                 |
-| **agg_client**    | Federated aggregation client                                 |
+| **X** | Feature matrix, shape `(n_local, p)` |
+| **y** | Class labels, shape `(n_local,)` |
+| **x_vars** | List of feature variable names |
+| **labels** | List of expected class labels |
+| **var_smoothing** | Variance smoothing parameter (default: 1e-9) |
+| **agg_client** | Federated aggregation client |
 
 **Outputs (FederatedGaussianNBResults)**
 
-* `theta`: class-conditional means, shape `(n_classes, n_features)`
-* `var`: class-conditional variances, shape `(n_classes, n_features)`
-* `class_count`: number of samples per class
-* `class_prior`: prior probabilities for each class
-* `labels`: list of class labels
-* `predict_proba(X)`: predicted class probabilities
-* `predict(X)`: predicted class labels
+- `theta`: class-conditional means, shape `(n_classes, n_features)`
+- `var`: class-conditional variances, shape `(n_classes, n_features)`
+- `class_count`: number of samples per class
+- `class_prior`: prior probabilities for each class
+- `labels`: list of class labels
+- `predict_proba(X)`: predicted class probabilities
+- `predict(X)`: predicted class labels
 
 ### Key Differences from scikit-learn
 
-| Aspect                | scikit-learn          | MIP Federated Implementation  |
+| Aspect | scikit-learn | MIP Federated Implementation |
 | --------------------- | --------------------- | ----------------------------- |
-| Data access           | Full centralized data | Data remains local per client |
-| Classes discovery     | Auto-discovered       | Pre-specified in constructor  |
-| Sufficient statistics | Local computation     | Federated sums/sums_sq/counts |
-| Variance smoothing    | Same formula          | Same formula                  |
-| Performance           | CPU/memory bound      | Network + aggregation bound   |
+| Data access | Full centralized data | Data remains local per client |
+| Classes discovery | Auto-discovered | Pre-specified in constructor |
+| Sufficient statistics | Local computation | Federated sums/sums_sq/counts |
+| Variance smoothing | Same formula | Same formula |
+| Performance | CPU/memory bound | Network + aggregation bound |
 
 ### Approximation vs Exactness
 
-| Component             | scikit-learn | MIP   |
+| Component | scikit-learn | MIP |
 | --------------------- | ------------ | ----- |
-| Class priors          | Exact        | Exact |
-| Class-conditional ΞΌ   | Exact        | Exact |
-| Class-conditional ΟƒΒ²  | Exact        | Exact |
-| Variance smoothing    | Exact        | Exact |
-| Probability estimates | Exact        | Exact |
+| Class priors | Exact | Exact |
+| Class-conditional ΞΌ | Exact | Exact |
+| Class-conditional ΟƒΒ² | Exact | Exact |
+| Variance smoothing | Exact | Exact |
+| Probability estimates | Exact | Exact |
 
----
-
-
+______________________________________________________________________

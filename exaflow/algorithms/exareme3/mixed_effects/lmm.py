@@ -8,11 +8,10 @@ from exaflow.algorithms.exareme3.mixed_effects.mixed_effects_common import (
     split_grouping_var,
 )
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
-from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
-from exaflow.algorithms.federated.compose.column_transformer import (
-    FederatedColumnTransformer,
+from exaflow.algorithms.exareme3.utils.covariate_encoding import (
+    build_covariate_transformer,
 )
-from exaflow.algorithms.federated.feature_engineering import FederatedOneHotEncoder
+from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.mixed_effects import FederatedLMM
 
 
@@ -99,7 +98,7 @@ class LMM(Algorithm):
                 ],
                 stattypes=[
                     specs.InputDataStatType.NUMERICAL,
-                    specs.InputDataStatType.NOMINAL,
+                    *specs.CATEGORICAL_STATTYPES,
                 ],
                 required=True,
                 min_count=2,
@@ -178,11 +177,9 @@ def lmm_local_step(
     grouping_var,
     categorical_vars,
     numerical_vars,
+    metadata,
 ):
-    transformer = FederatedColumnTransformer(
-        [("cat", FederatedOneHotEncoder(), categorical_vars)],
-        remainder="passthrough",
-    )
+    transformer = build_covariate_transformer(categorical_vars, metadata)
     transformer.fit(
         agg_client=agg_client,
         data=data,

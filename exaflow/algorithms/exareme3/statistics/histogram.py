@@ -8,6 +8,7 @@ from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated import FederatedDescriptiveStatistics
+from exaflow.datatypes import CDEType
 
 HistogramBin = Union[float, str]
 
@@ -62,7 +63,7 @@ class Histogram(Algorithm):
                 ],
                 stattypes=[
                     specs.InputDataStatType.NUMERICAL,
-                    specs.InputDataStatType.NOMINAL,
+                    *specs.CATEGORICAL_STATTYPES,
                 ],
                 required=True,
                 max_count=1,
@@ -70,8 +71,8 @@ class Histogram(Algorithm):
             x=specs.InputDataSpecification(
                 label="Grouping variables",
                 desc="Optional categorical variables for grouped histograms.",
-                types=[specs.InputDataType.TEXT],
-                stattypes=[specs.InputDataStatType.NOMINAL],
+                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                stattypes=[*specs.CATEGORICAL_STATTYPES],
                 required=False,
             ),
             parameters={
@@ -120,10 +121,7 @@ class Histogram(Algorithm):
         if histogram_type is None:
             histogram_type = default_histogram_type
 
-        is_integer = (
-            self.metadata.get(y_var, {}).get("sql_type")
-            == specs.InputDataType.INT.value
-        )
+        is_integer = self.metadata.get(y_var, {}).get("type") == CDEType.DISCRETE
 
         payload = self.run_local_udf(
             func=local_step,

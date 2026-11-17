@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.utils.algorithm import Algorithm
+from exaflow.algorithms.exareme3.utils.cde_types import require_cde_type
 from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.fisher_exact import (
     FisherExact as FedFisherExact,
@@ -11,6 +12,7 @@ from exaflow.algorithms.federated.statistics.fisher_exact import (
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
+from exaflow.datatypes import CDEType
 
 
 class FisherExactResult(BaseModel):
@@ -42,17 +44,17 @@ class FisherExact(Algorithm):
             required_preprocessing=["missing_values_handler"],
             y=specs.InputDataSpecification(
                 label="Outcome",
-                desc="Categorical outcome variable.",
-                types=[specs.InputDataType.TEXT],
-                stattypes=[specs.InputDataStatType.NOMINAL],
+                desc="Binary outcome variable (exactly two levels).",
+                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.BINARY],
                 required=True,
                 max_count=1,
             ),
             x=specs.InputDataSpecification(
                 label="Factor",
-                desc="Categorical factor variable.",
-                types=[specs.InputDataType.TEXT],
-                stattypes=[specs.InputDataStatType.NOMINAL],
+                desc="Binary factor variable (exactly two levels).",
+                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
+                stattypes=[specs.InputDataStatType.BINARY],
                 required=True,
                 max_count=1,
             ),
@@ -63,6 +65,8 @@ class FisherExact(Algorithm):
     def run(self):
         y_var = self.y[0]
         x_var = self.x[0]
+        require_cde_type(self.metadata, y_var, CDEType.BINARY, role="outcome")
+        require_cde_type(self.metadata, x_var, CDEType.BINARY, role="factor")
 
         results = self.run_local_udf(
             func=fisher_exact_local_step,

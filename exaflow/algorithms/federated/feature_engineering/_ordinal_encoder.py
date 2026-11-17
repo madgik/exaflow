@@ -16,7 +16,7 @@ from exaflow.algorithms.federated.validation import check_choice
 from exaflow.algorithms.federated.validation import check_dataframe
 
 
-class FederatedOrdinalEncoder(FederatedTransformer):
+class _FederatedOrdinalEncoder(FederatedTransformer):
     """
     Ordinal encoder for federated categorical features that enforces a fixed
     category ordering from metadata.
@@ -52,7 +52,7 @@ class FederatedOrdinalEncoder(FederatedTransformer):
         check_choice(self.handle_unknown, ("ignore", "error"), name="handle_unknown")
         if not self._preset_categories:
             raise BadInputError(
-                "FederatedOrdinalEncoder requires categories to be provided "
+                "_FederatedOrdinalEncoder requires categories to be provided "
                 "via the constructor."
             )
         for var in categorical_vars:
@@ -86,6 +86,8 @@ class FederatedOrdinalEncoder(FederatedTransformer):
         for idx, var in enumerate(categorical_vars):
             categories = self.categories_.get(var, [])
             if var not in data.columns:
+                if self.handle_unknown == "error":
+                    raise BadInputError(f"Missing column '{var}' in input data.")
                 encoded[:, idx] = self.unknown_value
                 continue
 
@@ -97,7 +99,8 @@ class FederatedOrdinalEncoder(FederatedTransformer):
             codes = cat.codes
             if self.handle_unknown == "error" and np.any(codes < 0):
                 raise BadInputError(
-                    f"Unknown categories encountered in column '{var}'."
+                    f"Unknown categories encountered in column '{var}': missing "
+                    "values or levels that are not declared."
                 )
             if self.handle_unknown == "ignore":
                 codes = np.where(codes < 0, self.unknown_value, codes)

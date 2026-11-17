@@ -11,6 +11,7 @@ from exaflow.algorithms.federated.statistics.anova_oneway import FederatedAnovaO
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
+from exaflow.algorithms.specifications import CATEGORICAL_STATTYPES
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import AlgorithmType
 from exaflow.algorithms.specifications import ComponentType
@@ -60,8 +61,8 @@ class AnovaOneWay(Algorithm):
             x=InputDataSpecification(
                 label="Grouping variable",
                 desc="Categorical variable defining the groups.",
-                types=[InputDataType.TEXT],
-                stattypes=[InputDataStatType.NOMINAL],
+                types=[InputDataType.TEXT, InputDataType.INT],
+                stattypes=[*CATEGORICAL_STATTYPES],
                 required=True,
                 max_count=1,
             ),
