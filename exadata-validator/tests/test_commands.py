@@ -63,7 +63,7 @@ def test_validate_data_model_command_duplicate_dataset_across_csv_files(tmp_path
         encoding="utf-8",
     )
     (folder / "dataset2.csv").write_text(
-        (source_folder / "dataset2.csv").read_text().replace("dataset2", "dataset1"),
+        (source_folder / "dataset2.csv").read_text().replace(",3\n", ",2\n"),
         encoding="utf-8",
     )
 
@@ -119,7 +119,7 @@ def test_validate_data_model_command_duplicate_dataset_normalization(tmp_path):
         (source_folder / "CDEsMetadata.json").read_text(encoding="utf-8")
     )
     dataset_cde = next(cde for cde in metadata["variables"] if cde["code"] == "dataset")
-    dataset_cde["enumerations"].append({"code": "DATASET1", "label": "Dataset 1 Upper"})
+    dataset_cde["enumerations"].append({"code": "5", "label": "Dataset 5"})
     (folder / "CDEsMetadata.json").write_text(
         json.dumps(metadata),
         encoding="utf-8",
@@ -129,7 +129,7 @@ def test_validate_data_model_command_duplicate_dataset_normalization(tmp_path):
         encoding="utf-8",
     )
     (folder / "dataset2.csv").write_text(
-        (source_folder / "dataset2.csv").read_text().replace("dataset2", "DATASET1"),
+        (source_folder / "dataset2.csv").read_text().replace(",3\n", ", 2 \n"),
         encoding="utf-8",
     )
 
@@ -148,7 +148,7 @@ def test_validate_data_model_command_report_all_text_includes_line_number(tmp_pa
         encoding="utf-8",
     )
     (folder / "dataset.csv").write_text(
-        "subjectcode,var1,var3,dataset\n10,1,2000,dataset1\n",
+        "subjectcode,var1,var3,dataset\n10,1,2000,2\n",
         encoding="utf-8",
     )
 
