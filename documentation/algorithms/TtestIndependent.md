@@ -141,3 +141,8 @@ Reference behavior is aligned with an equal-variance independent t-test.
 - The two groups are assumed independent.
 - The pooled-variance test assumes comparable group variances.
 - The method does not implement Welch's unequal-variance t-test.
+
+## Variable types and coding
+
+`y` is numerical. `x` is a categorical variable and `groupA`/`groupB` are level codes given as strings (for example `"1"`, `"2"`). There is no covariate coding.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

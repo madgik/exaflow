@@ -69,7 +69,7 @@ relative to the spread.
 
 | Quantity | Purpose |
 |---|---|
-| Global categorical levels | Align one-hot encoded columns. |
+| Global nominal levels | Align one-hot encoded columns of nominal covariates. |
 | `X'X` | Estimate coefficients, covariance matrix, and rank. |
 | `X'y` | Estimate coefficients. |
 | Number of observations | Compute degrees of freedom and information criteria. |
@@ -90,7 +90,10 @@ Step 1:
 
 Step 2:
     Build the design matrix:
-        one-hot encode categorical covariates
+        code categorical covariates by CDE type:
+            binary -> one 0/1 column (first declared level is 0)
+            ordinal -> one integer column in declared level order
+            nominal -> one-hot dummy columns
         include numerical covariates directly
         add an intercept
 
@@ -125,7 +128,13 @@ Output:
 ## Technical decisions
 
 - An intercept is always included.
-- Categorical covariates are one-hot encoded with globally aligned categories.
+- Categorical covariates are coded by CDE type. A `binary` covariate is one 0/1
+  column (the first level declared in the data model is 0, the second is 1) named
+  `var[level coded 1]`. An `ordinal` covariate is one integer column
+  (`0..K-1` in the declared level order) that keeps the variable name. A
+  `nominal` covariate is one-hot encoded with globally aligned categories. A
+  missing value or an undeclared level in a binary or ordinal covariate raises an
+  error. Columns are ordered nominal dummies, binary, ordinal, numerical.
 - The pseudo-inverse of `X'X` is used, which allows rank-deficient designs to be
   handled numerically.
 - Standard errors are computed from the diagonal of `(X'X)^+ * RSE^2`.
@@ -177,3 +186,8 @@ uses aggregated cross-products rather than centralized row-level data.
 - Strong multicollinearity or rank deficiency can affect interpretability even
   though the pseudo-inverse returns coefficients.
 - No regularization is applied.
+
+## Variable types and coding
+
+`y` is numerical. Covariates are coded as in the shared page: `binary` as one 0/1 column (reference = code `0`), `ordinal` as one integer column `0..K-1` by declared order (equal spacing is assumed), `nominal` one-hot with the first sorted code as reference. A `binary` or `ordinal` covariate with a single observed value after filtering raises an error.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

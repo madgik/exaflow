@@ -126,3 +126,8 @@ behavior.
 - Bounds can differ by site because they are computed independently.
 - Quantile clipping uses local quantiles.
 - Clipping can change downstream model estimates and descriptive summaries.
+
+## Variable types and coding
+
+Only numerical variables are accepted; a categorical variable is rejected.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

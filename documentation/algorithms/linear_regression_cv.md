@@ -9,7 +9,9 @@ cross-validation utilities retain their `model_selection` location.
 
 `linear_regression_cv` fits an ordinary least squares model on each training
 fold and evaluates predictions on the corresponding held-out rows. The model
-includes an intercept and one-hot encoded categorical predictors. Results
+includes an intercept; binary predictors are one 0/1 column, ordinal predictors
+one integer column in declared level order, and nominal predictors are one-hot
+encoded. Results
 summarize RMSE, R-squared, MAE, and an F diagnostic across folds.
 
 ## Inputs
@@ -120,8 +122,10 @@ fold membership match; numerical parity is enforced by the standalone tests.
 
 ## Limitations and compatibility
 
-- One-hot encoding uses levels observed in each training fold. A test-only
-  level produces all-zero dummy columns, following the existing encoder.
+- One-hot encoding of nominal predictors uses levels observed in each training
+  fold. A test-only level produces all-zero dummy columns, following the existing
+  encoder. Binary and ordinal coding uses the declared levels, so it is identical
+  in every fold, and an undeclared level raises an error.
 - Rank-deficient models use the shared OLS pseudo-inverse. The retained F
   diagnostic uses encoded column count, not effective matrix rank.
 - TSS is computed from outcome sums and squared sums, so large offsets with
@@ -134,3 +138,8 @@ fold membership match; numerical parity is enforced by the standalone tests.
   changes the regression scoring aggregation sequence. Roll back the service
   changes and consumer field migration together. Privacy thresholds and
   dataset loading are unchanged.
+
+## Variable types and coding
+
+`y` is numerical. Covariates are coded as in linear regression (`binary` 0/1, `ordinal` `0..K-1`, `nominal` one-hot). A `binary` or `ordinal` covariate with a single observed value raises an error before the folds are built, and again if a fold collapses it.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

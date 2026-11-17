@@ -136,3 +136,8 @@ contingency table.
 - Sparse tables can make the asymptotic p-value unreliable.
 - The test detects association but does not estimate effect direction or causal
   relationships.
+
+## Variable types and coding
+
+`x` and `y` are categorical (`nominal`, `ordinal` or `binary`). Contingency table rows and columns are the level codes, with names taken from the enumeration labels.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

@@ -143,3 +143,8 @@ additional effect-size reporting.
 - At least two complete pairs are required.
 - Paired differences are assumed approximately normally distributed.
 - Observed pairs are assumed independent of one another.
+
+## Variable types and coding
+
+Both variables are numerical.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

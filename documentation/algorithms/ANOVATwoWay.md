@@ -185,3 +185,8 @@ and Type II sums of squares.
 - The model assumes approximately normal residuals within cells.
 - The model assumes comparable residual variance across cells.
 - Type III sums of squares and post-hoc comparisons are not included.
+
+## Variable types and coding
+
+`y` is numerical. `x` holds two categorical factors (`nominal`, `ordinal` or `binary`); factor levels are used by code and results are keyed by code. There is no covariate coding.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

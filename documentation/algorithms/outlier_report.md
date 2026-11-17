@@ -140,3 +140,8 @@ fixtures rather than comparing to a single external package.
 - Quantile, IQR, and MAD rules are descriptive screening methods, not formal
   hypothesis tests.
 - Small non-zero outlier counts can be suppressed.
+
+## Variable types and coding
+
+Only numerical variables are accepted; a categorical variable is rejected.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

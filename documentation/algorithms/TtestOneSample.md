@@ -140,3 +140,8 @@ The method is also aligned with standard one-sample t-test formulas used by
 - Observations are assumed independent.
 - The test assumes the sample mean is approximately t-distributed under the null.
 - Cohen's d is undefined when the sample standard deviation is zero.
+
+## Variable types and coding
+
+Only a numerical variable is accepted.
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

@@ -191,3 +191,8 @@ ranges, and large variance differences.
 - The two groups are assumed independent.
 - Missing values are handled by the `missing_values_handler` preprocessing step
   before the test is applied.
+
+## Variable types and coding
+
+`y` is numerical. `x` is a categorical variable and `groupA`/`groupB` are level codes given as strings (for example `"1"`, `"2"`).
+See [Data Types, Storage and Variable Coding](../data-types-and-coding.md) for the storage types and the coding rules shared by all algorithms.

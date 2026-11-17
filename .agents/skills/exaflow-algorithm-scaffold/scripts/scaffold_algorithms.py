@@ -450,8 +450,16 @@ def profile_for_family(family: str | None) -> FamilyProfile:
 
 def _input_spec_literal(spec: InputSpec, *, key: str) -> str:
     types_literal = ", ".join(f"specs.InputDataType.{value}" for value in spec.types)
+    # Slots match CDE types one-to-one. A scaffolded "NOMINAL" slot means any
+    # categorical variable; edit the generated spec to BINARY or ORDINAL alone
+    # when the algorithm genuinely requires exactly that type.
     stattypes_literal = ", ".join(
-        f"specs.InputDataStatType.{value}" for value in spec.stattypes
+        (
+            "*specs.CATEGORICAL_STATTYPES"
+            if value == "NOMINAL"
+            else f"specs.InputDataStatType.{value}"
+        )
+        for value in spec.stattypes
     )
     lines = [
         f"            {key}=specs.InputDataSpecification(",
