@@ -71,36 +71,6 @@ class WorkerServiceStub:
             response_deserializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.HealthcheckResponse.FromString,
             _registered_method=True,
         )
-        self.StartFlowerClient = channel.unary_unary(
-            "/exaflow.worker.api.WorkerService/StartFlowerClient",
-            request_serializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.StartFlowerClientRequest.SerializeToString,
-            response_deserializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.StartFlowerClientResponse.FromString,
-            _registered_method=True,
-        )
-        self.StartFlowerServer = channel.unary_unary(
-            "/exaflow.worker.api.WorkerService/StartFlowerServer",
-            request_serializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.StartFlowerServerRequest.SerializeToString,
-            response_deserializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.StartFlowerServerResponse.FromString,
-            _registered_method=True,
-        )
-        self.StopFlowerClient = channel.unary_unary(
-            "/exaflow.worker.api.WorkerService/StopFlowerClient",
-            request_serializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.StopFlowerProcessRequest.SerializeToString,
-            response_deserializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.StopFlowerProcessResponse.FromString,
-            _registered_method=True,
-        )
-        self.StopFlowerServer = channel.unary_unary(
-            "/exaflow.worker.api.WorkerService/StopFlowerServer",
-            request_serializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.StopFlowerProcessRequest.SerializeToString,
-            response_deserializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.StopFlowerProcessResponse.FromString,
-            _registered_method=True,
-        )
-        self.GarbageCollect = channel.unary_unary(
-            "/exaflow.worker.api.WorkerService/GarbageCollect",
-            request_serializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.GarbageCollectRequest.SerializeToString,
-            response_deserializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.GarbageCollectResponse.FromString,
-            _registered_method=True,
-        )
         self.RunUdf = channel.unary_unary(
             "/exaflow.worker.api.WorkerService/RunUdf",
             request_serializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.RunUdfRequest.SerializeToString,
@@ -142,36 +112,6 @@ class WorkerServiceServicer:
         context.set_details("Method not implemented!")
         raise NotImplementedError("Method not implemented!")
 
-    def StartFlowerClient(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
-
-    def StartFlowerServer(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
-
-    def StopFlowerClient(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
-
-    def StopFlowerServer(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
-
-    def GarbageCollect(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
-
     def RunUdf(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -205,31 +145,6 @@ def add_WorkerServiceServicer_to_server(servicer, server):
             servicer.Healthcheck,
             request_deserializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.HealthcheckRequest.FromString,
             response_serializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.HealthcheckResponse.SerializeToString,
-        ),
-        "StartFlowerClient": grpc.unary_unary_rpc_method_handler(
-            servicer.StartFlowerClient,
-            request_deserializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.StartFlowerClientRequest.FromString,
-            response_serializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.StartFlowerClientResponse.SerializeToString,
-        ),
-        "StartFlowerServer": grpc.unary_unary_rpc_method_handler(
-            servicer.StartFlowerServer,
-            request_deserializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.StartFlowerServerRequest.FromString,
-            response_serializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.StartFlowerServerResponse.SerializeToString,
-        ),
-        "StopFlowerClient": grpc.unary_unary_rpc_method_handler(
-            servicer.StopFlowerClient,
-            request_deserializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.StopFlowerProcessRequest.FromString,
-            response_serializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.StopFlowerProcessResponse.SerializeToString,
-        ),
-        "StopFlowerServer": grpc.unary_unary_rpc_method_handler(
-            servicer.StopFlowerServer,
-            request_deserializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.StopFlowerProcessRequest.FromString,
-            response_serializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.StopFlowerProcessResponse.SerializeToString,
-        ),
-        "GarbageCollect": grpc.unary_unary_rpc_method_handler(
-            servicer.GarbageCollect,
-            request_deserializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.GarbageCollectRequest.FromString,
-            response_serializer=exaflow_dot_protos_dot_worker_dot_worker__pb2.GarbageCollectResponse.SerializeToString,
         ),
         "RunUdf": grpc.unary_unary_rpc_method_handler(
             servicer.RunUdf,
@@ -389,156 +304,6 @@ class WorkerService:
             "/exaflow.worker.api.WorkerService/Healthcheck",
             exaflow_dot_protos_dot_worker_dot_worker__pb2.HealthcheckRequest.SerializeToString,
             exaflow_dot_protos_dot_worker_dot_worker__pb2.HealthcheckResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True,
-        )
-
-    @staticmethod
-    def StartFlowerClient(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            "/exaflow.worker.api.WorkerService/StartFlowerClient",
-            exaflow_dot_protos_dot_worker_dot_worker__pb2.StartFlowerClientRequest.SerializeToString,
-            exaflow_dot_protos_dot_worker_dot_worker__pb2.StartFlowerClientResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True,
-        )
-
-    @staticmethod
-    def StartFlowerServer(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            "/exaflow.worker.api.WorkerService/StartFlowerServer",
-            exaflow_dot_protos_dot_worker_dot_worker__pb2.StartFlowerServerRequest.SerializeToString,
-            exaflow_dot_protos_dot_worker_dot_worker__pb2.StartFlowerServerResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True,
-        )
-
-    @staticmethod
-    def StopFlowerClient(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            "/exaflow.worker.api.WorkerService/StopFlowerClient",
-            exaflow_dot_protos_dot_worker_dot_worker__pb2.StopFlowerProcessRequest.SerializeToString,
-            exaflow_dot_protos_dot_worker_dot_worker__pb2.StopFlowerProcessResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True,
-        )
-
-    @staticmethod
-    def StopFlowerServer(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            "/exaflow.worker.api.WorkerService/StopFlowerServer",
-            exaflow_dot_protos_dot_worker_dot_worker__pb2.StopFlowerProcessRequest.SerializeToString,
-            exaflow_dot_protos_dot_worker_dot_worker__pb2.StopFlowerProcessResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True,
-        )
-
-    @staticmethod
-    def GarbageCollect(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            "/exaflow.worker.api.WorkerService/GarbageCollect",
-            exaflow_dot_protos_dot_worker_dot_worker__pb2.GarbageCollectRequest.SerializeToString,
-            exaflow_dot_protos_dot_worker_dot_worker__pb2.GarbageCollectResponse.FromString,
             options,
             channel_credentials,
             insecure,

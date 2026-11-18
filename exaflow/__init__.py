@@ -19,9 +19,6 @@ from exaflow.utils import AttrDict
 __all__ = [
     "DType",
     "AttrDict",
-    "flower_algorithm_folder_paths",
-    "FLOWER_ALGORITHM_FOLDERS_ENV_VARIABLE",
-    "FLOWER_ALGORITHM_FOLDERS",
     "EXAREME3_ALGORITHM_FOLDERS_ENV_VARIABLE",
     "EXAREME3_ALGORITHM_FOLDERS",
     "exareme3_algorithm_classes",
@@ -141,49 +138,15 @@ def import_algorithm_modules(algorithm_folders: str) -> Dict[str, ModuleType]:
     return all_modules
 
 
-def find_flower_algorithm_folder_paths(algorithm_folders):
-    # Split the input string into a list of folder paths
-    folder_paths = algorithm_folders.split(",")
-
-    # Initialize an empty dictionary to store the result
-    algorithm_folder_paths = {}
-
-    # Iterate over each folder path
-    for folder_path in folder_paths:
-        if not os.path.isdir(folder_path):
-            continue  # Skip if the path is not a valid directory
-
-        # List all files and folders in the current folder path
-        items = os.listdir(folder_path)
-
-        # Filter for .json files and corresponding folders
-        for item in items:
-            if item.endswith(".json"):
-                algorithm_name = item[:-5]  # Remove '.json' to get the algorithm name
-                algorithm_folder = os.path.join(folder_path, algorithm_name)
-                if os.path.isdir(algorithm_folder):
-                    # Store the algorithm name and the complete folder path in the dictionary
-                    algorithm_folder_paths[algorithm_name] = algorithm_folder
-
-    return algorithm_folder_paths
-
-
-FLOWER_ALGORITHM_FOLDERS_ENV_VARIABLE = "FLOWER_ALGORITHM_FOLDERS"
 EXAREME3_ALGORITHM_FOLDERS_ENV_VARIABLE = "EXAREME3_ALGORITHM_FOLDERS"
 
 _PACKAGE_ALGORITHMS_FOLDER = Path(__file__).resolve().parent / "algorithms"
 
-FLOWER_ALGORITHM_FOLDERS = os.getenv(FLOWER_ALGORITHM_FOLDERS_ENV_VARIABLE) or str(
-    _PACKAGE_ALGORITHMS_FOLDER / "flower"
-)
 
 EXAREME3_ALGORITHM_FOLDERS = os.getenv(EXAREME3_ALGORITHM_FOLDERS_ENV_VARIABLE) or str(
     _PACKAGE_ALGORITHMS_FOLDER / "exareme3"
 )
 
-flower_algorithm_folder_paths = find_flower_algorithm_folder_paths(
-    FLOWER_ALGORITHM_FOLDERS
-)
 
 _MODULES_BY_ABSPATH: Dict[str, ModuleType] = {}
 _EXAREME3_MODULES_LOADED = False

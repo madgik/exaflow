@@ -5,7 +5,6 @@ import pytest
 
 from exaflow import AttrDict
 from exaflow.controller import DeploymentType
-from exaflow.controller.services.flower.strategies import FlowerStrategy
 from exaflow.controller.services.worker_landscape_aggregator import (
     worker_landscape_aggregator as wla_module,
 )
@@ -127,23 +126,3 @@ def test_wla_datasets_lookup_does_not_hide_message_too_large(
             )
 
     assert "reachable" in caplog.text.lower()
-
-
-def test_flower_safe_worker_call_logs_message_too_large_as_reachable(caplog):
-    error = _message_too_large()
-    strategy = FlowerStrategy.__new__(FlowerStrategy)
-    strategy._logger = logging.getLogger("flower-message-size")
-
-    def boom():
-        raise error
-
-    with caplog.at_level(logging.DEBUG, logger="flower-message-size"):
-        asyncio.run(
-            strategy._safe_worker_call("garbage collect on global worker", boom)
-        )
-
-    text = caplog.text.lower()
-    assert "reachable" in text
-    assert "garbage collect" in text
-    assert "connection error" not in text
-    assert "failed to garbage collect" not in text

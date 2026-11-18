@@ -3,17 +3,11 @@ federation = "dementia"
 log_level = "DEBUG"
 framework_log_level ="INFO"
 
-flower_algorithm_folders = "./exaflow/algorithms/flower,./tests/algorithms/flower"
 exareme3_algorithm_folders = "./exaflow/algorithms/exareme3,./tests/algorithms/exareme3"
 
 worker_landscape_aggregator_update_interval = 3000
 worker_tasks_timeout = 180
 max_concurrent_experiments = 32
-
-[flower]
-enabled = false
-execution_timeout = 180
-server_port = 8080
 
 [controller]
 port = 5100

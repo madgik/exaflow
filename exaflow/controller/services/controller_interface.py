@@ -1,7 +1,6 @@
 from abc import ABC
 from abc import abstractmethod
 from typing import List
-from typing import Optional
 
 from exaflow.controller.services import WorkerLandscapeAggregator
 from exaflow.controller.services.tasks_handler_interface import TasksHandlerI
@@ -48,12 +47,3 @@ class ControllerI(ABC):
         ]
 
         return task_handlers
-
-    def get_global_worker_tasks_handler(
-        self, request_id: str
-    ) -> Optional[TasksHandlerI]:
-        worker_info = self.worker_landscape_aggregator.get_global_worker()
-        if not worker_info:
-            return None
-        worker_tasks_handler = self.create_worker_tasks_handler(request_id, worker_info)
-        return worker_tasks_handler

@@ -13,7 +13,6 @@ from pydantic import model_validator
 
 @unique
 class AlgorithmType(Enum):
-    FLOWER = "flower"
     EXAREME3 = "exareme3"
 
 
@@ -117,7 +116,6 @@ class AlgorithmName(str, Enum):
 @unique
 class ComponentType(str, Enum):
     AGGREGATION_SERVER = "AGGREGATION_SERVER"
-    FLOWER = "FLOWER"
 
 
 class ImmutableBaseModel(BaseModel):

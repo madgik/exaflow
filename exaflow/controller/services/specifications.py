@@ -1,38 +1,17 @@
-import json
 import logging
-from pathlib import Path
 from typing import Dict
 from typing import List
-from typing import Type
 from typing import Union
 
-from exaflow import FLOWER_ALGORITHM_FOLDERS
 from exaflow import exareme3_algorithm_classes
 from exaflow import exareme3_preprocessing_step_classes
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import AlgorithmType
 from exaflow.algorithms.specifications import ComponentType
 from exaflow.algorithms.specifications import PreprocessingStepSpecification
-from exaflow.algorithms.specifications import PreprocessingStepType
 from exaflow.controller import config as ctrl_config
 
 logger = logging.getLogger(__name__)
-
-
-def find_spec_paths(folders: str) -> List[Path]:
-    paths = (p.strip() for p in folders.split(","))
-    return [Path(p) for p in paths if p]
-
-
-def load_json_file(path: Path) -> dict:
-    try:
-        return json.loads(path.read_text())
-    except json.JSONDecodeError as err:
-        logger.error("Invalid JSON in %s: %s", path, err)
-        raise
-    except OSError as err:
-        logger.error("Failed to read %s: %s", path, err)
-        raise
 
 
 class Specifications:
@@ -46,7 +25,6 @@ class Specifications:
         self.enabled_preprocessing_steps = {}
         self._flags = {
             ComponentType.AGGREGATION_SERVER: ctrl_config.aggregation_server.enabled,
-            ComponentType.FLOWER: ctrl_config.flower.enabled,
         }
         self._load_specifications()
         self._filter_specifications()
@@ -54,7 +32,6 @@ class Specifications:
 
     def _load_specifications(self) -> None:
         self._load_exareme3_specifications()
-        self._load_flower_specifications()
 
     def _load_exareme3_specifications(self) -> None:
         self._load_exareme3_algorithm_specifications()
@@ -80,16 +57,6 @@ class Specifications:
                     f"Transformer class key '{transformer_name}' does not match specification name '{spec.name}'."
                 )
             self._add_specification(spec, f"transformer class '{transformer_name}'")
-
-    def _load_flower_specifications(self) -> None:
-        for folder in find_spec_paths(FLOWER_ALGORITHM_FOLDERS):
-            for file in folder.glob("*.json"):
-                raw = load_json_file(file)
-                spec_cls = self._choose_spec_class(raw)
-                if spec_cls is not AlgorithmSpecification:
-                    continue
-                spec = AlgorithmSpecification.model_validate(raw)
-                self._add_specification(spec, str(file))
 
     def _add_specification(self, spec: SpecType, source: str) -> None:
         if spec.name in self._all_specs:
@@ -126,14 +93,6 @@ class Specifications:
                     f"Algorithm '{spec.name}' requires preprocessing steps that are "
                     f"not enabled: {missing_required_preprocessing}."
                 )
-
-    @staticmethod
-    def _choose_spec_class(raw: dict) -> Type[SpecType]:
-        if raw["type"].startswith(
-            PreprocessingStepType.EXAREME3_PREPROCESSING_STEP.value
-        ):
-            return PreprocessingStepSpecification
-        return AlgorithmSpecification
 
     def get_algorithm_type(self, algo_name: str) -> AlgorithmType:
         if algo_name not in self.enabled_algorithms:

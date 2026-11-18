@@ -19,11 +19,6 @@ aggregation_server:
   max_wait_for_aggregation_inputs: 120
   dns: "exaflow-aggregation-service"
 
-flower:
-  enabled: true
-  execution_timeout: 180
-  server_port: 8080
-
 controller:
   workers_dns: "exaflow-workers-service"
   worker_landscape_aggregator_update_interval: 20

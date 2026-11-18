@@ -22,11 +22,6 @@ grpc_max_message_mb: 100
 
 max_concurrent_experiments: 32
 
-flower:
-  enabled: true
-  execution_timeout: 30
-  server_port: 8080
-
 controller:
   workers_dns: "exaflow-workers-service"
   worker_landscape_aggregator_update_interval: 30

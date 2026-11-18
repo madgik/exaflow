@@ -24,8 +24,7 @@
 - Aggregation server config is loaded in `exaflow/aggregation_server/__init__.py`.
 - Local deployment config starts from `.deployment.sample.toml` and generates
   files under `configs/`.
-- Algorithm discovery uses `EXAREME3_ALGORITHM_FOLDERS` and
-  `FLOWER_ALGORITHM_FOLDERS`.
+- Algorithm discovery uses `EXAREME3_ALGORITHM_FOLDERS`.
 
 ### API and DTOs
 

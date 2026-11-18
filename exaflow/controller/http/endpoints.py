@@ -1,10 +1,7 @@
 import asyncio
 from logging.config import dictConfig
-from typing import Annotated
-from typing import Any
 
 from fastapi import APIRouter
-from fastapi import Body
 from fastapi import Request
 from fastapi import Response
 from fastapi.responses import JSONResponse
@@ -35,7 +32,6 @@ from exaflow.controller.services.api.algorithm_spec_dtos import (
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisRequestDTO
 from exaflow.controller.services.controller_shutdown import SHUTDOWN_RPC_CANCEL_TIMEOUT
 from exaflow.controller.services.controller_shutdown import begin_controller_shutdown
-from exaflow.controller.services.flower import get_flower_controller
 from exaflow.controller.services.startup import start_background_services
 from exaflow.controller.services.startup import stop_background_services
 
@@ -170,17 +166,6 @@ async def run_analysis(analysis_request: AnalysisRequestDTO):
         await analysis_service.run_analysis(analysis_request),
         media_type="application/json",
     )
-
-
-@router.get("/flower/input")
-async def get_flower_input():
-    return get_flower_controller().flower_execution_info.get_inputdata()
-
-
-@router.post("/flower/result")
-async def set_flower_result(result: Annotated[Any, Body()]):
-    await get_flower_controller().flower_execution_info.set_result(result=result)
-    return {"message": "Result set successfully"}
 
 
 def configure_loggers():

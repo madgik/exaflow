@@ -34,23 +34,6 @@ LOGGER = logging.getLogger("WorkerGrpcServer")
 WORKER_HEALTH_SERVICE_NAME = "worker"
 
 
-class FlowerNotAvailableError(RuntimeError):
-    """Raised when Flower dependencies are not installed on the worker."""
-
-
-def _get_flower_services():
-    try:
-        from exaflow.worker.flower.cleanup import cleanup_service
-        from exaflow.worker.flower.starter import starter_service
-    except ModuleNotFoundError as exc:
-        raise FlowerNotAvailableError(
-            "Flower support is not available on this worker. "
-            "Rebuild the worker image with the 'flower' dependency group "
-            "or disable FLOWER_ENABLED and avoid Flower algorithms."
-        ) from exc
-    return cleanup_service, starter_service
-
-
 def _worker_role_to_proto(role) -> int:
     return worker_pb2.WorkerRole.Value(role.name)
 
@@ -158,8 +141,6 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
             context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(exc))
         elif isinstance(exc, InsufficientDataError):
             context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(exc))
-        elif isinstance(exc, FlowerNotAvailableError):
-            context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(exc))
         else:
             LOGGER.exception("Worker gRPC call failed", exc_info=exc)
             context.abort(grpc.StatusCode.INTERNAL, str(exc))
@@ -212,68 +193,6 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
         try:
             worker_info_service.healthcheck(request.request_id, request.check_db)
             return worker_pb2.HealthcheckResponse(ok=True)
-        except Exception as exc:  # noqa: BLE001
-            self._handle_exception(context, exc)
-
-    def StartFlowerClient(self, request, context):
-        try:
-            _, starter_service = _get_flower_services()
-            pid = starter_service.start_flower_client(
-                request_id=request.request_id,
-                algorithm_folder_path=request.algorithm_folder_path,
-                server_address=request.server_address,
-                data_model=request.data_model,
-                datasets=list(request.datasets),
-                execution_timeout=request.execution_timeout,
-            )
-            return worker_pb2.StartFlowerClientResponse(pid=pid)
-        except Exception as exc:  # noqa: BLE001
-            self._handle_exception(context, exc)
-
-    def StartFlowerServer(self, request, context):
-        try:
-            _, starter_service = _get_flower_services()
-            pid = starter_service.start_flower_server(
-                request_id=request.request_id,
-                algorithm_folder_path=request.algorithm_folder_path,
-                number_of_clients=request.number_of_clients,
-                server_address=request.server_address,
-                data_model=request.data_model,
-                datasets=list(request.datasets),
-            )
-            return worker_pb2.StartFlowerServerResponse(pid=pid)
-        except Exception as exc:  # noqa: BLE001
-            self._handle_exception(context, exc)
-
-    def StopFlowerClient(self, request, context):
-        try:
-            cleanup_service, _ = _get_flower_services()
-            cleanup_service.stop_flower_process(
-                request_id=request.request_id,
-                pid=request.pid,
-                algorithm_name=request.algorithm_name,
-            )
-            return worker_pb2.StopFlowerProcessResponse(stopped=True)
-        except Exception as exc:  # noqa: BLE001
-            self._handle_exception(context, exc)
-
-    def StopFlowerServer(self, request, context):
-        try:
-            cleanup_service, _ = _get_flower_services()
-            cleanup_service.stop_flower_process(
-                request_id=request.request_id,
-                pid=request.pid,
-                algorithm_name=request.algorithm_name,
-            )
-            return worker_pb2.StopFlowerProcessResponse(stopped=True)
-        except Exception as exc:  # noqa: BLE001
-            self._handle_exception(context, exc)
-
-    def GarbageCollect(self, request, context):
-        try:
-            cleanup_service, _ = _get_flower_services()
-            cleanup_service.garbage_collect(request.request_id)
-            return worker_pb2.GarbageCollectResponse(ok=True)
         except Exception as exc:  # noqa: BLE001
             self._handle_exception(context, exc)
 

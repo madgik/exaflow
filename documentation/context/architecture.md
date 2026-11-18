@@ -40,7 +40,7 @@ flowchart TD
    `exaflow/controller/http/endpoints.py`. A body that does not match is
    answered with `422`. `analysis_service.run_analysis` then delegates to
    `validate_analysis_request`.
-1. `get_algorithm_execution_strategy` selects an Exareme3 or Flower strategy.
+1. `get_algorithm_execution_strategy` selects a native Exareme3 strategy.
 1. Exareme3 strategy gets worker metadata, applies preprocessing metadata
    transforms, constructs `Exareme3AlgorithmFlowEngineInterface`, and runs the
    algorithm wrapper.
@@ -110,7 +110,7 @@ The FastAPI controller exposes:
 - `POST /wla`
 - `GET /healthcheck` (checks every worker; readiness probe only)
 - `GET /livez` (controller process only; startup and liveness probes)
-- Flower routes: `GET /flower/input`, `POST /flower/result`
+- Legacy Flower routes and worker RPCs have been removed.
 
 `documentation/api-specification.md` is the human-facing API contract. The
 runtime source of truth for algorithm form shape remains the specification
@@ -126,9 +126,9 @@ Analyses run on one `ThreadPoolExecutor` sized by `max_concurrent_experiments`
 (Helm value, passed as `MAX_CONCURRENT_EXPERIMENTS`, default 32). A semaphore
 of the same size rejects further `POST /analysis` requests with HTTP 503
 instead of queueing them. `/livez`, `/healthcheck`, and `/wla` do not use that
-pool. Aggregation configure/cleanup and Flower start/stop/garbage-collect run
-on it as well. If the client disconnects, the request waits until the analysis
-thread finishes before aggregation cleanup.
+pool. Aggregation configuration and cleanup also run on it. If the client
+disconnects, the request waits until the analysis thread finishes before
+aggregation cleanup.
 
 Concurrent analyses need matching capacity downstream. A `RunUdf` call holds a
 worker gRPC thread, and an `Aggregate` call holds an aggregation server thread,
@@ -179,7 +179,6 @@ that caller configured it.
 
 - Worker gRPC services.
 - Aggregation server gRPC service.
-- Optional Flower components.
 - Optional SMPC coordinator, queue, database, players, and clients configured by
   `tasks.py` and `.deployment.sample.toml`.
 - Docker, Helm, and Kubernetes/kind for deployment and prod validation tests.
@@ -193,8 +192,7 @@ that caller configured it.
   `exaflow/worker/config.toml`.
 - Aggregation server reads `AGG_SERVER_CONFIG_FILE` or bundled
   `exaflow/aggregation_server/config.toml`.
-- Algorithm discovery can be controlled by `EXAREME3_ALGORITHM_FOLDERS` and
-  `FLOWER_ALGORITHM_FOLDERS`.
+- `EXAREME3_ALGORITHM_FOLDERS` controls algorithm discovery.
 - Local deployment uses `.deployment.toml` and generated files under `configs/`.
 - `GRPC_MAX_MESSAGE_MB` (default 100) is the send and receive limit, in
   mebibytes, for every controller-worker and aggregation gRPC message.
@@ -207,8 +205,7 @@ that caller configured it.
 - Static typecheck command is unknown.
 - Full production deployment expectations outside the documented Helm/kind flows
   need verification.
-- Some Flower and SMPC paths appear optional or partly disabled in CI; verify
-  before broad changes.
+- CI coverage for optional SMPC paths needs verification before broad changes.
 
 ## Optional RabbitMQ analysis transport
 

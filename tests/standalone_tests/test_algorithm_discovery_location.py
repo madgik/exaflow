@@ -15,7 +15,7 @@ import pytest
 import exaflow
 
 REPO_ROOT = Path(exaflow.__file__).resolve().parents[1]
-FOLDER_ENV_VARIABLES = ("EXAREME3_ALGORITHM_FOLDERS", "FLOWER_ALGORITHM_FOLDERS")
+FOLDER_ENV_VARIABLES = ("EXAREME3_ALGORITHM_FOLDERS",)
 REPORT_CODE = """
 import json
 import exaflow
@@ -24,7 +24,6 @@ print(json.dumps({
     "algorithms": sorted(exaflow.exareme3_algorithm_classes),
     "steps": sorted(exaflow.exareme3_preprocessing_step_classes),
     "exareme3_folders": exaflow.EXAREME3_ALGORITHM_FOLDERS,
-    "flower_folders": exaflow.FLOWER_ALGORITHM_FOLDERS,
 }))
 """
 
@@ -63,7 +62,6 @@ def test_default_folders_point_into_the_package(discovered_elsewhere):
     assert discovered_elsewhere["exareme3_folders"] == str(
         package_algorithms / "exareme3"
     )
-    assert discovered_elsewhere["flower_folders"] == str(package_algorithms / "flower")
 
 
 def test_missing_algorithm_folder_is_an_error(tmp_path):

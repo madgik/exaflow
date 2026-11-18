@@ -33,7 +33,6 @@ controller = [
 ]
 worker = [
     "duckdb>=2.0.0,<2.1.0",
-    "psutil>=7.2.2,<7.3.0",
     "grpcio-health-checking>=1.84.1,<1.85.0",
 ]
 aggregation-server = [

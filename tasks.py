@@ -99,7 +99,6 @@ _ensure_directory(CLEANUP_DIR)
 
 TEST_DATA_FOLDER = PROJECT_ROOT / "tests" / "test_data"
 
-FLOWER_ALGORITHM_FOLDERS_ENV_VARIABLE = "FLOWER_ALGORITHM_FOLDERS"
 EXAREME3_ALGORITHM_FOLDERS_ENV_VARIABLE = "EXAREME3_ALGORITHM_FOLDERS"
 EXAFLOW_WORKER_CONFIG_FILE = "EXAFLOW_WORKER_CONFIG_FILE"
 EXAFLOW_CONTROLLER_CONFIG_FILE = "EXAFLOW_CONTROLLER_CONFIG_FILE"
@@ -107,8 +106,8 @@ EXAFLOW_AGG_SERVER_CONFIG_FILE = "EXAFLOW_AGG_SERVER_CONFIG_FILE"
 DATA_PATH = "DATA_PATH"
 WORKER_STARTUP_SUCCESS_LOG = "Data folder loaded successfully on startup."
 WORKER_STARTUP_TIMEOUT_SECONDS = 120
-# Worker gRPC threads beyond one RunUdf per concurrent analysis, for metadata,
-# health and Flower calls. Keep in sync with the Helm worker templates.
+# Reserve worker gRPC threads for metadata and health calls.
+# Keep in sync with the Helm worker templates.
 WORKER_GRPC_SPARE_THREADS = 4
 UV_RUN_NO_SYNC = "uv run --no-sync"
 # kill-controller sends SIGTERM so Uvicorn runs its shutdown hooks, then
@@ -213,8 +212,6 @@ def create_configs(c):
         worker_config["federation"] = deployment_config["federation"]
         worker_config["log_level"] = deployment_config["log_level"]
         worker_config["framework_log_level"] = deployment_config["framework_log_level"]
-        worker_config["controller"]["ip"] = deployment_config["ip"]
-        worker_config["controller"]["port"] = deployment_config["controller"]["port"]
         worker_config["aggregation_server"]["enabled"] = aggregation_enabled
         worker_config["aggregation_server"]["dns"] = aggregation_dns
 
@@ -285,13 +282,6 @@ def create_configs(c):
     controller_config["worker_landscape_aggregator_update_interval"] = (
         deployment_config["worker_landscape_aggregator_update_interval"]
     )
-    controller_config["flower"]["enabled"] = deployment_config["flower"]["enabled"]
-    controller_config["flower"]["execution_timeout"] = deployment_config["flower"][
-        "execution_timeout"
-    ]
-    controller_config["flower"]["server_port"] = deployment_config["flower"][
-        "server_port"
-    ]
     aggregation_enabled = deployment_config["aggregation_server"]["enabled"]
     controller_config["aggregation_server"]["enabled"] = aggregation_enabled
     controller_config["aggregation_server"]["dns"] = (
@@ -613,7 +603,6 @@ def start_worker(
     all_=False,
     framework_log_level=None,
     detached=False,
-    flower_algorithm_folders=None,
     exareme3_algorithm_folders=None,
 ):
     """
@@ -623,7 +612,6 @@ def start_worker(
     :param all_: If set, the workers of which the configuration file exists, will be started.
     :param framework_log_level: If not provided, it will look into the `DEPLOYMENT_CONFIG_FILE`.
     :param detached: If set to True, it will start the service in the background.
-    :param flower_algorithm_folders: Used from the api. If not provided, it looks in the `DEPLOYMENT_CONFIG_FILE`.
 
     The containers related to the api remain unchanged.
     """
@@ -632,9 +620,6 @@ def start_worker(
         framework_log_level = get_deployment_config("framework_log_level")
 
     # Validate algorithm folders
-    flower_algorithm_folders = validate_algorithm_folders(
-        flower_algorithm_folders, "flower_algorithm_folders"
-    )
     exareme3_algorithm_folders = validate_algorithm_folders(
         exareme3_algorithm_folders, "exareme3_algorithm_folders"
     )
@@ -649,7 +634,6 @@ def start_worker(
         worker_config_file = WORKERS_CONFIG_DIR / f"{worker_id}.toml"
 
         env_vars = {
-            FLOWER_ALGORITHM_FOLDERS_ENV_VARIABLE: flower_algorithm_folders,
             EXAREME3_ALGORITHM_FOLDERS_ENV_VARIABLE: exareme3_algorithm_folders,
             EXAFLOW_WORKER_CONFIG_FILE: worker_config_file,
             DATA_PATH: (_worker_data_path(worker_id)).as_posix(),
@@ -673,7 +657,6 @@ def start_worker(
 
         worker_config_file = WORKERS_CONFIG_DIR / f"{worker_id}.toml"
         env_vars = {
-            FLOWER_ALGORITHM_FOLDERS_ENV_VARIABLE: flower_algorithm_folders,
             EXAREME3_ALGORITHM_FOLDERS_ENV_VARIABLE: exareme3_algorithm_folders,
             EXAFLOW_WORKER_CONFIG_FILE: worker_config_file,
             DATA_PATH: (_worker_data_path(worker_id)).as_posix(),
@@ -864,7 +847,6 @@ def kill_controller(c, stop_timeout=None):
 def start_controller(
     c,
     detached=False,
-    flower_algorithm_folders=None,
     exareme3_algorithm_folders=None,
 ):
     """
@@ -872,9 +854,6 @@ def start_controller(
     """
 
     # Validate algorithm folders
-    flower_algorithm_folders = validate_algorithm_folders(
-        flower_algorithm_folders, "flower_algorithm_folders"
-    )
     exareme3_algorithm_folders = validate_algorithm_folders(
         exareme3_algorithm_folders, "exareme3_algorithm_folders"
     )
@@ -888,7 +867,6 @@ def start_controller(
 
     # Build a dictionary of environment variables for the controller
     env_vars = {
-        FLOWER_ALGORITHM_FOLDERS_ENV_VARIABLE: flower_algorithm_folders,
         EXAREME3_ALGORITHM_FOLDERS_ENV_VARIABLE: exareme3_algorithm_folders,
         EXAFLOW_CONTROLLER_CONFIG_FILE: controller_config_file,
     }
@@ -925,7 +903,6 @@ def deploy(
     install_dep=True,
     log_level=None,
     framework_log_level=None,
-    flower_algorithm_folders=None,
     exareme3_algorithm_folders=None,
     smpc=None,
     no_structure_data=False,
@@ -936,7 +913,6 @@ def deploy(
     :param install_dep: Install dependencies or not.
     :param log_level: Used for the dev logs. If not provided, it looks in the `DEPLOYMENT_CONFIG_FILE`.
     :param framework_log_level: Used for the engine api. If not provided, it looks in the `DEPLOYMENT_CONFIG_FILE`.
-    :param flower_algorithm_folders: Used from the api. If not provided, it looks in the `DEPLOYMENT_CONFIG_FILE`.
     :param exareme3_algorithm_folders: Used from the api. If not provided, it looks in the `DEPLOYMENT_CONFIG_FILE`.
     :param smpc: Deploy the SMPC cluster as well. If not provided, it looks in the `DEPLOYMENT_CONFIG_FILE`.
     :param no_structure_data: Do not structure data on the folder `tests/test_data/.data_paths`.
@@ -947,9 +923,6 @@ def deploy(
 
     if not framework_log_level:
         framework_log_level = get_deployment_config("framework_log_level")
-
-    if not flower_algorithm_folders:
-        flower_algorithm_folders = get_deployment_config("flower_algorithm_folders")
 
     if not exareme3_algorithm_folders:
         exareme3_algorithm_folders = get_deployment_config("exareme3_algorithm_folders")
@@ -991,7 +964,6 @@ def deploy(
         all_=True,
         framework_log_level=framework_log_level,
         detached=True,
-        flower_algorithm_folders=flower_algorithm_folders,
         exareme3_algorithm_folders=exareme3_algorithm_folders,
     )
 
@@ -999,7 +971,6 @@ def deploy(
     start_controller(
         c,
         detached=True,
-        flower_algorithm_folders=flower_algorithm_folders,
         exareme3_algorithm_folders=exareme3_algorithm_folders,
     )
 
