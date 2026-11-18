@@ -10,6 +10,7 @@ from typing import List
 from typing import Optional
 
 from exaflow.algorithms.specifications import AlgorithmSpecification
+from exaflow.algorithms.specifications import ParameterType
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 
 
@@ -50,7 +51,30 @@ class Algorithm(ABC):
         return self._metadata
 
     def get_parameter(self, name, default=None) -> Any:
-        return self._parameters.get(name, default)
+        """Return a parameter, with integer level codes as text.
+
+        A parameter that accepts both text and int names a categorical level.
+        Workers compare those levels as text codes, so an integer request
+        value is returned as that code.
+        """
+        value = self._parameters.get(name, default)
+        if not _contains_bare_int(value):
+            return value
+        if name not in self._text_and_int_parameter_names():
+            return value
+        return _bare_ints_to_text(value)
+
+    def _text_and_int_parameter_names(self) -> set:
+        names = getattr(self, "_text_and_int_parameters", None)
+        if names is None:
+            parameters = self.get_specification().parameters or {}
+            names = {
+                param_name
+                for param_name, spec in parameters.items()
+                if ParameterType.TEXT in spec.types and ParameterType.INT in spec.types
+            }
+            self._text_and_int_parameters = names
+        return names
 
     @property
     def add_dataset_variable(self) -> bool:
@@ -111,6 +135,26 @@ class Algorithm(ABC):
             specification = json.load(fp)
 
         return AlgorithmSpecification.model_validate(specification)
+
+
+def _contains_bare_int(value: Any) -> bool:
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return True
+    if isinstance(value, list):
+        return any(_contains_bare_int(item) for item in value)
+    return False
+
+
+def _bare_ints_to_text(value: Any) -> Any:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, list):
+        return [_bare_ints_to_text(item) for item in value]
+    return value
 
 
 def _is_nan(value: Any) -> bool:
