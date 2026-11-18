@@ -97,11 +97,6 @@ class Describe(Algorithm):
                 label="Variables",
                 desc="Variables to summarize.",
                 types=[
-                    specs.InputDataType.INT,
-                    specs.InputDataType.REAL,
-                    specs.InputDataType.TEXT,
-                ],
-                stattypes=[
                     specs.InputDataStatType.NUMERICAL,
                     *specs.CATEGORICAL_STATTYPES,
                 ],
@@ -111,11 +106,6 @@ class Describe(Algorithm):
                 label="Additional variables",
                 desc="Optional additional variables to summarize.",
                 types=[
-                    specs.InputDataType.INT,
-                    specs.InputDataType.REAL,
-                    specs.InputDataType.TEXT,
-                ],
-                stattypes=[
                     specs.InputDataStatType.NUMERICAL,
                     *specs.CATEGORICAL_STATTYPES,
                 ],

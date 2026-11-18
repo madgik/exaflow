@@ -80,8 +80,7 @@ class LogisticRegression(Algorithm):
                     "Binary outcome. Only variables declared as binary are "
                     "accepted; nominal variables are rejected, never converted."
                 ),
-                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.BINARY],
+                types=[specs.InputDataStatType.BINARY],
                 required=True,
                 max_count=1,
             ),
@@ -89,11 +88,6 @@ class LogisticRegression(Algorithm):
                 label="Covariates",
                 desc="Numerical or categorical covariates.",
                 types=[
-                    specs.InputDataType.INT,
-                    specs.InputDataType.REAL,
-                    specs.InputDataType.TEXT,
-                ],
-                stattypes=[
                     specs.InputDataStatType.NUMERICAL,
                     *specs.CATEGORICAL_STATTYPES,
                 ],

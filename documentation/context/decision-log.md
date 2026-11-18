@@ -37,8 +37,8 @@ Decision: CDEs carry `type` in `continuous`, `discrete`, `nominal`, `ordinal`,
 derived from it: `continuous` is DOUBLE, `discrete` is INTEGER, categorical types
 are integer codes (`CATEGORICAL_CDE_TYPES`; see the later integer-code decision). Metadata dicts, the worker proto,
 `GET /cdes_metadata`, and preprocessing output columns use `type` only.
-Algorithm input specifications keep `types`/`stattypes`; the controller maps CDE
-types onto them. Categorical CDEs without enumerations (former free-text `text`
+Algorithm input specifications use `types` (statistical kinds) as the only slot contract; the
+controller maps CDE types onto them. Categorical CDEs without enumerations (former free-text `text`
 columns) are rejected as algorithm inputs. `exadata-validator` rejects
 numerical CDEs with enumerations, categorical CDEs with `minValue`/`maxValue`,
 fractional `discrete` bounds, and `binary` CDEs without exactly two
@@ -349,6 +349,41 @@ level order across workers removes the data model from the federation until the
 order is aligned.
 
 Date: 2026-11-16
+
+### Decision: Drop Storage Types from Algorithm Input Slots
+
+Status: Accepted
+
+Context: `InputDataSpecification` carried both `types` (real/int/text storage)
+and `stattypes` (numerical/nominal/ordinal/binary). Every categorical CDE is
+stored as an integer code, so each slot repeated its stattype as `[real, int]`
+with `numerical` or `[text, int]` with a categorical stattype. The scaffold
+still emitted `types=("text",)`, which rejected integer-coded categoricals.
+Derived text-coded categorical columns stay nominal.
+
+Decision: Algorithm input data specs drop the storage `types`, and `stattypes`
+is renamed to `types`. `types` on an input slot now lists statistical kinds
+(`numerical`, `nominal`, `ordinal`, `binary`) and is the only slot contract;
+request validation checks CDE `type` against it. `GET /specifications/algorithms`
+returns `types` with these values on `y` and `x` and no `stattypes` field
+(the response has no `inputdata` object). Parameter `variable_stattypes` is
+renamed to `variable_types`. This is breaking; platform-backend
+and platform-ui will follow exaflow. `ParameterSpecification.types` is
+unchanged. Engine fields on `GET /specifications/inputdata` (`data_model`,
+`datasets`, `filters`, `variables`, `validation_datasets`) still declare
+`types` (`text` or `jsonObject`) because they are not CDE slots.
+
+Consequences: Clients that read `y.stattypes`/`x.stattypes` must read
+`y.types`/`x.types`, which no longer hold storage types. A numerical slot accepts both `continuous` and
+`discrete` CDEs. A categorical slot accepts a CDE only when its `type` is
+listed. No compatibility field is kept.
+
+Files affected: `exaflow/algorithms/specifications.py`, algorithm and Flower
+specs, `exaflow/controller/services/api/analysis_request_validator.py`,
+`exaflow/controller/services/api/algorithm_spec_dtos.py`,
+`documentation/api-specification.md`.
+
+Date: 2026-11-17
 
 ## Inferred Decisions
 

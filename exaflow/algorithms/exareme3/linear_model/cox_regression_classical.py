@@ -95,8 +95,7 @@ class ClassicalCoxRegression(Algorithm):
             y=specs.InputDataSpecification(
                 label="Follow-up time",
                 desc="Positive numerical duration until event or censoring.",
-                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NUMERICAL],
+                types=[specs.InputDataStatType.NUMERICAL],
                 required=True,
                 max_count=1,
             ),
@@ -104,11 +103,6 @@ class ClassicalCoxRegression(Algorithm):
                 label="Event variable and covariates",
                 desc="Select the event variable and one or more covariates.",
                 types=[
-                    specs.InputDataType.REAL,
-                    specs.InputDataType.INT,
-                    specs.InputDataType.TEXT,
-                ],
-                stattypes=[
                     specs.InputDataStatType.NUMERICAL,
                     *specs.CATEGORICAL_STATTYPES,
                 ],
@@ -125,7 +119,7 @@ class ClassicalCoxRegression(Algorithm):
                     types=[specs.ParameterType.TEXT],
                     required=True,
                     multiple=False,
-                    variable_stattypes=[specs.InputDataStatType.BINARY],
+                    variable_types=[specs.InputDataStatType.BINARY],
                     enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.INPUT_VAR_NAMES,
                         source=["x"],

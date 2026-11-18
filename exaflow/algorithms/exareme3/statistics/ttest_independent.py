@@ -54,16 +54,14 @@ class TTestIndependent(Algorithm):
             y=specs.InputDataSpecification(
                 label="Outcome",
                 desc="Numerical variable compared between groups.",
-                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NUMERICAL],
+                types=[specs.InputDataStatType.NUMERICAL],
                 required=True,
                 max_count=1,
             ),
             x=specs.InputDataSpecification(
                 label="Grouping variable",
                 desc="Categorical variable containing the two groups.",
-                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
-                stattypes=[*specs.CATEGORICAL_STATTYPES],
+                types=[*specs.CATEGORICAL_STATTYPES],
                 required=True,
                 max_count=1,
             ),

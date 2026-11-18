@@ -59,25 +59,25 @@ def _algorithm(name, *, x, y, parameters, metadata=None):
 )
 def test_binary_outcome_algorithms_only_accept_binary_outcomes(name):
     spec = exareme3_algorithm_classes[name].get_specification()
-    assert spec.y.stattypes == BINARY
+    assert spec.y.types == BINARY
 
 
 def test_fisher_exact_only_accepts_binary_variables():
     spec = exareme3_algorithm_classes["fisher_exact"].get_specification()
-    assert spec.x.stattypes == BINARY
-    assert spec.y.stattypes == BINARY
+    assert spec.x.types == BINARY
+    assert spec.y.types == BINARY
 
 
 def test_glmm_ordinal_only_accepts_ordinal_outcome():
     spec = GLMMOrdinal.get_specification()
-    assert spec.y.stattypes == ORDINAL
+    assert spec.y.types == ORDINAL
     assert spec.parameters["category_order"].required is False
 
 
 @pytest.mark.parametrize("name", ["cox_regression_classical", "cox_regression_stacked"])
 def test_cox_event_variable_must_be_binary(name):
     spec = exareme3_algorithm_classes[name].get_specification()
-    assert spec.parameters["event_var"].variable_stattypes == BINARY
+    assert spec.parameters["event_var"].variable_types == BINARY
 
 
 @pytest.mark.parametrize(

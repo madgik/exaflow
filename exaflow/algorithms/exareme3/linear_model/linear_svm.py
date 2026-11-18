@@ -47,15 +47,13 @@ class LinearSVM(Algorithm):
             y=specs.InputDataSpecification(
                 label="Target",
                 desc="Nominal target variable defining the classes.",
-                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
-                stattypes=[*specs.CATEGORICAL_STATTYPES],
+                types=[*specs.CATEGORICAL_STATTYPES],
                 required=True,
             ),
             x=specs.InputDataSpecification(
                 label="Features",
                 desc="Numerical covariates used to train the linear SVM.",
-                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NUMERICAL],
+                types=[specs.InputDataStatType.NUMERICAL],
                 required=True,
             ),
             parameters={

@@ -49,16 +49,14 @@ class NaiveBayesCategorical(Algorithm):
             y=specs.InputDataSpecification(
                 label="Outcome",
                 desc="Nominal outcome variable.",
-                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
-                stattypes=[*specs.CATEGORICAL_STATTYPES],
+                types=[*specs.CATEGORICAL_STATTYPES],
                 required=True,
                 max_count=1,
             ),
             x=specs.InputDataSpecification(
                 label="Features",
                 desc="Nominal features used for classification.",
-                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
-                stattypes=[*specs.CATEGORICAL_STATTYPES],
+                types=[*specs.CATEGORICAL_STATTYPES],
                 required=True,
             ),
             type=specs.AlgorithmType.EXAREME3,

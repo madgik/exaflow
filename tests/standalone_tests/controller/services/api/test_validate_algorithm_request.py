@@ -21,7 +21,6 @@ from exaflow.algorithms.exareme3.missing_values.missing_values_handler import (
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import InputDataSpecification
 from exaflow.algorithms.specifications import InputDataStatType
-from exaflow.algorithms.specifications import InputDataType
 from exaflow.algorithms.specifications import ParameterDictValueType
 from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterEnumType
@@ -100,8 +99,8 @@ def _cdes():
 def _algorithm_spec(
     parameters=None,
     *,
-    y_stattypes=(InputDataStatType.NOMINAL,),
-    x_stattypes=(InputDataStatType.NOMINAL,),
+    y_types=(InputDataStatType.NOMINAL,),
+    x_types=(InputDataStatType.NOMINAL,),
 ):
     return AlgorithmSpecification(
         name="sample_algorithm",
@@ -112,8 +111,7 @@ def _algorithm_spec(
         y=InputDataSpecification(
             label="Outcome",
             desc="Outcome variable.",
-            types=[InputDataType.REAL, InputDataType.INT, InputDataType.TEXT],
-            stattypes=list(y_stattypes),
+            types=list(y_types),
             required=True,
             min_count=1,
             max_count=1,
@@ -121,8 +119,7 @@ def _algorithm_spec(
         x=InputDataSpecification(
             label="Features",
             desc="Feature variables.",
-            types=[InputDataType.REAL, InputDataType.INT, InputDataType.TEXT],
-            stattypes=list(x_stattypes),
+            types=list(x_types),
             required=True,
             min_count=1,
         ),
@@ -241,10 +238,10 @@ def test_valid_analysis_request_uses_inputdata_variables_and_algorithm_xy():
     _validate(_request())
 
 
-def _validate_stattypes(*, x, y, x_stattypes=None, y_stattypes=None):
+def _validate_types(*, x, y, x_types=None, y_types=None):
     spec = _algorithm_spec(
-        x_stattypes=x_stattypes or (InputDataStatType.NOMINAL,),
-        y_stattypes=y_stattypes or (InputDataStatType.NOMINAL,),
+        x_types=x_types or (InputDataStatType.NOMINAL,),
+        y_types=y_types or (InputDataStatType.NOMINAL,),
     )
     return _validate(
         _request(x=x, y=y, variables=x + y),
@@ -259,94 +256,94 @@ ANY_CATEGORICAL = (
 )
 
 
-def test_slot_accepting_all_categorical_stattypes_accepts_each_categorical_cde():
-    _validate_stattypes(
+def test_slot_accepting_all_categorical_types_accepts_each_categorical_cde():
+    _validate_types(
         x=["stage", "gender"],
         y=["smoker"],
-        x_stattypes=ANY_CATEGORICAL,
-        y_stattypes=ANY_CATEGORICAL,
+        x_types=ANY_CATEGORICAL,
+        y_types=ANY_CATEGORICAL,
     )
 
 
 @pytest.mark.parametrize("cde", ["stage", "smoker"])
 def test_nominal_slot_rejects_ordinal_and_binary_cdes(cde):
     with pytest.raises(BadUserInput, match=f"'{cde}'.*only \\['nominal'\\]"):
-        _validate_stattypes(x=["gender"], y=[cde])
+        _validate_types(x=["gender"], y=[cde])
 
 
 @pytest.mark.parametrize("cde", ["gender", "stage"])
 def test_binary_slot_rejects_non_binary_categorical_cdes(cde):
     with pytest.raises(BadUserInput, match=f"'{cde}'.*only \\['binary'\\]"):
-        _validate_stattypes(
+        _validate_types(
             x=["age"],
             y=[cde],
-            x_stattypes=(InputDataStatType.NUMERICAL,),
-            y_stattypes=(InputDataStatType.BINARY,),
+            x_types=(InputDataStatType.NUMERICAL,),
+            y_types=(InputDataStatType.BINARY,),
         )
 
 
 def test_binary_slot_accepts_binary_cde():
-    _validate_stattypes(
+    _validate_types(
         x=["age"],
         y=["smoker"],
-        x_stattypes=(InputDataStatType.NUMERICAL,),
-        y_stattypes=(InputDataStatType.BINARY,),
+        x_types=(InputDataStatType.NUMERICAL,),
+        y_types=(InputDataStatType.BINARY,),
     )
 
 
 def test_two_level_nominal_cde_is_not_accepted_as_binary():
     # `gender` has exactly two levels but is declared nominal.
     with pytest.raises(BadUserInput, match="'gender'.*has type 'nominal'"):
-        _validate_stattypes(
+        _validate_types(
             x=["age"],
             y=["gender"],
-            x_stattypes=(InputDataStatType.NUMERICAL,),
-            y_stattypes=(InputDataStatType.BINARY,),
+            x_types=(InputDataStatType.NUMERICAL,),
+            y_types=(InputDataStatType.BINARY,),
         )
 
 
 @pytest.mark.parametrize("cde", ["gender", "smoker", "diagnosis"])
 def test_ordinal_slot_rejects_non_ordinal_categorical_cdes(cde):
     with pytest.raises(BadUserInput, match=f"'{cde}'.*only \\['ordinal'\\]"):
-        _validate_stattypes(
+        _validate_types(
             x=["age"],
             y=[cde],
-            x_stattypes=(InputDataStatType.NUMERICAL,),
-            y_stattypes=(InputDataStatType.ORDINAL,),
+            x_types=(InputDataStatType.NUMERICAL,),
+            y_types=(InputDataStatType.ORDINAL,),
         )
 
 
 def test_ordinal_slot_accepts_ordinal_cde():
-    _validate_stattypes(
+    _validate_types(
         x=["age"],
         y=["stage"],
-        x_stattypes=(InputDataStatType.NUMERICAL,),
-        y_stattypes=(InputDataStatType.ORDINAL,),
+        x_types=(InputDataStatType.NUMERICAL,),
+        y_types=(InputDataStatType.ORDINAL,),
     )
 
 
 @pytest.mark.parametrize("cde", ["stage", "smoker", "gender"])
 def test_numerical_slot_rejects_every_categorical_cde(cde):
     with pytest.raises(BadUserInput, match=f"'{cde}'.*should NOT be categorical"):
-        _validate_stattypes(
+        _validate_types(
             x=["age"],
             y=[cde],
-            x_stattypes=(InputDataStatType.NUMERICAL,),
-            y_stattypes=(InputDataStatType.NUMERICAL,),
+            x_types=(InputDataStatType.NUMERICAL,),
+            y_types=(InputDataStatType.NUMERICAL,),
         )
 
 
 def test_binary_slot_rejects_numerical_cde():
     with pytest.raises(BadUserInput, match="'age'.*should be categorical"):
-        _validate_stattypes(
+        _validate_types(
             x=["stage"],
             y=["age"],
-            y_stattypes=(InputDataStatType.BINARY,),
-            x_stattypes=ANY_CATEGORICAL,
+            y_types=(InputDataStatType.BINARY,),
+            x_types=ANY_CATEGORICAL,
         )
 
 
-def _event_var_spec(variable_stattypes):
+def _event_var_spec(variable_types):
     return {
         "event_var": ParameterSpecification(
             label="Event variable",
@@ -357,16 +354,16 @@ def _event_var_spec(variable_stattypes):
             enums=ParameterEnumSpecification(
                 type=ParameterEnumType.INPUT_VAR_NAMES, source=["x"]
             ),
-            variable_stattypes=variable_stattypes,
+            variable_types=variable_types,
         )
     }
 
 
-def _validate_event_var(event_var, variable_stattypes):
+def _validate_event_var(event_var, variable_types):
     spec = _algorithm_spec(
-        _event_var_spec(variable_stattypes),
-        y_stattypes=(InputDataStatType.NUMERICAL,),
-        x_stattypes=ANY_CATEGORICAL,
+        _event_var_spec(variable_types),
+        y_types=(InputDataStatType.NUMERICAL,),
+        x_types=ANY_CATEGORICAL,
     )
     return _validate(
         _request(
@@ -391,19 +388,19 @@ def test_parameter_selected_nominal_variable_is_rejected_for_binary_stattype():
         _validate_event_var("gender", [InputDataStatType.BINARY])
 
 
-def test_parameter_selected_variable_without_stattypes_is_not_type_checked():
+def test_parameter_selected_variable_without_types_is_not_type_checked():
     _validate_event_var("gender", None)
 
 
-def test_variable_stattypes_requires_input_var_names_enums():
-    with pytest.raises(ValidationError, match="variable_stattypes"):
+def test_variable_types_requires_input_var_names_enums():
+    with pytest.raises(ValidationError, match="variable_types"):
         ParameterSpecification(
             label="Param",
             desc="Param.",
             types=[ParameterType.TEXT],
             required=True,
             multiple=False,
-            variable_stattypes=[InputDataStatType.BINARY],
+            variable_types=[InputDataStatType.BINARY],
         )
 
 

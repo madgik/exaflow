@@ -49,16 +49,14 @@ class TTestPaired(Algorithm):
             y=specs.InputDataSpecification(
                 label="Measurement 2",
                 desc="Second numerical measurement in each pair.",
-                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NUMERICAL],
+                types=[specs.InputDataStatType.NUMERICAL],
                 required=True,
                 max_count=1,
             ),
             x=specs.InputDataSpecification(
                 label="Measurement 1",
                 desc="First numerical measurement in each pair.",
-                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NUMERICAL],
+                types=[specs.InputDataStatType.NUMERICAL],
                 required=True,
                 max_count=1,
             ),

@@ -112,16 +112,10 @@ def test_validate_params_rejects_invalid_configuration(params, message):
 def test_get_specification_accepts_only_numerical_variables():
     spec = OutlierReport.get_specification()
 
-    assert spec.y.types == [
-        specs.InputDataType.REAL,
-        specs.InputDataType.INT,
-    ]
-    assert spec.x.types == [
-        specs.InputDataType.REAL,
-        specs.InputDataType.INT,
-    ]
-    assert spec.y.stattypes == [specs.InputDataStatType.NUMERICAL]
-    assert spec.x.stattypes == [specs.InputDataStatType.NUMERICAL]
+    assert not hasattr(spec.y, "stattypes")
+    assert not hasattr(spec.x, "stattypes")
+    assert spec.y.types == [specs.InputDataStatType.NUMERICAL]
+    assert spec.x.types == [specs.InputDataStatType.NUMERICAL]
 
 
 @pytest.mark.parametrize(

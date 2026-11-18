@@ -48,16 +48,14 @@ class ChiSquared(Algorithm):
             y=specs.InputDataSpecification(
                 label="Outcome",
                 desc="Categorical outcome variable.",
-                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
-                stattypes=[*specs.CATEGORICAL_STATTYPES],
+                types=[*specs.CATEGORICAL_STATTYPES],
                 required=True,
                 max_count=1,
             ),
             x=specs.InputDataSpecification(
                 label="Factor",
                 desc="Categorical factor variable.",
-                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
-                stattypes=[*specs.CATEGORICAL_STATTYPES],
+                types=[*specs.CATEGORICAL_STATTYPES],
                 required=True,
                 max_count=1,
             ),

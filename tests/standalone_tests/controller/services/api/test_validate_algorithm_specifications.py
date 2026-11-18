@@ -4,7 +4,6 @@ from pydantic import ValidationError
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import InputDataSpecification
 from exaflow.algorithms.specifications import InputDataStatType
-from exaflow.algorithms.specifications import InputDataType
 from exaflow.algorithms.specifications import ParameterDictValueType
 from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterEnumType
@@ -27,8 +26,7 @@ def _input_spec(label="Outcome"):
     return InputDataSpecification(
         label=label,
         desc=label,
-        types=[InputDataType.TEXT],
-        stattypes=[InputDataStatType.NOMINAL],
+        types=[InputDataStatType.NOMINAL],
         required=True,
         min_count=1,
         max_count=1,
@@ -77,6 +75,9 @@ def test_algorithm_spec_dto_exposes_flat_xy_without_inputdata_or_preprocessing()
 
     assert dto.y.label == "Outcome"
     assert dto.x.label == "Features"
+    assert dto.y.types == [InputDataStatType.NOMINAL]
+    assert "stattypes" not in dto.y.model_dump()
+    assert "stattypes" not in dto.x.model_dump()
     assert dto.requires_validation_datasets is True
     assert dto.required_preprocessing == ["sample_preprocessing"]
     assert not hasattr(dto, "inputdata")

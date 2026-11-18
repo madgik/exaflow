@@ -33,6 +33,8 @@ Definition of Done:
   legacy request shapes, aliases, fallback paths, deprecated output fields,
   compatibility shims, or silent normalization for old callers unless the user
   explicitly asks for backwards compatibility.
+- `get_specification()` input slots set `types` only. Do not set `types`
+  on `InputDataSpecification`.
 - `get_specification()` uses UI-ready metadata: compact standard `label`, one
   concise method-level `desc`, and detailed parent algorithm/preprocessing step
   `documentation` for formulas/defaults/ranges, option lists, assumptions,

@@ -54,16 +54,14 @@ class AnovaTwoWay(Algorithm):
             y=specs.InputDataSpecification(
                 label="Outcome",
                 desc="Numerical outcome variable.",
-                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NUMERICAL],
+                types=[specs.InputDataStatType.NUMERICAL],
                 required=True,
                 max_count=1,
             ),
             x=specs.InputDataSpecification(
                 label="Factors",
                 desc="Two categorical factors.",
-                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
-                stattypes=[*specs.CATEGORICAL_STATTYPES],
+                types=[*specs.CATEGORICAL_STATTYPES],
                 required=True,
                 min_count=2,
                 max_count=2,

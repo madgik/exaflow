@@ -76,7 +76,6 @@ class InputSpec:
     label: str
     desc: str
     types: tuple[str, ...]
-    stattypes: tuple[str, ...]
     required: bool
     multiple: bool
 
@@ -110,16 +109,14 @@ FAMILY_PROFILES = {
         y=InputSpec(
             label="Value variable",
             desc="Single numerical variable used by the statistical procedure.",
-            types=("REAL", "INT"),
-            stattypes=("NUMERICAL",),
+            types=("NUMERICAL",),
             required=True,
             multiple=False,
         ),
         x=InputSpec(
             label="Grouping variable",
             desc="Single nominal variable defining groups or strata.",
-            types=("TEXT",),
-            stattypes=("NOMINAL",),
+            types=("NOMINAL",),
             required=True,
             multiple=False,
         ),
@@ -136,16 +133,14 @@ FAMILY_PROFILES = {
         y=InputSpec(
             label="Outcome variable",
             desc="Single dependent variable.",
-            types=("REAL", "INT"),
-            stattypes=("NUMERICAL",),
+            types=("NUMERICAL",),
             required=True,
             multiple=False,
         ),
         x=InputSpec(
             label="Covariates",
             desc="One or more covariates (numerical and/or categorical).",
-            types=("REAL", "INT", "TEXT"),
-            stattypes=("NUMERICAL", "NOMINAL"),
+            types=("NUMERICAL", "NOMINAL"),
             required=True,
             multiple=True,
         ),
@@ -162,8 +157,7 @@ FAMILY_PROFILES = {
         y=InputSpec(
             label="Feature variables",
             desc="One or more numerical features for decomposition.",
-            types=("REAL", "INT"),
-            stattypes=("NUMERICAL",),
+            types=("NUMERICAL",),
             required=True,
             multiple=True,
         ),
@@ -181,16 +175,14 @@ FAMILY_PROFILES = {
         y=InputSpec(
             label="Target variable",
             desc="Single nominal target label.",
-            types=("TEXT",),
-            stattypes=("NOMINAL",),
+            types=("NOMINAL",),
             required=True,
             multiple=False,
         ),
         x=InputSpec(
             label="Feature variables",
             desc="One or more feature variables.",
-            types=("REAL", "INT", "TEXT"),
-            stattypes=("NUMERICAL", "NOMINAL"),
+            types=("NUMERICAL", "NOMINAL"),
             required=True,
             multiple=True,
         ),
@@ -207,8 +199,7 @@ FAMILY_PROFILES = {
         y=InputSpec(
             label="Feature variables",
             desc="One or more numerical features to cluster.",
-            types=("REAL", "INT"),
-            stattypes=("NUMERICAL",),
+            types=("NUMERICAL",),
             required=True,
             multiple=True,
         ),
@@ -225,16 +216,14 @@ DEFAULT_PROFILE = FamilyProfile(
     y=InputSpec(
         label="Dependent variable",
         desc="TODO: define dependent variable constraints.",
-        types=("REAL", "INT"),
-        stattypes=("NUMERICAL",),
+        types=("NUMERICAL",),
         required=True,
         multiple=False,
     ),
     x=InputSpec(
         label="Independent variables",
         desc="TODO: define independent variable constraints.",
-        types=("REAL", "INT"),
-        stattypes=("NUMERICAL",),
+        types=("NUMERICAL",),
         required=True,
         multiple=True,
     ),
@@ -449,24 +438,22 @@ def profile_for_family(family: str | None) -> FamilyProfile:
 
 
 def _input_spec_literal(spec: InputSpec, *, key: str) -> str:
-    types_literal = ", ".join(f"specs.InputDataType.{value}" for value in spec.types)
     # Slots match CDE types one-to-one. A scaffolded "NOMINAL" slot means any
     # categorical variable; edit the generated spec to BINARY or ORDINAL alone
     # when the algorithm genuinely requires exactly that type.
-    stattypes_literal = ", ".join(
+    types_literal = ", ".join(
         (
             "*specs.CATEGORICAL_STATTYPES"
             if value == "NOMINAL"
             else f"specs.InputDataStatType.{value}"
         )
-        for value in spec.stattypes
+        for value in spec.types
     )
     lines = [
         f"            {key}=specs.InputDataSpecification(",
         f"                label={json.dumps(spec.label)},",
         f"                desc={json.dumps(spec.desc)},",
         f"                types=[{types_literal}],",
-        f"                stattypes=[{stattypes_literal}],",
         f"                required={spec.required},",
         f"                min_count={spec.min_count},",
     ]

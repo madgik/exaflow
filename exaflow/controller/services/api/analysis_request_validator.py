@@ -10,7 +10,6 @@ from exaflow.algorithms.specifications import STATTYPE_PER_CDE_TYPE
 from exaflow.algorithms.specifications import AlgorithmSpecification
 from exaflow.algorithms.specifications import InputDataSpecification
 from exaflow.algorithms.specifications import InputDataStatType
-from exaflow.algorithms.specifications import InputDataType
 from exaflow.algorithms.specifications import ParameterDictValueType
 from exaflow.algorithms.specifications import ParameterEnumSpecification
 from exaflow.algorithms.specifications import ParameterSpecification
@@ -34,7 +33,6 @@ from exaflow.controller.services.worker_landscape_aggregator.worker_landscape_ag
 )
 from exaflow.data_filters import validate_filter
 from exaflow.datatypes import CDEType
-from exaflow.datatypes import is_integer_coded
 from exaflow.smpc_cluster_communication import validate_smpc_usage
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import CommonDataElement
@@ -502,9 +500,6 @@ def _validate_inputdata_value(
     _validate_inputdata_types(
         inputdata_value, inputdata_specs, inputdata_value_metadata
     )
-    _validate_inputdata_stattypes(
-        inputdata_value, inputdata_specs, inputdata_value_metadata
-    )
 
 
 def _get_cde_metadata(cde, data_model_cdes):
@@ -515,46 +510,7 @@ def _get_cde_metadata(cde, data_model_cdes):
     return data_model_cdes[cde]
 
 
-_INPUT_DATA_TYPE_PER_CDE_TYPE = {
-    CDEType.CONTINUOUS: InputDataType.REAL,
-    CDEType.DISCRETE: InputDataType.INT,
-}
-
-
 def _validate_inputdata_types(
-    inputdata_value: str,
-    inputdata_specs: InputDataSpecification,
-    inputdata_value_metadata: CommonDataElement,
-):
-    dtype = _INPUT_DATA_TYPE_PER_CDE_TYPE.get(inputdata_value_metadata.type)
-    if dtype is None:
-        # Categorical CDEs are stored as integer codes; only derived categorical
-        # columns with text codes (categorical_column_creator output) are text.
-        dtype = (
-            InputDataType.INT
-            if is_integer_coded(
-                inputdata_value_metadata.code,
-                inputdata_value_metadata.type,
-                inputdata_value_metadata.enumerations,
-            )
-            else InputDataType.TEXT
-        )
-    dtypes = inputdata_specs.types
-    if dtype in dtypes:
-        return
-    if InputDataType.REAL in dtypes and dtype in (
-        InputDataType.INT,
-        InputDataType.REAL,
-    ):
-        return
-    raise BadUserInput(
-        f"The CDE '{inputdata_value}', of algorithm input '{inputdata_specs.label}', "
-        f"doesn't have one of the allowed types "
-        f"'{inputdata_specs.types}'."
-    )
-
-
-def _validate_inputdata_stattypes(
     inputdata_value: str,
     inputdata_specs: InputDataSpecification,
     inputdata_value_metadata: CommonDataElement,
@@ -562,7 +518,7 @@ def _validate_inputdata_stattypes(
     _validate_cde_stattype(
         cde_code=inputdata_value,
         slot_description=f"of algorithm input '{inputdata_specs.label}'",
-        allowed_stattypes=inputdata_specs.stattypes,
+        allowed_types=inputdata_specs.types,
         cde=inputdata_value_metadata,
     )
     if (
@@ -579,27 +535,27 @@ def _validate_cde_stattype(
     *,
     cde_code: str,
     slot_description: str,
-    allowed_stattypes: List[InputDataStatType],
+    allowed_types: List[InputDataStatType],
     cde: CommonDataElement,
 ):
     """
-    Match the CDE type to the allowed stattypes one-to-one. A nominal CDE is never
+    Match the CDE type to the allowed types one-to-one. A nominal CDE is never
     accepted where only binary or ordinal is allowed (and vice versa); nothing is
     converted between the categorical types.
     """
     cde_stattype = STATTYPE_PER_CDE_TYPE[CDEType(cde.type)]
-    if cde_stattype in allowed_stattypes:
+    if cde_stattype in allowed_types:
         return
 
-    allowed = [stattype.value for stattype in allowed_stattypes]
+    allowed = [stattype.value for stattype in allowed_types]
     if cde.is_categorical and not any(
-        stattype in CATEGORICAL_STATTYPES for stattype in allowed_stattypes
+        stattype in CATEGORICAL_STATTYPES for stattype in allowed_types
     ):
         raise BadUserInput(
             f"The CDE '{cde_code}', {slot_description}, should NOT be categorical."
         )
     if not cde.is_categorical and not any(
-        stattype == InputDataStatType.NUMERICAL for stattype in allowed_stattypes
+        stattype == InputDataStatType.NUMERICAL for stattype in allowed_types
     ):
         raise BadUserInput(
             f"The CDE '{cde_code}', {slot_description}, should be categorical."
@@ -712,7 +668,7 @@ def _validate_parameter_values(
             algorithm_y,
         )
 
-        _validate_parameter_variable_stattypes(
+        _validate_parameter_variable_types(
             parameter_value, parameter_spec, data_model_cdes
         )
 
@@ -728,18 +684,18 @@ def _validate_parameter_values(
         _validate_parameter_inside_min_max(parameter_value, parameter_spec)
 
 
-def _validate_parameter_variable_stattypes(
+def _validate_parameter_variable_types(
     parameter_value: Any,
     parameter_spec: ParameterSpecification,
     data_model_cdes: Dict[str, CommonDataElement],
 ):
     """A parameter that names an input variable may require a CDE type."""
-    if not parameter_spec.variable_stattypes:
+    if not parameter_spec.variable_types:
         return
     _validate_cde_stattype(
         cde_code=parameter_value,
         slot_description=f"selected by parameter '{parameter_spec.label}'",
-        allowed_stattypes=parameter_spec.variable_stattypes,
+        allowed_types=parameter_spec.variable_types,
         cde=_get_cde_metadata(parameter_value, data_model_cdes),
     )
 

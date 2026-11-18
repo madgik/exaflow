@@ -158,8 +158,7 @@ class ImmutableBaseModel(BaseModel):
 class InputDataSpecification(ImmutableBaseModel):
     label: str
     desc: str
-    types: List[InputDataType]
-    stattypes: List[InputDataStatType]
+    types: List[InputDataStatType]
     required: bool
     min_count: Optional[int] = None
     max_count: Optional[int] = None
@@ -204,16 +203,16 @@ class ParameterSpecification(ImmutableBaseModel):
     min: Optional[float] = None
     max: Optional[float] = None
     # Only for parameters that select an input variable (INPUT_VAR_NAMES enums):
-    # the selected variable must match one of these stattypes exactly.
-    variable_stattypes: Optional[List[InputDataStatType]] = None
+    # the selected variable must match one of these types exactly.
+    variable_types: Optional[List[InputDataStatType]] = None
 
     @model_validator(mode="after")
-    def validate_variable_stattypes(self):
-        if self.variable_stattypes is not None and (
+    def validate_variable_types(self):
+        if self.variable_types is not None and (
             self.enums is None or self.enums.type != ParameterEnumType.INPUT_VAR_NAMES
         ):
             raise ValueError(
-                f"In parameter '{self.label}', 'variable_stattypes' requires "
+                f"In parameter '{self.label}', 'variable_types' requires "
                 "enums of type 'input_var_names'."
             )
         return self

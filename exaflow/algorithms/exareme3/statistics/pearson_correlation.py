@@ -45,15 +45,13 @@ class PearsonCorrelation(Algorithm):
             y=specs.InputDataSpecification(
                 label="Variables",
                 desc="Numerical variables for the primary correlation axis.",
-                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NUMERICAL],
+                types=[specs.InputDataStatType.NUMERICAL],
                 required=True,
             ),
             x=specs.InputDataSpecification(
                 label="Additional variables",
                 desc="Optional numerical variables for the secondary axis.",
-                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NUMERICAL],
+                types=[specs.InputDataStatType.NUMERICAL],
                 required=False,
             ),
             parameters={

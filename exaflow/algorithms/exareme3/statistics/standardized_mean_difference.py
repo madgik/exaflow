@@ -46,16 +46,14 @@ class StandardizedMeanDifference(Algorithm):
             y=specs.InputDataSpecification(
                 label="Outcome",
                 desc="Numerical variable whose group means are compared.",
-                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NUMERICAL],
+                types=[specs.InputDataStatType.NUMERICAL],
                 required=True,
                 max_count=1,
             ),
             x=specs.InputDataSpecification(
                 label="Grouping variable",
                 desc="Categorical variable defining the groups compared pairwise.",
-                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
-                stattypes=[*specs.CATEGORICAL_STATTYPES],
+                types=[*specs.CATEGORICAL_STATTYPES],
                 required=True,
                 max_count=1,
             ),

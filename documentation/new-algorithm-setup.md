@@ -184,6 +184,7 @@ tests without invoking them.
 - No scaffold placeholders remain in generated target files (`TODO`,
   `NotImplementedError`, `__REPLACE_ME_*__`).
 - `get_specification().name` matches the algorithm id.
+- Input slots set `types` only. Do not set `types` on input data specifications.
 - The algorithm appears in the runtime catalog.
 - Exareme3 wrapper and federated core import successfully.
 - Standalone parity tests pass.

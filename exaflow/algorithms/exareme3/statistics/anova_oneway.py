@@ -17,7 +17,6 @@ from exaflow.algorithms.specifications import AlgorithmType
 from exaflow.algorithms.specifications import ComponentType
 from exaflow.algorithms.specifications import InputDataSpecification
 from exaflow.algorithms.specifications import InputDataStatType
-from exaflow.algorithms.specifications import InputDataType
 
 
 class AnovaResult(BaseModel):
@@ -53,16 +52,14 @@ class AnovaOneWay(Algorithm):
             y=InputDataSpecification(
                 label="Outcome",
                 desc="Numerical outcome variable.",
-                types=[InputDataType.REAL, InputDataType.INT],
-                stattypes=[InputDataStatType.NUMERICAL],
+                types=[InputDataStatType.NUMERICAL],
                 required=True,
                 max_count=1,
             ),
             x=InputDataSpecification(
                 label="Grouping variable",
                 desc="Categorical variable defining the groups.",
-                types=[InputDataType.TEXT, InputDataType.INT],
-                stattypes=[*CATEGORICAL_STATTYPES],
+                types=[*CATEGORICAL_STATTYPES],
                 required=True,
                 max_count=1,
             ),

@@ -31,12 +31,20 @@ class ImmutableBaseModel(BaseModel, ABC):
     model_config = ConfigDict(frozen=True)
 
 
+class AlgorithmInputDataSpecificationDTO(ImmutableBaseModel):
+    label: str
+    desc: str
+    types: List[InputDataStatType]
+    required: bool
+    min_count: Optional[int] = None
+    max_count: Optional[int] = None
+
+
 class InputDataSpecificationDTO(ImmutableBaseModel):
     label: str
     desc: str
     types: List[InputDataType]
     required: bool
-    stattypes: Optional[List[InputDataStatType]] = None
     min_count: Optional[int] = None
     max_count: Optional[int] = None
 
@@ -67,7 +75,7 @@ class ParameterSpecificationDTO(ImmutableBaseModel):
     dict_values_enums: Optional[ParameterEnumSpecificationDTO] = None
     min: Optional[float] = None
     max: Optional[float] = None
-    variable_stattypes: Optional[List[InputDataStatType]] = None
+    variable_types: Optional[List[InputDataStatType]] = None
 
 
 class PreprocessingOutputsSpecificationDTO(ImmutableBaseModel):
@@ -89,8 +97,8 @@ class AlgorithmSpecificationDTO(ImmutableBaseModel):
     desc: str
     documentation: str
     label: str
-    y: InputDataSpecificationDTO
-    x: Optional[InputDataSpecificationDTO] = None
+    y: AlgorithmInputDataSpecificationDTO
+    x: Optional[AlgorithmInputDataSpecificationDTO] = None
     requires_validation_datasets: bool = False
     parameters: Optional[Dict[str, ParameterSpecificationDTO]] = None
     required_preprocessing: List[str]
@@ -113,13 +121,10 @@ class AnalysisInputDataSpecificationsDTO(RootModel[AnalysisInputDataSpecificatio
 
 
 def _convert_inputdata_specification_to_dto(self: InputDataSpecification):
-    # The only difference of the DTO is that it's stattypes is Optional,
-    # due to the fact that the datasets/data_model variables are added.
-    return InputDataSpecificationDTO(
+    return AlgorithmInputDataSpecificationDTO(
         label=self.label,
         desc=self.desc,
         types=self.types,
-        stattypes=self.stattypes,
         required=self.required,
         min_count=self.min_count,
         max_count=self.max_count,
@@ -132,7 +137,6 @@ def _get_data_model_input_data_specification_dto():
         desc="The data model that the algorithm will run on.",
         types=[InputDataType.TEXT],
         required=True,
-        stattypes=None,
         min_count=None,
         max_count=1,
     )
@@ -144,7 +148,6 @@ def _get_validation_datasets_input_data_specification_dto(required: bool = False
         desc="The set of data to validate the algorithm model on.",
         types=[InputDataType.TEXT],
         required=required,
-        stattypes=None,
         min_count=None,
         max_count=None,
     )
@@ -156,7 +159,6 @@ def _get_datasets_input_data_specification_dto():
         desc="The set of data to run the algorithm on.",
         types=[InputDataType.TEXT],
         required=True,
-        stattypes=None,
         min_count=None,
         max_count=None,
     )
@@ -168,7 +170,6 @@ def _get_filters_input_data_specification_dto():
         desc="Filter rules applied before preprocessing and analysis execution.",
         types=[InputDataType.JSONOBJECT],
         required=False,
-        stattypes=None,
         min_count=None,
         max_count=1,
     )
@@ -180,7 +181,6 @@ def _get_variables_input_data_specification_dto():
         desc="Source variables available to preprocessing and analysis execution.",
         types=[InputDataType.TEXT],
         required=True,
-        stattypes=None,
         min_count=1,
         max_count=None,
     )
@@ -231,7 +231,7 @@ def _convert_parameter_specification_to_dto(spec: ParameterSpecification):
         ),
         min=spec.min,
         max=spec.max,
-        variable_stattypes=spec.variable_stattypes,
+        variable_types=spec.variable_types,
     )
 
 
