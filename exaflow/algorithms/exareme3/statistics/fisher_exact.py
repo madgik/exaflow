@@ -45,16 +45,14 @@ class FisherExact(Algorithm):
             y=specs.InputDataSpecification(
                 label="Outcome",
                 desc="Binary outcome variable (exactly two levels).",
-                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.BINARY],
+                types=[specs.InputDataStatType.BINARY],
                 required=True,
                 max_count=1,
             ),
             x=specs.InputDataSpecification(
                 label="Factor",
                 desc="Binary factor variable (exactly two levels).",
-                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.BINARY],
+                types=[specs.InputDataStatType.BINARY],
                 required=True,
                 max_count=1,
             ),

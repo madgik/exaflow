@@ -85,8 +85,7 @@ class GLMMBinary(Algorithm):
                     "Binary outcome. Only variables declared as binary are "
                     "accepted; nominal variables are rejected, never converted."
                 ),
-                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.BINARY],
+                types=[specs.InputDataStatType.BINARY],
                 required=True,
                 max_count=1,
             ),
@@ -96,11 +95,6 @@ class GLMMBinary(Algorithm):
                     "Covariates plus one or two random-intercept grouping variables."
                 ),
                 types=[
-                    specs.InputDataType.REAL,
-                    specs.InputDataType.INT,
-                    specs.InputDataType.TEXT,
-                ],
-                stattypes=[
                     specs.InputDataStatType.NUMERICAL,
                     *specs.CATEGORICAL_STATTYPES,
                 ],

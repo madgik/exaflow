@@ -57,11 +57,6 @@ class Histogram(Algorithm):
                 label="Variable",
                 desc="Numerical or categorical variable to bin into a histogram.",
                 types=[
-                    specs.InputDataType.REAL,
-                    specs.InputDataType.INT,
-                    specs.InputDataType.TEXT,
-                ],
-                stattypes=[
                     specs.InputDataStatType.NUMERICAL,
                     *specs.CATEGORICAL_STATTYPES,
                 ],
@@ -71,8 +66,7 @@ class Histogram(Algorithm):
             x=specs.InputDataSpecification(
                 label="Grouping variables",
                 desc="Optional categorical variables for grouped histograms.",
-                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
-                stattypes=[*specs.CATEGORICAL_STATTYPES],
+                types=[*specs.CATEGORICAL_STATTYPES],
                 required=False,
             ),
             parameters={

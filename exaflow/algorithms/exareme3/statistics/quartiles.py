@@ -50,8 +50,7 @@ class QuartilesAlgorithm(Algorithm):
             y=specs.InputDataSpecification(
                 label="Variable",
                 desc="Numerical variable to estimate the quartiles for.",
-                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NUMERICAL],
+                types=[specs.InputDataStatType.NUMERICAL],
                 required=True,
                 max_count=1,
             ),

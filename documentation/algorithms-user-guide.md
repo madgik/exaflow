@@ -276,8 +276,7 @@ In our example the specs are
         "x": {
             "label": "Variable",
             "desc": "A unique numerical variable.",
-            "types": [ "real" ],
-            "stattypes": [ "numerical" ],
+            "types": [ "numerical" ],
             "required": true,
             "multiple": false
         }

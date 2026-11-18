@@ -48,7 +48,7 @@ ______________________________________________________________________
 | `GET /datasets` | Returns available datasets grouped by data model. | Populate data model and dataset selectors. |
 | `GET /datasets_locations` | Returns dataset-to-worker mapping per data model. | Optional diagnostics or data location display. |
 | `GET /datasets_variables` | Returns available variables per dataset and data model. | Inform variable availability in the UI. |
-| `GET /cdes_metadata` | Returns CDE metadata per data model. | Validate variable types, stattypes, filters, and enum-derived parameters. |
+| `GET /cdes_metadata` | Returns CDE metadata per data model. | Validate variable types, types, filters, and enum-derived parameters. |
 | `GET /data_models_attributes` | Returns data model metadata/attributes. | Display data-model-level metadata. |
 
 ______________________________________________________________________
@@ -91,8 +91,8 @@ Example:
 | `desc` | `string` | Short algorithm description. | Use in compact UI surfaces such as algorithm lists. |
 | `documentation` | `string` | Longer algorithm documentation. | Use in details/help views. |
 | `label` | `string` | Human-readable algorithm name. | Use as display label. |
-| `y` | `InputDataSpecificationDTO` | Algorithm-defined primary variable slot. | Usually dependent, outcome, or primary variables. |
-| `x` | `InputDataSpecificationDTO \| null` | Optional algorithm-defined secondary variable slot. | Usually independent, covariate, or input variables. If absent, do not render/send `algorithm.x`. |
+| `y` | `AlgorithmInputDataSpecificationDTO` | Algorithm-defined primary variable slot. | Usually dependent, outcome, or primary variables. Match CDEs on `types` only. |
+| `x` | `AlgorithmInputDataSpecificationDTO \| null` | Optional algorithm-defined secondary variable slot. | Usually independent, covariate, or input variables. If absent, do not render/send `algorithm.x`. |
 | `requires_validation_datasets` | `boolean` | Whether `inputdata.validation_datasets` is required. | If false, validation datasets are rejected. |
 | `parameters` | `object \| null` | Map of parameter name to `ParameterSpecificationDTO`. | Request parameter keys outside this map are rejected. |
 | `required_preprocessing` | `string[]` | Preprocessing step ids that must be included in execution requests. | The server rejects requests that omit any listed step. |
@@ -114,7 +114,9 @@ validated. Preprocessing specifications are exposed separately by
 | `variables` | `InputDataSpecificationDTO` | Specification for request field `inputdata.variables`. | Source columns available to preprocessing and algorithms. |
 | `validation_datasets` | `InputDataSpecificationDTO \| null` | Validation dataset slot. | Required only when the selected algorithm has `requires_validation_datasets=true`. |
 
-### `InputDataSpecificationDTO`
+### `AlgorithmInputDataSpecificationDTO`
+
+Variable slot on `GET /specifications/algorithms` (`y` and `x`). `types` is the only contract. The response does not include `types`.
 
 Example:
 
@@ -122,9 +124,8 @@ Example:
 {
   "label": "Variable",
   "desc": "Variable used by the algorithm.",
-  "types": ["real"],
   "required": true,
-  "stattypes": ["numerical"],
+  "types": ["numerical"],
   "min_count": 1,
   "max_count": 1
 }
@@ -134,11 +135,24 @@ Example:
 | --- | --- | --- | --- |
 | `label` | `string` | UI label for the input slot. | Use in form labels and validation messages. |
 | `desc` | `string` | Short input description. | Use as helper text. |
-| `types` | `string[]` | Allowed value/CDE types. | Variable slots use `real`, `int`, or `text`; filter specs use `jsonObject`. CDE `type` maps to these as `continuous` → `real`, `discrete` → `int`, and `nominal`/`ordinal`/`binary` → `int` (categorical CDEs are stored as integer codes; see [Data Types, Storage and Variable Coding](data-types-and-coding.md)). A slot that allows `real` also accepts `discrete` CDEs. |
+| `types` | `string[]` | Allowed statistical types. | Slots match CDEs one-to-one: `numerical` accepts `continuous`/`discrete` CDEs, `nominal` accepts only `nominal` CDEs, `ordinal` accepts only `ordinal` CDEs and `binary` accepts only `binary` CDEs. A slot that accepts several categorical kinds lists each of them, e.g. `["nominal", "ordinal", "binary"]`. A nominal CDE is never accepted by an `ordinal`-only or `binary`-only slot, even with two levels. Categorical CDEs without enumerations are rejected. See [Data Types, Storage and Variable Coding](data-types-and-coding.md). |
 | `required` | `boolean` | Whether the slot is required when `min_count` is not set. | Effective minimum is `min_count` if present, otherwise `1` when required and `0` when optional. |
-| `stattypes` | `string[] \| null` | Allowed statistical types for variable slots. | Slots match CDEs one-to-one: `numerical` accepts `continuous`/`discrete` CDEs, `nominal` accepts only `nominal` CDEs, `ordinal` accepts only `ordinal` CDEs and `binary` accepts only `binary` CDEs. A slot that accepts several categorical kinds lists each of them, e.g. `["nominal", "ordinal", "binary"]`. A nominal CDE is never accepted by an `ordinal`-only or `binary`-only slot, even with two levels. Categorical CDEs without enumerations are rejected. Engine fields use `null`. |
 | `min_count` | `integer \| null` | Minimum number of selected values. | Must be non-negative. |
 | `max_count` | `integer \| null` | Maximum number of selected values. | `null` means no explicit maximum; when set, must be non-negative and not less than `min_count`. |
+
+### `InputDataSpecificationDTO`
+
+Engine request fields on `GET /specifications/inputdata` (`data_model`, `datasets`, `filters`, `variables`, `validation_datasets`). These are not CDE slots, so they keep `types` and use `types: null`.
+
+| Field | Type | Meaning | Validation / UI Notes |
+| --- | --- | --- | --- |
+| `label` | `string` | UI label for the request field. | Use in form labels and validation messages. |
+| `desc` | `string` | Short field description. | Use as helper text. |
+| `types` | `string[]` | Allowed request value types. | `text` for data model, dataset, and variable names. `jsonObject` for filters. |
+| `required` | `boolean` | Whether the field is required when `min_count` is not set. | Effective minimum is `min_count` if present, otherwise `1` when required and `0` when optional. |
+| `types` | `null` | Not used for engine request fields. | Always `null`. |
+| `min_count` | `integer \| null` | Minimum number of selected values. | Must be non-negative. |
+| `max_count` | `integer \| null` | Maximum number of selected values. | `null` means no explicit maximum. |
 
 ### `ParameterSpecificationDTO`
 
@@ -160,7 +174,7 @@ Example:
   "dict_values_enums": null,
   "min": null,
   "max": null,
-  "variable_stattypes": null
+  "variable_types": null
 }
 ```
 
@@ -178,7 +192,7 @@ Example:
 | `dict_values_enums` | `ParameterEnumSpecificationDTO \| null` | Allowed values for every dict value. | Valid only when `types` contains `dict`. |
 | `min` | `number \| null` | Numeric lower bound. | Apply to numeric parameter values. |
 | `max` | `number \| null` | Numeric upper bound. | Apply to numeric parameter values. |
-| `variable_stattypes` | `string[] \| null` | Stat types the variable selected by this parameter must have. | Only set on parameters whose `enums.type` is `input_var_names` (e.g. Cox `event_var` requires `["binary"]`). Offer only variables whose CDE `type` matches exactly; the server rejects any other type. |
+| `variable_types` | `string[] \| null` | Stat types the variable selected by this parameter must have. | Only set on parameters whose `enums.type` is `input_var_names` (e.g. Cox `event_var` requires `["binary"]`). Offer only variables whose CDE `type` matches exactly; the server rejects any other type. |
 
 Spec-load validation:
 
@@ -468,7 +482,7 @@ Build the request in this order:
 1. Select `inputdata.datasets` from the `GET /datasets` response at the selected `data_model` key.
 1. Render `algorithm.x`, `algorithm.y`, and `algorithm.parameters` from the selected algorithm specification.
 1. Render ordered preprocessing from `GET /specifications/preprocessing`.
-1. Use the `GET /cdes_metadata` response at the selected `data_model` key to validate variable types, stattypes, filters, and enum-derived options.
+1. Use the `GET /cdes_metadata` response at the selected `data_model` key to validate variable types, types, filters, and enum-derived options.
 1. Submit `POST /analysis` with `algorithm.name` set to `AlgorithmSpecificationDTO.name`.
 
 Inputdata checks:
@@ -479,12 +493,8 @@ Inputdata checks:
 - Reject duplicates inside `algorithm.x` or inside `algorithm.y`.
 - Reject variables that appear in both `algorithm.x` and `algorithm.y`.
 - Only allow CDEs present in the `GET /cdes_metadata` response for the selected `data_model`.
-- Check each CDE `type` against the slot `types` (`continuous` → `real`,
-  `discrete` → `int`, categorical → `int`; see
-  [Data Types, Storage and Variable Coding](data-types-and-coding.md)).
-- Allow `discrete` CDEs for slots that allow `real`.
-- Match the CDE `type` (`continuous`/`discrete` → `numerical`, `nominal`, `ordinal`, `binary`) exactly against `stattypes`; nothing is converted between categorical types.
-- When a parameter has `variable_stattypes`, the variable it selects must match one of them exactly.
+- Match the CDE `type` (`continuous`/`discrete` → `numerical`, `nominal`, `ordinal`, `binary`) exactly against the slot `types`; nothing is converted between categorical types. Storage type is not a slot constraint.
+- When a parameter has `variable_types`, the variable it selects must match one of them exactly.
 - Do not offer categorical CDEs without enumerations; the validator rejects them.
 - Include `validation_datasets` only when the selected algorithm has `requires_validation_datasets=true`.
 - Require `validation_datasets` when the selected algorithm has `requires_validation_datasets=true`.

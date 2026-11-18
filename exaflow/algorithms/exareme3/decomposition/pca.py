@@ -75,8 +75,7 @@ class PCA(Algorithm):
             y=specs.InputDataSpecification(
                 label="Variables",
                 desc="Numerical variables used to compute principal components.",
-                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NUMERICAL],
+                types=[specs.InputDataStatType.NUMERICAL],
                 required=True,
             ),
             type=specs.AlgorithmType.EXAREME3,

@@ -100,8 +100,7 @@ class GLMMOrdinal(Algorithm):
                     "in the data model. This is not intended as a "
                     "general-purpose count-model interface."
                 ),
-                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.ORDINAL],
+                types=[specs.InputDataStatType.ORDINAL],
                 required=True,
                 max_count=1,
             ),
@@ -111,11 +110,6 @@ class GLMMOrdinal(Algorithm):
                     "Covariates plus one or two random-intercept grouping variables."
                 ),
                 types=[
-                    specs.InputDataType.REAL,
-                    specs.InputDataType.INT,
-                    specs.InputDataType.TEXT,
-                ],
-                stattypes=[
                     specs.InputDataStatType.NUMERICAL,
                     *specs.CATEGORICAL_STATTYPES,
                 ],

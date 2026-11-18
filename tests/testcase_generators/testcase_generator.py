@@ -211,30 +211,29 @@ class MixedTypeMultipleVar(InputDataVariable):
 def make_input_data_variables(properties, numerical_pool, nominal_pool):
     required = properties["required"]
     multiple = properties["multiple"]
-    stattypes = set(properties["stattypes"])
+    types = set(properties["types"])
 
     # numerical variables
-    if stattypes == {"numerical"} and not multiple:
+    if types == {"numerical"} and not multiple:
         return SingleTypeSingleVar(required, pool=numerical_pool)
-    elif stattypes == {"numerical"} and multiple:
+    elif types == {"numerical"} and multiple:
         return SingleTypeMultipleVar(required, pool=numerical_pool)
 
     # nominal variables
-    elif stattypes == {"nominal"} and not multiple:
+    elif types == {"nominal"} and not multiple:
         return SingleTypeSingleVar(required, pool=nominal_pool)
-    elif stattypes == {"nominal"} and multiple:
+    elif types == {"nominal"} and multiple:
         return SingleTypeMultipleVar(required, pool=nominal_pool)
 
     # mixed variables
-    elif stattypes == {"numerical", "nominal"} and not multiple:
+    elif types == {"numerical", "nominal"} and not multiple:
         return MixedTypeSingleVar(required, pool1=numerical_pool, pool2=nominal_pool)
-    elif stattypes == {"numerical", "nominal"} and multiple:
+    elif types == {"numerical", "nominal"} and multiple:
         return MixedTypeMultipleVar(required, pool1=numerical_pool, pool2=nominal_pool)
 
     else:
         raise TypeError(
-            "Variable stattypes can be 'numerical', 'nominal' or both. "
-            f"Got {stattypes}."
+            f"Variable types can be 'numerical', 'nominal' or both. Got {types}."
         )
 
 

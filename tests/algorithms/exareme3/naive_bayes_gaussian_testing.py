@@ -31,16 +31,14 @@ class GaussianNBTestingPredict(Algorithm):
             y=specs.InputDataSpecification(
                 label="Variable (dependent)",
                 desc="A unique nominal variable.",
-                types=[specs.InputDataType.TEXT, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NOMINAL],
+                types=[specs.InputDataStatType.NOMINAL],
                 required=True,
                 max_count=1,
             ),
             x=specs.InputDataSpecification(
                 label="Covariates (independent)",
                 desc="One or more numerical variables.",
-                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NUMERICAL],
+                types=[specs.InputDataStatType.NUMERICAL],
                 required=True,
             ),
             parameters={},

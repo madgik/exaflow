@@ -20,8 +20,7 @@ class ComputeAverage(Algorithm):
             y=specs.InputDataSpecification(
                 label="column",
                 desc="Column",
-                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NUMERICAL],
+                types=[specs.InputDataStatType.NUMERICAL],
                 required=True,
             ),
             x=None,

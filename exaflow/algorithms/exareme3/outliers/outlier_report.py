@@ -88,15 +88,13 @@ class OutlierReport(Algorithm):
             y=specs.InputDataSpecification(
                 label="Variables",
                 desc="One or more numerical variables to inspect for outliers.",
-                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NUMERICAL],
+                types=[specs.InputDataStatType.NUMERICAL],
                 required=True,
             ),
             x=specs.InputDataSpecification(
                 label="Additional variables",
                 desc="Optional numerical variables to inspect for outliers.",
-                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NUMERICAL],
+                types=[specs.InputDataStatType.NUMERICAL],
                 required=False,
             ),
             parameters={

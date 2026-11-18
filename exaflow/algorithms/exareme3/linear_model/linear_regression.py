@@ -111,8 +111,7 @@ class LinearRegression(Algorithm):
             y=specs.InputDataSpecification(
                 label="Outcome",
                 desc="Single numerical outcome variable.",
-                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NUMERICAL],
+                types=[specs.InputDataStatType.NUMERICAL],
                 required=True,
                 max_count=1,
             ),
@@ -120,11 +119,6 @@ class LinearRegression(Algorithm):
                 label="Covariates",
                 desc="Numerical or categorical covariates.",
                 types=[
-                    specs.InputDataType.REAL,
-                    specs.InputDataType.INT,
-                    specs.InputDataType.TEXT,
-                ],
-                stattypes=[
                     specs.InputDataStatType.NUMERICAL,
                     *specs.CATEGORICAL_STATTYPES,
                 ],

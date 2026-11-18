@@ -81,8 +81,7 @@ class LMM(Algorithm):
                     "integer-valued outcomes are supported when a linear "
                     "mixed-model assumption is appropriate."
                 ),
-                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NUMERICAL],
+                types=[specs.InputDataStatType.NUMERICAL],
                 required=True,
                 max_count=1,
             ),
@@ -92,11 +91,6 @@ class LMM(Algorithm):
                     "Covariates plus one or two random-intercept grouping variables."
                 ),
                 types=[
-                    specs.InputDataType.REAL,
-                    specs.InputDataType.INT,
-                    specs.InputDataType.TEXT,
-                ],
-                stattypes=[
                     specs.InputDataStatType.NUMERICAL,
                     *specs.CATEGORICAL_STATTYPES,
                 ],

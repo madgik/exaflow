@@ -166,8 +166,7 @@ class KMeans(Algorithm):
             y=specs.InputDataSpecification(
                 label="Variables",
                 desc="Numerical variables used for clustering.",
-                types=[specs.InputDataType.REAL, specs.InputDataType.INT],
-                stattypes=[specs.InputDataStatType.NUMERICAL],
+                types=[specs.InputDataStatType.NUMERICAL],
                 required=True,
             ),
             parameters={
