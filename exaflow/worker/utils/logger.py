@@ -19,7 +19,7 @@ def init_logger(request_id):
     return request_logger(
         "exaflow.worker.requests",
         request_id,
-        f"%(asctime)s - %(levelname)s - %(module)s.%(funcName)s(%(lineno)d) - [{worker_config.federation}] - [exaflow-{worker_config.role.lower()}] - [{worker_config.identifier}] - [%(request_id)s] - %(message)s",
+        f"%(asctime)s - %(levelname)s - %(module)s.%(funcName)s(%(lineno)d) - [{worker_config.federation}] - [exaflow-worker] - [{worker_config.identifier}] - [%(request_id)s] - %(message)s",
         worker_config.log_level,
     )
 

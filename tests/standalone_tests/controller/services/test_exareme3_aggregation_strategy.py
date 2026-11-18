@@ -59,7 +59,7 @@ def test_aggregation_strategy_cleans_up_and_closes_client_when_algorithm_fails(
     strategy = object.__new__(strategies.Exareme3WithAggregationServerStrategy)
     strategy._request_id = "req"
     strategy._context_id = "ctx"
-    strategy._local_worker_tasks_handlers = [object(), object()]
+    strategy._worker_tasks_handlers = [object(), object()]
     strategy._logger = logging.getLogger(__name__)
     strategy._controller = types.SimpleNamespace(task_timeout=300)
 
@@ -90,7 +90,7 @@ def _make_strategy(task_timeout):
     strategy = object.__new__(strategies.Exareme3WithAggregationServerStrategy)
     strategy._request_id = "req"
     strategy._context_id = "ctx"
-    strategy._local_worker_tasks_handlers = [object(), object()]
+    strategy._worker_tasks_handlers = [object(), object()]
     strategy._logger = logging.getLogger(__name__)
     strategy._controller = types.SimpleNamespace(task_timeout=task_timeout)
     return strategy

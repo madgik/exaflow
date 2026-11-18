@@ -244,7 +244,7 @@ def test_wla_stop_join_timeout_returns_while_a_refresh_is_blocked(monkeypatch):
         update_interval=60,
         tasks_timeout=300,
         deployment_type=DeploymentType.LOCAL,
-        localworkers=AttrDict({}),
+        workers=AttrDict({}),
     )
     started = threading.Event()
     release = threading.Event()

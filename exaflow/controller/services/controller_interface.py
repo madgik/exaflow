@@ -29,7 +29,7 @@ class ControllerI(ABC):
     ) -> TasksHandlerI:
         pass
 
-    def get_local_worker_tasks_handlers(
+    def get_worker_tasks_handlers(
         self,
         data_model: str,
         datasets: List[str],

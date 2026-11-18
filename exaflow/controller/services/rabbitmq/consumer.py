@@ -24,7 +24,6 @@ from exaflow.controller.services.api.limits import (
     MAX_REQUEST_BODY_BYTES as MAX_REQUEST_BYTES,
 )
 from exaflow.controller.services.errors import ControllerShuttingDownError
-from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.controller.services.errors import WorkerTaskTimeoutError
 from exaflow.controller.services.errors import WorkerUnresponsiveError
 from exaflow.controller.services.rabbitmq.settings import RabbitMQSettings
@@ -378,7 +377,6 @@ class AnalysisConsumer:
             DatasetUnavailable,
             FilterError,
             SMPCUsageError,
-            GlobalWorkerUnavailableError,
             WorkerTaskTimeoutError,
             WorkerUnresponsiveError,
             WorkerMessageTooLargeError,

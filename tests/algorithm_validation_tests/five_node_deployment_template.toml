@@ -28,33 +28,23 @@ optional=false
 enabled = false
 
 [[workers]]
-id = "globalworker"
-role="GLOBALWORKER"
-grpc_port=5670
-
-[[workers]]
 id = "localworker1"
-role="LOCALWORKER"
 grpc_port=5671
 
 [[workers]]
 id = "localworker2"
-role="LOCALWORKER"
 grpc_port=5672
 
 [[workers]]
 id = "localworker3"
-role="LOCALWORKER"
 grpc_port=5673
 
 
 [[workers]]
 id = "localworker4"
-role="LOCALWORKER"
 grpc_port=5674
 
 
 [[workers]]
 id = "localworker5"
-role="LOCALWORKER"
 grpc_port=5675

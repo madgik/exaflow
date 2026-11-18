@@ -1,4 +1,4 @@
-localnodes: 3
+worker_count: 3
 managed_cluster: false
 
 exaflow_images:
@@ -12,7 +12,6 @@ grpc_max_message_mb: 100
 
 max_concurrent_experiments: 32
 
-globalworker_identifier: globalworker
 
 aggregation_server:
   enabled: true
@@ -39,7 +38,6 @@ storage:
   hostPath:
     db:
       localworker: "/opt/exaflow/localworker"
-      globalworker: "/opt/exaflow/globalworker"
 
 rabbitmq:
   enabled: true

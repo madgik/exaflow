@@ -10,10 +10,10 @@ worker_landscape_aggregator_update_interval="$WORKER_LANDSCAPE_AGGREGATOR_UPDATE
 worker_tasks_timeout="$WORKER_TASKS_TIMEOUT"
 max_concurrent_experiments="$MAX_CONCURRENT_EXPERIMENTS"
 
-[localworkers]
-config_file="$LOCALWORKERS_CONFIG_FILE"
-dns="$LOCALWORKERS_DNS"
-port="$LOCALWORKERS_PORT"
+[workers]
+config_file="$WORKERS_CONFIG_FILE"
+dns="$WORKERS_DNS"
+port="$WORKERS_PORT"
 
 [aggregation_server]
 enabled = "$AGGREGATION_SERVER_ENABLED"

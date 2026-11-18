@@ -1,5 +1,4 @@
 identifier = "$WORKER_IDENTIFIER"
-role = "$WORKER_ROLE"
 federation = "$FEDERATION"
 
 data_path = "$DATA_PATH"
@@ -32,4 +31,3 @@ enabled = "$SMPC_ENABLED"
 optional = "$SMPC_OPTIONAL"
 client_id = "$SMPC_CLIENT_ID"
 client_address = "$SMPC_CLIENT_ADDRESS"
-coordinator_address = "$SMPC_COORDINATOR_ADDRESS"

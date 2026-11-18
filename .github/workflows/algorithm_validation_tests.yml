@@ -50,9 +50,6 @@ jobs:
       - name: Controller logs
         run: cat /tmp/exaflow/controller.out
 
-      - name: Globalworker logs
-        run: cat /tmp/exaflow/globalworker.out
-
       - name: Localworker logs
         run: cat /tmp/exaflow/localworker1.out
 
@@ -60,11 +57,6 @@ jobs:
         uses: webiny/action-post-run@2a0e96f0e55f0e698cf2a3d85670e3577ae30a30 # 3.1.0
         with:
           run: cat /tmp/exaflow/controller.out
-
-      - name: Globalworker logs (post run)
-        uses: webiny/action-post-run@2a0e96f0e55f0e698cf2a3d85670e3577ae30a30 # 3.1.0
-        with:
-          run: cat /tmp/exaflow/globalworker.out
 
       - name: Localworker logs (post run)
         uses: webiny/action-post-run@2a0e96f0e55f0e698cf2a3d85670e3577ae30a30 # 3.1.0
@@ -132,9 +124,6 @@ jobs:
       - name: Aggregation Server logs
         run: cat /tmp/exaflow/aggregation_server.out
 
-      - name: Globalworker logs
-        run: cat /tmp/exaflow/globalworker.out
-
       - name: Localworker logs
         run: cat /tmp/exaflow/localworker1.out
 
@@ -142,11 +131,6 @@ jobs:
         uses: webiny/action-post-run@2a0e96f0e55f0e698cf2a3d85670e3577ae30a30 # 3.1.0
         with:
           run: cat /tmp/exaflow/controller.out
-
-      - name: Globalworker logs (post run)
-        uses: webiny/action-post-run@2a0e96f0e55f0e698cf2a3d85670e3577ae30a30 # 3.1.0
-        with:
-          run: cat /tmp/exaflow/globalworker.out
 
       - name: Localworker logs (post run)
         uses: webiny/action-post-run@2a0e96f0e55f0e698cf2a3d85670e3577ae30a30 # 3.1.0

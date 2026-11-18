@@ -12,7 +12,6 @@ from exaflow.controller.http.request_body_limit import RequestBodyTooLargeError
 from exaflow.controller.services.analysis_execution import AnalysisCapacityExceeded
 from exaflow.controller.services.api.analysis_request_validator import BadRequest
 from exaflow.controller.services.errors import ControllerShuttingDownError
-from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.controller.services.errors import WorkerTaskTimeoutError
 from exaflow.controller.services.errors import WorkerUnresponsiveError
 from exaflow.controller.worker_client.app import WorkerMessageTooLargeError
@@ -28,10 +27,6 @@ def test_error_responses_are_one_table():
     assert not hasattr(HTTPStatusCode, "UNEXPECTED_ERROR")
     assert ERROR_RESPONSES == {
         AnalysisCapacityExceeded: (HTTPStatusCode.SERVICE_UNAVAILABLE, logging.INFO),
-        GlobalWorkerUnavailableError: (
-            HTTPStatusCode.SERVICE_UNAVAILABLE,
-            logging.ERROR,
-        ),
         ControllerShuttingDownError: (
             HTTPStatusCode.SERVICE_UNAVAILABLE,
             logging.INFO,

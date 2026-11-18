@@ -21,7 +21,7 @@ def worker_landscape_aggregator():
         update_interval=0,
         tasks_timeout=0,
         deployment_type=DeploymentType.LOCAL,
-        localworkers=AttrDict({}),
+        workers=AttrDict({}),
     )
 
 

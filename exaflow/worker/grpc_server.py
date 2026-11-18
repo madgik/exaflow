@@ -34,14 +34,9 @@ LOGGER = logging.getLogger("WorkerGrpcServer")
 WORKER_HEALTH_SERVICE_NAME = "worker"
 
 
-def _worker_role_to_proto(role) -> int:
-    return worker_pb2.WorkerRole.Value(role.name)
-
-
 def _worker_info_to_proto(info: WorkerInfo) -> worker_pb2.WorkerInfo:
     return worker_pb2.WorkerInfo(
         id=info.id,
-        role=_worker_role_to_proto(info.role),
         ip=str(info.ip),
         port=info.port,
     )
@@ -248,7 +243,7 @@ def serve() -> None:
         level=worker_config.framework_log_level,
         format=(
             "%(asctime)s - %(levelname)s - %(module)s.%(funcName)s(%(lineno)d) - "
-            f"[{worker_config.federation}] - [exaflow-{worker_config.role.lower()}] - "
+            f"[{worker_config.federation}] - [exaflow-worker] - "
             f"[{worker_config.identifier}] - [BACKGROUND] - %(message)s"
         ),
     )

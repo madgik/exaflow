@@ -46,8 +46,7 @@ jobs:
       - name: Build data paths for workers
         run: |
           python tests/worker_data_paths_builder.py \
-            --local-workers localworker3 localworker2 localworker1 \
-            --global-worker globalworker \
+            --workers localworker3 localworker2 localworker1 \
             --test-data-folder tests/test_data
 
       - name: Set up Docker Buildx
@@ -231,9 +230,6 @@ jobs:
       - name: Aggregation Server logs
         run: kubectl logs -l app=exaflow-aggregation-server -c aggregation-server --tail -1
 
-      - name: Globalworker logs
-        run: kubectl logs -l nodeType=globalworker -c worker --tail -1
-
       - name: Localworker logs
         run: kubectl logs -l nodeType=localworker -c worker --tail -1
 
@@ -249,11 +245,6 @@ jobs:
         uses: webiny/action-post-run@2a0e96f0e55f0e698cf2a3d85670e3577ae30a30 # 3.1.0
         with:
           run: kubectl logs -l app=exaflow-aggregation-server -c aggregation-server --tail -1
-
-      - name: Globalworker logs (post run)
-        uses: webiny/action-post-run@2a0e96f0e55f0e698cf2a3d85670e3577ae30a30 # 3.1.0
-        with:
-          run: kubectl logs -l nodeType=globalworker -c worker --tail -1
 
       - name: Localworker logs (post run)
         uses: webiny/action-post-run@2a0e96f0e55f0e698cf2a3d85670e3577ae30a30 # 3.1.0
@@ -283,4 +274,3 @@ jobs:
           kubectl get pods -o custom-columns='POD:.metadata.name,RESTARTS:.status.containerStatuses[*].restartCount,LAST_TERMINATION:.status.containerStatuses[*].lastState.terminated.reason,EXIT_CODE:.status.containerStatuses[*].lastState.terminated.exitCode'
           kubectl get events --field-selector type=Warning --sort-by=.lastTimestamp
           kubectl get events --field-selector reason=Killing --sort-by=.lastTimestamp
-          kubectl logs -l nodeType=globalworker -c worker --previous --tail 50 || true

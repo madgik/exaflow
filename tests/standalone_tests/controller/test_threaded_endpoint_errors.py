@@ -4,13 +4,10 @@ import pytest
 
 from exaflow.controller.http import endpoints
 from exaflow.controller.http.app import app
-from exaflow.controller.services import analysis_service
 from exaflow.controller.services.api.analysis_request_validator import BadRequest
-from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.controller.services.errors import WorkerTaskTimeoutError
 from exaflow.controller.services.errors import WorkerUnresponsiveError
 from exaflow.worker_communication import BadUserInput
-from tests.standalone_tests.controller.analysis_support import ANALYSIS_BODY
 from tests.standalone_tests.controller.asgi_client import controller_client
 
 
@@ -76,25 +73,3 @@ def test_wla_update_errors_from_the_worker_thread_keep_their_status(
 
     assert status_code == status
     assert error.message.encode() in body
-
-
-def test_analysis_without_global_worker_returns_503(monkeypatch):
-    def validate_analysis_request(**kwargs):
-        raise GlobalWorkerUnavailableError()
-
-    monkeypatch.setattr(
-        analysis_service, "get_worker_landscape_aggregator", lambda: None
-    )
-    monkeypatch.setattr(
-        analysis_service, "validate_analysis_request", validate_analysis_request
-    )
-
-    async def post_analysis():
-        async with controller_client(app) as client:
-            response = await client.post("/analysis", json=ANALYSIS_BODY)
-            return response.status_code, response.text
-
-    status_code, body = asyncio.run(post_analysis())
-
-    assert status_code == 503
-    assert body == GlobalWorkerUnavailableError().message

@@ -31,7 +31,7 @@ spec:
               value: "50051"
             - name: MAX_GRPC_CONNECTIONS
               # note: no outer quotes, and correct pipe-syntax
-              value: {{ .Values.localnodes | int | mul .Values.max_concurrent_experiments | quote }}
+              value: {{ .Values.worker_count | int | mul .Values.max_concurrent_experiments | quote }}
             - name: MAX_WAIT_FOR_AGGREGATION_INPUTS
               value: {{ .Values.aggregation_server.max_wait_for_aggregation_inputs | quote }}
             - name: LOG_LEVEL

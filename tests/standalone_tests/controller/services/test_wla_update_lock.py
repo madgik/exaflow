@@ -15,7 +15,7 @@ def test_update_does_not_overlap_itself(monkeypatch):
         update_interval=1000,
         tasks_timeout=1,
         deployment_type=DeploymentType.LOCAL,
-        localworkers=AttrDict({}),
+        workers=AttrDict({}),
     )
     state = {"current": 0, "max": 0}
     guard = threading.Lock()

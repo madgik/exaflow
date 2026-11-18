@@ -16,7 +16,7 @@ def start_background_services():
         update_interval=ctrl_config.worker_landscape_aggregator_update_interval,
         tasks_timeout=ctrl_config.worker_tasks_timeout,
         deployment_type=ctrl_config.deployment_type,
-        localworkers=ctrl_config.localworkers,
+        workers=ctrl_config.workers,
     )
     worker_landscape_aggregator.start()
     set_worker_landscape_aggregator(worker_landscape_aggregator)

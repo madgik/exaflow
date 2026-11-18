@@ -24,7 +24,7 @@ class AlgorithmExecutionStrategyI(ABC):
     _request_id: str
     _context_id: str
     _logger: Logger
-    _local_worker_tasks_handlers: List[TasksHandlerI]
+    _worker_tasks_handlers: List[TasksHandlerI]
 
     def __init__(
         self,
@@ -37,12 +37,10 @@ class AlgorithmExecutionStrategyI(ABC):
         self._request_id = self._analysis_request_dto.request_id
         self._context_id = uuid4().hex
         self._logger = ctrl_logger.get_request_logger(self._request_id)
-        self._local_worker_tasks_handlers = (
-            self._controller.get_local_worker_tasks_handlers(
-                self._analysis_request_dto.inputdata.data_model,
-                self._analysis_request_dto.inputdata.datasets,
-                self._request_id,
-            )
+        self._worker_tasks_handlers = self._controller.get_worker_tasks_handlers(
+            self._analysis_request_dto.inputdata.data_model,
+            self._analysis_request_dto.inputdata.datasets,
+            self._request_id,
         )
 
     @abstractmethod

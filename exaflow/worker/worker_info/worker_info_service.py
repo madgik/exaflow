@@ -21,7 +21,6 @@ def get_worker_info(request_id: str) -> WorkerInfo:
 
     return WorkerInfo(
         id=worker_config.identifier,
-        role=worker_config.role,
         ip=worker_config.grpc.ip,
         port=worker_config.grpc.port,
     )

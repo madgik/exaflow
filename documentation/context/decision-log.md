@@ -49,7 +49,7 @@ Consequences: More than `max_concurrent_experiments` simultaneous analyses
 receive 503. Client disconnect no longer cleans up aggregation state early.
 A down worker removes the controller from Service endpoints and does not
 restart it. Worker gRPC pools (`max_concurrent_experiments + 4`) and the
-aggregation server pool (`max_concurrent_experiments` per local worker) are
+aggregation server pool (`max_concurrent_experiments` per worker) are
 derived from the same limit; the `.deployment.toml` key
 `aggregation_server.max_grpc_connections` is gone. There is no separate
 overall analysis deadline; per-call worker timeouts still apply. An overall
