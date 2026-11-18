@@ -182,7 +182,7 @@ def integer_codes_to_text(data, metadata: dict):
     for column in data.columns:
         variable = metadata.get(column) or {}
         if column not in INTEGER_CODED_COLUMNS and not is_integer_coded(
-            column, variable.get("type"), variable.get("enumerations")
+            variable.get("type"), variable.get("enumerations")
         ):
             continue
         series = data[column]

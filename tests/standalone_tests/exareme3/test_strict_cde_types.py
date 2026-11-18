@@ -267,6 +267,6 @@ def test_require_declared_level_compares_as_text():
 
 
 def test_integer_codes_must_be_canonical():
-    assert not is_integer_coded("var", "nominal", ["01", "02"])
-    assert is_integer_coded("var", "nominal", ["1", "2"])
-    assert not is_integer_coded("var", "nominal", [" 2 ", "+1", "-0"])
+    assert not is_integer_coded("nominal", ["01", "02"])
+    assert is_integer_coded("nominal", ["1", "2"])
+    assert not is_integer_coded("nominal", [" 2 ", "+1", "-0"])
