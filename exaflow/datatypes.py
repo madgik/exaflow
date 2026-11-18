@@ -31,8 +31,8 @@ def _enumeration_codes(enumerations):
     ]
 
 
-def is_integer_coded(code, cde_type, enumerations) -> bool:
-    """True when the CDE `code` is an integer code column.
+def is_integer_coded(cde_type, enumerations) -> bool:
+    """True when a CDE is an integer code column.
 
     `enumerations` is the CDE's enumerations (a code->label mapping or a list of
     {"code", "label"} items). Derived categorical columns whose codes are text
@@ -85,11 +85,11 @@ class DType(Enum):
         return cls.INT
 
     @classmethod
-    def from_cde_variable(cls, code, cde_type, enumerations):
+    def from_cde_variable(cls, cde_type, enumerations):
         """Like `from_cde`, but STR for derived categorical columns whose codes are
         text (for example the categorical_column_creator output)."""
         if cde_type in CATEGORICAL_CDE_TYPES and not is_integer_coded(
-            code, cde_type, enumerations
+            cde_type, enumerations
         ):
             return cls.STR
         return cls.from_cde(cde_type)

@@ -220,7 +220,7 @@ def _check_value_type(column: str, value, cdes):
 def _check_value_column_same_type(column, value, cdes):
     column_type = cdes[column].type
     dtype = DType.from_cde_variable(
-        column, column_type, getattr(cdes[column], "enumerations", None)
+        column_type, getattr(cdes[column], "enumerations", None)
     )
     if not _is_filter_value_compatible_with_dtype(value, dtype):
         raise FilterError(

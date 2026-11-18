@@ -97,7 +97,7 @@ def _build_column_types(metadata: dict) -> dict[str, str]:
             column_type = "DOUBLE"
         elif cde_type == CDEType.DISCRETE:
             column_type = "INTEGER"
-        elif is_integer_coded(code, cde_type, var.get("enumerations")):
+        elif is_integer_coded(cde_type, var.get("enumerations")):
             column_type = "INTEGER"
         else:
             raise ValueError(
