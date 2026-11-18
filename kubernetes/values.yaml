@@ -1,6 +1,6 @@
 namespace: default
 managed_cluster: false
-localnodes: 2
+worker_count: 2
 
 exaflow_images:
   repository: madgik
@@ -54,7 +54,6 @@ rabbitmq:
   publish_timeout: 30
   shutdown_drain_timeout: 20
 
-globalworker_identifier: globalworker
 
 aggregation_server:
   enabled: true
@@ -76,7 +75,6 @@ storage:
   hostPath:
     db:
       localworker: "/opt/exaflow/localworker"
-      globalworker: "/opt/exaflow/globalworker"
 
   cephfs:
     storageClassName: ceph-corbo-cephfs-retain
@@ -85,20 +83,6 @@ storage:
       size: 1Gi
 
     localworker:
-      db:
-        size: 4Gi
-        accessModes:
-          - ReadWriteOnce
-      csvs:
-        size: 4Gi
-        accessModes:
-          - ReadWriteMany
-      creds:
-        size: 100Mi
-        accessModes:
-          - ReadWriteMany
-
-    globalworker:
       db:
         size: 4Gi
         accessModes:

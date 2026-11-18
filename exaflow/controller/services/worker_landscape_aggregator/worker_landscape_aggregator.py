@@ -22,7 +22,6 @@ from exaflow.controller.federation_info_logs import log_dataset_added
 from exaflow.controller.federation_info_logs import log_dataset_removed
 from exaflow.controller.federation_info_logs import log_worker_joined_federation
 from exaflow.controller.federation_info_logs import log_worker_left_federation
-from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.controller.services.worker_landscape_aggregator.worker_info_tasks_handler import (
     WorkerInfoTasksHandler,
 )
@@ -32,14 +31,12 @@ from exaflow.controller.worker_client.app import WorkerClientTimeoutException
 from exaflow.controller.worker_client.app import WorkerMessageTooLargeError
 from exaflow.controller.workers_addresses import WorkersAddressesFactory
 from exaflow.utils import AttrDict
-from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import CommonDataElement
 from exaflow.worker_communication import CommonDataElements
 from exaflow.worker_communication import DataModelAttributes
 from exaflow.worker_communication import DatasetInfo
 from exaflow.worker_communication import DatasetsInfoPerDataModel
 from exaflow.worker_communication import WorkerInfo
-from exaflow.worker_communication import WorkerRole
 
 WORKER_LANDSCAPE_AGGREGATOR_REQUEST_ID = "WORKER_LANDSCAPE_AGGREGATOR"
 LONGITUDINAL = "longitudinal"
@@ -159,14 +156,12 @@ class DataModelRegistry(ImmutableBaseModel):
         if not self.data_model_exists(data_model):
             return []
 
-        local_workers_with_datasets = [
+        workers_with_datasets = [
             self.datasets_locations.datasets_locations[data_model][dataset]
             for dataset in self.datasets_locations.datasets_locations[data_model]
             if dataset in datasets
-            if self.datasets_locations.datasets_locations[data_model][dataset]
-            != "globalworker"
         ]
-        return list(set(local_workers_with_datasets))
+        return list(set(workers_with_datasets))
 
     def get_worker_specific_datasets(
         self, worker_id: str, data_model: str, wanted_datasets: List[str]
@@ -201,32 +196,11 @@ class DataModelRegistry(ImmutableBaseModel):
 
 class WorkerRegistry(ImmutableBaseModel):
     def __init__(self, workers_info=None):
-        if workers_info:
-            global_workers = [
-                worker_info
-                for worker_info in workers_info
-                if worker_info.role == WorkerRole.GLOBALWORKER
-            ]
-            local_workers = [
-                worker_info
-                for worker_info in workers_info
-                if worker_info.role == WorkerRole.LOCALWORKER
-            ]
-            _workers_per_id = {
-                worker_info.id: worker_info
-                for worker_info in global_workers + local_workers
-            }
-            super().__init__(
-                global_workers=global_workers,
-                local_workers=local_workers,
-                workers_per_id=_workers_per_id,
-            )
-        else:
-            super().__init__()
+        super().__init__(
+            workers_per_id={worker.id: worker for worker in (workers_info or [])}
+        )
 
     model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
-    global_workers: List[WorkerInfo] = Field(default_factory=list)
-    local_workers: List[WorkerInfo] = Field(default_factory=list)
     workers_per_id: Dict[str, WorkerInfo] = Field(default_factory=dict)
 
 
@@ -275,13 +249,13 @@ class WorkerLandscapeAggregator:
         update_interval: int,
         tasks_timeout: int,
         deployment_type: DeploymentType,
-        localworkers: AttrDict,
+        workers: AttrDict,
     ):
         self._logger = logger
         self._update_interval = update_interval
         self._worker_info_tasks_timeout = tasks_timeout
         self._deployment_type = deployment_type
-        self._localworkers = localworkers
+        self._workers = workers
         self._registries = _wlaRegistries()
         self._update_lock = threading.Lock()
         self._stop_event = threading.Event()
@@ -374,7 +348,7 @@ class WorkerLandscapeAggregator:
 
         _map_concurrently(
             _check,
-            WorkersAddressesFactory(self._deployment_type, self._localworkers)
+            WorkersAddressesFactory(self._deployment_type, self._workers)
             .get_workers_addresses()
             .socket_addresses,
         )
@@ -521,20 +495,6 @@ class WorkerLandscapeAggregator:
     def get_workers(self) -> List[WorkerInfo]:
         return list(self._registries.worker_registry.workers_per_id.values())
 
-    def get_global_worker(self) -> Optional[WorkerInfo]:
-        if not self._registries.worker_registry.global_workers:
-            return None
-        return self._registries.worker_registry.global_workers[0]
-
-    def require_global_worker(self) -> WorkerInfo:
-        global_worker = self.get_global_worker()
-        if global_worker is None:
-            raise GlobalWorkerUnavailableError()
-        return global_worker
-
-    def get_all_local_workers(self) -> List[WorkerInfo]:
-        return self._registries.worker_registry.local_workers
-
     def get_worker_info(self, worker_id: str) -> WorkerInfo:
         return self._registries.worker_registry.workers_per_id[worker_id]
 
@@ -560,41 +520,6 @@ class WorkerLandscapeAggregator:
 
     def get_datasets_variables(self) -> DatasetsVariables:
         return self._registries.data_model_registry.datasets_variables
-
-    def get_training_and_validation_datasets(
-        self, data_model: str
-    ) -> Tuple[List[str], List[str]]:
-        """
-        Retrieves all available training and validation datasets for a specific data model.
-
-        Parameters:
-            data_model (str): The data model for which to retrieve datasets.
-
-        Returns:
-            Tuple[List[str], List[str]]: A tuple containing two lists:
-                - The first list contains training datasets (Data loaded inside the localworkers).
-                - The second list contains validation datasets (Data loaded inside the globalworker).
-        """
-        training_datasets = []
-        validation_datasets = []
-
-        if data_model not in self.get_datasets_locations().datasets_locations.keys():
-            raise BadUserInput(f"Data model '{data_model}' does not exist.")
-        datasets_locations = self.get_datasets_locations().datasets_locations[
-            data_model
-        ]
-
-        # Without a global worker no dataset can live on it, so every
-        # available dataset is a training dataset.
-        global_worker = self.get_global_worker()
-        global_worker_id = global_worker.id if global_worker else None
-        for dataset, worker_id in datasets_locations.items():
-            if worker_id == global_worker_id:
-                validation_datasets.append(dataset)
-            else:
-                training_datasets.append(dataset)
-
-        return training_datasets, validation_datasets
 
     def get_all_available_datasets_per_data_model(self) -> Dict[str, List[str]]:
         return self._registries.data_model_registry.get_all_available_datasets_per_data_model()
@@ -641,7 +566,7 @@ class WorkerLandscapeAggregator:
         Returns a list of all the workers in the federation and their metadata (data_models, datasets, cdes).
         """
         workers_addresses = (
-            WorkersAddressesFactory(self._deployment_type, self._localworkers)
+            WorkersAddressesFactory(self._deployment_type, self._workers)
             .get_workers_addresses()
             .socket_addresses
         )

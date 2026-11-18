@@ -10,7 +10,6 @@ from exaflow import AttrDict
 from exaflow.controller import DeploymentType
 from exaflow.controller import workers_addresses as workers_addresses_module
 from exaflow.controller.services.controller_interface import ControllerI
-from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.controller.services.worker_landscape_aggregator import (
     worker_landscape_aggregator as wla_module,
 )
@@ -48,13 +47,11 @@ from exaflow.controller.worker_client.app import WorkerClientConnectionError
 from exaflow.controller.worker_client.app import WorkerClientFactory
 from exaflow.controller.worker_client.app import WorkerClientTimeoutException
 from exaflow.utils import Singleton
-from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import CommonDataElement
 from exaflow.worker_communication import CommonDataElements
 from exaflow.worker_communication import DataModelAttributes
 from exaflow.worker_communication import DatasetInfo
 from exaflow.worker_communication import WorkerInfo
-from exaflow.worker_communication import WorkerRole
 
 _AUTO = object()
 
@@ -118,7 +115,7 @@ def worker_landscape_aggregator():
         update_interval=0,
         tasks_timeout=0,
         deployment_type=DeploymentType.LOCAL,
-        localworkers=AttrDict({}),
+        workers=AttrDict({}),
     )
 
 
@@ -246,25 +243,21 @@ def mocked_worker_infos():
     return [
         WorkerInfo(
             id="globalworker",
-            role=WorkerRole.GLOBALWORKER,
             ip=ipaddress.ip_address("127.0.0.1"),
             port=50000,
         ),
         WorkerInfo(
             id="localworker1",
-            role=WorkerRole.LOCALWORKER,
             ip=ipaddress.ip_address("127.0.0.2"),
             port=50001,
         ),
         WorkerInfo(
             id="localworker2",
-            role=WorkerRole.LOCALWORKER,
             ip=ipaddress.ip_address("127.0.0.3"),
             port=50002,
         ),
         WorkerInfo(
             id="localworker3",
-            role=WorkerRole.LOCALWORKER,
             ip=ipaddress.ip_address("127.0.0.4"),
             port=50003,
         ),
@@ -970,55 +963,6 @@ def test_get_datasets_per_worker(mocked_wla):
     assert datasets["localworker1"] == ["ppmi0", "edsd0", "desd-synthdata0"]
 
 
-def test_get_training_and_validation_datasets(mocked_wla):
-    training, validation = mocked_wla.get_training_and_validation_datasets("tbi:0.1")
-    assert set(training) == {"dummy_tbi0", "dummy_tbi1", "dummy_tbi3"}
-    assert not validation
-
-
-@pytest.fixture
-def wla_without_global_worker(
-    worker_landscape_aggregator,
-    mocked_worker_infos,
-    mocked_data_model_registry,
-):
-    local_workers = [
-        info for info in mocked_worker_infos if info.role == WorkerRole.LOCALWORKER
-    ]
-    worker_landscape_aggregator._set_new_registries(
-        worker_registry=WorkerRegistry(workers_info=local_workers),
-        data_model_registry=mocked_data_model_registry,
-    )
-    return worker_landscape_aggregator
-
-
-def test_get_training_and_validation_datasets_without_global_worker(
-    wla_without_global_worker,
-):
-    training, validation = (
-        wla_without_global_worker.get_training_and_validation_datasets("tbi:0.1")
-    )
-    assert set(training) == {"dummy_tbi0", "dummy_tbi1", "dummy_tbi3"}
-    assert validation == []
-
-
-def test_require_global_worker_returns_the_global_worker(mocked_wla):
-    assert mocked_wla.require_global_worker().id == "globalworker"
-
-
-def test_require_global_worker_raises_when_it_left_the_federation(
-    wla_without_global_worker,
-):
-    with pytest.raises(GlobalWorkerUnavailableError) as error:
-        wla_without_global_worker.require_global_worker()
-    assert "global worker" in error.value.message
-
-
-def test_get_training_and_validation_datasets_unknown_model(mocked_wla):
-    with pytest.raises(BadUserInput):
-        mocked_wla.get_training_and_validation_datasets("missing")
-
-
 def test_get_workers_info_properly_handles_errors(
     worker_landscape_aggregator, monkeypatch
 ):
@@ -1031,7 +975,6 @@ def test_get_workers_info_properly_handles_errors(
                 raise WorkerClientConnectionError("boom")
             return WorkerInfo(
                 id="worker-ok",
-                role=WorkerRole.LOCALWORKER,
                 ip=ipaddress.ip_address("127.0.0.10"),
                 port=50010,
             )
@@ -1089,7 +1032,6 @@ def test_get_workers_info_queries_workers_concurrently(
             barrier.wait()
             return WorkerInfo(
                 id=self.worker_queue_addr,
-                role=WorkerRole.LOCALWORKER,
                 ip=ipaddress.ip_address("127.0.0.10"),
                 port=50010,
             )
@@ -1121,7 +1063,7 @@ def _kubernetes_landscape_aggregator():
         update_interval=0,
         tasks_timeout=0,
         deployment_type=DeploymentType.KUBERNETES,
-        localworkers=AttrDict({"dns": "workers.example", "port": 5670}),
+        workers=AttrDict({"dns": "workers.example", "port": 5670}),
     )
 
 
@@ -1139,7 +1081,6 @@ class _InfoHandler:
             raise WorkerClientConnectionError(self.worker_queue_addr, "unreachable")
         return WorkerInfo(
             id="worker-healthy",
-            role=WorkerRole.LOCALWORKER,
             ip=ipaddress.ip_address("10.0.0.1"),
             port=5670,
         )
@@ -1251,7 +1192,6 @@ def test_local_worker_task_handlers_come_from_one_snapshot():
             return [
                 WorkerInfo(
                     id="localworker1",
-                    role=WorkerRole.LOCALWORKER,
                     ip=ipaddress.ip_address("127.0.0.2"),
                     port=50001,
                 )
@@ -1267,7 +1207,7 @@ def test_local_worker_task_handlers_come_from_one_snapshot():
         def create_worker_tasks_handler(self, request_id, worker_info):
             return (request_id, worker_info.id)
 
-    handlers = _Controller(_Aggregator(), 30).get_local_worker_tasks_handlers(
+    handlers = _Controller(_Aggregator(), 30).get_worker_tasks_handlers(
         "dementia:0.1", ["ppmi0"], "req-1"
     )
 

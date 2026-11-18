@@ -25,10 +25,6 @@ framework_log_level ="INFO"
 port = 5100
 
 [[workers]]
-id = "globalworker"
-grpc_port=5670
-
-[[workers]]
 id = "localworker1"
 grpc_port=5671
 
@@ -77,8 +73,8 @@ WORKERS_CONFIG_DIR = PROJECT_ROOT / "configs" / "workers"
 WORKER_CONFIG_TEMPLATE_FILE = PROJECT_ROOT / "exaflow" / "worker" / "config.toml"
 CONTROLLER_CONFIG_DIR = PROJECT_ROOT / "configs" / "controller"
 AGG_SERVER_CONFIG_DIR = PROJECT_ROOT / "configs" / "aggregation_server"
-CONTROLLER_LOCALWORKERS_CONFIG_FILE = (
-    PROJECT_ROOT / "configs" / "controller" / "localworkers_config.json"
+CONTROLLER_WORKERS_CONFIG_FILE = (
+    PROJECT_ROOT / "configs" / "controller" / "workers_config.json"
 )
 CONTROLLER_CONFIG_TEMPLATE_FILE = (
     PROJECT_ROOT / "exaflow" / "controller" / "config.toml"
@@ -195,9 +191,7 @@ def create_configs(c):
         template_worker_config = toml.load(fp)
 
     max_concurrent_experiments = deployment_config["max_concurrent_experiments"]
-    num_localworkers = sum(
-        worker["role"] == "LOCALWORKER" for worker in deployment_config["workers"]
-    )
+    num_workers = len(deployment_config["workers"])
 
     for worker in deployment_config["workers"]:
         worker_config = copy.deepcopy(template_worker_config)
@@ -208,7 +202,6 @@ def create_configs(c):
             aggregation_dns = f"{deployment_config['ip']}:{deployment_config['aggregation_server']['port']}"
 
         worker_config["identifier"] = worker["id"]
-        worker_config["role"] = worker["role"]
         worker_config["federation"] = deployment_config["federation"]
         worker_config["log_level"] = deployment_config["log_level"]
         worker_config["framework_log_level"] = deployment_config["framework_log_level"]
@@ -231,36 +224,19 @@ def create_configs(c):
         worker_config["privacy"]["minimum_row_count"] = deployment_config["privacy"][
             "minimum_row_count"
         ]
-        if worker["role"] == "GLOBALWORKER":
-            worker_config["privacy"]["protect_local_data"] = False
-        else:
-            worker_config["privacy"]["protect_local_data"] = deployment_config[
-                "privacy"
-            ]["protect_local_data"]
-
+        worker_config["privacy"]["protect_local_data"] = deployment_config["privacy"][
+            "protect_local_data"
+        ]
         worker_config["smpc"]["enabled"] = deployment_config["smpc"]["enabled"]
         if worker_config["smpc"]["enabled"]:
             worker_config["smpc"]["optional"] = deployment_config["smpc"]["optional"]
-            if coordinator_ip := deployment_config["smpc"].get("coordinator_ip"):
-                if worker["role"] == "GLOBALWORKER":
-                    worker_config["smpc"]["coordinator_address"] = (
-                        f"http://{coordinator_ip}:{SMPC_COORDINATOR_PORT}"
-                    )
-                else:
-                    worker_config["smpc"]["client_id"] = worker["smpc_client_id"]
-                    worker_config["smpc"]["client_address"] = (
-                        f"http://{coordinator_ip}:{worker['smpc_client_port']}"
-                    )
-            else:
-                if worker["role"] == "GLOBALWORKER":
-                    worker_config["smpc"]["coordinator_address"] = (
-                        f"http://{deployment_config['ip']}:{SMPC_COORDINATOR_PORT}"
-                    )
-                else:
-                    worker_config["smpc"]["client_id"] = worker["id"]
-                    worker_config["smpc"]["client_address"] = (
-                        f"http://{deployment_config['ip']}:{worker['smpc_client_port']}"
-                    )
+            coordinator_ip = deployment_config["smpc"].get("coordinator_ip")
+            worker_config["smpc"]["client_id"] = (
+                worker["smpc_client_id"] if coordinator_ip else worker["id"]
+            )
+            worker_config["smpc"]["client_address"] = (
+                f"http://{coordinator_ip or deployment_config['ip']}:{worker['smpc_client_port']}"
+            )
 
         worker_config["duckdb"] = {
             "path": f"{str(_worker_data_path(worker_config['identifier']))}/data_models.duckdb"
@@ -300,11 +276,9 @@ def create_configs(c):
 
     controller_config["deployment_type"] = "LOCAL"
 
-    controller_config["localworkers"]["config_file"] = str(
-        CONTROLLER_LOCALWORKERS_CONFIG_FILE
-    )
-    controller_config["localworkers"]["dns"] = ""
-    controller_config["localworkers"]["port"] = ""
+    controller_config["workers"]["config_file"] = str(CONTROLLER_WORKERS_CONFIG_FILE)
+    controller_config["workers"]["dns"] = ""
+    controller_config["workers"]["port"] = ""
 
     controller_config["smpc"]["enabled"] = deployment_config["smpc"]["enabled"]
     if controller_config["smpc"]["enabled"]:
@@ -341,13 +315,13 @@ def create_configs(c):
     with open(controller_config_file, "w+") as fp:
         toml.dump(controller_config, fp)
 
-    # Create the controller localworkers config file
-    localworkers_addresses = [
+    # Create the controller workers config file
+    workers_addresses = [
         f"{deployment_config['ip']}:{worker['grpc_port']}"
         for worker in deployment_config["workers"]
     ]
-    with open(CONTROLLER_LOCALWORKERS_CONFIG_FILE, "w+") as fp:
-        json.dump(localworkers_addresses, fp)
+    with open(CONTROLLER_WORKERS_CONFIG_FILE, "w+") as fp:
+        json.dump(workers_addresses, fp)
 
     # Create the aggregation_server config file
     if not deployment_config["aggregation_server"]["enabled"]:
@@ -360,9 +334,9 @@ def create_configs(c):
     ]
     aggregation_server_config["port"] = deployment_config["aggregation_server"]["port"]
     # Each Aggregate call holds a thread while it waits for the other workers,
-    # so every concurrent analysis needs one per local worker, as in Helm.
+    # so every concurrent analysis needs one per worker, as in Helm.
     aggregation_server_config["max_grpc_connections"] = (
-        max_concurrent_experiments * num_localworkers
+        max_concurrent_experiments * num_workers
     )
     aggregation_server_config["max_wait_for_aggregation_inputs"] = deployment_config[
         "aggregation_server"
@@ -466,27 +440,26 @@ def _structure_data(worker=None):
                 configs.append(toml.load(fp))
         return configs
 
-    def filter_worker_configs(worker_configs, worker_identifier, node_type):
+    def filter_worker_configs(worker_configs, worker_identifier):
         return [
             config["identifier"]
             for config in worker_configs
             if (not worker_identifier or config["identifier"] == worker_identifier)
-            and config["role"] == node_type
         ]
 
     worker_configs = get_worker_configs()
 
-    local_worker_ids = filter_worker_configs(worker_configs, worker, "LOCALWORKER")
-    if not local_worker_ids:
-        raise Exception("No local workers found.")
+    worker_ids = sorted(filter_worker_configs(worker_configs, worker))
+    if not worker_ids:
+        raise Exception("No workers found.")
 
     script_path = Path(__file__).parent / "tests" / "worker_data_paths_builder.py"
 
     cmd = [
         sys.executable,
         str(script_path),
-        "--local-workers",
-        *local_worker_ids,
+        "--workers",
+        *worker_ids,
     ]
 
     # Run helper script and capture its output
@@ -627,7 +600,7 @@ def start_worker(
     worker_ids = sorted(get_worker_ids(all_, worker))
 
     # If we're not detached and not starting all, keep the old sequential / attached behavior
-    if len(worker_ids) == 1:
+    if len(worker_ids) == 1 and not detached and not all_:
         worker_id = worker_ids[0]
         kill_worker(c, worker_id)
         message(f"Starting Worker {worker_id}...", Level.HEADER)
@@ -1257,7 +1230,7 @@ def start_smpc_clients(c, ip=None, image=None):
 
     rm_containers(c, container_name="smpc_client")
 
-    for worker_id in get_localworker_ids():
+    for worker_id in get_smpc_worker_ids():
         start_smpc_client(c, worker_id, ip, image)
 
 
@@ -1410,16 +1383,8 @@ def get_worker_ids(all_=False, worker=None):
     return worker_ids
 
 
-def get_localworker_ids():
-    all_worker_ids = get_worker_ids(all_=True)
-    local_worker_ids = []
-    for worker_id in all_worker_ids:
-        worker_config_file = WORKERS_CONFIG_DIR / f"{worker_id}.toml"
-        with open(worker_config_file) as fp:
-            worker_config = toml.load(fp)
-        if worker_config["role"] == "LOCALWORKER":
-            local_worker_ids.append(worker_id)
-    return local_worker_ids
+def get_smpc_worker_ids():
+    return get_worker_ids(all_=True)
 
 
 def get_docker_image(c, image, always_pull=False):

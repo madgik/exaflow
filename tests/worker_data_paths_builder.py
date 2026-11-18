@@ -1,32 +1,5 @@
 #!/usr/bin/env python3
-"""
-This is a script to convert the broken dataset structure (edsd0, edsd1 ...) that resides in the test_data folder to
-worker-friendly dataset structure.
-
-The resulting new folder structure is:
-.data_paths
--->  globalworker
-----> dementia_0.1
-------> CDEsMetadata.json
-------> dementia.csv
--->  localworker1
-----> dementia_0.1
-------> CDEsMetadata.json
-------> dementia.csv
--->  localworker2
-----> dementia_0.1
-------> CDEsMetadata.json
-------> dementia.csv
-
-CLI usage:
-    python worker_data_paths_builder.py --local-workers worker1 worker2
-    python worker_data_paths_builder.py --local-workers worker1 worker2 --global-worker myglobal --test-data-folder path/to/folder
-
-Defaults:
-    global worker  -> "globalworker"
-    test data path -> "tests/test_data"
-
-"""
+"""Build per-worker fixture folders using --workers; test CSVs go to the first worker."""
 
 import argparse
 import csv
@@ -45,7 +18,7 @@ def read_data_model_metadata(cdes_file):
     return meta["code"], meta["version"]
 
 
-def get_datasets_per_localworker(dirpath, filenames, worker_ids):
+def get_datasets_per_worker(dirpath, filenames, worker_ids):
     """Distribute CSVs to local workers (round robin)."""
     datasets = {w: [] for w in worker_ids}
 
@@ -169,11 +142,11 @@ def create_combined_datasets(structure, worker_ids, test_data_folder: Path):
     return combined_root
 
 
-def structure_data(test_data_folder: Path, local_workers, global_worker: str):
+def structure_data(test_data_folder: Path, workers):
     """Main logic: scans datasets, distributes CSVs, builds folders."""
 
     worker_dataset_structure = defaultdict(dict)
-    all_workers = list(local_workers) + [global_worker]
+    all_workers = list(workers)
 
     for dirpath, dirnames, filenames in os.walk(test_data_folder):
         if ".data_paths" in dirnames:
@@ -185,15 +158,15 @@ def structure_data(test_data_folder: Path, local_workers, global_worker: str):
         code, version = read_data_model_metadata(cdes)
         key = (code, version)
 
-        local_dist = get_datasets_per_localworker(dirpath, filenames, local_workers)
+        local_dist = get_datasets_per_worker(dirpath, filenames, workers)
 
-        # Global worker gets test.csv
-        global_csvs = [
+        # Test fixtures go to the first worker.
+        test_csvs = [
             os.path.join(dirpath, f) for f in filenames if f.endswith("test.csv")
         ]
-        global_dist = {global_worker: global_csvs}
+        local_dist[workers[0]].extend(test_csvs)
 
-        full = {**local_dist, **global_dist}
+        full = local_dist
 
         for worker_id, csv_paths in full.items():
             if not csv_paths:
@@ -220,14 +193,10 @@ def parse_args():
         help="Folder containing the test datasets (default: tests/test_data)",
     )
     p.add_argument(
-        "--global-worker",
-        default="globalworker",
-        help="Identifier/name of the global worker (default: globalworker)",
-    )
-    p.add_argument(
-        "--local-workers",
+        "--workers",
         nargs="+",
-        help="Identifiers of local workers (required)",
+        required=True,
+        help="Identifiers of workers (required)",
     )
     return p.parse_args()
 
@@ -235,17 +204,16 @@ def parse_args():
 def main():
     args = parse_args()
 
-    if not args.local_workers:
+    if not args.workers:
         print(
-            "ERROR: --local-workers must be provided with at least one worker.",
+            "ERROR: --workers must be provided with at least one worker.",
             file=sys.stderr,
         )
         sys.exit(1)
 
     combined_root = structure_data(
         test_data_folder=args.test_data_folder,
-        local_workers=args.local_workers,
-        global_worker=args.global_worker,
+        workers=args.workers,
     )
 
     print(f"Data paths for each worker is now located:")

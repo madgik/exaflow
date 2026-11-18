@@ -16,7 +16,6 @@ from exaflow.worker_communication import DataModelAttributes
 from exaflow.worker_communication import DatasetInfo
 from exaflow.worker_communication import DatasetsInfoPerDataModel
 from exaflow.worker_communication import WorkerInfo
-from exaflow.worker_communication import WorkerRole
 
 
 class RunUdfCall:
@@ -45,15 +44,9 @@ class RunUdfCall:
         return decode_udf_result(response.result)
 
 
-def _proto_worker_role(role_value: int) -> WorkerRole:
-    role_name = worker_pb2.WorkerRole.Name(role_value)
-    return WorkerRole[role_name]
-
-
 def _proto_worker_to_model(worker: worker_pb2.WorkerInfo) -> WorkerInfo:
     return WorkerInfo(
         id=worker.id,
-        role=_proto_worker_role(worker.role),
         ip=IPv4Address(worker.ip),
         port=worker.port,
     )

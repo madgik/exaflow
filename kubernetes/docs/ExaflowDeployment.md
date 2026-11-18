@@ -3,7 +3,7 @@
 1. Configure the [helm chart values](../values.yaml).
 
    - The `exaflow_images -> version` should be the exaflow services version in dockerhub.
-   - The `localnodes` is a counter for the localnodes. Should be equal to the number of local nodes that exist in the cluster.
+   - Set `worker_count` to the number of Exaflow workers to deploy.
 
 1. From the `Exaflow` folder, deploy the services:
 
@@ -25,7 +25,7 @@ helm upgrade exaflow kubernetes
 
 ### Increase/reduce the number of local nodes
 
-1. Modify the `localnodes` value in the [helm chart values](../values.yaml) accordingly.
+1. Modify the `worker_count` value in the [helm chart values](../values.yaml) accordingly.
 
 1. Upgrade the helm chart with:
 

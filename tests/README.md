@@ -15,7 +15,7 @@ The standalone tests are run:
 These tests are run:
 
 - with all (worker, controller, aggregation_server) docker images pre-built,
-- with 4 workers(globalworker, 3 localworkers), 1 controller and 1 aggregation server,
+- with 3 workers, 1 controller and 1 aggregation server,
 - with the production algorithms loaded,
 - with data paths for each worker configured by the `worker_data_paths_builder.py` script under `tests/test_data/.data_paths/<worker_name>`,
 - using `helm` charts and `kind` for a pseudo federated kubernetes environment,
@@ -26,8 +26,8 @@ These tests are run:
 
 These tests are run:
 
-- with 1 localworker, 1 globalworker, 1 controller and 1 aggregation server,
-- with 5 localworkers, 1 globalworker, 1 controller and 1 aggregation server in a different job,
+- with 1 worker, 1 controller and 1 aggregation server,
+- with 5 workers, 1 controller and 1 aggregation server in a different job,
 - with data paths for each worker configured by the `worker_data_paths_builder.py` script under `tests/test_data/.data_paths/<worker_name>`,
 - with the production algorithms loaded,
 - using the `inv deploy` command of the `tasks.py` with a `.deployment.toml` template,

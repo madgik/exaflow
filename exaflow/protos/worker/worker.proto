@@ -18,15 +18,9 @@ service WorkerService {
   rpc RunUdf(RunUdfRequest) returns (RunUdfResponse);
 }
 
-enum WorkerRole {
-  WORKER_ROLE_UNSPECIFIED = 0;
-  GLOBALWORKER = 1;
-  LOCALWORKER = 2;
-}
 
 message WorkerInfo {
   string id = 1;
-  WorkerRole role = 2;
   string ip = 3;
   int32 port = 4;
   string data_folder = 5;

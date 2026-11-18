@@ -76,7 +76,7 @@ def _block_until_shutdown(ready: str, addresses: str) -> None:
         update_interval=60,
         tasks_timeout=_RPC_TIMEOUT_SECONDS,
         deployment_type=DeploymentType.LOCAL,
-        localworkers=AttrDict({"config_file": addresses}),
+        workers=AttrDict({"config_file": addresses}),
     )
     aggregator.start()
     deadline = time.monotonic() + 20

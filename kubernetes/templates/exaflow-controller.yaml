@@ -85,9 +85,9 @@ spec:
           value: {{ quote .Values.aggregation_server.enabled }}
         - name: AGGREGATION_SERVER_DNS
           value: {{ quote .Values.aggregation_server.dns }}
-        - name: LOCALWORKERS_DNS
+        - name: WORKERS_DNS
           value: {{ quote .Values.controller.workers_dns }}
-        - name: LOCALWORKERS_PORT
+        - name: WORKERS_PORT
           value: "5672"
         - name: SMPC_ENABLED
           value: {{ quote .Values.smpc.enabled }}

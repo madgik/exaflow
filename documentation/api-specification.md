@@ -17,6 +17,12 @@ analysis.
 
 ______________________________________________________________________
 
+Dataset roles are request-defined: `datasets` and `validation_datasets` use the
+same available dataset catalog for the selected data model and must not overlap.
+Different datasets may be held by the same worker or by several workers. An
+algorithm must support a validation flow to accept validation datasets; its
+existing requiredness rules still apply. These interfaces target fresh deployments without compatibility aliases.
+
 ## 1) API Flow
 
 The intended client flow is:

@@ -1,4 +1,4 @@
-{{- if gt (int .Values.localnodes) 0 }}
+{{- if gt (int .Values.worker_count) 0 }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -10,7 +10,7 @@ metadata:
 spec:
   serviceName: "exaflow-worker"
   podManagementPolicy: Parallel
-  replicas: {{ .Values.localnodes }}
+  replicas: {{ .Values.worker_count }}
   selector:
     matchLabels:
       app: exaflow-worker
@@ -59,8 +59,6 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        - name: WORKER_ROLE
-          value: "LOCALWORKER"
         - name: FEDERATION
           value: {{ .Values.federation }}
         - name: LOG_LEVEL

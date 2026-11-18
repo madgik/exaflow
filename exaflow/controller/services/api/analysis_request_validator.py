@@ -23,7 +23,6 @@ from exaflow.controller.services.api.analysis_request_dtos import AnalysisReques
 from exaflow.controller.services.api.analysis_request_dtos import (
     AnalysisRequestSystemFlags,
 )
-from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.controller.services.worker_landscape_aggregator.worker_landscape_aggregator import (
     WorkerLandscapeAggregator,
 )
@@ -50,20 +49,11 @@ def validate_analysis_request(
     algorithm_name = analysis_request_dto.algorithm.name
     algorithm_specs = _get_algorithm_specs(algorithm_name, algorithms_specs)
 
-    # Validation datasets live on the global worker; without it they look
-    # missing, which would blame the request instead of the federation.
-    if (
-        analysis_request_dto.inputdata.validation_datasets
-        and worker_landscape_aggregator.get_global_worker() is None
-    ):
-        raise GlobalWorkerUnavailableError()
-
-    (
-        training_datasets,
-        validation_datasets,
-    ) = worker_landscape_aggregator.get_training_and_validation_datasets(
-        analysis_request_dto.inputdata.data_model
-    )
+    data_model = analysis_request_dto.inputdata.data_model
+    catalog = worker_landscape_aggregator.get_all_available_datasets_per_data_model()
+    if data_model not in catalog:
+        raise BadUserInput(f"Data model '{data_model}' does not exist.")
+    available_datasets = catalog[data_model]
     data_model_cdes = worker_landscape_aggregator.get_cdes(
         analysis_request_dto.inputdata.data_model
     )
@@ -71,8 +61,8 @@ def validate_analysis_request(
         analysis_request_dto=analysis_request_dto,
         algorithm_specs=algorithm_specs,
         preprocessing_steps_specs=preprocessing_steps_specs,
-        training_datasets=training_datasets,
-        validation_datasets=validation_datasets,
+        training_datasets=available_datasets,
+        validation_datasets=available_datasets,
         data_model_cdes=data_model_cdes,
         smpc_enabled=smpc_enabled,
         smpc_optional=smpc_optional,
@@ -177,6 +167,11 @@ def _validate_inputdata_base(
         algorithm_specification_requires_validation_datasets=algorithm_specification_requires_validation_datasets,
         validation_datasets=validation_datasets,
     )
+    overlap = set(inputdata.datasets).intersection(inputdata.validation_datasets or [])
+    if overlap:
+        raise BadUserInput(
+            f"Training and validation datasets overlap: {sorted(overlap)}"
+        )
     _validate_inputdata_filter(inputdata.data_model, inputdata.filters, data_model_cdes)
     _validate_source_variables(inputdata.variables, data_model_cdes)
 

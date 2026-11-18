@@ -491,7 +491,7 @@ def test_config_generation_preserves_rabbitmq_template_defaults_without_runtime_
     monkeypatch.setattr(tasks, "WORKERS_CONFIG_DIR", tmp_path / "workers")
     monkeypatch.setattr(tasks, "CONTROLLER_CONFIG_DIR", controller_dir)
     monkeypatch.setattr(
-        tasks, "CONTROLLER_LOCALWORKERS_CONFIG_FILE", controller_dir / "workers.json"
+        tasks, "CONTROLLER_WORKERS_CONFIG_FILE", controller_dir / "workers.json"
     )
     monkeypatch.setattr(tasks, "AGG_SERVER_CONFIG_DIR", tmp_path / "aggregation")
     monkeypatch.setenv("RABBITMQ_URL", "amqp://localhost")

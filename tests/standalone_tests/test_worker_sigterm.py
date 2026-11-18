@@ -33,7 +33,6 @@ def test_worker_process_exits_on_sigterm(tmp_path):
             "DATA_PATH": str(tmp_path),
             "DUCKDB_PATH": str(tmp_path / "data_models.duckdb"),
             "WORKER_IDENTIFIER": "sigterm-test",
-            "WORKER_ROLE": "localworker",
             "FEDERATION": "test",
             "LOG_LEVEL": "INFO",
             "FRAMEWORK_LOG_LEVEL": "INFO",

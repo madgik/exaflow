@@ -28,25 +28,17 @@ from exaflow.controller.services.api.analysis_request_dtos import (
     AnalysisPreprocessingStepDTO,
 )
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisRequestDTO
-from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.data_filters import FilterError
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import CommonDataElement
 from tests.standalone_tests.controller.asgi_client import controller_client
 
 DATA_MODEL = "dementia:0.1"
-_AVAILABLE_GLOBAL_WORKER = object()
 
 
 class FakeWorkerLandscapeAggregator:
-    def __init__(self, global_worker=_AVAILABLE_GLOBAL_WORKER):
-        self._global_worker = global_worker
-
-    def get_global_worker(self):
-        return self._global_worker
-
-    def get_training_and_validation_datasets(self, data_model):
-        return ["dataset_a"], ["validation_a"]
+    def get_all_available_datasets_per_data_model(self):
+        return {DATA_MODEL: ["dataset_a", "validation_a"]}
 
     def get_cdes(self, data_model):
         return _cdes()
@@ -92,13 +84,14 @@ def _cdes():
     }
 
 
-def _algorithm_spec(parameters=None):
+def _algorithm_spec(parameters=None, *, requires_validation_datasets=False):
     return AlgorithmSpecification(
         name="sample_algorithm",
         desc="sample",
         documentation="sample",
         label="Sample Algorithm",
         enabled=True,
+        requires_validation_datasets=requires_validation_datasets,
         y=InputDataSpecification(
             label="Outcome",
             desc="Outcome variable.",
@@ -120,11 +113,22 @@ def _algorithm_spec(parameters=None):
     )
 
 
-def _request(*, preprocessing=None, x=None, y=None, variables=None, parameters=None):
+def _request(
+    *,
+    data_model=DATA_MODEL,
+    datasets=None,
+    validation_datasets=None,
+    preprocessing=None,
+    x=None,
+    y=None,
+    variables=None,
+    parameters=None,
+):
     return AnalysisRequestDTO(
         inputdata=AnalysisInputDataDTO(
-            data_model=DATA_MODEL,
-            datasets=["dataset_a"],
+            data_model=data_model,
+            datasets=["dataset_a"] if datasets is None else datasets,
+            validation_datasets=validation_datasets,
             variables=variables or ["age", "gender", "diagnosis", "outcome"],
         ),
         preprocessing=preprocessing,
@@ -592,35 +596,88 @@ def test_preprocessing_parameter_rejects_zero_below_minimum():
     )
 
 
-def test_validation_datasets_without_global_worker_report_it_unavailable():
-    request = _request()
-    request = request.model_copy(
-        update={
-            "inputdata": request.inputdata.model_copy(
-                update={"validation_datasets": ["validation_a"]}
-            )
-        }
-    )
-
-    with pytest.raises(GlobalWorkerUnavailableError):
-        analysis_request_validator.validate_analysis_request(
-            analysis_request_dto=request,
-            algorithms_specs={"sample_algorithm": _algorithm_spec()},
-            preprocessing_steps_specs=_default_preprocessing_specs(),
-            worker_landscape_aggregator=FakeWorkerLandscapeAggregator(
-                global_worker=None
-            ),
-            smpc_enabled=False,
-            smpc_optional=False,
-        )
-
-
-def test_training_only_request_runs_without_global_worker():
+def test_training_only_request_uses_shared_catalog():
     analysis_request_validator.validate_analysis_request(
         analysis_request_dto=_request(),
         algorithms_specs={"sample_algorithm": _algorithm_spec()},
         preprocessing_steps_specs=_default_preprocessing_specs(),
-        worker_landscape_aggregator=FakeWorkerLandscapeAggregator(global_worker=None),
+        worker_landscape_aggregator=FakeWorkerLandscapeAggregator(),
         smpc_enabled=False,
         smpc_optional=False,
+    )
+
+
+def test_unknown_data_model_is_rejected():
+    with pytest.raises(BadUserInput) as exc_info:
+        _validate(_request(data_model="unknown:0.1"))
+
+    assert str(exc_info.value) == "Data model 'unknown:0.1' does not exist."
+
+
+def test_training_and_validation_datasets_use_shared_catalog():
+    _validate(
+        _request(datasets=["validation_a"], validation_datasets=["dataset_a"]),
+        algorithms_specs={
+            "sample_algorithm": _algorithm_spec(requires_validation_datasets=True)
+        },
+    )
+
+
+@pytest.mark.parametrize(
+    "validation_datasets",
+    [["missing_dataset"], ["dataset_a", "missing_dataset"]],
+)
+def test_unknown_validation_dataset_is_rejected(validation_datasets):
+    with pytest.raises(BadUserInput) as exc_info:
+        _validate(
+            _request(validation_datasets=validation_datasets),
+            algorithms_specs={
+                "sample_algorithm": _algorithm_spec(requires_validation_datasets=True)
+            },
+        )
+
+    assert str(exc_info.value) == (
+        f"Validation Datasets:'['missing_dataset']' could not be found "
+        f"for data_model:{DATA_MODEL}"
+    )
+
+
+def test_overlapping_training_and_validation_datasets_are_rejected():
+    with pytest.raises(BadUserInput) as exc_info:
+        _validate(
+            _request(validation_datasets=["dataset_a"]),
+            algorithms_specs={
+                "sample_algorithm": _algorithm_spec(requires_validation_datasets=True)
+            },
+        )
+
+    assert str(exc_info.value) == (
+        "Training and validation datasets overlap: ['dataset_a']"
+    )
+
+
+def test_unknown_training_dataset_is_reported_before_overlap():
+    with pytest.raises(BadUserInput) as exc_info:
+        _validate(
+            _request(
+                datasets=["missing_dataset"],
+                validation_datasets=["missing_dataset"],
+            ),
+            algorithms_specs={
+                "sample_algorithm": _algorithm_spec(requires_validation_datasets=True)
+            },
+        )
+
+    assert str(exc_info.value) == (
+        f"Datasets:'['missing_dataset']' could not be found for data_model:{DATA_MODEL}"
+    )
+
+
+def test_missing_validation_flow_is_reported_before_overlap():
+    with pytest.raises(BadUserInput) as exc_info:
+        _validate(_request(validation_datasets=["dataset_a"]))
+
+    assert str(exc_info.value) == (
+        "The algorithm does not have a validation flow, but 'validation_datasets' "
+        "were provided in the 'inputdata'."
     )

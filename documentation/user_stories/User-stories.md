@@ -2,13 +2,12 @@
 
 #### Definitions
 
-* In what follows, an **algorithm** is understood as being a *statistics* or
-  *machine learning* algorithm which typically expects some data tables as input and outputs a *model* and/or some *
-  statistics*. This model can be of interest to the user on its own, or can be used in further computations.
-* **Federated** algorithm means that the work is divided into smaller tasks, each executed on a different **worker** of
-  the federation. The primary consideration of this design is the preservation of data privacy. One worker is special,
-  named `global worker`, and doesn't contain any primary data. All other workers, named `local workers` contain their own data
-  which they are not allowed to share with other workers. The following diagram illustrates the execution flow of a
+- In what follows, an **algorithm** is understood as being a *statistics* or
+  *machine learning* algorithm which typically expects some data tables as input and outputs a *model* and/or some \*
+  statistics\*. This model can be of interest to the user on its own, or can be used in further computations.
+- **Federated** algorithm means that the work is divided into smaller tasks, each executed on a different **worker** of
+  the federation. The primary consideration of this design is the preservation of data privacy. Workers contain their own data
+  which they are not allowed to share with other workers. The controller coordinates aggregated computations. The following diagram illustrates the execution flow of a
   federated algorithm.
 
 ![federated algorithm activity diagram](federated-algorithm.png)
@@ -58,8 +57,8 @@ A *medical researcher* wants to use a previously trained model to perform
 A *medical researcher* wants to **cross-validate** her models in order to asses the quality of fit. The user wants to
 choose among multiple CV strategies.
 
-* *k-fold* CV, medical-center-agnostic.
-* *Cluster* CV where a cluster here corresponds a medical center.
+- *k-fold* CV, medical-center-agnostic.
+- *Cluster* CV where a cluster here corresponds a medical center.
 
 ![k-fold cv diagram](7-cvkfold.png)
 *k-fold cross-validation*
@@ -80,9 +79,9 @@ dataset, the user wants to select the
 
 A *medical researcher* wants to be able to **pre-process data** using a variety of tools.
 
-* In simple cases the pre-processing can be done **locally** in each medical center. *E.g.* creating interaction
+- In simple cases the pre-processing can be done **locally** in each medical center. *E.g.* creating interaction
   terms, *i.e.* creating new columns as products of existing ones.
-* In other cases the pre-processing itself needs to happen **globally**.
+- In other cases the pre-processing itself needs to happen **globally**.
   *E.g.* centering or standardizing data.
 
 ![local transform diagram](3-transformation-local.png)
@@ -118,13 +117,13 @@ data-views, transformed datasets etc.
 
 A third party algorithm developer (as opposed to the developer of native algorithms).
 
-* An **algorithm developer** wants to supply the federation with her own algorithm, written in some machine learning
+- An **algorithm developer** wants to supply the federation with her own algorithm, written in some machine learning
   friendly language (python, R, ...). Ideally:
-    * The user is agnostic of the inner workings of the system, only being aware of the existence of many local and one
-      global workers.
-    * The system enforces privacy restrictions independently of how the algorithm is written.
+  - The user is agnostic of the inner workings of the system, only being aware of the existence of multiple workers and a controller.
+  - The system enforces privacy restrictions independently of how the algorithm is written.
 
----
+______________________________________________________________________
+
 <b id="f1">1</b> A **medical center** is understood as being a member of the federation. It stores and contributes data
 in the form of medical records as well as some computing power. It is potentially geographically distinct from other
-medical centers.[^](#a1) 
+medical centers.[^](#a1)

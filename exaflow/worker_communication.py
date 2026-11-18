@@ -1,6 +1,4 @@
 from abc import ABC
-from enum import Enum
-from enum import unique
 from ipaddress import IPv4Address
 from typing import Any
 from typing import Dict
@@ -76,15 +74,6 @@ class BadUserInput(Exception):
         self.message = message
 
 
-# ~~~~~~~~~~~~~~~~~~~~ Enums ~~~~~~~~~~~~~~~~~~~~ #
-
-
-@unique
-class WorkerRole(str, Enum):
-    GLOBALWORKER = "GLOBALWORKER"
-    LOCALWORKER = "LOCALWORKER"
-
-
 # ~~~~~~~~~~~~~~~~~~~ DTOs ~~~~~~~~~~~~~~~~~~~~~~ #
 
 
@@ -94,7 +83,6 @@ class ImmutableBaseModel(BaseModel, ABC):
 
 class WorkerInfo(BaseModel):
     id: str
-    role: WorkerRole
     ip: IPv4Address
     port: int
     data_folder: Optional[str] = None

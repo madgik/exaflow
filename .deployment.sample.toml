@@ -42,18 +42,11 @@ enabled = false
 # privacy_budget = 0.1
 
 [[workers]]
-id = "globalworker"
-role = "GLOBALWORKER"
-grpc_port=5670
-
-[[workers]]
 id = "localworker1"
-role = "LOCALWORKER"
 grpc_port=5671
 smpc_client_port=9001
 
 [[workers]]
 id = "localworker2"
-role = "LOCALWORKER"
 grpc_port=5672
 smpc_client_port=9002

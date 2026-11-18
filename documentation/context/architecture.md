@@ -135,7 +135,7 @@ worker gRPC thread, and an `Aggregate` call holds an aggregation server thread,
 while it waits for the other workers. Both pools are therefore derived from
 `max_concurrent_experiments`: workers get `max_concurrent_experiments + 4`
 gRPC threads and the aggregation server gets `max_concurrent_experiments`
-threads per local worker, in Helm and in `inv create-configs`. Smaller pools
+threads per worker, in Helm and in `inv create-configs`. Smaller pools
 let partial steps of different analyses hold every thread until the
 aggregation wait times out.
 

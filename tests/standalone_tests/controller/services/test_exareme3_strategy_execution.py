@@ -41,7 +41,7 @@ def test_execute_runs_algorithm_off_the_event_loop_thread(monkeypatch):
     strategy._request_id = "req"
     strategy._context_id = "ctx"
     strategy._logger = logging.getLogger("test")
-    strategy._local_worker_tasks_handlers = []
+    strategy._worker_tasks_handlers = []
     strategy._controller = types.SimpleNamespace(
         worker_landscape_aggregator=types.SimpleNamespace(
             get_metadata=lambda data_model, variable_names: {}

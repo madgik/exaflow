@@ -21,7 +21,7 @@ def _make_aggregator(update_interval=60):
         update_interval=update_interval,
         tasks_timeout=1,
         deployment_type=DeploymentType.LOCAL,
-        localworkers=AttrDict({}),
+        workers=AttrDict({}),
     )
 
 

@@ -23,7 +23,7 @@ from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 from google.protobuf import wrappers_pb2 as google_dot_protobuf_dot_wrappers__pb2
 
 DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
-    b'\n"exaflow/protos/worker/worker.proto\x12\x12\x65xaflow.worker.api\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1egoogle/protobuf/wrappers.proto"\x8d\x01\n\nWorkerInfo\x12\n\n\x02id\x18\x01 \x01(\t\x12,\n\x04role\x18\x02 \x01(\x0e\x32\x1e.exaflow.worker.api.WorkerRole\x12\n\n\x02ip\x18\x03 \x01(\t\x12\x0c\n\x04port\x18\x04 \x01(\x05\x12\x13\n\x0b\x64\x61ta_folder\x18\x05 \x01(\t\x12\x16\n\x0e\x61uto_load_data\x18\x06 \x01(\x08"*\n\x14GetWorkerInfoRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t"G\n\x15GetWorkerInfoResponse\x12.\n\x06worker\x18\x01 \x01(\x0b\x32\x1e.exaflow.worker.api.WorkerInfo"5\n\x1fListDatasetsPerDataModelRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t"g\n ListDatasetsPerDataModelResponse\x12\x43\n\rdatasets_info\x18\x01 \x03(\x0b\x32,.exaflow.worker.api.DatasetsInfoPerDataModel"a\n\x18\x44\x61tasetsInfoPerDataModel\x12\x12\n\ndata_model\x18\x01 \x01(\t\x12\x31\n\x08\x64\x61tasets\x18\x02 \x03(\x0b\x32\x1f.exaflow.worker.api.DatasetInfo"=\n\x0b\x44\x61tasetInfo\x12\x0c\n\x04\x63ode\x18\x01 \x01(\t\x12\r\n\x05label\x18\x02 \x01(\t\x12\x11\n\tvariables\x18\x03 \x03(\t"=\n\x13GetDataModelRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t\x12\x12\n\ndata_model\x18\x02 \x01(\t"P\n\x18GetDataModelCdesResponse\x12\x34\n\x04\x63\x64\x65s\x18\x01 \x01(\x0b\x32&.exaflow.worker.api.CommonDataElements"\xae\x01\n\x12\x43ommonDataElements\x12\x42\n\x06values\x18\x01 \x03(\x0b\x32\x32.exaflow.worker.api.CommonDataElements.ValuesEntry\x1aT\n\x0bValuesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x34\n\x05value\x18\x02 \x01(\x0b\x32%.exaflow.worker.api.CommonDataElement:\x02\x38\x01"\xd0\x02\n\x11\x43ommonDataElement\x12\x0c\n\x04\x63ode\x18\x01 \x01(\t\x12\r\n\x05label\x18\x02 \x01(\t\x12\x10\n\x08sql_type\x18\x03 \x01(\t\x12\x16\n\x0eis_categorical\x18\x04 \x01(\x08\x12M\n\x0c\x65numerations\x18\x05 \x03(\x0b\x32\x37.exaflow.worker.api.CommonDataElement.EnumerationsEntry\x12)\n\x03min\x18\x06 \x01(\x0b\x32\x1c.google.protobuf.DoubleValue\x12)\n\x03max\x18\x07 \x01(\x0b\x32\x1c.google.protobuf.DoubleValue\x12\x1a\n\x12\x65numerations_order\x18\x08 \x03(\t\x1a\x33\n\x11\x45numerationsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01"]\n\x1eGetDataModelAttributesResponse\x12;\n\nattributes\x18\x01 \x01(\x0b\x32\'.exaflow.worker.api.DataModelAttributes"P\n\x13\x44\x61taModelAttributes\x12\x0c\n\x04tags\x18\x01 \x03(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct":\n\x12HealthcheckRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t\x12\x10\n\x08\x63heck_db\x18\x02 \x01(\x08"!\n\x13HealthcheckResponse\x12\n\n\x02ok\x18\x01 \x01(\x08"\x95\x01\n\rRunUdfRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t\x12\x18\n\x10udf_registry_key\x18\x02 \x01(\t\x12(\n\x07kw_args\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12,\n\x0bsystem_args\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct"7\n\x0eRunUdfResponse\x12\x0e\n\x06result\x18\x01 \x01(\x0c\x12\x15\n\rresult_format\x18\x02 \x01(\t*L\n\nWorkerRole\x12\x1b\n\x17WORKER_ROLE_UNSPECIFIED\x10\x00\x12\x10\n\x0cGLOBALWORKER\x10\x01\x12\x0f\n\x0bLOCALWORKER\x10\x02\x32\x90\x05\n\rWorkerService\x12\x64\n\rGetWorkerInfo\x12(.exaflow.worker.api.GetWorkerInfoRequest\x1a).exaflow.worker.api.GetWorkerInfoResponse\x12\x85\x01\n\x18ListDatasetsPerDataModel\x12\x33.exaflow.worker.api.ListDatasetsPerDataModelRequest\x1a\x34.exaflow.worker.api.ListDatasetsPerDataModelResponse\x12i\n\x10GetDataModelCdes\x12\'.exaflow.worker.api.GetDataModelRequest\x1a,.exaflow.worker.api.GetDataModelCdesResponse\x12u\n\x16GetDataModelAttributes\x12\'.exaflow.worker.api.GetDataModelRequest\x1a\x32.exaflow.worker.api.GetDataModelAttributesResponse\x12^\n\x0bHealthcheck\x12&.exaflow.worker.api.HealthcheckRequest\x1a\'.exaflow.worker.api.HealthcheckResponse\x12O\n\x06RunUdf\x12!.exaflow.worker.api.RunUdfRequest\x1a".exaflow.worker.api.RunUdfResponseb\x06proto3'
+    b'\n"exaflow/protos/worker/worker.proto\x12\x12\x65xaflow.worker.api\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1egoogle/protobuf/wrappers.proto"_\n\nWorkerInfo\x12\n\n\x02id\x18\x01 \x01(\t\x12\n\n\x02ip\x18\x03 \x01(\t\x12\x0c\n\x04port\x18\x04 \x01(\x05\x12\x13\n\x0b\x64\x61ta_folder\x18\x05 \x01(\t\x12\x16\n\x0e\x61uto_load_data\x18\x06 \x01(\x08"*\n\x14GetWorkerInfoRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t"G\n\x15GetWorkerInfoResponse\x12.\n\x06worker\x18\x01 \x01(\x0b\x32\x1e.exaflow.worker.api.WorkerInfo"5\n\x1fListDatasetsPerDataModelRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t"g\n ListDatasetsPerDataModelResponse\x12\x43\n\rdatasets_info\x18\x01 \x03(\x0b\x32,.exaflow.worker.api.DatasetsInfoPerDataModel"a\n\x18\x44\x61tasetsInfoPerDataModel\x12\x12\n\ndata_model\x18\x01 \x01(\t\x12\x31\n\x08\x64\x61tasets\x18\x02 \x03(\x0b\x32\x1f.exaflow.worker.api.DatasetInfo"=\n\x0b\x44\x61tasetInfo\x12\x0c\n\x04\x63ode\x18\x01 \x01(\t\x12\r\n\x05label\x18\x02 \x01(\t\x12\x11\n\tvariables\x18\x03 \x03(\t"=\n\x13GetDataModelRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t\x12\x12\n\ndata_model\x18\x02 \x01(\t"P\n\x18GetDataModelCdesResponse\x12\x34\n\x04\x63\x64\x65s\x18\x01 \x01(\x0b\x32&.exaflow.worker.api.CommonDataElements"\xae\x01\n\x12\x43ommonDataElements\x12\x42\n\x06values\x18\x01 \x03(\x0b\x32\x32.exaflow.worker.api.CommonDataElements.ValuesEntry\x1aT\n\x0bValuesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x34\n\x05value\x18\x02 \x01(\x0b\x32%.exaflow.worker.api.CommonDataElement:\x02\x38\x01"\xd0\x02\n\x11\x43ommonDataElement\x12\x0c\n\x04\x63ode\x18\x01 \x01(\t\x12\r\n\x05label\x18\x02 \x01(\t\x12\x10\n\x08sql_type\x18\x03 \x01(\t\x12\x16\n\x0eis_categorical\x18\x04 \x01(\x08\x12M\n\x0c\x65numerations\x18\x05 \x03(\x0b\x32\x37.exaflow.worker.api.CommonDataElement.EnumerationsEntry\x12)\n\x03min\x18\x06 \x01(\x0b\x32\x1c.google.protobuf.DoubleValue\x12)\n\x03max\x18\x07 \x01(\x0b\x32\x1c.google.protobuf.DoubleValue\x12\x1a\n\x12\x65numerations_order\x18\x08 \x03(\t\x1a\x33\n\x11\x45numerationsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01"]\n\x1eGetDataModelAttributesResponse\x12;\n\nattributes\x18\x01 \x01(\x0b\x32\'.exaflow.worker.api.DataModelAttributes"P\n\x13\x44\x61taModelAttributes\x12\x0c\n\x04tags\x18\x01 \x03(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct":\n\x12HealthcheckRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t\x12\x10\n\x08\x63heck_db\x18\x02 \x01(\x08"!\n\x13HealthcheckResponse\x12\n\n\x02ok\x18\x01 \x01(\x08"\x95\x01\n\rRunUdfRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t\x12\x18\n\x10udf_registry_key\x18\x02 \x01(\t\x12(\n\x07kw_args\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12,\n\x0bsystem_args\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct"7\n\x0eRunUdfResponse\x12\x0e\n\x06result\x18\x01 \x01(\x0c\x12\x15\n\rresult_format\x18\x02 \x01(\t2\x90\x05\n\rWorkerService\x12\x64\n\rGetWorkerInfo\x12(.exaflow.worker.api.GetWorkerInfoRequest\x1a).exaflow.worker.api.GetWorkerInfoResponse\x12\x85\x01\n\x18ListDatasetsPerDataModel\x12\x33.exaflow.worker.api.ListDatasetsPerDataModelRequest\x1a\x34.exaflow.worker.api.ListDatasetsPerDataModelResponse\x12i\n\x10GetDataModelCdes\x12\'.exaflow.worker.api.GetDataModelRequest\x1a,.exaflow.worker.api.GetDataModelCdesResponse\x12u\n\x16GetDataModelAttributes\x12\'.exaflow.worker.api.GetDataModelRequest\x1a\x32.exaflow.worker.api.GetDataModelAttributesResponse\x12^\n\x0bHealthcheck\x12&.exaflow.worker.api.HealthcheckRequest\x1a\'.exaflow.worker.api.HealthcheckResponse\x12O\n\x06RunUdf\x12!.exaflow.worker.api.RunUdfRequest\x1a".exaflow.worker.api.RunUdfResponseb\x06proto3'
 )
 
 _globals = globals()
@@ -37,46 +37,44 @@ if not _descriptor._USE_C_DESCRIPTORS:
     _globals["_COMMONDATAELEMENTS_VALUESENTRY"]._serialized_options = b"8\001"
     _globals["_COMMONDATAELEMENT_ENUMERATIONSENTRY"]._loaded_options = None
     _globals["_COMMONDATAELEMENT_ENUMERATIONSENTRY"]._serialized_options = b"8\001"
-    _globals["_WORKERROLE"]._serialized_start = 1845
-    _globals["_WORKERROLE"]._serialized_end = 1921
-    _globals["_WORKERINFO"]._serialized_start = 121
-    _globals["_WORKERINFO"]._serialized_end = 262
-    _globals["_GETWORKERINFOREQUEST"]._serialized_start = 264
-    _globals["_GETWORKERINFOREQUEST"]._serialized_end = 306
-    _globals["_GETWORKERINFORESPONSE"]._serialized_start = 308
-    _globals["_GETWORKERINFORESPONSE"]._serialized_end = 379
-    _globals["_LISTDATASETSPERDATAMODELREQUEST"]._serialized_start = 381
-    _globals["_LISTDATASETSPERDATAMODELREQUEST"]._serialized_end = 434
-    _globals["_LISTDATASETSPERDATAMODELRESPONSE"]._serialized_start = 436
-    _globals["_LISTDATASETSPERDATAMODELRESPONSE"]._serialized_end = 539
-    _globals["_DATASETSINFOPERDATAMODEL"]._serialized_start = 541
-    _globals["_DATASETSINFOPERDATAMODEL"]._serialized_end = 638
-    _globals["_DATASETINFO"]._serialized_start = 640
-    _globals["_DATASETINFO"]._serialized_end = 701
-    _globals["_GETDATAMODELREQUEST"]._serialized_start = 703
-    _globals["_GETDATAMODELREQUEST"]._serialized_end = 764
-    _globals["_GETDATAMODELCDESRESPONSE"]._serialized_start = 766
-    _globals["_GETDATAMODELCDESRESPONSE"]._serialized_end = 846
-    _globals["_COMMONDATAELEMENTS"]._serialized_start = 849
-    _globals["_COMMONDATAELEMENTS"]._serialized_end = 1023
-    _globals["_COMMONDATAELEMENTS_VALUESENTRY"]._serialized_start = 939
-    _globals["_COMMONDATAELEMENTS_VALUESENTRY"]._serialized_end = 1023
-    _globals["_COMMONDATAELEMENT"]._serialized_start = 1026
-    _globals["_COMMONDATAELEMENT"]._serialized_end = 1362
-    _globals["_COMMONDATAELEMENT_ENUMERATIONSENTRY"]._serialized_start = 1311
-    _globals["_COMMONDATAELEMENT_ENUMERATIONSENTRY"]._serialized_end = 1362
-    _globals["_GETDATAMODELATTRIBUTESRESPONSE"]._serialized_start = 1364
-    _globals["_GETDATAMODELATTRIBUTESRESPONSE"]._serialized_end = 1457
-    _globals["_DATAMODELATTRIBUTES"]._serialized_start = 1459
-    _globals["_DATAMODELATTRIBUTES"]._serialized_end = 1539
-    _globals["_HEALTHCHECKREQUEST"]._serialized_start = 1541
-    _globals["_HEALTHCHECKREQUEST"]._serialized_end = 1599
-    _globals["_HEALTHCHECKRESPONSE"]._serialized_start = 1601
-    _globals["_HEALTHCHECKRESPONSE"]._serialized_end = 1634
-    _globals["_RUNUDFREQUEST"]._serialized_start = 1637
-    _globals["_RUNUDFREQUEST"]._serialized_end = 1786
-    _globals["_RUNUDFRESPONSE"]._serialized_start = 1788
-    _globals["_RUNUDFRESPONSE"]._serialized_end = 1843
-    _globals["_WORKERSERVICE"]._serialized_start = 1924
-    _globals["_WORKERSERVICE"]._serialized_end = 2580
+    _globals["_WORKERINFO"]._serialized_start = 120
+    _globals["_WORKERINFO"]._serialized_end = 215
+    _globals["_GETWORKERINFOREQUEST"]._serialized_start = 217
+    _globals["_GETWORKERINFOREQUEST"]._serialized_end = 259
+    _globals["_GETWORKERINFORESPONSE"]._serialized_start = 261
+    _globals["_GETWORKERINFORESPONSE"]._serialized_end = 332
+    _globals["_LISTDATASETSPERDATAMODELREQUEST"]._serialized_start = 334
+    _globals["_LISTDATASETSPERDATAMODELREQUEST"]._serialized_end = 387
+    _globals["_LISTDATASETSPERDATAMODELRESPONSE"]._serialized_start = 389
+    _globals["_LISTDATASETSPERDATAMODELRESPONSE"]._serialized_end = 492
+    _globals["_DATASETSINFOPERDATAMODEL"]._serialized_start = 494
+    _globals["_DATASETSINFOPERDATAMODEL"]._serialized_end = 591
+    _globals["_DATASETINFO"]._serialized_start = 593
+    _globals["_DATASETINFO"]._serialized_end = 654
+    _globals["_GETDATAMODELREQUEST"]._serialized_start = 656
+    _globals["_GETDATAMODELREQUEST"]._serialized_end = 717
+    _globals["_GETDATAMODELCDESRESPONSE"]._serialized_start = 719
+    _globals["_GETDATAMODELCDESRESPONSE"]._serialized_end = 799
+    _globals["_COMMONDATAELEMENTS"]._serialized_start = 802
+    _globals["_COMMONDATAELEMENTS"]._serialized_end = 976
+    _globals["_COMMONDATAELEMENTS_VALUESENTRY"]._serialized_start = 892
+    _globals["_COMMONDATAELEMENTS_VALUESENTRY"]._serialized_end = 976
+    _globals["_COMMONDATAELEMENT"]._serialized_start = 979
+    _globals["_COMMONDATAELEMENT"]._serialized_end = 1315
+    _globals["_COMMONDATAELEMENT_ENUMERATIONSENTRY"]._serialized_start = 1264
+    _globals["_COMMONDATAELEMENT_ENUMERATIONSENTRY"]._serialized_end = 1315
+    _globals["_GETDATAMODELATTRIBUTESRESPONSE"]._serialized_start = 1317
+    _globals["_GETDATAMODELATTRIBUTESRESPONSE"]._serialized_end = 1410
+    _globals["_DATAMODELATTRIBUTES"]._serialized_start = 1412
+    _globals["_DATAMODELATTRIBUTES"]._serialized_end = 1492
+    _globals["_HEALTHCHECKREQUEST"]._serialized_start = 1494
+    _globals["_HEALTHCHECKREQUEST"]._serialized_end = 1552
+    _globals["_HEALTHCHECKRESPONSE"]._serialized_start = 1554
+    _globals["_HEALTHCHECKRESPONSE"]._serialized_end = 1587
+    _globals["_RUNUDFREQUEST"]._serialized_start = 1590
+    _globals["_RUNUDFREQUEST"]._serialized_end = 1739
+    _globals["_RUNUDFRESPONSE"]._serialized_start = 1741
+    _globals["_RUNUDFRESPONSE"]._serialized_end = 1796
+    _globals["_WORKERSERVICE"]._serialized_start = 1799
+    _globals["_WORKERSERVICE"]._serialized_end = 2455
 # @@protoc_insertion_point(module_scope)

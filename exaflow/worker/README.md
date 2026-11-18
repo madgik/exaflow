@@ -18,8 +18,7 @@ in `exaflow/worker/config.toml`.
 Create an env_file with the following variables:
 
 ```
-WORKER_IDENTIFIER=globalworker
-WORKER_ROLE=GLOBALWORKER
+WORKER_IDENTIFIER=localworker1
 FEDERATION=dementia
 LOG_LEVEL=INFO
 FRAMEWORK_LOG_LEVEL=INFO
@@ -37,7 +36,6 @@ SMPC_ENABLED=false
 SMPC_OPTIONAL=false
 SMPC_CLIENT_ID=
 SMPC_CLIENT_ADDRESS=
-SMPC_COORDINATOR_ADDRESS=
 ```
 
 `DATA_PATH` should point at the directory containing the input CSVs. Set

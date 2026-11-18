@@ -15,7 +15,6 @@ from exaflow.protos.worker import worker_pb2_grpc
 from exaflow.worker import config as worker_config
 from exaflow.worker.grpc_server import WorkerService
 from exaflow.worker.utils import duck_db_csv_loader
-from exaflow.worker_communication import WorkerRole
 
 
 def _allocate_port() -> int:
@@ -32,7 +31,6 @@ def worker_test_config(monkeypatch, tmp_path_factory) -> dict[str, str | int]:
     port = _allocate_port()
 
     monkeypatch.setattr(worker_config, "identifier", "test-worker")
-    monkeypatch.setattr(worker_config, "role", WorkerRole.GLOBALWORKER)
     monkeypatch.setattr(worker_config, "federation", "pytest-federation", raising=False)
     monkeypatch.setattr(worker_config, "data_path", str(data_path))
     worker_config.duckdb.path = str(duckdb_path)

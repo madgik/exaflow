@@ -15,8 +15,6 @@ nodes:
   extraMounts:
   - hostPath: ./tests/prod_env_tests/deployment_configs/kind_configuration/master/hostname
     containerPath: /etc/hostname
-  - hostPath: ./tests/test_data/.data_paths/globalworker
-    containerPath: /opt/exaflow/globalworker/csvs
 
 - role: worker
   extraMounts:

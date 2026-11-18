@@ -26,7 +26,7 @@ from exaflow.protos.aggregation_server import aggregation_server_pb2 as agg_pb2
 
 class Exareme3Strategy(AlgorithmExecutionStrategyI):
     _controller: Exareme3Controller
-    _local_worker_tasks_handlers: List[Exareme3TasksHandler]
+    _worker_tasks_handlers: List[Exareme3TasksHandler]
 
     @staticmethod
     def _run_preprocessing_steps(
@@ -87,7 +87,7 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
         engine = Exareme3AlgorithmFlowEngineInterface(
             request_id=self._request_id,
             context_id=self._context_id,
-            tasks_handlers=self._local_worker_tasks_handlers,
+            tasks_handlers=self._worker_tasks_handlers,
             inputdata=source_inputdata,
             metadata=metadata,
             preprocessing=preprocessing_payload,
@@ -109,7 +109,7 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
             self._algorithm_name,
             transformed_inputdata.datasets,
             self._analysis_request_dto.algorithm.parameters,
-            [h.worker_id for h in self._local_worker_tasks_handlers],
+            [h.worker_id for h in self._worker_tasks_handlers],
         )
         # Worker calls block. Run them on the analysis pool so /livez stays
         # responsive. Wait for the thread on cancel so cleanup cannot race it.
@@ -142,7 +142,7 @@ class Exareme3WithAggregationServerStrategy(Exareme3Strategy):
                 nonlocal configured, cleanup_deadline
                 try:
                     status = agg_client.configure(
-                        num_workers=len(self._local_worker_tasks_handlers),
+                        num_workers=len(self._worker_tasks_handlers),
                         timeout=deadline,
                     )
                 except (grpc.RpcError, ControllerShuttingDownError):

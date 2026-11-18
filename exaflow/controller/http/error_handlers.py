@@ -10,7 +10,6 @@ from exaflow.controller.logger import get_background_service_logger
 from exaflow.controller.services.analysis_execution import AnalysisCapacityExceeded
 from exaflow.controller.services.api.analysis_request_validator import BadRequest
 from exaflow.controller.services.errors import ControllerShuttingDownError
-from exaflow.controller.services.errors import GlobalWorkerUnavailableError
 from exaflow.controller.services.errors import WorkerTaskTimeoutError
 from exaflow.controller.services.errors import WorkerUnresponsiveError
 from exaflow.controller.worker_client.app import WorkerMessageTooLargeError
@@ -44,10 +43,6 @@ class HTTPStatusCode(enum.IntEnum):
 
 ERROR_RESPONSES = {
     AnalysisCapacityExceeded: (HTTPStatusCode.SERVICE_UNAVAILABLE, logging.INFO),
-    GlobalWorkerUnavailableError: (
-        HTTPStatusCode.SERVICE_UNAVAILABLE,
-        logging.ERROR,
-    ),
     ControllerShuttingDownError: (
         HTTPStatusCode.SERVICE_UNAVAILABLE,
         logging.INFO,

@@ -300,3 +300,5 @@ wiring, producer examples, and test-broker provisioning are documented in
 uv run python examples/rabbitmq_analysis.py analysis-request.json
 uv run pytest -q tests/standalone_tests/controller/rabbitmq
 ```
+
+Fresh deployments use controller [workers] and workers_config.json; the Helm worker count is worker_count. Build fixtures with `uv run python tests/worker_data_paths_builder.py --workers localworker1 localworker2`. Test fixtures are assigned to the first listed worker.

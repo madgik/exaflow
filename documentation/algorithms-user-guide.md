@@ -40,9 +40,8 @@ decentralized data sources.
 ## System Overview
 
 Exaflow consists of a controller service plus worker services distributed across
-remote sites. There are multiple local workers and a single global worker. Local
-workers host primary data sources, while the global worker performs global
-computations coordinated by the controller.
+remote sites. Workers host primary data sources. The controller coordinates
+computation and combines aggregates, using the aggregation server when required.
 
 # Getting started
 
@@ -50,10 +49,9 @@ computations coordinated by the controller.
 
 In the highest level, a federated algorithm is composed of three ingredients.
 Local computations, global computations and the algorithm flow. A local
-computation takes places in each local worker and usually produces some aggregate
-of the primary data found in the local worker. A global computation takes place
-in a special worker called the global worker, and usually consolidates the local
-aggregates into a global aggregate. Finally, the algorithm flow is responsible
+computation takes places in each worker and usually produces some aggregate
+of the primary data found in the worker. A global computation takes place
+in the controller or aggregation server and consolidates worker aggregates. Finally, the algorithm flow is responsible
 for coordinating these computations and the data exchange between workers.
 
 ## Writing a federated algorithm
@@ -85,13 +83,13 @@ def mean_local(local_data):
     n = len(local_data)
 
     # Pack results into single dictionary which will
-    # be transferred to global worker
+    # be combined by the controller
     results = {"sx": sx, "n": n}
     return results
 ```
 
 The result packs the two aggregates, `sx` and `n` into a dictionary. A separate
-instance of this function will run on each local worker, so `sx` and `n` are
+instance of this function will run on each worker, so `sx` and `n` are
 different for each worker and reflect each worker's local data.
 
 #### Global computations
@@ -118,8 +116,8 @@ def mean_global(local_results):
 
 The algorithm flow coordinates local and global computations, as well as the
 exchange of data between workers. We can write the algorithm flow as a python function
-`run` that calls `mean_local` on all local workers and then calls `mean_global` on the
-global worker, passing the results of the local computations.
+`run` that calls `mean_local` on all workers and then calls `mean_global` on the
+controller, passing the results of the worker computations.
 
 ```python
 def run(all_data):
@@ -489,7 +487,7 @@ squares (TSS) is given by
 ```
 
 We might think that we have to compute $\\hat{y}$ in a single round, then share the
-result with the local workers, and finally compute the TSS in a second round.
+result with the workers, and finally compute the TSS in a second round.
 But in fact, the whole computation can be done in a single round. We first develop
 the square of the difference.
 
@@ -505,7 +503,7 @@ round, instead of two.
 ## Privacy
 
 Privacy is a very subtle subject. In the context of federated analytics it
-means to protect individual datapoints residing in local workers, as these might
+means to protect individual datapoints residing in workers, as these might
 correspond to a person's sensitive personal data. Exaflow allows the user to
 learn something about a large group of individuals through statistics, but
 tries to prevent any individual's information to leak.
@@ -523,7 +521,7 @@ around 10) and the algorithm writer has no control over it.
 #### Share only aggregates
 
 The most important guideline you should follow, as an algorithm writer, is to
-allow local workers to share only aggregates of the sensitive data they hold, and
+allow workers to share only aggregates of the sensitive data they hold, and
 never the actual data! Every variable in the database contains multiple values,
 one for each individual. When some variable is involved in a computation we
 must make sure that we only share the result of some function that aggregates

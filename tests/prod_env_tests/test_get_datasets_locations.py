@@ -20,7 +20,7 @@ def expected_datasets_locations():
             "desd-synthdata7": "localworker2",
             "desd-synthdata8": "localworker1",
             "desd-synthdata9": "localworker2",
-            "desd-synthdata_test": "globalworker",
+            "desd-synthdata_test": "localworker3",
             "edsd0": "localworker3",
             "edsd1": "localworker1",
             "edsd2": "localworker2",
@@ -31,7 +31,7 @@ def expected_datasets_locations():
             "edsd7": "localworker1",
             "edsd8": "localworker2",
             "edsd9": "localworker1",
-            "edsd_test": "globalworker",
+            "edsd_test": "localworker3",
             "ppmi0": "localworker3",
             "ppmi1": "localworker2",
             "ppmi2": "localworker1",
@@ -42,13 +42,13 @@ def expected_datasets_locations():
             "ppmi7": "localworker2",
             "ppmi8": "localworker1",
             "ppmi9": "localworker2",
-            "ppmi_test": "globalworker",
+            "ppmi_test": "localworker3",
         },
         "longitudinal_dementia:0.1": {
             "longitudinal_dementia0": "localworker3",
             "longitudinal_dementia1": "localworker2",
             "longitudinal_dementia2": "localworker1",
-            "longitudinal_dementia_test": "globalworker",
+            "longitudinal_dementia_test": "localworker3",
         },
         "tbi:0.1": {
             "dummy_tbi0": "localworker3",
@@ -61,7 +61,7 @@ def expected_datasets_locations():
             "dummy_tbi7": "localworker2",
             "dummy_tbi8": "localworker1",
             "dummy_tbi9": "localworker2",
-            "dummy_tbi_test": "globalworker",
+            "dummy_tbi_test": "localworker3",
         },
     }
 
