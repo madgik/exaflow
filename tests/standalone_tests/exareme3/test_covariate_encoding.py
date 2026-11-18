@@ -9,7 +9,6 @@ from exaflow.algorithms.exareme3.utils.covariate_encoding import (
 )
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.datatypes import CDEType
-from exaflow.worker_communication import BadUserInput
 
 
 class _UnionClient:
@@ -170,7 +169,7 @@ def test_reference_design_matrix_used_to_generate_fixtures_matches_the_algorithm
 def test_covariate_with_a_single_observed_value_stops_the_analysis(variable, value):
     data = _data()
     data[variable] = value
-    with pytest.raises(BadUserInput) as error:
+    with pytest.raises(BadInputError) as error:
         _encode([variable], data=data)
     assert str(error.value) == (
         f"Covariate '{variable}' has only one observed value ({value}) after "
@@ -181,7 +180,7 @@ def test_covariate_with_a_single_observed_value_stops_the_analysis(variable, val
 def test_observed_variation_check_can_be_disabled_for_cv_folds():
     data = _data()
     data["sex"] = "F"
-    with pytest.raises(BadUserInput, match="only one observed value"):
+    with pytest.raises(BadInputError, match="only one observed value"):
         build_covariate_transformer(["sex"], METADATA).fit(
             agg_client=_UnionClient(),
             data=data,
@@ -205,7 +204,7 @@ def test_observed_variation_check_can_be_disabled_for_cv_folds():
 def test_covariate_without_observed_values_stops_the_analysis():
     data = _data()
     data["sex"] = None
-    with pytest.raises(BadUserInput, match="'sex' has no observed values"):
+    with pytest.raises(BadInputError, match="'sex' has no observed values"):
         _encode(["sex"], data=data)
 
 
