@@ -75,12 +75,6 @@ spec:
           value: "KUBERNETES"
         - name: WORKER_LANDSCAPE_AGGREGATOR_UPDATE_INTERVAL
           value: {{ quote .Values.controller.worker_landscape_aggregator_update_interval }}
-        - name: FLOWER_ENABLED
-          value: {{ quote .Values.flower.enabled }}
-        - name: FLOWER_EXECUTION_TIMEOUT
-          value: {{ quote .Values.flower.execution_timeout }}
-        - name: FLOWER_SERVER_PORT
-          value: {{ quote .Values.flower.server_port }}
         - name: WORKER_TASKS_TIMEOUT
           value: {{ quote .Values.controller.worker_tasks_timeout }}
         - name: GRPC_MAX_MESSAGE_MB

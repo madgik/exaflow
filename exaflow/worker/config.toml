@@ -10,10 +10,6 @@ framework_log_level = "$FRAMEWORK_LOG_LEVEL"
 [duckdb]
 path = "$DUCKDB_PATH"
 
-[controller]
-ip = "$CONTROLLER_IP"
-port = "$CONTROLLER_PORT"
-
 [privacy]
 minimum_row_count = 10
 protect_local_data = "$PROTECT_LOCAL_DATA"

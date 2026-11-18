@@ -5,8 +5,6 @@ from exaflow.controller.services import set_worker_landscape_aggregator
 from exaflow.controller.services.controller_shutdown import SHUTDOWN_CLEANUP_TIMEOUT
 from exaflow.controller.services.exareme3 import Exareme3Controller
 from exaflow.controller.services.exareme3 import set_exareme3_controller
-from exaflow.controller.services.flower import set_flower_controller
-from exaflow.controller.services.flower.controller import FlowerController
 from exaflow.controller.services.worker_landscape_aggregator.worker_landscape_aggregator import (
     WorkerLandscapeAggregator,
 )
@@ -22,12 +20,6 @@ def start_background_services():
     )
     worker_landscape_aggregator.start()
     set_worker_landscape_aggregator(worker_landscape_aggregator)
-
-    flower_controller = FlowerController(
-        worker_landscape_aggregator=worker_landscape_aggregator,
-        task_timeout=ctrl_config.worker_tasks_timeout,
-    )
-    set_flower_controller(flower_controller)
 
     exaflow_controller = Exareme3Controller(
         worker_landscape_aggregator=worker_landscape_aggregator,

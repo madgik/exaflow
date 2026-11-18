@@ -2,7 +2,7 @@
 
 Controller-to-worker channels, the worker server, aggregation channels, and
 the aggregation server all use this limit. It applies to every RPC on those
-connections, including metadata, health, and Flower calls, not only RunUdf.
+connections, including metadata and health calls.
 
 ``GRPC_MAX_MESSAGE_MB`` (default 100) is the configuration value, in
 mebibytes. Component config files interpolate that variable and Helm sets it

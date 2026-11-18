@@ -10,11 +10,6 @@ worker_landscape_aggregator_update_interval="$WORKER_LANDSCAPE_AGGREGATOR_UPDATE
 worker_tasks_timeout="$WORKER_TASKS_TIMEOUT"
 max_concurrent_experiments="$MAX_CONCURRENT_EXPERIMENTS"
 
-[flower]
-enabled = "$FLOWER_ENABLED"
-execution_timeout="$FLOWER_EXECUTION_TIMEOUT"
-server_port="$FLOWER_SERVER_PORT"
-
 [localworkers]
 config_file="$LOCALWORKERS_CONFIG_FILE"
 dns="$LOCALWORKERS_DNS"

@@ -27,7 +27,6 @@ from exaflow.protos.aggregation_server import aggregation_server_pb2 as agg_pb2
 class Exareme3Strategy(AlgorithmExecutionStrategyI):
     _controller: Exareme3Controller
     _local_worker_tasks_handlers: List[Exareme3TasksHandler]
-    _global_worker_tasks_handler: Exareme3TasksHandler
 
     @staticmethod
     def _run_preprocessing_steps(

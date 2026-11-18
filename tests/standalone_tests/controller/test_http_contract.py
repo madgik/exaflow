@@ -346,7 +346,7 @@ async def _post_raw(path, content):
         )
 
 
-@pytest.mark.parametrize("path", ["/analysis", "/flower/result"])
+@pytest.mark.parametrize("path", ["/analysis"])
 @pytest.mark.parametrize("raw_body", [b"not-json", b"{", b""])
 def test_body_that_is_not_json_returns_422(path, raw_body):
     status, content_type, body = asyncio.run(_post_raw(path, raw_body))

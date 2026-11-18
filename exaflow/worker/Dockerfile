@@ -9,7 +9,6 @@ COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /uvx /bin/
 WORKDIR $CODE_PATH
 
 COPY pyproject.toml uv.lock ./
-# To restore Flower deps, add `--group flower` to the uv sync (see MIP-1203).
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-project --no-default-groups --group worker
 

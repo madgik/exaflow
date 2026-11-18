@@ -31,6 +31,7 @@ from exaflow.controller.services.worker_landscape_aggregator.worker_landscape_ag
 from exaflow.controller.worker_client.app import WorkerClient
 from exaflow.controller.worker_client.tasks_handler import WorkerTasksHandler
 from exaflow.protos.aggregation_server import aggregation_server_pb2 as agg_pb2
+from exaflow.protos.worker import worker_pb2
 from exaflow.utils import AttrDict
 from tests.standalone_tests.controller.analysis_support import ResultModel
 from tests.standalone_tests.controller.analysis_support import build_strategy
@@ -346,18 +347,27 @@ def test_run_udf_rpc_is_registered_for_shutdown_cancel(monkeypatch):
     assert call.cancelled
 
 
-def test_cleanup_and_metadata_rpcs_are_not_cancelled_by_shutdown():
-    """GarbageCollect, health and metadata calls finish on their own deadline."""
+def test_default_worker_healthcheck_is_not_cancelled_by_shutdown(monkeypatch):
     call = _BlockingCall()
+    handler = WorkerTasksHandler("127.0.0.1:1", logging.getLogger(__name__))
     client = WorkerClient("127.0.0.1:1")
-    client._stub = SimpleNamespace(
-        GarbageCollect=SimpleNamespace(future=lambda request, timeout=None: call)
-    )
-    try:
-        future = client.start_call("GarbageCollect", object(), 1)
+
+    def result():
         shutdown.begin_controller_shutdown()
         assert not call.cancelled
-        assert future is call
+        return worker_pb2.HealthcheckResponse(ok=True)
+
+    def future(request, timeout):
+        assert request == worker_pb2.HealthcheckRequest(request_id="req", check_db=True)
+        assert timeout == 1
+        return call
+
+    monkeypatch.setattr(call, "result", result)
+    monkeypatch.setattr(handler, "_client", lambda: client)
+    monkeypatch.setattr(client._stub, "Healthcheck", SimpleNamespace(future=future))
+    try:
+        handler.healthcheck("req", check_db=True, timeout=1)
+        assert shutdown.controller_is_shutting_down()
     finally:
         client.close()
 

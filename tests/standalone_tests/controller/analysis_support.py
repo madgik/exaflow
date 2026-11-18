@@ -75,7 +75,6 @@ def build_strategy(strategy_cls, algorithm_name="sample_algo"):
     strategy._context_id = "ctx"
     strategy._logger = logging.getLogger("test")
     strategy._local_worker_tasks_handlers = []
-    strategy._global_worker_tasks_handler = None
     strategy._controller = types.SimpleNamespace(
         task_timeout=300,
         worker_landscape_aggregator=types.SimpleNamespace(
@@ -138,39 +137,4 @@ def assert_livez_while_blocked(started, release, drive):
         raise result["error"]
     assert result.get("done"), result
     assert result.get("analysis") == 200, result
-    assert not thread.is_alive()
-
-
-def assert_loop_responsive_during(async_call, started, release):
-    """Heartbeats must keep arriving while async_call is in its blocking section."""
-    observed = {"beats": 0}
-
-    async def scenario():
-        async def heartbeat():
-            while True:
-                observed["beats"] += 1
-                await asyncio.sleep(0.05)
-
-        pulse = asyncio.create_task(heartbeat())
-        try:
-            await async_call()
-        finally:
-            pulse.cancel()
-            try:
-                await pulse
-            except asyncio.CancelledError:
-                pass
-
-    result = {}
-    thread = run_coroutine_in_thread(scenario, result)
-    assert started.wait(timeout=3), "blocking section was not entered"
-    baseline = observed["beats"]
-    time.sleep(0.4)
-    during = observed["beats"] - baseline
-    release.set()
-    thread.join(timeout=5)
-    assert during >= 2, f"event loop stalled during the blocking call ({during})"
-    if result.get("error") is not None:
-        raise result["error"]
-    assert result.get("done"), result
     assert not thread.is_alive()

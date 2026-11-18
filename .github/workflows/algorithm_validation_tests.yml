@@ -71,31 +71,6 @@ jobs:
         with:
           run: cat /tmp/exaflow/localworker1.out
 
-      # Flower tests disabled pending MIP-1203.
-#      - name: Run Flower algorithm validation tests (with resource summary)
-#        run: |
-#          set -o pipefail
-#          eval "$(python3 .github/scripts/cgroup_snapshot.py)"
-#          TIME_LOG=$(mktemp)
-#          set +e
-#          /usr/bin/time -v -o "$TIME_LOG" uv run --no-sync pytest tests/algorithm_validation_tests/flower/ \
-#            --verbosity=4 \
-#            -n 2 \
-#            --reruns 6 \
-#            --reruns-delay 5
-#          TEST_EXIT_CODE=$?
-#          set -e
-#          REPORT_ARGS=(--title "Flower algorithm validation (1 node)")
-#          if [ -n "${CGROUP_BASELINE_CURRENT:-}" ]; then
-#            REPORT_ARGS+=(--baseline-runner-current "$CGROUP_BASELINE_CURRENT")
-#          fi
-#          if [ -n "${CGROUP_BASELINE_PEAK:-}" ]; then
-#            REPORT_ARGS+=(--baseline-runner-peak "$CGROUP_BASELINE_PEAK")
-#          fi
-#          python3 .github/scripts/report_time_stats.py "$TIME_LOG" "${REPORT_ARGS[@]}"
-#          cat "$TIME_LOG"
-#          exit $TEST_EXIT_CODE
-
       - name: Run Exaflow algorithm validation tests (with resource summary)
         run: |
           set -o pipefail
@@ -200,29 +175,3 @@ jobs:
           python3 .github/scripts/report_time_stats.py "$TIME_LOG" "${REPORT_ARGS[@]}"
           cat "$TIME_LOG"
           exit $TEST_EXIT_CODE
-
-      # Flower tests disabled pending MIP-1203.
-#      - name: Run Flower algorithm validation tests (with resource summary)
-#        run: |
-#          set -o pipefail
-#          eval "$(python3 .github/scripts/cgroup_snapshot.py)"
-#          TIME_LOG=$(mktemp)
-#          set +e
-#          /usr/bin/time -v -o "$TIME_LOG" uv run --no-sync pytest tests/algorithm_validation_tests/flower \
-#            -n 2 \
-#            --verbosity=4 \
-#            --reruns=6 \
-#            --reruns-delay=5 \
-#            -k 'not mnist'
-#          TEST_EXIT_CODE=$?
-#          set -e
-#          REPORT_ARGS=(--title "Flower algorithm validation (5 nodes)")
-#          if [ -n "${CGROUP_BASELINE_CURRENT:-}" ]; then
-#            REPORT_ARGS+=(--baseline-runner-current "$CGROUP_BASELINE_CURRENT")
-#          fi
-#          if [ -n "${CGROUP_BASELINE_PEAK:-}" ]; then
-#            REPORT_ARGS+=(--baseline-runner-peak "$CGROUP_BASELINE_PEAK")
-#          fi
-#          python3 .github/scripts/report_time_stats.py "$TIME_LOG" "${REPORT_ARGS[@]}"
-#          cat "$TIME_LOG"
-#          exit $TEST_EXIT_CODE

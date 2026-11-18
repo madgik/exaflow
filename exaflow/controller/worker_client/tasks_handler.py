@@ -1,6 +1,5 @@
 from ipaddress import IPv4Address
 from logging import Logger
-from typing import List
 
 import grpc
 from google.protobuf import json_format
@@ -209,83 +208,6 @@ class WorkerTasksHandler:
             cancel_on_shutdown=cancel_on_shutdown,
         )
 
-    def start_flower_client(
-        self,
-        request_id: str,
-        algorithm_folder_path: str,
-        server_address: str,
-        data_model: str,
-        datasets: List[str],
-        execution_timeout: int,
-        timeout: int,
-    ) -> int:
-        response = self._client().call(
-            "StartFlowerClient",
-            worker_pb2.StartFlowerClientRequest(
-                request_id=request_id,
-                algorithm_folder_path=algorithm_folder_path,
-                server_address=server_address,
-                data_model=data_model,
-                datasets=datasets,
-                execution_timeout=execution_timeout,
-            ),
-            timeout,
-        )
-        return response.pid
-
-    def start_flower_server(
-        self,
-        request_id: str,
-        algorithm_folder_path: str,
-        number_of_clients: int,
-        server_address: str,
-        data_model: str,
-        datasets: List[str],
-        timeout: int,
-    ) -> int:
-        response = self._client().call(
-            "StartFlowerServer",
-            worker_pb2.StartFlowerServerRequest(
-                request_id=request_id,
-                algorithm_folder_path=algorithm_folder_path,
-                number_of_clients=number_of_clients,
-                server_address=server_address,
-                data_model=data_model,
-                datasets=datasets,
-            ),
-            timeout,
-        )
-        return response.pid
-
-    def stop_flower_server(
-        self, request_id: str, pid: int, algorithm_name: str, timeout: int
-    ) -> None:
-        self._client().call(
-            "StopFlowerServer",
-            worker_pb2.StopFlowerProcessRequest(
-                request_id=request_id, pid=pid, algorithm_name=algorithm_name
-            ),
-            timeout,
-        )
-
-    def stop_flower_client(
-        self, request_id: str, pid: int, algorithm_name: str, timeout: int
-    ) -> None:
-        self._client().call(
-            "StopFlowerClient",
-            worker_pb2.StopFlowerProcessRequest(
-                request_id=request_id, pid=pid, algorithm_name=algorithm_name
-            ),
-            timeout,
-        )
-
-    def garbage_collect(self, request_id: str, timeout: int) -> None:
-        self._client().call(
-            "GarbageCollect",
-            worker_pb2.GarbageCollectRequest(request_id=request_id),
-            timeout,
-        )
-
     def run_udf(
         self,
         request_id: str,
@@ -304,8 +226,6 @@ class WorkerTasksHandler:
             ),
             timeout,
         )
-        # RunUdf is cancelled on shutdown. Landscape metadata calls register
-        # themselves. Cleanup and other metadata calls do not: they release
-        # resources and finish on their own deadline.
+        # Register analysis UDFs so shutdown can cancel them.
         register_inflight_rpc(future)
         return RunUdfCall(self, future)

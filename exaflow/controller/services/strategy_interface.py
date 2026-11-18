@@ -2,7 +2,6 @@ from abc import ABC
 from abc import abstractmethod
 from logging import Logger
 from typing import List
-from typing import Optional
 from uuid import uuid4
 
 from exaflow.controller import logger as ctrl_logger
@@ -26,7 +25,6 @@ class AlgorithmExecutionStrategyI(ABC):
     _context_id: str
     _logger: Logger
     _local_worker_tasks_handlers: List[TasksHandlerI]
-    _global_worker_tasks_handler: Optional[TasksHandlerI]
 
     def __init__(
         self,
@@ -45,9 +43,6 @@ class AlgorithmExecutionStrategyI(ABC):
                 self._analysis_request_dto.inputdata.datasets,
                 self._request_id,
             )
-        )
-        self._global_worker_tasks_handler = (
-            self._controller.get_global_worker_tasks_handler(self._request_id)
         )
 
     @abstractmethod

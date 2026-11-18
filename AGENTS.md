@@ -18,9 +18,9 @@ with a FastAPI/Uvicorn controller, gRPC workers, optional aggregation server,
 algorithm implementations, Kubernetes deployment manifests, and a nested
 `exadata-validator` Python package.
 
-Unless a task explicitly targets Flower or SMPC, focus on the native Exareme3
-federated pipeline described below. Flower and SMPC are optional add-ons with
-separate config, markers, and review requirements — see
+Unless a task explicitly targets SMPC, focus on the native Exareme3 federated
+pipeline described below. SMPC is optional and has separate configuration,
+test markers, and review requirements. See
 `documentation/context/risk-register.md`.
 
 ## Repository Layout
