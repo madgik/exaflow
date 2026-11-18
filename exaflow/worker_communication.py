@@ -187,7 +187,8 @@ class CommonDataElements(BaseModel):
         """
         We are overriding the equals function to check that the two cdes have identical fields except one edge case.
         The edge case is that the two comparing cdes can only contain a difference in the field of enumerations in
-        the cde with code 'dataset' and still be considered compatible.
+        the cde with code 'dataset' and still be considered compatible. A label that
+        appears under different codes on the two workers is not compatible.
         """
         if set(self.values.keys()) != set(other.values.keys()):
             return False
@@ -216,6 +217,13 @@ class CommonDataElements(BaseModel):
         enumerations2 = cde2.enumerations or {}
         for code in enumerations1.keys() & enumerations2.keys():
             if enumerations1[code] != enumerations2[code]:
+                return False
+
+        # The same label under two codes makes one worker return no rows.
+        label_codes = {label: code for code, label in enumerations1.items()}
+        for code, label in enumerations2.items():
+            other_code = label_codes.get(label)
+            if other_code is not None and other_code != code:
                 return False
 
         return True

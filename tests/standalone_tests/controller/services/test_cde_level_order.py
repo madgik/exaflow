@@ -133,3 +133,35 @@ def test_dataset_cde_shared_code_with_conflicting_labels_is_not_equal():
         )
 
     assert dataset_cdes({"1": "A", "2": "B"}) != dataset_cdes({"1": "C", "3": "D"})
+
+
+def test_dataset_cde_same_label_under_different_codes_is_not_equal():
+    def dataset_cdes(enumerations):
+        return CommonDataElements(
+            values={
+                "dataset": CommonDataElement(
+                    code="dataset",
+                    label="Dataset",
+                    type="nominal",
+                    enumerations=enumerations,
+                )
+            }
+        )
+
+    assert dataset_cdes({"1": "PPMI_0"}) != dataset_cdes({"5": "PPMI_0"})
+
+
+def test_dataset_cde_disjoint_codes_and_labels_are_equal():
+    def dataset_cdes(enumerations):
+        return CommonDataElements(
+            values={
+                "dataset": CommonDataElement(
+                    code="dataset",
+                    label="Dataset",
+                    type="nominal",
+                    enumerations=enumerations,
+                )
+            }
+        )
+
+    assert dataset_cdes({"1": "A"}) == dataset_cdes({"2": "B"})
