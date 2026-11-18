@@ -16,6 +16,15 @@ on Exaflow.
 - `code-review-checklist.md`: human and AI review checklist.
 - `ai-task-templates.md`: reusable prompts for common agent tasks.
 
+## Related Proposals
+
+- [Flower integration refactor](../flower/plan.md): living implementation plan,
+  [design](../flower/design.md), and [decision log](../flower/decisions.md).
+  Deferred features and remaining open items live in the
+  [follow-up register](../flower/future-work.md), with a separate
+  [future preprocessing PRD](../flower/prd/role-aware-preprocessing.md).
+  These documents are proposals; they do not describe implemented runtime changes.
+
 ## How To Use This Context
 
 Start with `AGENTS.md` at the repository root, then open the context file that

@@ -1,0 +1,302 @@
+<div id="flower-failure-flow">
+  <style>
+    #flower-failure-flow { display: grid; gap: calc(var(--font-size-base) * 1); min-width: 0; color: var(--foreground); }
+    #flower-failure-flow .journey { display: flex; flex-wrap: wrap; gap: calc(var(--font-size-base) * 0.75); padding: 0; margin: 0; list-style: none; }
+    #flower-failure-flow .journey li { display: flex; align-items: center; gap: calc(var(--font-size-base) * 0.4); }
+    #flower-failure-flow .stage-dot { display: inline-flex; align-items: center; justify-content: center; width: calc(var(--font-size-base) * 1.7); height: calc(var(--font-size-base) * 1.7); border-radius: 50%; background: var(--muted); color: var(--muted-foreground); }
+    #flower-failure-flow .current .stage-dot { background: var(--primary); color: var(--primary-foreground); }
+    #flower-failure-flow .current { font-weight: 500; }
+  </style>
+  <h3>Flower failure flow</h3>
+  <div class="viz-controls">
+    <label class="form-label" for="flower-failure-scenario">Failure / restart scenario
+      <select class="form-select" id="flower-failure-scenario">
+        <option value="queued">Queued request · controller down</option>
+        <option value="preparation">Preparation · worker / privacy / export fails</option>
+        <option value="capacity">Start · coordinator at capacity</option>
+        <option value="start-lost">Start · HTTP response lost</option>
+        <option value="read-transient">Running · transient status HTTP failure</option>
+        <option value="read-exhausted">Running · status retries exhausted</option>
+        <option value="coordinator" selected>Running · coordinator container restarts</option>
+        <option value="superlink">Running · SuperLink restarts</option>
+        <option value="serverapp">Training / evaluation · ServerApp fails</option>
+        <option value="clientapp">Training / evaluation · sidecar fails</option>
+        <option value="native">Running · only native worker restarts</option>
+        <option value="completion">Completion · result report fails</option>
+        <option value="controller">In flight · controller crashes</option>
+        <option value="ack-race">Reply · controller crashes before ACK</option>
+        <option value="broker">Reply · RabbitMQ unavailable</option>
+        <option value="reply-queue">Reply · destination queue missing</option>
+        <option value="deadline">Running · execution deadline expires</option>
+        <option value="reset-fails">Startup · controller reset fails</option>
+      </select>
+    </label>
+  </div>
+  <ol class="journey" aria-label="Request stages">
+    <li data-stage="0"><span class="stage-dot">1</span>Queue</li>
+    <li data-stage="1"><span class="stage-dot">2</span>Prepare</li>
+    <li data-stage="2"><span class="stage-dot">3</span>Start</li>
+    <li data-stage="3"><span class="stage-dot">4</span>Train / evaluate</li>
+    <li data-stage="4"><span class="stage-dot">5</span>Reply / ACK</li>
+  </ol>
+  <output id="flower-failure-outcome" aria-live="polite">Controller sends execution-lost or unavailable failure.</output>
+  <div class="table-responsive">
+    <table class="table" aria-label="Detection, notification, reply and cleanup sequence">
+      <thead><tr><th scope="col">From</th><th scope="col">To</th><th scope="col">Action / outcome</th></tr></thead>
+      <tbody id="flower-failure-events">
+        <tr><td>Coordinator</td><td>SuperLink</td><td>After restart: close admission and cancel surviving runs before readiness (R14 design target).</td></tr>
+        <tr><td>Controller</td><td>Coordinator</td><td>Read the old context, expecting instance A. Transient HTTP read failures have two bounded retries.</td></tr>
+        <tr><td>Coordinator</td><td>Controller</td><td>Instance B returns 409 coordinator_restarted; this terminal response is not retried.</td></tr>
+        <tr><td>Controller</td><td>RabbitMQ</td><td>Publish flower_execution_lost to the original reply_to with the original correlation_id.</td></tr>
+        <tr><td>RabbitMQ</td><td>Controller / producer</td><td>Confirm publication, then controller ACKs the request; deliver failure to the producer. Cleanup remains separate.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <script>
+    (() => {
+      const root = document.getElementById("flower-failure-flow");
+      const select = root.querySelector("#flower-failure-scenario");
+      const output = root.querySelector("#flower-failure-outcome");
+      const tbody = root.querySelector("#flower-failure-events");
+      const stages = Array.from(root.querySelectorAll("[data-stage]"));
+      const cases = [
+        {
+          id: "queued", stage: 0,
+          outcome: "No immediate failure reply; the queued request waits.",
+          events: [
+            ["Producer", "RabbitMQ", "Publish the request and obtain broker confirmation."],
+            ["RabbitMQ", "Queue", "Retain the request while the controller is down; no Flower attempt exists yet."],
+            ["Replacement controller", "Coordinator", "Complete startup reset before starting the Flower consumer."],
+            ["RabbitMQ", "Controller", "Deliver the queued request once the consumer starts."],
+            ["Controller", "Producer via RabbitMQ", "Execute normally, then publish a result or failure. The producer may reach its waiting timeout first."]
+          ]
+        },
+        {
+          id: "preparation", stage: 1,
+          outcome: "Controller sends failure; no Flower run starts.",
+          events: [
+            ["Native worker", "Controller", "Return a gRPC/UDF error: failed transformation, insufficient role rows, interrupted worker, or failed Arrow write."],
+            ["Controller", "Aggregation server", "Clean the preparation phase context in finally; do not start Flower."],
+            ["Controller", "RabbitMQ", "Publish the normal failed analysis envelope with the original reply metadata."],
+            ["RabbitMQ", "Controller / producer", "Confirm the reply; controller ACKs the request and producer receives failure."],
+            ["Native workers", "Scratch", "Remove failed staging and expired prepared contexts. Periodic idle expiry is still R22; next-preparation cleanup is the existing proposal."]
+          ]
+        },
+        {
+          id: "capacity", stage: 2,
+          outcome: "Controller propagates flower_capacity_exceeded without retry.",
+          events: [
+            ["Controller", "Coordinator", "Request start of a new context."],
+            ["Coordinator", "Controller", "Pending/live/uncertain work is at the limit: return HTTP 429 / flower_capacity_exceeded. Create no new run."],
+            ["Controller", "RabbitMQ", "Publish the capacity failure immediately; do not retry or requeue through a new application policy."],
+            ["RabbitMQ", "Controller / producer", "Confirm publication, then controller ACKs; deliver the failure."],
+            ["Native workers", "Scratch", "Already prepared files follow safe context cleanup. Normal additional requests stay queued under prefetch."]
+          ]
+        },
+        {
+          id: "start-lost", stage: 2,
+          outcome: "Controller sends start/control failure; a remote run may already exist.",
+          events: [
+            ["Controller", "Coordinator", "POST start times out or loses its response. The operation is not repeated."],
+            ["Controller", "Coordinator", "Request bounded cleanup once when possible; use the same known context. A failed stop is not retried."],
+            ["Controller", "RabbitMQ", "Publish terminal availability failure without claiming the run never started."],
+            ["Coordinator", "Runtime", "Retain pending/live/uncertain capacity until termination is established; deadlines and orphan cleanup bound surviving work."],
+            ["RabbitMQ", "Producer", "Deliver the failure after confirmed publication. Failure reporting does not prove remote termination."]
+          ]
+        },
+        {
+          id: "read-transient", stage: 3,
+          outcome: "No failure reply if the status read recovers; observe the same run.",
+          events: [
+            ["Controller", "Coordinator", "GET execution status encounters a transient connection failure, timeout, or 502/503/504."],
+            ["Controller", "Coordinator", "Retry only the read, at most twice after 0.5 and 1 second, within the execution deadline."],
+            ["Coordinator", "Controller", "Return status for the same context and expected instance. No new execution is submitted."],
+            ["Controller", "Coordinator", "Continue ordinary status polling if the same run is pending/running."],
+            ["Controller", "Producer via RabbitMQ", "Return that run's eventual result or terminal failure through normal settlement."]
+          ]
+        },
+        {
+          id: "read-exhausted", stage: 3,
+          outcome: "Controller sends unavailable/timeout failure after bounded reads expire.",
+          events: [
+            ["Controller", "Coordinator", "The status-read retry budget or execution deadline expires."],
+            ["Controller", "RabbitMQ", "Publish a terminal unavailable/timeout failure; do not resubmit the analysis."],
+            ["Controller", "Coordinator", "Attempt stop once when possible. Loss of status visibility does not prove the execution stopped."],
+            ["Coordinator", "Runtime", "Keep surviving or uncertain work counted until termination is established."],
+            ["RabbitMQ", "Controller / producer", "Confirm reply publication; controller ACKs and producer receives failure."]
+          ]
+        },
+        {
+          id: "coordinator", stage: 3,
+          outcome: "Controller sends execution-lost or unavailable failure.",
+          events: [
+            ["Coordinator", "SuperLink", "After restart: close admission and cancel surviving runs before readiness (R14 design target)."],
+            ["Controller", "Coordinator", "Read the old context, expecting instance A. Transient HTTP read failures have two bounded retries."],
+            ["Coordinator", "Controller", "Instance B returns 409 coordinator_restarted; this terminal response is not retried."],
+            ["Controller", "RabbitMQ", "Publish flower_execution_lost to the original reply_to with the original correlation_id."],
+            ["RabbitMQ", "Controller / producer", "Confirm publication, then controller ACKs the request; deliver failure to the producer. Cleanup remains separate."]
+          ]
+        },
+        {
+          id: "superlink", stage: 3,
+          outcome: "Controller sends execution-lost/backend failure.",
+          events: [
+            ["SuperLink", "Runtime", "Restart loses the in-memory backend run state; coordinator records may still exist."],
+            ["Coordinator", "SuperLink", "Backend check observes a missing or unavailable run and records a terminal failure."],
+            ["Controller", "Coordinator", "Read that failure. An explicit terminal state is not retried."],
+            ["Controller", "Producer via RabbitMQ", "Publish the failed analysis reply; ACK the request only after publication is confirmed."],
+            ["Coordinator / runtime", "Local processes", "Establish process cleanup before replacement admission. Reporting lost state alone is insufficient."]
+          ]
+        },
+        {
+          id: "serverapp", stage: 3,
+          outcome: "Controller sends failure after the runtime declares the run failed.",
+          events: [
+            ["ServerApp", "SuperLink", "Training/evaluation raises an exception or fails its deadline; runtime records failure."],
+            ["Coordinator", "SuperLink", "Backend check observes terminal failure even when no completion callback arrives."],
+            ["Controller", "Coordinator", "Read the failed execution status; do not retry a semantic failure."],
+            ["Controller", "Producer via RabbitMQ", "Publish failure with original correlation metadata, then ACK after broker confirmation."],
+            ["Coordinator / runtime", "Remaining clients", "Stop remaining work, establish termination, then release its capacity and clean data safely."]
+          ]
+        },
+        {
+          id: "clientapp", stage: 3,
+          outcome: "Initial Flower policy may continue; a failed run is reported by the controller.",
+          events: [
+            ["ClientApp / sidecar", "ServerApp", "Flower delivers an error or timeout when the participant fails or its pod disappears."],
+            ["ServerApp", "Runtime", "Initial strategy may continue with valid replies; strict all-participant enforcement is deferred by C44."],
+            ["Coordinator", "Controller", "Expose a runtime failure, or accept a completed result only when callback and backend state agree."],
+            ["Controller", "Producer via RabbitMQ", "Return the terminal failure or actual successful evaluator metrics/counts; do not promise every selected participant contributed."],
+            ["Kubernetes / workers", "Discovery / scratch", "Exclude unready pods from new analyses; pod replacement removes local scratch."]
+          ]
+        },
+        {
+          id: "native", stage: 3,
+          outcome: "The existing Flower run can continue; new analyses exclude the pod.",
+          events: [
+            ["Native worker", "Kubernetes", "Only the native container restarts after Arrow files were prepared; pod becomes unready."],
+            ["Worker discovery", "New requests", "Exclude this pod under C41 until readiness recovers."],
+            ["Flower sidecar", "Scratch", "May continue using existing files: emptyDir survives a container-only restart."],
+            ["Controller", "Producer via RabbitMQ", "Return the run's eventual result/failure. Readiness loss alone does not cancel an in-flight analysis."],
+            ["Pod replacement", "Sidecar / scratch", "If the whole pod is replaced, both sidecar lifetime and scratch are lost; follow the participant-failure path."]
+          ]
+        },
+        {
+          id: "completion", stage: 4,
+          outcome: "Controller reports failure when completion cannot be established.",
+          events: [
+            ["ServerApp", "Coordinator", "Completion POST fails or its acknowledgement is lost; do not retry the callback."],
+            ["ServerApp", "SuperLink", "Treat failed result reporting as an error; backend failure or missing-completion deadline becomes observable."],
+            ["Coordinator", "Controller", "A staged result alone is insufficient: completion report and final backend state must agree."],
+            ["Controller", "Producer via RabbitMQ", "Publish terminal failure once detected; ACK only after confirmed publication."],
+            ["Runtime / workers", "Run resources", "Perform normal stop and expiry cleanup without treating an undelivered callback as success."]
+          ]
+        },
+        {
+          id: "controller", stage: 3,
+          outcome: "No immediate failure; a replacement may run a fresh attempt after reset.",
+          events: [
+            ["Controller", "Connection", "Crash loses local attempt state. It cannot publish an error after it has stopped."],
+            ["RabbitMQ", "Request queue", "On connection closure, make the unacknowledged request available for redelivery."],
+            ["Replacement controller", "Coordinator", "C40 startup reset stops old owned work and establishes cleanup before starting the Flower consumer."],
+            ["RabbitMQ", "Replacement controller", "Redeliver the original request; prepare and execute with a fresh context. Never resume the old model."],
+            ["Replacement controller", "Producer via RabbitMQ", "Publish the fresh attempt's result/failure with original correlation metadata. No guaranteed failure reply for the old attempt."]
+          ]
+        },
+        {
+          id: "ack-race", stage: 4,
+          outcome: "The producer may receive the original reply and a later duplicate.",
+          events: [
+            ["Controller", "RabbitMQ", "Result/failure publication is confirmed; the reply is already in the producer queue."],
+            ["Controller", "Connection", "Crash occurs before ACK of the original analysis delivery."],
+            ["RabbitMQ", "Replacement controller", "The unacknowledged request can be redelivered after startup reset."],
+            ["Replacement controller", "Producer via RabbitMQ", "A fresh attempt may publish another reply using the same logical correlation ID."],
+            ["Producer", "Reply handling", "Handle duplicate replies under the existing at-least-once contract; exactly-once execution is not promised."]
+          ]
+        },
+        {
+          id: "broker", stage: 4,
+          outcome: "No reply is deliverable while RabbitMQ is unavailable.",
+          events: [
+            ["Controller", "RabbitMQ", "Publishing the result/failure encounters a broker transport outage."],
+            ["Controller", "Request delivery", "Leave the analysis delivery unacknowledged; do not claim the producer received the error."],
+            ["Existing AMQP transport", "RabbitMQ", "Follow existing transport recovery/settlement and bounded in-memory reply retention; add no new Flower retry policy."],
+            ["RabbitMQ", "Producer", "Deliver once reply publication becomes possible. Connection loss may cause request redelivery."],
+            ["Controller restart", "Request state", "In-memory replies can be lost; fresh-attempt recomputation and duplicates remain possible."]
+          ]
+        },
+        {
+          id: "reply-queue", stage: 4,
+          outcome: "No failure reply can reach the missing/rejecting destination.",
+          events: [
+            ["Controller", "RabbitMQ", "Passive reply-queue check fails, or mandatory/confirmed reply publication is returned or rejected."],
+            ["Controller", "Request delivery", "Reject the original request without requeueing; record the delivery failure."],
+            ["RabbitMQ", "Dead-letter queue", "Route the rejected request to the configured dead-letter path, within broker retention/size limits."],
+            ["Producer", "Own timeout", "May time out because its reply destination is unavailable."],
+            ["Operator", "Logs / dead letters", "Inspect the routing failure. No automatic dead-letter replay is introduced."]
+          ]
+        },
+        {
+          id: "deadline", stage: 3,
+          outcome: "Controller sends timeout/cancellation failure when reply transport is available.",
+          events: [
+            ["Controller / runtime", "Execution", "Observe the execution deadline or a cancellation request."],
+            ["Controller / coordinator", "Runtime", "Request stop once. A failed stop is terminal and is not proof that local processes exited."],
+            ["Controller", "Producer via RabbitMQ", "Publish timeout/cancellation failure; ACK after broker confirmation."],
+            ["Coordinator", "Capacity", "Keep uncertain work counted until termination is established."],
+            ["Workers / controller", "Run resources", "Clean aggregation and prepared state safely; expiry must respect bounded reader lifetimes."]
+          ]
+        },
+        {
+          id: "reset-fails", stage: 0,
+          outcome: "Flower consumer remains stopped; queued producers may reach their own timeout.",
+          events: [
+            ["Replacement controller", "Coordinator", "C40 startup reset/list/stop fails. Do not retry the control operation."],
+            ["Controller", "Flower consumer", "Keep the consumer stopped because termination of old owned work is not established."],
+            ["RabbitMQ", "Queued requests", "Retain waiting requests; no controller has consumed them to publish per-request failures."],
+            ["Controller / coordinator", "Logs / readiness", "Expose startup failure and keep Flower admission unavailable; native metadata/execution need not wait."],
+            ["Producer / operator", "Timeout / startup repair", "Producer may time out. Restore the runtime and its startup barrier before Flower processing proceeds."]
+          ]
+        }
+      ];
+      const byId = new Map(cases.map(item => [item.id, item]));
+      function render(id) {
+        const item = byId.get(id) || byId.get("coordinator");
+        select.value = item.id;
+        output.textContent = item.outcome;
+        stages.forEach(stage => {
+          const current = Number(stage.dataset.stage) === item.stage;
+          stage.classList.toggle("current", current);
+          if (current) stage.setAttribute("aria-current", "step");
+          else stage.removeAttribute("aria-current");
+        });
+        const rows = item.events.map(event => {
+          const row = document.createElement("tr");
+          event.forEach(value => {
+            const cell = document.createElement("td");
+            cell.textContent = value;
+            row.appendChild(cell);
+          });
+          return row;
+        });
+        tbody.replaceChildren(...rows);
+      }
+      function restore(state) {
+        const id = state?.modelContent?.scenario;
+        if (byId.has(id)) render(id);
+      }
+      render("coordinator");
+      restore(window.openai?.widgetState);
+      select.addEventListener("change", () => {
+        render(select.value);
+        const saved = window.openai?.setWidgetState?.({
+          modelContent: { scenario: select.value }, privateContent: null
+        });
+        saved?.catch(() => {});
+      });
+      window.addEventListener("openai:set_globals", event => {
+        restore(event.detail?.globals?.widgetState);
+      });
+    })();
+  </script>
+</div>
