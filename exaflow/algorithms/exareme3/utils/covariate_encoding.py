@@ -13,7 +13,7 @@ column transformer here, so the coding rules live in one place:
 Binary and ordinal coding uses the declared order, never the observed or sorted
 levels. A missing value or a level that is not declared raises an error instead
 of being coded silently, and so does a binary or ordinal covariate with fewer than
-two observed values across all workers after filtering (``BadUserInput`` naming the
+two observed values across all workers after filtering (``BadInputError`` naming the
 covariate and its single value). The one-hot encoder is the only place nominal
 variables are dummy coded, and nominal variables are never integer coded.
 """
@@ -38,7 +38,6 @@ from exaflow.algorithms.federated.feature_engineering._ordinal_encoder import (
 )
 from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.datatypes import CDEType
-from exaflow.worker_communication import BadUserInput
 
 
 class _ObservedVariationMixin:
@@ -76,7 +75,7 @@ class _ObservedVariationMixin:
             if len(observed) < 2:
                 shown = f" ({observed[0]})" if observed else ""
                 count = "only one observed value" if observed else "no observed values"
-                raise BadUserInput(
+                raise BadInputError(
                     f"Covariate '{var}' has {count}{shown} after filtering; it "
                     "cannot be estimated. Remove it or change the filters."
                 )
