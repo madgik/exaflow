@@ -40,10 +40,12 @@ normal deployments provide an external broker. HTTP and AMQP share one analysis
 capacity limit; other HTTP routes remain independent.
 
 A sustained queue backlog can reject HTTP analyses with 503. Reply failures
-must remain isolated from the consuming channel. Finished replies retained for
-redelivery are bounded to five minutes, 128 entries, and 64 MiB; eviction or a
-controller restart still permits recomputation. Acknowledge only after confirmed
-publication, and keep reply bodies and connection URLs out of diagnostics.
+must remain isolated from the consuming channel. Publish on a separate AMQP
+connection so a memory or disk alarm cannot block acknowledgements. Finished
+replies retained for redelivery are bounded to five minutes, 128 entries, and
+64 MiB; eviction or a controller restart still permits recomputation.
+Acknowledge only after confirmed publication, and keep reply bodies and
+connection URLs out of diagnostics.
 
 Delivery is at least once, with recomputation and duplicate replies allowed.
 Preserve logical request IDs and isolate aggregation state using attempt context

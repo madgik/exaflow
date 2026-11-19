@@ -71,10 +71,24 @@ def test_broker_health_does_not_fail_http_liveness():
                 assert (await client.get("/livez")).status_code == 200
                 response = await client.get("/healthcheck/rabbitmq")
                 assert response.status_code == 503
-                assert response.json()["active_jobs"] == 0
+                body = response.json()
+                assert body["active_jobs"] == 0
+                assert set(body) == {
+                    "enabled",
+                    "connected",
+                    "consuming",
+                    "active_jobs",
+                    "last_error",
+                }
                 runtime.connection = SimpleNamespace(is_closed=False)
                 runtime.consuming = True
-                assert (await client.get("/healthcheck/rabbitmq")).status_code == 200
+                # The consumer socket alone is not ready while the publisher is down.
+                assert (await client.get("/healthcheck/rabbitmq")).status_code == 503
+                runtime.publish_connection = SimpleNamespace(is_closed=False)
+                ready = await client.get("/healthcheck/rabbitmq")
+                assert ready.status_code == 200
+                assert ready.json()["connected"] is True
+                assert ready.json()["consuming"] is True
         finally:
             app_module.app.state.rabbitmq = previous
 
