@@ -22,8 +22,9 @@ async def submit(args):
         )
         # One durable reply queue per logical request allows retrying this CLI with
         # the same request_id after a client disconnect. The broker expires idle queues.
+        reply_queue = args.reply_queue or f"exaflow.analysis.replies.{request_id}"
         replies = await channel.declare_queue(
-            f"exaflow.analysis.replies.{request_id}",
+            reply_queue,
             durable=True,
             arguments={
                 "x-message-ttl": 86400000,
@@ -59,6 +60,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("request", help="Path to an existing /analysis JSON payload")
     parser.add_argument("--queue", default="exaflow.analysis.requests")
+    parser.add_argument(
+        "--reply-queue",
+        default=None,
+        help="Durable reply queue name (defaults to exaflow.analysis.replies.<request_id>)",
+    )
     parser.add_argument("--timeout", type=float, default=600)
     args = parser.parse_args()
     try:
