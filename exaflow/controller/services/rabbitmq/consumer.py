@@ -152,7 +152,19 @@ class AnalysisConsumer:
         if connection is None:
             return False
         try:
-            return not connection.is_closed
+            if connection.is_closed:
+                return False
+            connected = getattr(connection, "connected", None)
+            if isinstance(connected, asyncio.Event) and not connected.is_set():
+                return False
+            if hasattr(connection, "transport"):
+                transport = connection.transport
+                if transport is None:
+                    return False
+                underlay = getattr(transport, "connection", None)
+                if underlay is not None and underlay.is_closed:
+                    return False
+            return True
         except Exception:
             return False
 
@@ -168,9 +180,11 @@ class AnalysisConsumer:
         return isinstance(exc, ConnectionError)
 
     async def _close_amqp(self, connection):
-        if not self._amqp_open(connection):
+        if connection is None:
             return
         try:
+            if connection.is_closed:
+                return
             await asyncio.wait_for(connection.close(), self.settings.operation_timeout)
         except Exception as exc:
             # The exception text can include the AMQP URL.
@@ -207,24 +221,23 @@ class AnalysisConsumer:
                 raise
             return connection
 
-    async def _retire_publish_connection(self, failed=None):
+    async def _retire_publish_connection(self, failed):
+        if failed is None:
+            return
         async with self._publish_lock:
-            if failed is not None and self.publish_connection is not failed:
+            if self.publish_connection is not failed:
                 return
-            stale = self.publish_connection
             self.publish_connection = None
-            await self._close_amqp(stale)
+            await self._close_amqp(failed)
 
-    async def _open_reply_channel(self):
-        connection = await self._ensure_publish_connection()
-        channel = await asyncio.wait_for(
+    async def _open_reply_channel(self, connection):
+        return await asyncio.wait_for(
             connection.channel(
                 publisher_confirms=True,
                 on_return_raises=True,
             ),
             self.settings.operation_timeout,
         )
-        return connection, channel
 
     async def _run(self):
         delay = 1
@@ -430,7 +443,7 @@ class AnalysisConsumer:
 
     def _delivery_available(self, message, connection):
         try:
-            return not connection.is_closed and not message.channel.is_closed
+            return self._amqp_open(connection) and not message.channel.is_closed
         except aio_pika.exceptions.ChannelInvalidStateError:
             return False
 
@@ -484,7 +497,8 @@ class AnalysisConsumer:
                 return
             while self._delivery_available(message, connection):
                 try:
-                    publish_connection, channel = await self._open_reply_channel()
+                    publish_connection = await self._ensure_publish_connection()
+                    channel = await self._open_reply_channel(publish_connection)
                     # A missing queue closes this isolated reply channel only.
                     await channel.declare_queue(
                         message.reply_to,
@@ -540,7 +554,10 @@ class AnalysisConsumer:
                     channel = None
                     # A dropped publisher is replaced in place. Completed replies
                     # stay cached, and the consuming connection keeps its deliveries.
-                    if self._publish_connection_failed(exc, publish_connection):
+                    if (
+                        publish_connection is not None
+                        and self._publish_connection_failed(exc, publish_connection)
+                    ):
                         await self._retire_publish_connection(publish_connection)
                     publish_connection = None
                     if self.stopping or not self._delivery_available(
