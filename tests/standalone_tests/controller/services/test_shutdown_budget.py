@@ -335,6 +335,41 @@ def test_analysis_pool_join_skips_a_pool_started_after_shutdown(caplog):
     assert "analysis threads still running" not in caplog.text
 
 
+def test_cleanup_submission_can_race_with_pool_shutdown(monkeypatch):
+    cleanup_ran = threading.Event()
+    shutdown_started = threading.Event()
+    shutdown_threads = []
+
+    def stop_pool():
+        shutdown_started.set()
+        shutdown_analysis_execution()
+
+    async def scenario():
+        loop = asyncio.get_running_loop()
+        submit = loop.run_in_executor
+
+        def submit_during_shutdown(executor, func, *args):
+            # run_blocking has already selected its pool at this point.
+            thread = threading.Thread(target=stop_pool)
+            shutdown_threads.append(thread)
+            thread.start()
+            assert shutdown_started.wait(2)
+            thread.join(0.1)
+            return submit(executor, func, *args)
+
+        monkeypatch.setattr(loop, "run_in_executor", submit_during_shutdown)
+        await run_blocking(cleanup_ran.set)
+
+    try:
+        asyncio.run(scenario())
+        assert cleanup_ran.is_set()
+    finally:
+        for thread in shutdown_threads:
+            thread.join(2)
+            assert not thread.is_alive()
+        reset_analysis_execution()
+
+
 def test_run_udf_rpc_is_registered_for_shutdown_cancel(monkeypatch):
     call = _BlockingCall()
     handler = WorkerTasksHandler("127.0.0.1:1", logging.getLogger(__name__))
