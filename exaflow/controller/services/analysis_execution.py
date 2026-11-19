@@ -24,7 +24,7 @@ _THREAD_NAME_PREFIX = "exaflow-analysis"
 _executor: ThreadPoolExecutor | None = None
 _semaphore: asyncio.Semaphore | None = None
 _semaphore_loop: asyncio.AbstractEventLoop | None = None
-_state_guard = threading.Lock()
+_state_guard = threading.RLock()
 
 
 class AnalysisCapacityExceeded(Exception):
@@ -137,7 +137,10 @@ async def run_blocking(func, *args):
     also when it is cancelled again while waiting.
     """
     loop = asyncio.get_running_loop()
-    future = loop.run_in_executor(_ensure_executor(), func, *args)
+    # Shutdown must not close the pool between lookup and submission. The guard
+    # is reentrant because _ensure_executor also protects pool creation.
+    with _state_guard:
+        future = loop.run_in_executor(_ensure_executor(), func, *args)
     try:
         return await asyncio.shield(future)
     except asyncio.CancelledError:
