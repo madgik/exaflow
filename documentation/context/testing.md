@@ -197,7 +197,8 @@ queue, reason, and count; a dead-letter delivery's `x-delivery-count` is not a
 reliable measure of analysis executions.
 
 Production tests provision `tests/prod_env_tests/deployment_configs/rabbitmq.yaml`
-in kind. `RABBITMQ_TEST_URL` enables real-broker cases; the CI-only
+in kind, pinned to RabbitMQ 4.4.1 with a 2Gi memory limit. `RABBITMQ_TEST_URL`
+enables real-broker cases; the CI-only
 `RABBITMQ_TEST_RECOVERY=1` flag permits restarting the dedicated test broker and
 replacing its test controller. CI sets that flag only in a separate recovery
 step after the normal production suite, and recovery cleanup waits for controller
