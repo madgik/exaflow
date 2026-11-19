@@ -174,7 +174,7 @@ def mean_local(data, inputdata, column):
     return {"sx": sx, "n": n}
 ```
 
-Whenever a UDF needs access to the secure aggregation service (for operations
+Whenever a UDF needs access to the aggregation service (for operations
 such as SUM/MIN/MAX without revealing local payloads), declare it with
 `with_aggregation_server=True`. The decorator injects an `agg_client` argument
 that satisfies the `AggregationClient` protocol
@@ -309,7 +309,7 @@ all flows:
 - `with_aggregation_server=True` injects an `agg_client` argument that
   satisfies the `AggregationClient` protocol
   (`exaflow/algorithms/federated/utils/agg_client.py`). This client exposes
-  `sum`, `min`, `max`, and `union` helpers that perform secure aggregation
+  `sum`, `min`, `max`, and `union` helpers that perform aggregation
   across workers. Those four methods are the algorithm API.
 - `enable_lazy_aggregation` can override the default batching behavior. By
   default it matches `with_aggregation_server` and the worker runs the UDF

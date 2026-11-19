@@ -14,7 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 def _controller_block(rendered: str) -> str:
     start = rendered.index("      - name: controller\n")
-    end = rendered.index("### --- SMPC", start)
+    end = rendered.index("\n---", start)
     return rendered[start:end]
 
 

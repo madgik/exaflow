@@ -28,25 +28,10 @@ enabled = true
 port = 50051
 max_wait_for_aggregation_inputs = 30
 
-[smpc]
-enabled=false
-optional=false
-get_result_interval = 10
-get_result_max_retries = 100
-smpc_image="gpikra/coordinator:v7.0.7.4"
-db_image="mongo:5.0.8"
-queue_image="redis:alpine3.15"
-[smpc.dp]
-enabled = false
-# sensitivity = 1
-# privacy_budget = 0.1
-
 [[workers]]
 id = "localworker1"
 grpc_port=5671
-smpc_client_port=9001
 
 [[workers]]
 id = "localworker2"
 grpc_port=5672
-smpc_client_port=9002

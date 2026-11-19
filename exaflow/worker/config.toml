@@ -25,9 +25,3 @@ max_message_mb = "${GRPC_MAX_MESSAGE_MB:-100}"
 [aggregation_server]
 enabled = "$AGGREGATION_SERVER_ENABLED"
 dns= "$AGGREGATION_SERVER_DNS"
-
-[smpc]
-enabled = "$SMPC_ENABLED"
-optional = "$SMPC_OPTIONAL"
-client_id = "$SMPC_CLIENT_ID"
-client_address = "$SMPC_CLIENT_ADDRESS"

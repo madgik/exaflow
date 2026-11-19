@@ -20,13 +20,6 @@ enabled = true
 port = 50051
 max_wait_for_aggregation_inputs = 10
 
-[smpc]
-enabled=false
-optional=false
-
-[smpc.dp]
-enabled = false
-
 [[workers]]
 id = "localworker1"
 grpc_port=5671

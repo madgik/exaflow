@@ -18,10 +18,8 @@ with a FastAPI/Uvicorn controller, gRPC workers, optional aggregation server,
 algorithm implementations, Kubernetes deployment manifests, and a nested
 `exadata-validator` Python package.
 
-Unless a task explicitly targets SMPC, focus on the native Exareme3 federated
-pipeline described below. SMPC is optional and has separate configuration,
-test markers, and review requirements. See
-`documentation/context/risk-register.md`.
+Focus on the native Exareme3 federated pipeline described below. See
+`documentation/context/risk-register.md` for review requirements.
 
 ## Repository Layout
 
@@ -97,7 +95,7 @@ CI runs the full standalone suite with coverage (reference only — agents shoul
 use the focused `-q` commands above unless explicitly asked to reproduce CI):
 
 ```bash
-uv run pytest -q -n auto --dist worksteal -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests
+uv run pytest -q -n auto --dist worksteal --cov=exaflow --cov-report=xml:standalone_cov.xml tests/standalone_tests
 ```
 
 ## Lint / Format / Typecheck
@@ -212,7 +210,7 @@ ownership. Non-negotiable boundaries:
 - Never commit secrets, tokens, credentials, private keys, cookies, or local
   private environment values.
 - Never print secrets or sensitive dataset contents in logs.
-- Treat privacy thresholds, SMPC/DP config, data deletion, migrations,
+- Treat privacy thresholds, privacy configuration, data deletion, migrations,
   external registry credentials, and deployment credentials as human-review
   areas.
 - Preserve existing security and privacy boundaries, including worker privacy
@@ -489,7 +487,7 @@ Algorithm integration gates:
 - `uv run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorithms.py --repo-root . --new-algorithm <algorithm_id>`
 - Add `--strict` only when prod-env runtime checks should run.
 
-Pytest markers include `slow`, `very_slow`, `smpc`, and `smpc_cluster`. Focus
+Pytest markers include `slow` and `very_slow`. Focus
 on `slow` and `very_slow` when algorithm changes might affect distributed runs.
 
 ______________________________________________________________________

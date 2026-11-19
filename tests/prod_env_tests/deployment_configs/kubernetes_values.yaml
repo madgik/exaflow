@@ -29,9 +29,6 @@ controller:
   shutdown_timeout: 60
   shutdown_grace_margin: 20
 
-smpc:
-  enabled: false
-
 storage:
   type: hostPath  # options: hostPath | cephfs
 

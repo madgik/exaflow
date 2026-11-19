@@ -15,7 +15,7 @@ def fed_average(agg_client, params: Dict[str, Any]) -> Dict[str, Any]:
     Parameters
     ----------
     agg_client
-        Aggregation client that provides secure sum operations over lists
+        Aggregation client that provides sum operations over lists
         of floats.
     params
         Local model parameters to be averaged.
@@ -39,7 +39,7 @@ def fed_average(agg_client, params: Dict[str, Any]) -> Dict[str, Any]:
     for name, local_val in params.items():
         arr = np.asarray(local_val, dtype=float)
 
-        # Flatten, aggregate with secure sum, then reshape
+        # Flatten, aggregate with sum, then reshape
         flat_local = arr.ravel().tolist()
         flat_sum = agg_client.sum(flat_local)
         summed = np.asarray(flat_sum, dtype=float).reshape(arr.shape)

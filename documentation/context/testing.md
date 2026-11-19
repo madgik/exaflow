@@ -86,12 +86,8 @@ refactor does not rename those core tests or manufacture expected fixtures.
 CI runs:
 
 ```bash
-uv run pytest -q -n auto --dist worksteal -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests
+uv run pytest -q -n auto --dist worksteal --cov=exaflow --cov-report=xml:standalone_cov.xml tests/standalone_tests
 ```
-
-SMPC standalone tests are present but skipped in CI comments because they are
-currently failing or require additional resources. Verify before relying on
-them.
 
 ## Environment-Backed Tests
 
@@ -158,7 +154,7 @@ CI also builds the package and smoke-tests the wheel.
 | Aggregation change | `tests/standalone_tests/aggregation_server`; focused algorithm tests that use aggregation server. |
 | Config/deployment change | `helm template kubernetes/`; relevant Invoke dry/manual checks; prod environment tests when feasible. |
 | Protobuf change | Regenerate generated files; run gRPC/aggregation/controller tests. |
-| Privacy/SMPC/DP change | Focused tests plus human review; run environment-backed tests if behavior changes. |
+| Privacy change | Focused tests plus human review; run environment-backed tests if behavior changes. |
 | Dependency update | Lockfile update, focused tests, lint/format, and CI-equivalent suite where feasible. |
 | Refactor without behavior change | Focused tests for touched modules and broader standalone tests if shared code moved. |
 | `exadata-validator` change | `cd exadata-validator && uv run pytest -q`; build/smoke test if packaging or CLI changes. |

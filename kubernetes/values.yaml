@@ -60,15 +60,6 @@ aggregation_server:
   max_wait_for_aggregation_inputs: 60
   dns: "exaflow-aggregation-service"
 
-smpc:
-  enabled: false
-  optional: false
-  image: gpikra/coordinator:v7.0.7.4
-  db_image: mongo:5.0.8
-  queue_image: redis:alpine3.15
-  get_result_interval: 5
-  get_result_max_retries: 100
-
 storage:
   type: hostPath
 

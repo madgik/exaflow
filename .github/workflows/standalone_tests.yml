@@ -36,26 +36,16 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked --all-groups --no-install-project
 
-      - name: Run all standalone tests except the SMPC
-        id: non_smpc_tests
-        run: uv run --no-sync pytest -q -n auto --dist worksteal -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests
+      - name: Run standalone tests
+        id: standalone_tests
+        run: uv run --no-sync pytest -q -n auto --dist worksteal --cov=exaflow --cov-report=xml:standalone_cov.xml tests/standalone_tests
         env:
           PYTHONPATH: ${{ github.workspace }}/exaflow:${{ github.workspace }}
           PULL_DOCKER_IMAGES: false
-
-#      Skip due to failing SMPC
-#      - name: Run SMPC specific standalone tests after releasing previous test resources
-#        if: success() || ( failure() && steps.non_smpc_tests.outcome == 'failure' )
-#        run:  |
-#          uv run --no-sync inv cleanup
-#          uv run --no-sync pytest -s -m "smpc" --cov=exaflow --cov-report=xml:smpc_cov.xml tests/standalone_tests --verbosity=4 --reruns 3 --reruns-delay 5
-#        env:
-#          PULL_DOCKER_IMAGES: false
 
       - name: Upload coverage to Qlty
         uses: qltysh/qlty-action/coverage@357cd88be7c73c5dc45cf7cf8f99a46ec0b62b73 # v2
         with:
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
-          files: ./non_smpc_cov.xml
+          files: ./standalone_cov.xml
           add-prefix: exaflow/
-#          files: ./non_smpc_cov.xml,./smpc_cov.xml

@@ -57,8 +57,8 @@ Regenerate bindings using `exaflow/protos/README.md`.
 
 Publish persistent JSON messages with publisher confirms and mandatory routing to
 `exaflow.analysis.requests` (configurable). The body is the existing
-`AnalysisRequestDTO`, including `inputdata`, `preprocessing`, `algorithm`, and any
-existing flags. Required AMQP properties are:
+`AnalysisRequestDTO`, including `inputdata`, `preprocessing`, and `algorithm`.
+Required AMQP properties are:
 
 | Property | Meaning |
 | --- | --- |

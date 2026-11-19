@@ -243,7 +243,7 @@ def local_step(
     n_splits,
 ):
     """
-    Run K-fold CV for logistic regression using secure aggregation.
+    Run K-fold CV for logistic regression using aggregation.
 
     For each fold:
     - Train a global logistic model via federated aggregation.

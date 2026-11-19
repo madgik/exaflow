@@ -87,22 +87,6 @@ spec:
           value: {{ quote .Values.aggregation_server.enabled }}
         - name: AGGREGATION_SERVER_DNS
           value: {{ quote .Values.aggregation_server.dns }}
-        - name: SMPC_ENABLED
-          value: {{ quote .Values.smpc.enabled }}
-        {{ if .Values.smpc.enabled }}
-        - name: SMPC_OPTIONAL
-          value: {{ quote .Values.smpc.optional }}
-        - name: SMPC_CLIENT_ID
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: SMPC_CLIENT_IP
-          valueFrom:
-            fieldRef:
-              fieldPath: status.podIP
-        - name: SMPC_CLIENT_ADDRESS
-          value: "http://$(SMPC_CLIENT_IP):9000"
-        {{ end }}
         startupProbe:
           exec:
             command:
@@ -132,36 +116,6 @@ spec:
           timeoutSeconds: 30
           failureThreshold: 15
 
-      {{ if .Values.smpc.enabled }}
-      - name: smpc-client
-        image: {{ .Values.smpc.image }}
-        command: ["python", "client.py"]
-        ports:
-          - containerPort: 9000
-        env:
-        - name: ID
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: PORT
-          value: "9000"
-        - name: COORDINATOR_IP
-          value: exaflow-smpc-coordinator-service
-        - name: COORDINATOR_URL
-          value: "http://$(COORDINATOR_IP):12314"
-        - name: PLAYER_IP_0
-          value: exaflow-smpc-player0-service
-        - name: PLAYER_REPO_0
-          value: "http://$(PLAYER_IP_0):7000"
-        - name: PLAYER_IP_1
-          value: exaflow-smpc-player1-service
-        - name: PLAYER_REPO_1
-          value: "http://$(PLAYER_IP_1):7001"
-        - name: PLAYER_IP_2
-          value: exaflow-smpc-player2-service
-        - name: PLAYER_REPO_2
-          value: "http://$(PLAYER_IP_2):7002"
-      {{ end }}
 
   {{- if .Values.managed_cluster }}
   volumeClaimTemplates:
@@ -179,20 +133,4 @@ spec:
             storage: {{ .Values.storage.cephfs.localworker.csvs.size }}
 
   {{- end }}
-#---  # Used for SMPC cluster debugging
-#
-#apiVersion: v1
-#kind: Service
-#metadata:
-#  name: exaflow-worker-service
-#  namespace: {{ .Values.namespace }}
-#spec:
-#  type: LoadBalancer
-#  selector:
-#    app: exaflow-worker
-#  ports:
-#    - protocol: TCP
-#      port: 9000
-#      targetPort: 9000
-#      nodePort: 32000
 {{- end }}

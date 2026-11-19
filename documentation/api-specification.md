@@ -424,7 +424,6 @@ Example:
 | `inputdata` | `AnalysisInputDataDTO` | Data model, datasets, filter, and source variables loaded before preprocessing. | Required. |
 | `preprocessing` | `AnalysisPreprocessingStepDTO[] \| null` | Ordered preprocessing step configuration. | Step names must exist in enabled preprocessing specs, and required preprocessing steps must be included. |
 | `algorithm` | `AnalysisAlgorithmDTO` | Selected algorithm name, final algorithm `x`, `y`, and parameter values. | Required. |
-| `flags` | `object \| null` | System flags. | Optional. |
 
 **Request ID compatibility:** caller-provided IDs are restricted to 1–128 ASCII
 letters, digits, underscores, or hyphens. Empty strings, whitespace, other

@@ -210,7 +210,7 @@ Plan or implement the security/privacy-sensitive change below.
 Before editing, read:
 
 - `documentation/context/risk-register.md`
-- Relevant config, deployment, privacy, SMPC/DP, or logging code
+- Relevant config, deployment, privacy or logging code
 
 Change:
 ...

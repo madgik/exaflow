@@ -138,7 +138,6 @@ def _request(
             y=y or ["outcome"],
             parameters={} if parameters is None else parameters,
         ),
-        flags={},
     )
 
 
@@ -156,8 +155,6 @@ def _validate(request, *, algorithms_specs=None, preprocessing_steps_specs=None)
         preprocessing_steps_specs=preprocessing_steps_specs
         or _default_preprocessing_specs(),
         worker_landscape_aggregator=FakeWorkerLandscapeAggregator(),
-        smpc_enabled=False,
-        smpc_optional=False,
     )
 
 
@@ -183,8 +180,6 @@ def _post_parameter_request(parameters, parameter_specs):
             algorithms_specs=algorithms_specs,
             preprocessing_steps_specs=_default_preprocessing_specs(),
             worker_landscape_aggregator=FakeWorkerLandscapeAggregator(),
-            smpc_enabled=False,
-            smpc_optional=False,
         )
         return "ok"
 
@@ -602,8 +597,6 @@ def test_training_only_request_uses_shared_catalog():
         algorithms_specs={"sample_algorithm": _algorithm_spec()},
         preprocessing_steps_specs=_default_preprocessing_specs(),
         worker_landscape_aggregator=FakeWorkerLandscapeAggregator(),
-        smpc_enabled=False,
-        smpc_optional=False,
     )
 
 

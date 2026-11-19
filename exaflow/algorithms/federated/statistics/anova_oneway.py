@@ -21,7 +21,7 @@ class FederatedAnovaOneWay:
     Federated one-way ANOVA with a statsmodels-like interface.
 
     This class mirrors the behavior of statsmodels' one-way ANOVA utilities
-    while computing sufficient statistics via secure aggregation.
+    while computing sufficient statistics via aggregation.
     """
 
     def __init__(self, agg_client, *, alpha: float = 0.05):

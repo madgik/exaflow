@@ -72,8 +72,6 @@ packages = ["exaflow"]
 markers = [
     "slow: marks tests as slow, mostly integration tests (deselect with '-m \"not slow\"')",
     "very_slow: marks tests as very_slow, integration tests with temporary container dependencies (deselect with '-m \"not very_slow\"')",
-    "smpc: marks the tests validating smpc functionality (deselect with '-m \"not smpc\"')",
-    "smpc_cluster: marks the tests that need smpc cluster deployment (deselect with '-m \"not smpc_cluster\"')",
 ]
 filterwarnings = ["ignore::DeprecationWarning"]
 norecursedirs = ["tests/testcase_generators"]

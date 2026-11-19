@@ -154,18 +154,6 @@ def _worker_data_path(worker_id: str) -> Path:
     return TEST_DATA_FOLDER / ".data_paths" / worker_id
 
 
-SMPC_COORDINATOR_PORT = 12314
-SMPC_COORDINATOR_DB_PORT = 27017
-SMPC_COORDINATOR_QUEUE_PORT = 6379
-SMPC_PLAYER_BASE_PORT = 7000
-SMPC_CLIENT_BASE_PORT = 9000
-SMPC_COORDINATOR_NAME = "smpc_coordinator"
-SMPC_COORDINATOR_DB_NAME = "smpc_coordinator_db"
-SMPC_COORDINATOR_QUEUE_NAME = "smpc_coordinator_queue"
-SMPC_PLAYER_BASE_NAME = "smpc_player"
-SMPC_CLIENT_BASE_NAME = "smpc_client"
-
-
 # TODO Replace invoke's lack of pre-task support when implemented https://github.com/pyinvoke/invoke/issues/170
 # Right now if we call a task from another task, the "pre"-task is not executed
 
@@ -227,16 +215,6 @@ def create_configs(c):
         worker_config["privacy"]["protect_local_data"] = deployment_config["privacy"][
             "protect_local_data"
         ]
-        worker_config["smpc"]["enabled"] = deployment_config["smpc"]["enabled"]
-        if worker_config["smpc"]["enabled"]:
-            worker_config["smpc"]["optional"] = deployment_config["smpc"]["optional"]
-            coordinator_ip = deployment_config["smpc"].get("coordinator_ip")
-            worker_config["smpc"]["client_id"] = (
-                worker["smpc_client_id"] if coordinator_ip else worker["id"]
-            )
-            worker_config["smpc"]["client_address"] = (
-                f"http://{coordinator_ip or deployment_config['ip']}:{worker['smpc_client_port']}"
-            )
 
         worker_config["duckdb"] = {
             "path": f"{str(_worker_data_path(worker_config['identifier']))}/data_models.duckdb"
@@ -279,36 +257,6 @@ def create_configs(c):
     controller_config["workers"]["config_file"] = str(CONTROLLER_WORKERS_CONFIG_FILE)
     controller_config["workers"]["dns"] = ""
     controller_config["workers"]["port"] = ""
-
-    controller_config["smpc"]["enabled"] = deployment_config["smpc"]["enabled"]
-    if controller_config["smpc"]["enabled"]:
-        controller_config["smpc"]["optional"] = deployment_config["smpc"]["optional"]
-        if coordinator_ip := deployment_config["smpc"].get("coordinator_ip"):
-            controller_config["smpc"]["coordinator_address"] = (
-                f"http://{coordinator_ip}:{SMPC_COORDINATOR_PORT}"
-            )
-        else:
-            controller_config["smpc"]["coordinator_address"] = (
-                f"http://{deployment_config['ip']}:{SMPC_COORDINATOR_PORT}"
-            )
-
-        controller_config["smpc"]["get_result_interval"] = deployment_config["smpc"][
-            "get_result_interval"
-        ]
-        controller_config["smpc"]["get_result_max_retries"] = deployment_config["smpc"][
-            "get_result_max_retries"
-        ]
-
-        controller_config["smpc"]["dp"]["enabled"] = deployment_config["smpc"]["dp"][
-            "enabled"
-        ]
-        if controller_config["smpc"]["dp"]["enabled"]:
-            controller_config["smpc"]["dp"]["sensitivity"] = deployment_config["smpc"][
-                "dp"
-            ]["sensitivity"]
-            controller_config["smpc"]["dp"]["privacy_budget"] = deployment_config[
-                "smpc"
-            ]["dp"]["privacy_budget"]
 
     CONTROLLER_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     controller_config_file = CONTROLLER_CONFIG_DIR / "controller.toml"
@@ -355,36 +303,6 @@ def install_dependencies(c):
     message("Installing dependencies...", Level.HEADER)
     cmd = "uv sync --all-groups"
     run(c, cmd)
-
-
-@task
-def rm_containers(c, container_name=None, smpc=False):
-    """
-    Remove the specified docker containers, either by container or relative name.
-
-    :param container_name: If set, removes the container with the specified name.
-    :param smpc: If True, it will remove all smpc related containers.
-
-    If nothing is set, nothing is removed.
-    """
-    names = []
-    if smpc:
-        names.append("smpc")
-    if container_name:
-        names.append(container_name)
-    if not names:
-        message(
-            "You must specify a container family to remove",
-            level=Level.WARNING,
-        )
-    for name in names:
-        container_ids = run(c, f"docker ps -qa --filter name={name}", show_ok=False)
-        if container_ids.stdout:
-            message(f"Removing {name} container(s)...", Level.HEADER)
-            cmd = f"docker rm -vf $(docker ps -qa --filter name={name})"
-            run(c, cmd)
-        else:
-            message(f"No {name} container to remove.", level=Level.HEADER)
 
 
 @task(iterable=["worker"], name="create-duckdb")
@@ -877,7 +795,6 @@ def deploy(
     log_level=None,
     framework_log_level=None,
     exareme3_algorithm_folders=None,
-    smpc=None,
     no_structure_data=False,
 ):
     """
@@ -887,7 +804,6 @@ def deploy(
     :param log_level: Used for the dev logs. If not provided, it looks in the `DEPLOYMENT_CONFIG_FILE`.
     :param framework_log_level: Used for the engine api. If not provided, it looks in the `DEPLOYMENT_CONFIG_FILE`.
     :param exareme3_algorithm_folders: Used from the api. If not provided, it looks in the `DEPLOYMENT_CONFIG_FILE`.
-    :param smpc: Deploy the SMPC cluster as well. If not provided, it looks in the `DEPLOYMENT_CONFIG_FILE`.
     :param no_structure_data: Do not structure data on the folder `tests/test_data/.data_paths`.
     """
 
@@ -903,9 +819,6 @@ def deploy(
     start_aggregation_server_ = get_deployment_config(
         "aggregation_server", subconfig="enabled"
     )
-
-    if smpc is None:
-        smpc = get_deployment_config("smpc", subconfig="enabled")
 
     if install_dep:
         install_dependencies(c)
@@ -946,9 +859,6 @@ def deploy(
         detached=True,
         exareme3_algorithm_folders=exareme3_algorithm_folders,
     )
-
-    if smpc and not get_deployment_config("smpc", subconfig="coordinator_ip"):
-        deploy_smpc(c)
 
 
 @task
@@ -995,7 +905,6 @@ def cleanup(c):
     )
     kill_aggregation_server(c)
     kill_worker(c, all_=True)
-    rm_containers(c, smpc=True)
 
     # Remove any DuckDB files referenced in worker configs (in case they live elsewhere)
     if WORKERS_CONFIG_DIR.exists():
@@ -1054,200 +963,6 @@ def clean_duckdb(duckdb_path):
             message("Ok", level=Level.SUCCESS)
     except Exception as e:  # noqa: BLE001
         print(f"Error deleting {duckdb_path}: {e}")
-
-
-def start_smpc_coordinator_db(c, image):
-    container_ports = f"{SMPC_COORDINATOR_DB_PORT}:27017"
-    message(
-        f"Starting container {SMPC_COORDINATOR_DB_NAME} on ports {container_ports}...",
-        Level.HEADER,
-    )
-    env_variables = (
-        "-e MONGO_INITDB_ROOT_USERNAME=sysadmin -e MONGO_INITDB_ROOT_PASSWORD=123qwe "
-    )
-    cmd = f"docker run -d -p {container_ports} {env_variables} --name {SMPC_COORDINATOR_DB_NAME} {image}"
-    run(c, cmd)
-
-
-def start_smpc_coordinator_queue(c, image):
-    container_ports = f"{SMPC_COORDINATOR_QUEUE_PORT}:6379"
-    message(
-        f"Starting container {SMPC_COORDINATOR_QUEUE_NAME} on ports {container_ports}...",
-        Level.HEADER,
-    )
-    container_cmd = "redis-server --requirepass agora"
-    cmd = f"""docker run -d -p {container_ports} -e REDIS_REPLICATION_MODE=master --name {SMPC_COORDINATOR_QUEUE_NAME} {image} {container_cmd}"""
-    run(c, cmd)
-
-
-def start_smpc_coordinator_container(c, ip, image):
-    container_ports = f"{SMPC_COORDINATOR_PORT}:12314"
-    message(
-        f"Starting container {SMPC_COORDINATOR_NAME} on ports {container_ports}...",
-        Level.HEADER,
-    )
-    container_cmd = "python coordinator.py"
-    env_variables = (
-        f"-e PLAYER_REPO_0=http://{ip}:7000 "
-        f"-e PLAYER_REPO_1=http://{ip}:7001 "
-        f"-e PLAYER_REPO_2=http://{ip}:7002 "
-        f"-e REDIS_HOST={ip} "
-        f"-e REDIS_PORT={SMPC_COORDINATOR_QUEUE_PORT} "
-        "-e REDIS_PSWD=agora "
-        f"-e DB_URL={ip}:{SMPC_COORDINATOR_DB_PORT} "
-        "-e DB_UNAME=sysadmin "
-        "-e DB_PSWD=123qwe "
-    )
-    cmd = f"""docker run -d -p {container_ports} {env_variables} --name {SMPC_COORDINATOR_NAME} {image} {container_cmd}"""
-    run(c, cmd)
-
-
-@task
-def start_smpc_coordinator(
-    c, ip=None, smpc_image=None, smpc_db_image=None, smpc_queue_image=None
-):
-    """
-    (Re)Creates all needed SMPC coordinator containers. If the containers exist, it will remove them and create them again.
-
-    :param ip: The ip to use for container communication. If not set, it will read it from the `DEPLOYMENT_CONFIG_FILE`.
-    :param smpc_image: The coordinator image to deploy. If not set, it will read it from the `DEPLOYMENT_CONFIG_FILE`.
-    :param smpc_db_image: The db image to deploy. If not set, it will read it from the `DEPLOYMENT_CONFIG_FILE`.
-    :param smpc_queue_image: The queue image to deploy. If not set, it will read it from the `DEPLOYMENT_CONFIG_FILE`.
-    """
-
-    if not ip:
-        ip = get_deployment_config("ip")
-    if not smpc_image:
-        smpc_image = get_deployment_config("smpc", subconfig="smpc_image")
-    if not smpc_db_image:
-        smpc_db_image = get_deployment_config("smpc", subconfig="db_image")
-    if not smpc_queue_image:
-        smpc_queue_image = get_deployment_config("smpc", subconfig="queue_image")
-
-    get_docker_image(c, smpc_image)
-    get_docker_image(c, smpc_db_image)
-    get_docker_image(c, smpc_queue_image)
-
-    rm_containers(c, container_name="smpc_coordinator")
-
-    start_smpc_coordinator_db(c, smpc_db_image)
-    start_smpc_coordinator_queue(c, smpc_queue_image)
-    start_smpc_coordinator_container(c, ip, smpc_image)
-
-
-def start_smpc_player(c, ip, id, image):
-    name = f"{SMPC_PLAYER_BASE_NAME}_{id}"
-    message(
-        f"Starting container {name} ...",
-        Level.HEADER,
-    )
-    container_cmd = f"python player.py {id}"  # SMPC player id cannot be alphanumeric
-    env_variables = (
-        f"-e PLAYER_REPO_0=http://{ip}:7000 "
-        f"-e PLAYER_REPO_1=http://{ip}:7001 "
-        f"-e PLAYER_REPO_2=http://{ip}:7002 "
-        f"-e COORDINATOR_URL=http://{ip}:{SMPC_COORDINATOR_PORT} "
-        f"-e DB_URL={ip}:{SMPC_COORDINATOR_DB_PORT} "
-        "-e DB_UNAME=sysadmin "
-        "-e DB_PSWD=123qwe "
-        f"-e PORT={SMPC_PLAYER_BASE_PORT + id}"
-    )
-    container_ports = (
-        f"-p {6000 + id}:{6000 + id} "
-        f"-p {SMPC_PLAYER_BASE_PORT + id}:{7000 + id} "
-        f"-p {14000 + id}:{14000 + id} "
-    )  # SMPC player port is increasing using the player id
-    cmd = f"""docker run -d {container_ports} {env_variables} --name {name} {image} {container_cmd}"""
-    run(c, cmd)
-
-
-@task
-def start_smpc_players(c, ip=None, image=None):
-    """
-    (Re)Creates 3 SMPC player containers. If the containers exist, it will remove them and create them again.
-
-    :param ip: The ip to use for container communication. If not set, it will read it from the `DEPLOYMENT_CONFIG_FILE`.
-    :param image: The smpc player image to deploy. If not set, it will read it from the `DEPLOYMENT_CONFIG_FILE`.
-    """
-
-    if not ip:
-        ip = get_deployment_config("ip")
-    if not image:
-        image = get_deployment_config("smpc", subconfig="smpc_image")
-
-    get_docker_image(c, image)
-
-    rm_containers(c, container_name="smpc_player")
-
-    for i in range(3):
-        start_smpc_player(c, ip, i, image)
-
-
-def start_smpc_client(c, worker_id, ip, image):
-    worker_config_file = WORKERS_CONFIG_DIR / f"{worker_id}.toml"
-    with open(worker_config_file) as fp:
-        worker_config = toml.load(fp)
-
-    client_id = worker_config["smpc"]["client_id"]
-    client_port = worker_config["smpc"]["client_address"].split(":")[
-        2
-    ]  # Get the port from the address e.g. 'http://172.17.0.1:9000'
-
-    name = f"{SMPC_CLIENT_BASE_NAME}_{client_id}"
-    message(
-        f"Starting container {name} ...",
-        Level.HEADER,
-    )
-    container_cmd = f"python client.py"
-    env_variables = (
-        f"-e PLAYER_REPO_0=http://{ip}:7000 "
-        f"-e PLAYER_REPO_1=http://{ip}:7001 "
-        f"-e PLAYER_REPO_2=http://{ip}:7002 "
-        f"-e COORDINATOR_URL=http://{ip}:{SMPC_COORDINATOR_PORT} "
-        f"-e ID={client_id} "
-        f"-e PORT={client_port} "
-    )
-    container_ports = f"-p {client_port}:{client_port} "
-    cmd = f"""docker run -d {container_ports} {env_variables} --name {name} {image} {container_cmd}"""
-    run(c, cmd)
-
-
-@task
-def start_smpc_clients(c, ip=None, image=None):
-    """
-    (Re)Creates 3 SMPC player containers. If the containers exist, it will remove them and create them again.
-
-    :param ip: The ip to use for container communication. If not set, it will read it from the `DEPLOYMENT_CONFIG_FILE`.
-    :param image: The smpc player image to deploy. If not set, it will read it from the `DEPLOYMENT_CONFIG_FILE`.
-    """
-
-    if not ip:
-        ip = get_deployment_config("ip")
-    if not image:
-        image = get_deployment_config("smpc", subconfig="smpc_image")
-
-    get_docker_image(c, image)
-
-    rm_containers(c, container_name="smpc_client")
-
-    for worker_id in get_smpc_worker_ids():
-        start_smpc_client(c, worker_id, ip, image)
-
-
-@task
-def deploy_smpc(c, ip=None, smpc_image=None, smpc_db_image=None, smpc_queue_image=None):
-    """
-    (Re)Creates all needed SMPC containers. If the containers exist, it will remove them and create them again.
-
-    :param ip: The ip to use for container communication. If not set, it will read it from the `DEPLOYMENT_CONFIG_FILE`.
-    :param smpc_image: The coordinator image to deploy. If not set, it will read it from the `DEPLOYMENT_CONFIG_FILE`.
-    :param smpc_db_image: The db image to deploy. If not set, it will read it from the `DEPLOYMENT_CONFIG_FILE`.
-    :param smpc_queue_image: The queue image to deploy. If not set, it will read it from the `DEPLOYMENT_CONFIG_FILE`.
-    """
-    rm_containers(c, smpc=True)
-    start_smpc_coordinator(c, ip, smpc_image, smpc_db_image, smpc_queue_image)
-    start_smpc_players(c, ip, smpc_image)
-    start_smpc_clients(c, ip, smpc_image)
 
 
 def run(
@@ -1381,26 +1096,3 @@ def get_worker_ids(all_=False, worker=None):
         sys.exit(1)
 
     return worker_ids
-
-
-def get_smpc_worker_ids():
-    return get_worker_ids(all_=True)
-
-
-def get_docker_image(c, image, always_pull=False):
-    """
-    Fetches a docker image locally.
-
-    :param image: The image to pull from dockerhub.
-    :param always_pull: Will pull the image even if it exists locally.
-    """
-
-    cmd = f"docker images -q {image}"
-    _, image_tag = image.split(":")
-    result = run(c, cmd, show_ok=False)
-    if result.stdout != "" and image_tag != "latest" and image_tag != "dev":
-        return
-
-    message(f"Pulling image {image} ...", Level.HEADER)
-    cmd = f"docker pull {image}"
-    run(c, cmd)
