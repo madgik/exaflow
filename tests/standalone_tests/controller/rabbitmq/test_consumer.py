@@ -996,3 +996,54 @@ def test_close_closes_both_connections_within_one_operation_timeout():
         assert elapsed < 0.75
 
     asyncio.run(scenario())
+
+
+def test_retiring_stale_publisher_does_not_close_replacement():
+    async def scenario():
+        stale = SimpleNamespace(is_closed=True, close=AsyncMock())
+        replacement = SimpleNamespace(is_closed=False, close=AsyncMock())
+        runtime = consumer()
+        runtime.publish_connection = replacement
+        await runtime._retire_publish_connection(stale)
+        assert runtime.publish_connection is replacement
+        replacement.close.assert_not_awaited()
+        stale.close.assert_not_awaited()
+
+    asyncio.run(scenario())
+
+
+def test_monitor_restores_dropped_publisher_while_idle(monkeypatch):
+    async def scenario():
+        restored = asyncio.Event()
+        dropped = SimpleNamespace(is_closed=True, close=AsyncMock())
+        replacement = SimpleNamespace(is_closed=False, close=AsyncMock())
+        queue = SimpleNamespace(
+            declare=AsyncMock(return_value=SimpleNamespace(consumer_count=1))
+        )
+
+        async def connect(url, **kwargs):
+            assert kwargs["client_properties"] == {
+                "connection_name": "exaflow-analysis-publisher"
+            }
+            restored.set()
+            return replacement
+
+        monkeypatch.setattr(module.aio_pika, "connect", connect)
+        runtime = consumer(enabled=True, url="amqp://localhost")
+        runtime.connection = SimpleNamespace(is_closed=False)
+        runtime.publish_connection = dropped
+        runtime.consuming = True
+        assert runtime.health()["connected"] is False
+
+        monitor = asyncio.create_task(runtime._monitor_subscription(queue))
+        try:
+            await asyncio.wait_for(restored.wait(), 3)
+            await asyncio.sleep(0)
+            assert runtime.publish_connection is replacement
+            assert runtime.health()["connected"] is True
+        finally:
+            runtime.stopping = True
+            monitor.cancel()
+            await asyncio.gather(monitor, return_exceptions=True)
+
+    asyncio.run(scenario())
