@@ -561,7 +561,7 @@ def _validate_cde_stattype(
             f"The variable '{cde_code}', {slot_description}, should be categorical."
         )
     raise BadUserInput(
-        f"The CDE '{cde_code}', {slot_description}, has type "
+        f"The variable '{cde_code}', {slot_description}, has type "
         f"'{cde_stattype.value}' but only {allowed} is accepted. CDE types are "
         f"matched exactly and are never converted into one another."
     )
