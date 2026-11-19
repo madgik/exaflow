@@ -1047,3 +1047,180 @@ def test_monitor_restores_dropped_publisher_while_idle(monkeypatch):
             await asyncio.gather(monitor, return_exceptions=True)
 
     asyncio.run(scenario())
+
+
+async def _connected_aio_pika_connection(monkeypatch, *, drop_on_channel=False):
+    """Build a real aio_pika.Connection backed by a minimal aiormq underlay."""
+    from aio_pika.connection import Connection as AioPikaConnection
+    from aio_pika.connection import UnderlayConnection
+
+    loop = asyncio.get_running_loop()
+
+    class FakeUnderlay:
+        def __init__(self):
+            self.closing = loop.create_future()
+            self.connected = asyncio.Event()
+            self.connected.set()
+
+        @property
+        def is_closed(self):
+            return self.closing.done()
+
+        async def ready(self):
+            await self.connected.wait()
+
+        async def channel(self, **kwargs):
+            if drop_on_channel and not self.closing.done():
+                self.closing.set_exception(ConnectionResetError("transport dropped"))
+            if self.is_closed:
+                raise RuntimeError("Connection closed")
+            raise AssertionError("unexpected open channel call")
+
+        async def close(self, exc=None):
+            if not self.closing.done():
+                self.closing.set_result(None)
+
+    underlay = FakeUnderlay()
+    monkeypatch.setattr(
+        UnderlayConnection,
+        "make_connection",
+        classmethod(AsyncMock(return_value=underlay)),
+    )
+    conn = AioPikaConnection("amqp://guest:guest@localhost/", loop=loop)
+    await conn.connect()
+    return conn, underlay
+
+
+def test_transport_drop_on_aio_pika_connection_restores_idle_publisher(monkeypatch):
+    async def scenario():
+        dropped, underlay = await _connected_aio_pika_connection(monkeypatch)
+        restored = asyncio.Event()
+        replacement = SimpleNamespace(is_closed=False, close=AsyncMock())
+        queue = SimpleNamespace(
+            declare=AsyncMock(return_value=SimpleNamespace(consumer_count=1))
+        )
+
+        async def connect(url, **kwargs):
+            assert kwargs["client_properties"] == {
+                "connection_name": "exaflow-analysis-publisher"
+            }
+            restored.set()
+            return replacement
+
+        monkeypatch.setattr(module.aio_pika, "connect", connect)
+        runtime = consumer(enabled=True, url="amqp://localhost")
+        runtime.connection = SimpleNamespace(is_closed=False)
+        runtime.publish_connection = dropped
+        runtime.consuming = True
+        assert runtime.health()["connected"] is True
+
+        # Simulate unexpected transport closure in aio-pika 9.6.2:
+        # underlay closes and clears connected, while Connection.is_closed stays False.
+        underlay.closing.set_exception(ConnectionResetError("transport dropped"))
+        assert runtime.health()["connected"] is False
+        await asyncio.wait_for(dropped.transport.close_callback.wait(), 1)
+        assert dropped.is_closed is False
+        assert not dropped.connected.is_set()
+        assert runtime.health()["connected"] is False
+
+        monitor = asyncio.create_task(runtime._monitor_subscription(queue))
+        try:
+            await asyncio.wait_for(restored.wait(), 3)
+            await asyncio.sleep(0)
+            assert runtime.publish_connection is replacement
+            assert dropped.is_closed is True
+            assert runtime.health()["connected"] is True
+        finally:
+            runtime.stopping = True
+            monitor.cancel()
+            await asyncio.gather(monitor, return_exceptions=True)
+
+    asyncio.run(scenario())
+
+
+def test_delivery_recovers_after_aio_pika_transport_drop_raises_runtime_error(
+    monkeypatch,
+):
+    async def scenario():
+        monkeypatch.setattr(
+            module.analysis_service,
+            "run_analysis",
+            AsyncMock(return_value='{"value": 9}'),
+        )
+        dropped, _underlay = await _connected_aio_pika_connection(
+            monkeypatch, drop_on_channel=True
+        )
+        message, replacement, events = resources()
+        consuming = SimpleNamespace(
+            is_closed=False,
+            channel=AsyncMock(
+                side_effect=AssertionError("reply channel opened on the consumer")
+            ),
+            close=AsyncMock(),
+        )
+        monkeypatch.setattr(
+            module.aio_pika, "connect", AsyncMock(return_value=replacement)
+        )
+        runtime = consumer(url="amqp://localhost")
+        runtime.connection = consuming
+        runtime.publish_connection = dropped
+        runtime._retry = AsyncMock()
+
+        # The transport drops inside channel creation, leaving Connection.is_closed False
+        # while aiormq raises RuntimeError. handle() must retire dropped and recover.
+        await runtime.handle(message, consuming)
+        assert dropped.is_closed is True
+        assert runtime.publish_connection is replacement
+        assert runtime.health()["last_error"] == "RuntimeError"
+        assert events == ["publish", "ack"]
+        assert runtime.health()["connected"] is True
+
+    asyncio.run(scenario())
+
+
+def test_channel_open_failure_does_not_retire_replacement_publisher(monkeypatch):
+    async def scenario():
+        monkeypatch.setattr(
+            module.analysis_service,
+            "run_analysis",
+            AsyncMock(return_value='{"value": 2}'),
+        )
+        message, replacement, events = resources()
+        consuming = SimpleNamespace(
+            is_closed=False,
+            channel=AsyncMock(
+                side_effect=AssertionError("reply channel opened on the consumer")
+            ),
+            close=AsyncMock(),
+        )
+        channel_opening = asyncio.Event()
+        fail_channel = asyncio.Event()
+
+        async def slow_failing_channel(**kwargs):
+            channel_opening.set()
+            await fail_channel.wait()
+            raise ConnectionError("stale publisher dropped during channel open")
+
+        stale = SimpleNamespace(
+            is_closed=False,
+            channel=AsyncMock(side_effect=slow_failing_channel),
+            close=AsyncMock(),
+        )
+        runtime = consumer(url="amqp://localhost")
+        runtime.connection = consuming
+        runtime.publish_connection = stale
+        runtime._retry = AsyncMock()
+
+        delivery = asyncio.create_task(runtime.handle(message, consuming))
+        await asyncio.wait_for(channel_opening.wait(), 1)
+
+        # Another delivery replaces the stale publisher while delivery is mid-channel-open.
+        runtime.publish_connection = replacement
+        fail_channel.set()
+
+        await asyncio.wait_for(delivery, 1)
+        assert runtime.publish_connection is replacement
+        replacement.close.assert_not_awaited()
+        assert events == ["publish", "ack"]
+
+    asyncio.run(scenario())
