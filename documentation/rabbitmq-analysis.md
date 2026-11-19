@@ -167,6 +167,14 @@ Provide broker credentials and queue permissions through the existing settings
 layer. Restrict producer access to the appropriate request and reply queues;
 use a dedicated vhost and `amqps://` when TLS is required by the deployment.
 
+Starting with RabbitMQ 4.3.1, including 4.4.1, a passive queue declaration
+requires at least one of `configure`, `write`, or `read` on that queue.
+RabbitMQ 4.3.0 and 4.2.6 required `configure` specifically; later patches in
+those lines accept any one permission. Least-privilege Exaflow users need a
+permission on each reply queue the consumer checks, and producers that
+passively declare the request queue need a permission on it. Active
+declarations of the request and dead-letter queues still require `configure`.
+
 For local configuration, add `[rabbitmq]` to the deployment TOML, enable it, and
 set `url = "${RABBITMQ_URL:-}"`. Run the existing config-generation task.
 Credentials are interpolated by the controller loader, not written into the
@@ -239,9 +247,13 @@ expire after two days; result messages expire after one day.
   transient publish retries, completed-result reuse, and cache bounds.
 - Algorithm validation tests continue submitting through HTTP, with no RabbitMQ
   dependency or transport mocks.
-- Production environment tests deploy pinned RabbitMQ in kind with persistent
-  storage and an isolated generated Secret. Set `RABBITMQ_TEST_URL` to enable the
-  AMQP cases. `RABBITMQ_TEST_RECOVERY=1` additionally permits replacing the test
+- Production environment tests deploy pinned `rabbitmq:4.4.1` in kind with
+  persistent storage and an isolated generated Secret. The broker requests
+  512Mi and limits memory to 2Gi. Kind nodes have no memory cap, the pod is
+  created after image builds, and the public GitHub runner has 16 GiB, so the
+  limit has room. The default high watermark is 0.6 of that limit. Set
+  `RABBITMQ_TEST_URL` to enable the AMQP cases. `RABBITMQ_TEST_RECOVERY=1`
+  additionally permits replacing the test
   controller and restarting this dedicated test broker; never use that flag
   against a shared or production deployment. CI enables it only in a separate
   recovery step after the normal production test suite. Recovery cleanup waits

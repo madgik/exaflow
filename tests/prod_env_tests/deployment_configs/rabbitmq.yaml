@@ -26,14 +26,20 @@ spec:
     spec:
       containers:
       - name: rabbitmq
-        image: rabbitmq:4.1.0
+        # 4.4.1 is the current community-supported 4.4 patch. The image applies
+        # vm_memory_high_watermark (default 0.6) to the cgroup limit, so 2Gi
+        # alarms near 1.2Gi instead of ~600Mi. A 1Gi limit is tight for quorum
+        # WAL. madgik/exaflow is public, so ubuntu-latest has 16 GiB. Kind nodes
+        # in kind_cluster.yaml have no memory cap, and this pod is applied only
+        # after the image build step finishes. The request stays 512Mi.
+        image: rabbitmq:4.4.1
         resources:
           requests:
             cpu: 100m
-            memory: 256Mi
+            memory: 512Mi
           limits:
             cpu: "1"
-            memory: 1Gi
+            memory: 2Gi
         ports:
         - containerPort: 5672
         env:
