@@ -156,8 +156,11 @@ class AnalysisConsumer:
         except Exception:
             return False
 
-    def _publish_connection_failed(self, exc):
-        if not self._amqp_open(self.publish_connection):
+    def _publish_connection_failed(self, exc, used_connection=None):
+        target = (
+            used_connection if used_connection is not None else self.publish_connection
+        )
+        if not self._amqp_open(target):
             return True
         if isinstance(exc, BaseExceptionGroup) and exc.exceptions:
             exc = exc.exceptions[0]
@@ -204,21 +207,24 @@ class AnalysisConsumer:
                 raise
             return connection
 
-    async def _retire_publish_connection(self):
+    async def _retire_publish_connection(self, failed=None):
         async with self._publish_lock:
+            if failed is not None and self.publish_connection is not failed:
+                return
             stale = self.publish_connection
             self.publish_connection = None
             await self._close_amqp(stale)
 
     async def _open_reply_channel(self):
         connection = await self._ensure_publish_connection()
-        return await asyncio.wait_for(
+        channel = await asyncio.wait_for(
             connection.channel(
                 publisher_confirms=True,
                 on_return_raises=True,
             ),
             self.settings.operation_timeout,
         )
+        return connection, channel
 
     async def _run(self):
         delay = 1
@@ -324,6 +330,15 @@ class AnalysisConsumer:
             except Exception:
                 self.consuming = False
                 raise
+            if not self._amqp_open(self.publish_connection):
+                try:
+                    await self._ensure_publish_connection()
+                except Exception as exc:
+                    self.last_error = type(exc).__name__
+                    LOGGER.warning(
+                        "RabbitMQ publisher connection unavailable (%s)",
+                        error_summary(exc),
+                    )
 
     def _delivery_done(self, task):
         self.deliveries.discard(task)
@@ -459,6 +474,7 @@ class AnalysisConsumer:
     async def handle(self, message, connection):
         request_id = message.correlation_id
         execution = None
+        publish_connection = None
         channel = None
         body = None
         delay = 1
@@ -468,7 +484,7 @@ class AnalysisConsumer:
                 return
             while self._delivery_available(message, connection):
                 try:
-                    channel = await self._open_reply_channel()
+                    publish_connection, channel = await self._open_reply_channel()
                     # A missing queue closes this isolated reply channel only.
                     await channel.declare_queue(
                         message.reply_to,
@@ -524,8 +540,9 @@ class AnalysisConsumer:
                     channel = None
                     # A dropped publisher is replaced in place. Completed replies
                     # stay cached, and the consuming connection keeps its deliveries.
-                    if self._publish_connection_failed(exc):
-                        await self._retire_publish_connection()
+                    if self._publish_connection_failed(exc, publish_connection):
+                        await self._retire_publish_connection(publish_connection)
+                    publish_connection = None
                     if self.stopping or not self._delivery_available(
                         message, connection
                     ):
