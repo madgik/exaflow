@@ -21,9 +21,6 @@ from exaflow.algorithms.specifications import ParameterType
 from exaflow.algorithms.specifications import PreprocessingOutputColumnSpecification
 from exaflow.algorithms.specifications import PreprocessingOutputsSpecification
 from exaflow.algorithms.specifications import PreprocessingStepSpecification
-from exaflow.controller.services.api.analysis_request_dtos import (
-    AnalysisRequestSystemFlags,
-)
 from exaflow.controller.services.specifications import specifications
 
 
@@ -93,7 +90,6 @@ class AlgorithmSpecificationDTO(ImmutableBaseModel):
     requires_validation_datasets: bool = False
     parameters: Optional[Dict[str, ParameterSpecificationDTO]] = None
     required_preprocessing: List[str]
-    flags: Optional[List[str]] = None
     type: AlgorithmType
 
 
@@ -284,7 +280,6 @@ def _convert_algorithm_specification_to_dto(
             else None
         ),
         required_preprocessing=spec.required_preprocessing,
-        flags=[AnalysisRequestSystemFlags.SMPC],
         type=spec.type,
     )
 

@@ -197,7 +197,7 @@ resolved.
 ## `tasks.py`
 
 Purpose: Invoke tasks for local deployment, generated configs, data loading,
-service lifecycle, SMPC helpers, and cleanup.
+service lifecycle and cleanup.
 
 Key files: This file.
 

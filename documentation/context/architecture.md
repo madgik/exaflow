@@ -179,8 +179,6 @@ that caller configured it.
 
 - Worker gRPC services.
 - Aggregation server gRPC service.
-- Optional SMPC coordinator, queue, database, players, and clients configured by
-  `tasks.py` and `.deployment.sample.toml`.
 - Docker, Helm, and Kubernetes/kind for deployment and prod validation tests.
 - CI publishing uses external registries and secrets.
 
@@ -205,7 +203,6 @@ that caller configured it.
 - Static typecheck command is unknown.
 - Full production deployment expectations outside the documented Helm/kind flows
   need verification.
-- CI coverage for optional SMPC paths needs verification before broad changes.
 
 ## Optional RabbitMQ analysis transport
 

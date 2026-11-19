@@ -31,7 +31,7 @@
 - [ ] Sensitive data is not logged.
 - [ ] Worker privacy thresholds and local-data protections are preserved or
   explicitly reviewed.
-- [ ] SMPC, DP, deletion, deployment credential, and registry changes
+- [ ] Deletion, deployment credential, and registry changes
   received human review.
 
 ## Maintainability

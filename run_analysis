@@ -231,15 +231,6 @@ def parse_argv(argv):
         action="store_true",
         help="Print request object without making actual request.",
     )
-    parser.add_argument(
-        "-f",
-        "--flag",
-        required=False,
-        nargs=2,
-        action="append",
-        dest="flags",
-        help="Flags as key value pair. Can repeat '-f key value' multiple times.",
-    )
     return parser.parse_args(argv)
 
 
@@ -297,11 +288,6 @@ def get_commandline_request_data(cl_args):
         if cl_args.parameters
         else None
     )
-    flags = (
-        {key: guess_type_and_cast(value) for key, value in cl_args.flags}
-        if cl_args.flags
-        else None
-    )
     variables = (
         _algorithm_variables({"x": cl_args.x, "y": cl_args.y})
         if cl_args.x or cl_args.y
@@ -321,7 +307,6 @@ def get_commandline_request_data(cl_args):
             parameters=parameters,
         ),
         preprocessing=cl_args.preprocessing,
-        flags=flags,
     )
 
 
@@ -335,9 +320,12 @@ def get_piped_request_data():
                 "inputdata": {},
                 "preprocessing": None,
                 "algorithm": {},
-                "flags": {},
             }
         piped_input = json.loads(raw_input)
+        allowed_fields = {"inputdata", "preprocessing", "algorithm", "request_id"}
+        unknown_fields = set(piped_input) - allowed_fields
+        if unknown_fields:
+            raise ValueError(f"Unknown request fields: {sorted(unknown_fields)}")
         piped_input["inputdata"]["filters"] = None  # fix for empty string in test case
         try:
             sys.stdin = open(
@@ -346,7 +334,7 @@ def get_piped_request_data():
         except OSError:
             pass
         return piped_input
-    return {"inputdata": {}, "preprocessing": None, "algorithm": {}, "flags": {}}
+    return {"inputdata": {}, "preprocessing": None, "algorithm": {}}
 
 
 def _override_if_provided(base_value, override_value):
@@ -391,15 +379,13 @@ def merge_request_data(data1, data2):
         data2.get("preprocessing", None),
     )
 
-    # merge flags
-    flags = _override_if_provided(data1.get("flags", None), data2.get("flags", None))
-
     merged = {
         "inputdata": inputdata,
         "preprocessing": preprocessing,
         "algorithm": algorithm,
-        "flags": flags,
     }
+    if "request_id" in data1:
+        merged["request_id"] = data1["request_id"]
     return merged
 
 

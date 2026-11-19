@@ -138,7 +138,7 @@ uv run pytest -q tests/standalone_tests
 CI standalone suite:
 
 ```bash
-uv run pytest -q -n auto --dist worksteal -m "not smpc" --cov=exaflow --cov-report=xml:non_smpc_cov.xml tests/standalone_tests
+uv run pytest -q -n auto --dist worksteal --cov=exaflow --cov-report=xml:standalone_cov.xml tests/standalone_tests
 ```
 
 Focused federated algorithm test:
@@ -216,22 +216,6 @@ Structure test data paths:
 uv run inv structure-data
 ```
 
-## Docker
-
-Remove local containers through Invoke:
-
-```bash
-uv run inv rm-containers
-```
-
-Start optional SMPC deployment:
-
-```bash
-uv run inv deploy-smpc
-```
-
-Treat cleanup/removal commands as potentially destructive.
-
 ## Kubernetes / Helm
 
 Render chart:
@@ -272,7 +256,7 @@ uv run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorit
 
 - `.github/workflows/lint.yml` runs import-order lint and format checks.
 - `.github/workflows/standalone_tests.yml` installs Python 3.11 and uv,
-  then runs standalone tests excluding SMPC.
+  then runs standalone tests.
 - `.github/workflows/algorithm_validation_tests.yml` deploys local services and
   runs Exareme3 algorithm validation tests.
 - `.github/workflows/prod_env_tests.yml` builds images, starts kind/Helm

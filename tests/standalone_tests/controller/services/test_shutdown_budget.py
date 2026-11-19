@@ -337,12 +337,30 @@ def test_analysis_pool_join_skips_a_pool_started_after_shutdown(caplog):
 
 def test_cleanup_submission_can_race_with_pool_shutdown(monkeypatch):
     cleanup_ran = threading.Event()
-    shutdown_started = threading.Event()
-    shutdown_threads = []
+    shutdown_checkpoint = threading.Event()
+    shutdown_completed = threading.Event()
+    state_guard = analysis_execution._state_guard
 
     def stop_pool():
-        shutdown_started.set()
         shutdown_analysis_execution()
+        shutdown_completed.set()
+        shutdown_checkpoint.set()
+
+    shutdown_thread = threading.Thread(target=stop_pool)
+
+    class ObservedGuard:
+        def __enter__(self):
+            if threading.current_thread() is shutdown_thread:
+                if state_guard.acquire(blocking=False):
+                    return
+                # Shutdown has reached the guard while submission still holds it.
+                shutdown_checkpoint.set()
+            state_guard.acquire()
+
+        def __exit__(self, *_exc):
+            state_guard.release()
+
+    monkeypatch.setattr(analysis_execution, "_state_guard", ObservedGuard())
 
     async def scenario():
         loop = asyncio.get_running_loop()
@@ -350,11 +368,9 @@ def test_cleanup_submission_can_race_with_pool_shutdown(monkeypatch):
 
         def submit_during_shutdown(executor, func, *args):
             # run_blocking has already selected its pool at this point.
-            thread = threading.Thread(target=stop_pool)
-            shutdown_threads.append(thread)
-            thread.start()
-            assert shutdown_started.wait(2)
-            thread.join(0.1)
+            shutdown_thread.start()
+            assert shutdown_checkpoint.wait(2)
+            assert not shutdown_completed.is_set()
             return submit(executor, func, *args)
 
         monkeypatch.setattr(loop, "run_in_executor", submit_during_shutdown)
@@ -364,10 +380,11 @@ def test_cleanup_submission_can_race_with_pool_shutdown(monkeypatch):
         asyncio.run(scenario())
         assert cleanup_ran.is_set()
     finally:
-        for thread in shutdown_threads:
-            thread.join(2)
-            assert not thread.is_alive()
+        if shutdown_thread.ident is not None:
+            shutdown_thread.join(2)
+            assert not shutdown_thread.is_alive()
         reset_analysis_execution()
+    assert shutdown_completed.is_set()
 
 
 def test_run_udf_rpc_is_registered_for_shutdown_cancel(monkeypatch):

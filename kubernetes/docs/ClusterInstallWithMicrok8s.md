@@ -103,16 +103,6 @@ On the **worker** node execute the following command:
 microk8s leave
 ```
 
-### (Optional) Configure SMPC workers in the cluster
-
-The SMPC cluster requires 3 different nodes, to be used as "players", in order to secure the computation.
-
-If SMPC is enabled in the deployment use the following command on the **master** or **worker** nodes (3 nodes are needed):
-
-```
-microk8s kubectl label node <node-name> smpc_player=true
-```
-
 ### Hostname configuration
 
 Currently, each node is distinguished from another one using their hostnames and they <b>MUST</b> be alphanumeric.

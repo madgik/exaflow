@@ -130,7 +130,7 @@ def local_step(
 ):
     """
     Exaflow UDF that performs K-fold cross-validation for categorical
-    Naive Bayes with secure aggregation.
+    Naive Bayes with aggregation.
     """
 
     n_splits = int(n_splits)

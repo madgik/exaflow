@@ -16,7 +16,6 @@ from exaflow.controller.services.errors import WorkerTaskTimeoutError
 from exaflow.controller.services.errors import WorkerUnresponsiveError
 from exaflow.controller.worker_client.app import WorkerMessageTooLargeError
 from exaflow.data_filters import FilterError
-from exaflow.smpc_cluster_communication import SMPCUsageError
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import DataModelUnavailable
 from exaflow.worker_communication import DatasetUnavailable
@@ -44,7 +43,6 @@ def test_error_responses_are_one_table():
             HTTPStatusCode.INSUFFICIENT_DATA_ERROR,
             logging.INFO,
         ),
-        SMPCUsageError: (HTTPStatusCode.SMPC_USAGE_ERROR, logging.INFO),
         RequestBodyTooLargeError: (HTTPStatusCode.CONTENT_TOO_LARGE, logging.INFO),
         WorkerMessageTooLargeError: (HTTPStatusCode.CONTENT_TOO_LARGE, logging.ERROR),
         WorkerUnresponsiveError: (

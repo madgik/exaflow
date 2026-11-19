@@ -1,6 +1,4 @@
 from abc import ABC
-from enum import Enum
-from enum import unique
 from typing import Annotated
 from typing import Any
 from typing import Dict
@@ -13,11 +11,6 @@ from pydantic import Field
 from pydantic import StringConstraints
 
 RequestID = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{1,128}$")]
-
-
-@unique
-class AnalysisRequestSystemFlags(str, Enum):
-    SMPC = "smpc"
 
 
 class ImmutableBaseModel(BaseModel, ABC):
@@ -54,4 +47,3 @@ class AnalysisRequestDTO(BaseModel):
     inputdata: AnalysisInputDataDTO
     preprocessing: Optional[List[AnalysisPreprocessingStepDTO]] = None
     algorithm: AnalysisAlgorithmDTO
-    flags: Optional[Dict[str, Any]] = None

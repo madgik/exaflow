@@ -103,7 +103,7 @@
 - Federated algorithm parity tests live under
   `tests/standalone_tests/federated_algorithms`.
 - Prod fixtures live under `tests/prod_env_tests/expected`.
-- Pytest markers include `slow`, `very_slow`, `smpc`, and `smpc_cluster`.
+- Pytest markers include `slow` and `very_slow`.
 
 ### Deployment
 

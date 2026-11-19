@@ -1,6 +1,5 @@
 """HTTP-independent analysis orchestration."""
 
-from exaflow.controller import config as ctrl_config
 from exaflow.controller.services import get_worker_landscape_aggregator
 from exaflow.controller.services.algorithm_execution_strategy_factory import (
     get_algorithm_execution_strategy,
@@ -19,8 +18,6 @@ def _validate(analysis_request_dto: AnalysisRequestDTO) -> None:
         algorithms_specs=specifications.enabled_algorithms,
         preprocessing_steps_specs=specifications.enabled_preprocessing_steps,
         worker_landscape_aggregator=get_worker_landscape_aggregator(),
-        smpc_enabled=ctrl_config.smpc.enabled,
-        smpc_optional=ctrl_config.smpc.optional,
     )
 
 

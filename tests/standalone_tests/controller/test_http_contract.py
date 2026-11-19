@@ -35,7 +35,6 @@ from exaflow.controller.services.errors import WorkerTaskTimeoutError
 from exaflow.controller.services.errors import WorkerUnresponsiveError
 from exaflow.controller.worker_client.app import WorkerMessageTooLargeError
 from exaflow.data_filters import FilterError
-from exaflow.smpc_cluster_communication import SMPCUsageError
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import CommonDataElement
 from exaflow.worker_communication import DataModelAttributes
@@ -410,7 +409,6 @@ def test_request_body_at_the_limit_is_accepted(monkeypatch):
             461,
             lambda error: INSUFFICIENT_DATA_MESSAGE,
         ),
-        (lambda: SMPCUsageError("smpc error"), 462, lambda error: error.message),
         (
             lambda: WorkerMessageTooLargeError("address", "details", 123456),
             413,

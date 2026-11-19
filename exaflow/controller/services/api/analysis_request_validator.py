@@ -20,14 +20,10 @@ from exaflow.controller.services.api.algorithm_spec_dtos import ParameterEnumTyp
 from exaflow.controller.services.api.algorithm_spec_dtos import ParameterType
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisInputDataDTO
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisRequestDTO
-from exaflow.controller.services.api.analysis_request_dtos import (
-    AnalysisRequestSystemFlags,
-)
 from exaflow.controller.services.worker_landscape_aggregator.worker_landscape_aggregator import (
     WorkerLandscapeAggregator,
 )
 from exaflow.data_filters import validate_filter
-from exaflow.smpc_cluster_communication import validate_smpc_usage
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import CommonDataElement
 
@@ -43,8 +39,6 @@ def validate_analysis_request(
     algorithms_specs: Dict[str, AlgorithmSpecification],
     preprocessing_steps_specs: Dict[str, PreprocessingStepSpecification],
     worker_landscape_aggregator: WorkerLandscapeAggregator,
-    smpc_enabled: bool,
-    smpc_optional: bool,
 ):
     algorithm_name = analysis_request_dto.algorithm.name
     algorithm_specs = _get_algorithm_specs(algorithm_name, algorithms_specs)
@@ -64,8 +58,6 @@ def validate_analysis_request(
         training_datasets=available_datasets,
         validation_datasets=available_datasets,
         data_model_cdes=data_model_cdes,
-        smpc_enabled=smpc_enabled,
-        smpc_optional=smpc_optional,
     )
 
 
@@ -85,8 +77,6 @@ def _validate_analysis_request_body(
     training_datasets: List[str],
     validation_datasets: List[str],
     data_model_cdes: Dict[str, CommonDataElement],
-    smpc_enabled: bool,
-    smpc_optional: bool,
 ):
     _validate_inputdata_base(
         inputdata=analysis_request_dto.inputdata,
@@ -123,12 +113,6 @@ def _validate_analysis_request_body(
         data_model_cdes=transformed_data_model_cdes,
         algorithm_x=analysis_request_dto.algorithm.x,
         algorithm_y=analysis_request_dto.algorithm.y,
-    )
-
-    _validate_flags(
-        flags=analysis_request_dto.flags,
-        smpc_enabled=smpc_enabled,
-        smpc_optional=smpc_optional,
     )
 
 
@@ -912,23 +896,4 @@ def _validate_parameter_inside_min_max(
         maximum = _format_parameter_limit(parameter_spec, parameter_spec.max)
         raise BadUserInput(
             f"Parameter '{parameter_spec.label}' values should be at most {maximum} ."
-        )
-
-
-def _validate_flags(flags: Dict[str, Any], smpc_enabled: bool, smpc_optional: bool):
-    if not flags:
-        return
-
-    for flag, value in flags.items():
-        if not isinstance(value, bool):
-            raise BadUserInput(f"Flag '{flag}' should have a boolean value.")
-
-    available_flags = [f.value for f in AnalysisRequestSystemFlags]
-    for flag in flags:
-        if flag not in available_flags:
-            raise BadUserInput(f"Flag '{flag}' does not exist in the specifications.")
-
-    if AnalysisRequestSystemFlags.SMPC in flags.keys():
-        validate_smpc_usage(
-            flags[AnalysisRequestSystemFlags.SMPC], smpc_enabled, smpc_optional
         )

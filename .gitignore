@@ -145,7 +145,6 @@ pyrightconfig.json
 # mip deployment config file
 .deployment.toml
 /configs
-/smpc_configs
 .stored_data/
 *.db
 /tests/test_data/.data_paths/
