@@ -53,12 +53,18 @@ def consumer(**settings):
     return AnalysisConsumer(RabbitMQSettings(**settings), lambda: True)
 
 
+async def deliver(runtime, message, connection):
+    """Publish through the same fake when the test does not separate connections."""
+    runtime.publish_connection = connection
+    await runtime.handle(message, connection)
+
+
 def test_success_confirms_reply_before_acknowledging(monkeypatch):
     execute = AsyncMock(return_value='{"value": 7}')
     monkeypatch.setattr(module.analysis_service, "run_analysis", execute)
     message, channel, events = resources()
     runtime = consumer(publish_timeout=45)
-    asyncio.run(runtime.handle(message, channel))
+    asyncio.run(deliver(runtime, message, channel))
     assert events == ["publish", "ack"]
     request = execute.call_args.args[0]
     assert request.request_id == "request-1"
@@ -76,7 +82,7 @@ def test_invalid_body_replies_without_execution(monkeypatch, body):
     execute = AsyncMock()
     monkeypatch.setattr(module.analysis_service, "run_analysis", execute)
     message, channel, events = resources(body)
-    asyncio.run(consumer().handle(message, channel))
+    asyncio.run(deliver(consumer(), message, channel))
     execute.assert_not_called()
     reply = json.loads(channel.default_exchange.publish.call_args.args[0].body)
     assert reply["error"]["code"] == "invalid_request"
@@ -95,7 +101,7 @@ def test_invalid_correlation_id_cannot_bypass_dto_validation(
         body["request_id"] = None if body_id == "null" else request_id
     message, connection, events = resources(body, correlation_id=request_id)
     runtime = consumer()
-    asyncio.run(runtime.handle(message, connection))
+    asyncio.run(deliver(runtime, message, connection))
     reply = connection.default_exchange.publish.call_args.args[0]
     assert json.loads(reply.body)["error"]["code"] == "invalid_request"
     assert reply.correlation_id == request_id
@@ -113,7 +119,7 @@ def test_invalid_body_request_id_is_rejected_with_valid_correlation_id(
     monkeypatch.setattr(module.analysis_service, "run_analysis", execute)
     message, connection, _ = resources({**ANALYSIS_BODY, "request_id": request_id})
     runtime = consumer()
-    asyncio.run(runtime.handle(message, connection))
+    asyncio.run(deliver(runtime, message, connection))
     reply = connection.default_exchange.publish.call_args.args[0]
     assert json.loads(reply.body)["error"]["code"] == "invalid_request"
     execute.assert_not_called()
@@ -132,7 +138,7 @@ def test_valid_correlation_id_reaches_execution_and_reply_unchanged(
     if body_id != "omitted":
         body["request_id"] = None if body_id == "null" else request_id
     message, connection, _ = resources(body, correlation_id=request_id)
-    asyncio.run(consumer().handle(message, connection))
+    asyncio.run(deliver(consumer(), message, connection))
     assert execute.await_args.args[0].request_id == request_id
     assert (
         connection.default_exchange.publish.call_args.args[0].correlation_id
@@ -148,7 +154,7 @@ def test_invalid_correlation_id_is_rejected_before_retained_reply_lookup(monkeyp
     runtime.completed.get = Mock(
         side_effect=AssertionError("Invalid ID reached reply cache")
     )
-    asyncio.run(runtime.handle(message, connection))
+    asyncio.run(deliver(runtime, message, connection))
     runtime.completed.get.assert_not_called()
     execute.assert_not_called()
     reply = connection.default_exchange.publish.call_args.args[0]
@@ -159,7 +165,7 @@ def test_invalid_correlation_id_is_rejected_before_retained_reply_lookup(monkeyp
 @pytest.mark.parametrize("value", [None, ""])
 def test_missing_routing_metadata_dead_letters(field, value):
     message, channel, events = resources(**{field: value})
-    asyncio.run(consumer().handle(message, channel))
+    asyncio.run(deliver(consumer(), message, channel))
     assert events == ["reject"]
     message.reject.assert_awaited_once_with(requeue=False)
     channel.default_exchange.publish.assert_not_called()
@@ -173,7 +179,7 @@ def test_transient_publish_failure_retries_reply_without_reexecution(monkeypatch
     channel.default_exchange.publish.side_effect = [TimeoutError(), None]
     runtime = consumer()
     runtime._retry = AsyncMock()
-    asyncio.run(runtime.handle(message, channel))
+    asyncio.run(deliver(runtime, message, channel))
     message.ack.assert_awaited_once()
     message.reject.assert_not_called()
     message.channel.close.assert_not_called()
@@ -195,7 +201,7 @@ def test_unroutable_reply_dead_letters_request(monkeypatch):
         ),
         Basic.Return(),
     )
-    asyncio.run(consumer().handle(message, channel))
+    asyncio.run(deliver(consumer(), message, channel))
     message.reject.assert_awaited_once_with(requeue=False)
     message.ack.assert_not_called()
 
@@ -207,7 +213,7 @@ def test_missing_destination_is_rejected_before_execution(monkeypatch):
     connection.reply_channel.declare_queue.side_effect = ChannelNotFoundEntity(
         404, "NOT_FOUND"
     )
-    asyncio.run(consumer().handle(message, connection))
+    asyncio.run(deliver(consumer(), message, connection))
     execute.assert_not_called()
     connection.reply_channel.declare_queue.assert_awaited_once_with(
         "replies", passive=True, timeout=5
@@ -237,9 +243,9 @@ def test_broker_nack_does_not_interrupt_another_delivery(monkeypatch):
         connection.default_exchange.publish.side_effect = DeliveryError(
             None, Basic.Nack(delivery_tag=1)
         )
-        first = asyncio.create_task(runtime.handle(good, connection))
+        first = asyncio.create_task(deliver(runtime, good, connection))
         await running.wait()
-        await runtime.handle(bad, connection)
+        await deliver(runtime, bad, connection)
         bad.reject.assert_awaited_once_with(requeue=False)
         assert not first.done()
         bad.channel.close.assert_not_called()
@@ -273,11 +279,11 @@ def test_redelivery_reuses_completed_result_after_handler_exits(
             connection.default_exchange.publish.side_effect = disconnected
         else:
             first.ack.side_effect = disconnected
-        await runtime.handle(first, connection)
+        await deliver(runtime, first, connection)
         assert not runtime.executions
         assert runtime.completed.get("request-1") is not None
         second, replacement, _ = resources(redelivered=True)
-        await runtime.handle(second, replacement)
+        await deliver(runtime, second, replacement)
         execute.assert_awaited_once()
         assert json.loads(replacement.default_exchange.publish.call_args.args[0].body)[
             "result"
@@ -295,7 +301,7 @@ def test_settled_request_id_can_start_a_fresh_execution(monkeypatch):
         runtime = consumer()
         for _ in range(2):
             message, connection, _ = resources()
-            await runtime.handle(message, connection)
+            await deliver(runtime, message, connection)
         assert execute.await_count == 2
 
     asyncio.run(scenario())
@@ -317,9 +323,9 @@ def test_expired_or_evicted_reply_allows_recomputation(monkeypatch, bound):
             raise ConnectionError()
 
         connection.default_exchange.publish.side_effect = disconnected
-        await runtime.handle(first, connection)
+        await deliver(runtime, first, connection)
         second, replacement, _ = resources(redelivered=True)
-        await runtime.handle(second, replacement)
+        await deliver(runtime, second, replacement)
         assert execute.await_count == 2
         second.ack.assert_awaited_once()
 
@@ -339,7 +345,7 @@ def test_cancelled_handler_retains_its_finishing_execution_for_redelivery(monkey
         monkeypatch.setattr(module.analysis_service, "run_analysis", mock)
         runtime = consumer()
         first, connection, _ = resources()
-        handler = asyncio.create_task(runtime.handle(first, connection))
+        handler = asyncio.create_task(deliver(runtime, first, connection))
         await asyncio.wait_for(entered.wait(), 1)
         execution = runtime.executions["request-1"]
         handler.cancel()
@@ -350,7 +356,7 @@ def test_cancelled_handler_retains_its_finishing_execution_for_redelivery(monkey
         await execution
         assert not runtime.executions
         second, replacement, _ = resources(redelivered=True)
-        await runtime.handle(second, replacement)
+        await deliver(runtime, second, replacement)
         mock.assert_awaited_once()
         second.ack.assert_awaited_once()
 
@@ -414,9 +420,9 @@ def test_active_redelivery_shares_execution(monkeypatch):
         runtime = consumer()
         first, ch1, _ = resources()
         second, ch2, _ = resources()
-        task1 = asyncio.create_task(runtime.handle(first, ch1))
+        task1 = asyncio.create_task(deliver(runtime, first, ch1))
         await entered.wait()
-        task2 = asyncio.create_task(runtime.handle(second, ch2))
+        task2 = asyncio.create_task(deliver(runtime, second, ch2))
         await asyncio.sleep(0)
         release.set()
         await asyncio.gather(task1, task2)
@@ -430,7 +436,7 @@ def test_active_redelivery_shares_execution(monkeypatch):
 def test_request_and_result_size_limits(monkeypatch):
     message, channel, _ = resources()
     monkeypatch.setattr(module, "MAX_REQUEST_BYTES", 1)
-    asyncio.run(consumer().handle(message, channel))
+    asyncio.run(deliver(consumer(), message, channel))
     assert (
         json.loads(channel.default_exchange.publish.call_args.args[0].body)["error"][
             "code"
@@ -444,7 +450,7 @@ def test_request_and_result_size_limits(monkeypatch):
         AsyncMock(return_value=json.dumps({"x": "x" * 2000})),
     )
     message, channel, _ = resources()
-    asyncio.run(consumer(max_result_bytes=1024).handle(message, channel))
+    asyncio.run(deliver(consumer(max_result_bytes=1024), message, channel))
     assert (
         json.loads(channel.default_exchange.publish.call_args.args[0].body)["error"][
             "code"
@@ -460,7 +466,7 @@ def test_unexpected_errors_do_not_expose_exception_details(monkeypatch):
         AsyncMock(side_effect=RuntimeError("secret payload")),
     )
     message, channel, _ = resources()
-    asyncio.run(consumer().handle(message, channel))
+    asyncio.run(deliver(consumer(), message, channel))
     body = channel.default_exchange.publish.call_args.args[0].body
     assert b"internal_error" in body and b"secret payload" not in body
 
@@ -472,7 +478,7 @@ def test_shutdown_error_is_redelivered_not_terminal(monkeypatch):
         AsyncMock(side_effect=module.ControllerShuttingDownError()),
     )
     message, channel, _ = resources()
-    asyncio.run(consumer().handle(message, channel))
+    asyncio.run(deliver(consumer(), message, channel))
     message.ack.assert_not_called()
     channel.default_exchange.publish.assert_not_called()
 
@@ -508,7 +514,7 @@ def test_drain_interrupts_reply_retry_without_acknowledging(monkeypatch):
             await original_retry(delay)
 
         runtime._retry = retry
-        delivery = asyncio.create_task(runtime.handle(message, connection))
+        delivery = asyncio.create_task(deliver(runtime, message, connection))
         runtime.deliveries.add(delivery)
         await asyncio.wait_for(retrying.wait(), 1)
         await asyncio.wait_for(runtime.drain(), 1)
@@ -546,7 +552,7 @@ def test_close_cleans_up_reply_channels_concurrently(monkeypatch):
             message, connection, _ = resources(correlation_id=f"job-{index}")
             connection.reply_channel.close.side_effect = close
             runtime.deliveries.add(
-                asyncio.create_task(runtime.handle(message, connection))
+                asyncio.create_task(deliver(runtime, message, connection))
             )
         await asyncio.wait_for(entered.wait(), 1)
         shutdown = asyncio.create_task(runtime.close())
@@ -776,8 +782,25 @@ def test_supervisor_reconnects_after_subscription_disappears(monkeypatch):
             async def close(self):
                 self.is_closed = True
 
+        publishers = []
+
+        class Publisher:
+            def __init__(self):
+                self.is_closed = False
+
+            async def channel(self, **kwargs):
+                raise AssertionError("supervisor opened a reply channel")
+
+            async def close(self):
+                self.is_closed = True
+
         async def connect(*args, **kwargs):
-            connection = Connection(bool(connections))
+            name = kwargs["client_properties"]["connection_name"]
+            if name == "exaflow-analysis-publisher":
+                publisher = Publisher()
+                publishers.append(publisher)
+                return publisher
+            connection = Connection(len(connections) == 1)
             connections.append(connection)
             return connection
 
@@ -788,9 +811,188 @@ def test_supervisor_reconnects_after_subscription_disappears(monkeypatch):
             await asyncio.wait_for(restored.wait(), 4)
             assert len(connections) == 2
             assert connections[0].is_closed
+            assert not connections[1].is_closed
+            assert len(publishers) == 1
+            assert runtime.publish_connection is publishers[0]
+            assert not publishers[0].is_closed
             assert runtime.health()["consuming"]
+            assert runtime.health()["connected"]
         finally:
             await runtime.drain()
             await runtime.close()
+        assert connections[1].is_closed
+        assert publishers[0].is_closed
+
+    asyncio.run(scenario())
+
+
+def test_reply_channels_use_the_publisher_connection(monkeypatch):
+    async def scenario():
+        monkeypatch.setattr(
+            module.analysis_service, "run_analysis", AsyncMock(return_value="{}")
+        )
+        message, publisher, events = resources()
+        consuming = SimpleNamespace(
+            is_closed=False,
+            channel=AsyncMock(
+                side_effect=AssertionError("reply channel opened on the consumer")
+            ),
+            close=AsyncMock(),
+        )
+        runtime = consumer()
+        runtime.connection = consuming
+        runtime.publish_connection = publisher
+        await runtime.handle(message, consuming)
+        publisher.channel.assert_awaited()
+        consuming.channel.assert_not_called()
+        consuming.close.assert_not_called()
+        message.channel.close.assert_not_called()
+        assert events == ["publish", "ack"]
+
+    asyncio.run(scenario())
+
+
+def test_publisher_drop_reconnects_without_stopping_consumption(monkeypatch, caplog):
+    async def scenario():
+        monkeypatch.setattr(
+            module.analysis_service,
+            "run_analysis",
+            AsyncMock(return_value='{"value": 1}'),
+        )
+        message, failed, _events = resources()
+        consuming = SimpleNamespace(
+            is_closed=False,
+            channel=AsyncMock(
+                side_effect=AssertionError("reply channel opened on the consumer")
+            ),
+            close=AsyncMock(),
+        )
+        replacement_reply = SimpleNamespace(
+            declare_queue=AsyncMock(),
+            default_exchange=SimpleNamespace(publish=AsyncMock()),
+            close=AsyncMock(),
+        )
+        replacement = SimpleNamespace(
+            is_closed=False,
+            channel=AsyncMock(return_value=replacement_reply),
+            close=AsyncMock(),
+        )
+
+        async def connect(url, **kwargs):
+            assert kwargs["client_properties"] == {
+                "connection_name": "exaflow-analysis-publisher"
+            }
+            assert url == "amqp://user:secret@broker"
+            return replacement
+
+        monkeypatch.setattr(module.aio_pika, "connect", connect)
+
+        async def fail_publish(*args, **kwargs):
+            failed.is_closed = True
+            raise ConnectionError("amqp://user:secret@broker")
+
+        failed.default_exchange.publish.side_effect = fail_publish
+        runtime = consumer(url="amqp://user:secret@broker")
+        runtime.connection = consuming
+        runtime.publish_connection = failed
+        cached = asyncio.Event()
+
+        async def retry(delay):
+            assert runtime.completed.get("request-1") is not None
+            assert runtime.connection is consuming
+            assert not consuming.is_closed
+            consuming.close.assert_not_called()
+            cached.set()
+
+        runtime._retry = retry
+        with caplog.at_level("WARNING"):
+            await runtime.handle(message, consuming)
+        assert cached.is_set()
+        assert runtime.publish_connection is replacement
+        assert runtime.connection is consuming
+        replacement.channel.assert_awaited()
+        failed.channel.assert_awaited()
+        consuming.channel.assert_not_called()
+        consuming.close.assert_not_called()
+        message.channel.close.assert_not_called()
+        message.ack.assert_awaited_once()
+        module.analysis_service.run_analysis.assert_awaited_once()
+        assert runtime.completed.get("request-1") is None
+        assert runtime.health()["connected"] is True
+        assert runtime.health()["last_error"] == "ConnectionError"
+        assert "secret" not in caplog.text
+        assert "amqp://" not in caplog.text
+
+    asyncio.run(scenario())
+
+
+def test_publisher_connect_failure_redacts_the_url(monkeypatch, caplog):
+    async def scenario():
+        failed = asyncio.Event()
+        consumer_connection = None
+
+        class ConsumerConnection:
+            def __init__(self):
+                self.is_closed = False
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                self.is_closed = True
+
+            async def channel(self, **kwargs):
+                raise AssertionError("consumer channel opened without a publisher")
+
+            async def close(self):
+                self.is_closed = True
+
+        async def connect(url, **kwargs):
+            nonlocal consumer_connection
+            name = kwargs["client_properties"]["connection_name"]
+            if name == "exaflow-analysis-publisher":
+                failed.set()
+                raise ConnectionError(f"refused {url}")
+            consumer_connection = ConsumerConnection()
+            return consumer_connection
+
+        monkeypatch.setattr(module.aio_pika, "connect", connect)
+        runtime = consumer(enabled=True, url="amqp://user:secret@broker")
+        with caplog.at_level("WARNING"):
+            runtime.start()
+            await asyncio.wait_for(failed.wait(), 1)
+            await asyncio.sleep(0)
+            assert runtime.health()["last_error"] == "ConnectionError"
+            assert runtime.health()["connected"] is False
+            assert not runtime.health()["consuming"]
+            assert consumer_connection.is_closed
+            assert "secret" not in caplog.text
+            assert "amqp://" not in caplog.text
+            await runtime.drain()
+            await runtime.close()
+
+    asyncio.run(scenario())
+
+
+def test_close_closes_both_connections_within_one_operation_timeout():
+    async def scenario():
+        runtime = consumer(operation_timeout=1)
+        current = 0
+        peak = 0
+
+        async def close():
+            nonlocal current, peak
+            current += 1
+            peak = max(peak, current)
+            await asyncio.sleep(0.4)
+            current -= 1
+
+        runtime.connection = SimpleNamespace(is_closed=False, close=close)
+        runtime.publish_connection = SimpleNamespace(is_closed=False, close=close)
+        started = asyncio.get_running_loop().time()
+        await runtime.close()
+        elapsed = asyncio.get_running_loop().time() - started
+        assert peak == 2
+        assert elapsed < 0.75
 
     asyncio.run(scenario())

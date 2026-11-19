@@ -220,10 +220,11 @@ background thread and analyses keep their dedicated executor.
 
 A queue backlog can make HTTP analysis submissions return 503 until queued
 waiters are admitted. Each delivery passively checks its reply destination and
-publishes through its own channel on the existing broker connection. A rejected
-reply dead-letters only that request. Transient publication retries reuse the
-result; completed replies for unsettled deliveries have bounded in-memory
-retention for same-controller redelivery.
+publishes through its own channel on a dedicated publisher connection, so a
+broker memory alarm cannot block request acknowledgements. A rejected reply
+dead-letters only that request. Transient publication retries reuse the result;
+completed replies for unsettled deliveries have bounded in-memory retention for
+same-controller redelivery.
 
 Controller and worker request logging uses fixed service loggers with per-record
 request IDs, rather than permanently registering a logger and handler for every

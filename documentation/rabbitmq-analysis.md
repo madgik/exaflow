@@ -69,10 +69,12 @@ existing flags. Required AMQP properties are:
 
 Provision the durable reply queue before submitting an analysis. Every delivery
 checks its destination with a passive declaration on a separate reply channel,
-before analysis execution. This uses the existing connection, adding channel
-setup and one broker round trip for the check. Missing queues dead-letter the
-request without running the analysis. There are no queue-prefix restrictions or
-additional application permission checks; the broker is dedicated to Exaflow.
+before analysis execution. That channel is opened on a dedicated publisher
+connection (`exaflow-analysis-publisher`), not on the connection that consumes
+requests and sends `basic.ack`. The check adds a channel and one broker round
+trip. Missing queues dead-letter the request without running the analysis.
+There are no queue-prefix restrictions or additional application permission
+checks; the broker is dedicated to Exaflow.
 
 The consumer parses the DTO, waits for shared analysis capacity, then validates
 against current worker metadata and constructs the execution strategy. HTTP
@@ -106,8 +108,11 @@ Validation and algorithm errors are terminal replies, not automatic retry jobs.
 A request is acknowledged only after a persistent reply has been routed and
 confirmed by the broker. Missing routing metadata, missing destinations,
 unroutable replies, and negative broker confirmations dead-letter only the
-affected request. Each delivery publishes through an isolated reply channel;
-these failures do not close the consuming channel or interrupt other analyses.
+affected request. Each delivery publishes through an isolated reply channel on
+the publisher connection. These failures do not close the consuming channel or
+interrupt other analyses. A memory or disk alarm blocks connections that publish
+(`connection.blocked`). Keeping acknowledgements on the consumer connection
+prevents that block from stalling `basic.ack` and deadlocking recovery.
 The destination can disappear or fill up after the initial check, so replies
 retain mandatory routing and publisher confirms. Consumer declarations create bounded,
 durable quorum request and dead-letter queues, with at-least-once dead-lettering.
@@ -135,15 +140,18 @@ and subscription.
 
 Transient reply publication failures retry the existing result on a fresh reply
 channel, with exponential backoff from 1 to 30 seconds. A confirmation timeout
-can still produce duplicate replies. Connection or consumer-channel failures
-restart consumption with the same backoff, retaining completed replies while the
-controller survives. Deliveries belong to their original channel and are never
-acknowledged through a replacement channel. Only redelivered messages consult
-the retained-reply cache.
+can still produce duplicate replies. If the publisher connection drops on its
+own, it is reconnected and the same reply is retried. Consumption stays up, the
+consuming channel stays open, and completed replies are kept. Connection or
+consumer-channel failures restart consumption with the same backoff, retaining
+completed replies while the controller survives. Deliveries belong to their
+original channel and are never acknowledged through a replacement channel. Only
+redelivered messages consult the retained-reply cache.
 
 At lifespan shutdown, intake stops, active deliveries drain for up to 20 seconds,
 and existing shutdown logic cancels RPCs and performs aggregation cleanup. Then
-remaining AMQP tasks and the connection close. Unfinished requests remain
+remaining AMQP tasks stop, and the consumer and publisher connections close
+concurrently within one operation timeout. Unfinished requests remain
 unacknowledged for redelivery. The shutdown phases total at most 50 seconds with
 default settings, leaving ten seconds of headroom in the existing 60-second
 lifespan budget. Cancellation does not forcibly terminate Python threads.
@@ -195,10 +203,13 @@ waits plus analysis and reply publication. The test broker uses two hours.
 Persistent broker storage and high availability remain deployment responsibilities.
 
 `GET /healthcheck/rabbitmq` returns enabled/connected/consuming state, active job
-count, and the last safe error type. It returns 503 when enabled but unavailable,
-and 200 when disabled or consuming. Existing `/livez` and `/healthcheck` semantics
-remain unchanged. Background logs record connection transitions and delivery
-failures without credentials or message bodies.
+count, and the last safe error type. The JSON fields are unchanged. `connected`
+is true only when both the consumer and publisher connections are open, so a
+dropped publisher is unavailable even if the subscription is still up. It returns
+503 when enabled but not both connected and consuming, and 200 when disabled or
+ready. Existing `/livez` and `/healthcheck` semantics remain unchanged. Background
+logs record connection transitions and delivery failures without credentials or
+message bodies.
 Broker channel failures include bounded, sanitized diagnostic text so queue
 declaration mismatches can be diagnosed. Connection errors and publication errors
 that can contain URLs or message bodies log only their error type.

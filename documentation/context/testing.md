@@ -176,8 +176,10 @@ shutdown budget. Helm rendering checks decimal integer environment values and
 fractional timeout values; it requires Helm on `PATH`.
 
 Consumer regressions cover missing destinations before execution, unroutable
-replies, broker nacks, transient publish retries, failed settlement, completed
-result retention and eviction, and concurrent reply-channel cleanup. Real broker
+replies, broker nacks, transient publish retries, publisher-connection isolation
+and reconnect, failed settlement, completed result retention and eviction, and
+concurrent reply-channel cleanup. Shutdown closes the consumer and publisher
+connections concurrently inside one operation timeout. Real broker
 tests also exercise deleted destinations and a full reply queue while another
 analysis succeeds. Shared logging tests check bounded logger/handler counts and
 concurrent request context isolation in the controller and worker.

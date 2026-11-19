@@ -153,6 +153,7 @@ async def queue_analysis(name: str):
     )
     connection = SimpleNamespace(is_closed=False, channel=open_channel)
     runtime = app.state.rabbitmq
+    runtime.publish_connection = connection
     await runtime.handlers.acquire()
     task = asyncio.create_task(runtime.handle(message, connection))
     runtime.deliveries.add(task)

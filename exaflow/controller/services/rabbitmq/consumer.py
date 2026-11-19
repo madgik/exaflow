@@ -117,6 +117,8 @@ class AnalysisConsumer:
         self.settings = settings
         self.landscape_ready = landscape_ready
         self.connection = None
+        self.publish_connection = None
+        self._publish_lock = asyncio.Lock()
         self.runner = None
         self.iterator = None
         self.finish = asyncio.Event()
@@ -135,13 +137,88 @@ class AnalysisConsumer:
             self.runner = asyncio.create_task(self._run(), name="rabbitmq-consumer")
 
     def health(self) -> dict:
+        # Same keys as /healthcheck/rabbitmq. connected covers both AMQP
+        # connections: a blocked or dropped publisher cannot complete work.
         return {
             "enabled": self.settings.enabled,
-            "connected": self.connection is not None and not self.connection.is_closed,
+            "connected": self._amqp_open(self.connection)
+            and self._amqp_open(self.publish_connection),
             "consuming": self.consuming,
             "active_jobs": sum(not task.done() for task in self.executions.values()),
             "last_error": self.last_error,
         }
+
+    def _amqp_open(self, connection):
+        if connection is None:
+            return False
+        try:
+            return not connection.is_closed
+        except Exception:
+            return False
+
+    def _publish_connection_failed(self, exc):
+        if not self._amqp_open(self.publish_connection):
+            return True
+        if isinstance(exc, BaseExceptionGroup) and exc.exceptions:
+            exc = exc.exceptions[0]
+        # ConnectionClosed is a ConnectionError. Channel and timeout errors are not.
+        return isinstance(exc, ConnectionError)
+
+    async def _close_amqp(self, connection):
+        if not self._amqp_open(connection):
+            return
+        try:
+            await asyncio.wait_for(connection.close(), self.settings.operation_timeout)
+        except Exception as exc:
+            # The exception text can include the AMQP URL.
+            LOGGER.warning("RabbitMQ connection close failed (%s)", type(exc).__name__)
+
+    async def _ensure_publish_connection(self):
+        # Memory and disk alarms block publishers. Acknowledgements stay on
+        # self.connection so connection.blocked cannot stall basic.ack.
+        async with self._publish_lock:
+            if self.stopping:
+                raise ConnectionError("RabbitMQ publisher is stopping")
+            if self._amqp_open(self.publish_connection):
+                return self.publish_connection
+            stale = self.publish_connection
+            self.publish_connection = None
+            await self._close_amqp(stale)
+            if self.stopping:
+                raise ConnectionError("RabbitMQ publisher is stopping")
+            connection = await asyncio.wait_for(
+                aio_pika.connect(
+                    self.settings.url,
+                    timeout=self.settings.operation_timeout,
+                    heartbeat=30,
+                    client_properties={"connection_name": "exaflow-analysis-publisher"},
+                ),
+                self.settings.operation_timeout,
+            )
+            try:
+                if self.stopping:
+                    raise ConnectionError("RabbitMQ publisher is stopping")
+                self.publish_connection = connection
+            except BaseException:
+                await self._close_amqp(connection)
+                raise
+            return connection
+
+    async def _retire_publish_connection(self):
+        async with self._publish_lock:
+            stale = self.publish_connection
+            self.publish_connection = None
+            await self._close_amqp(stale)
+
+    async def _open_reply_channel(self):
+        connection = await self._ensure_publish_connection()
+        return await asyncio.wait_for(
+            connection.channel(
+                publisher_confirms=True,
+                on_return_raises=True,
+            ),
+            self.settings.operation_timeout,
+        )
 
     async def _run(self):
         delay = 1
@@ -158,6 +235,7 @@ class AnalysisConsumer:
                     client_properties={"connection_name": "exaflow-analysis-consumer"},
                 )
                 async with self.connection:
+                    await self._ensure_publish_connection()
                     async with asyncio.timeout(self.settings.operation_timeout):
                         channel = await self.connection.channel(
                             publisher_confirms=True,
@@ -390,12 +468,7 @@ class AnalysisConsumer:
                 return
             while self._delivery_available(message, connection):
                 try:
-                    channel = await asyncio.wait_for(
-                        connection.channel(
-                            publisher_confirms=True, on_return_raises=True
-                        ),
-                        self.settings.operation_timeout,
-                    )
+                    channel = await self._open_reply_channel()
                     # A missing queue closes this isolated reply channel only.
                     await channel.declare_queue(
                         message.reply_to,
@@ -449,6 +522,10 @@ class AnalysisConsumer:
                     )
                     await self._close_reply_channel(channel)
                     channel = None
+                    # A dropped publisher is replaced in place. Completed replies
+                    # stay cached, and the consuming connection keeps its deliveries.
+                    if self._publish_connection_failed(exc):
+                        await self._retire_publish_connection()
                     if self.stopping or not self._delivery_available(
                         message, connection
                     ):
@@ -504,13 +581,11 @@ class AnalysisConsumer:
             task.cancel()
         if tasks:
             await asyncio.wait(tasks, timeout=self.settings.operation_timeout)
-        if self.connection is not None and not self.connection.is_closed:
-            try:
-                await asyncio.wait_for(
-                    self.connection.close(), self.settings.operation_timeout
-                )
-            except Exception as exc:
-                LOGGER.warning(
-                    "RabbitMQ connection close failed (%s)", type(exc).__name__
-                )
+        # One operation_timeout budget for both closes; gather keeps them concurrent.
+        consumer_connection = self.connection
+        publisher_connection = self.publish_connection
+        await asyncio.gather(
+            self._close_amqp(consumer_connection),
+            self._close_amqp(publisher_connection),
+        )
         self.completed.clear()
