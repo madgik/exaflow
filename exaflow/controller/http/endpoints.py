@@ -11,6 +11,7 @@ from exaflow.controller.services import analysis_service
 from exaflow.controller.services import get_worker_landscape_aggregator
 from exaflow.controller.services.analysis_execution import shutdown_analysis_execution
 from exaflow.controller.services.analysis_execution import start_analysis_execution
+from exaflow.controller.services.analysis_execution import wait_for_analysis_cleanup
 from exaflow.controller.services.api.algorithm_spec_dtos import (
     AlgorithmSpecificationsDTO,
 )
@@ -30,6 +31,7 @@ from exaflow.controller.services.api.algorithm_spec_dtos import (
     preprocessing_step_specifications_dtos,
 )
 from exaflow.controller.services.api.analysis_request_dtos import AnalysisRequestDTO
+from exaflow.controller.services.controller_shutdown import SHUTDOWN_CLEANUP_TIMEOUT
 from exaflow.controller.services.controller_shutdown import SHUTDOWN_RPC_CANCEL_TIMEOUT
 from exaflow.controller.services.controller_shutdown import begin_controller_shutdown
 from exaflow.controller.services.startup import start_background_services
@@ -52,10 +54,14 @@ async def shutdown():
     try:
         await asyncio.to_thread(stop_background_services)
     finally:
-        # A landscape stop that fails must not leave the analysis pool running.
-        await asyncio.to_thread(
-            shutdown_analysis_execution, SHUTDOWN_RPC_CANCEL_TIMEOUT
-        )
+        try:
+            await wait_for_analysis_cleanup(
+                SHUTDOWN_RPC_CANCEL_TIMEOUT + SHUTDOWN_CLEANUP_TIMEOUT
+            )
+        finally:
+            await asyncio.to_thread(
+                shutdown_analysis_execution, SHUTDOWN_RPC_CANCEL_TIMEOUT
+            )
 
 
 @router.get("/datasets")

@@ -158,10 +158,13 @@ registered `RunUdf` and aggregation `Configure` RPCs, and any registered after
 it. Worker-landscape metadata RPCs are cancelled too, because their executor
 threads would otherwise keep the process alive for `worker_tasks_timeout`.
 Cleanup and the metadata calls that release resources are not cancelled. The
-hook then stops the worker-landscape thread (join bounded by
-`shutdown_cleanup_timeout`, 10 s) and
-joins the analysis threads for at most `shutdown_rpc_cancel_timeout` (5 s);
-aggregation cleanup uses `shutdown_cleanup_timeout` once shutdown began. A
+hook stops the worker-landscape thread (join bounded by
+`shutdown_cleanup_timeout`, 10 s), then allows admitted analyses up to 15 s
+before closing the analysis pool. This combines `shutdown_rpc_cancel_timeout`
+(5 s) for RPC cancellation and analysis teardown with `shutdown_cleanup_timeout`
+(10 s) for aggregation cleanup. The final thread join is bounded by
+`shutdown_rpc_cancel_timeout` (5 s). These waits fit within the 60 s lifespan
+shutdown budget. A
 client disconnect during the drain cancels nothing. The pod grace period is
 the sum of the preStop sleep (5 s), `graceful_timeout` (120 s), the RPC cancel
 (5 s), the cleanup (10 s), `shutdown_timeout` (60 s) and a 20 s margin, which is

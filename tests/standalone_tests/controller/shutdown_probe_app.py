@@ -21,6 +21,7 @@ from fastapi.responses import PlainTextResponse
 
 from exaflow.controller.http import endpoints
 from exaflow.controller.services import set_worker_landscape_aggregator
+from exaflow.controller.services.analysis_execution import analysis_slot
 from exaflow.controller.services.analysis_execution import run_blocking
 from exaflow.controller.services.analysis_execution import start_analysis_execution
 from exaflow.controller.services.controller_shutdown import register_inflight_rpc
@@ -102,21 +103,24 @@ async def ping():
 
 @app.get("/analysis/{name}", response_class=PlainTextResponse)
 async def analysis(name: str):
-    try:
-        return await run_blocking(_analysis, name)
-    finally:
-        # Like the aggregation cleanup in the strategy: it runs after the
-        # analysis thread ended, also when shutdown ended it.
-        await run_blocking(_event, f"{name}:cleanup-ran")
+    async with analysis_slot():
+        try:
+            return await run_blocking(_analysis, name)
+        finally:
+            # The coroutine can take another turn to submit cleanup after
+            # the analysis thread exits.
+            await asyncio.sleep(0.1)
+            await run_blocking(_event, f"{name}:cleanup-ran")
 
 
 class _QueueProbeConsumer(AnalysisConsumer):
     async def _execute(self, request):
-        try:
-            await run_blocking(_analysis, request.request_id)
-            return AnalysisReply(status="succeeded", result={})
-        finally:
-            await run_blocking(_event, f"{request.request_id}:cleanup-ran")
+        async with analysis_slot(wait_for_capacity=True):
+            try:
+                await run_blocking(_analysis, request.request_id)
+                return AnalysisReply(status="succeeded", result={})
+            finally:
+                await run_blocking(_event, f"{request.request_id}:cleanup-ran")
 
 
 @app.post("/queue/{name}")

@@ -165,6 +165,11 @@ def test_shutdown_hook_cancels_rpcs_before_stopping_anything(monkeypatch):
         "stop_background_services",
         lambda: calls.append(("wla", call.cancelled)),
     )
+
+    async def wait_for_cleanup(timeout):
+        calls.append(("cleanup", call.cancelled, timeout))
+
+    monkeypatch.setattr(endpoints, "wait_for_analysis_cleanup", wait_for_cleanup)
     monkeypatch.setattr(
         endpoints,
         "shutdown_analysis_execution",
@@ -173,7 +178,15 @@ def test_shutdown_hook_cancels_rpcs_before_stopping_anything(monkeypatch):
 
     asyncio.run(endpoints.shutdown())
 
-    assert calls == [("wla", True), ("pool", True)]
+    assert calls == [
+        ("wla", True),
+        (
+            "cleanup",
+            True,
+            shutdown.SHUTDOWN_RPC_CANCEL_TIMEOUT + shutdown.SHUTDOWN_CLEANUP_TIMEOUT,
+        ),
+        ("pool", True),
+    ]
 
 
 def test_shutdown_cleanup_uses_the_short_deadline(monkeypatch):
