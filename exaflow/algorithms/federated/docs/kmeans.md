@@ -55,6 +55,8 @@ following values for internal reporter and preprocessing use:
 
 - `cluster_centers_`: list of `K` statistical mean centers, each length `p`
 - `cluster_counts_`: exact global cluster counts, internal only
+- `center_support_counts_`: exact counts used for the last centroid update,
+  internal only; these may differ from final assignment counts
 - `labels_`: local worker labels, internal only
 - `n_obs_`: exact global number of observations, internal only
 - `inertia_`: global within-cluster sum of squared distances
@@ -76,6 +78,14 @@ stored centers without constructing an estimator.
 model for each candidate value of K and returns
 `FederatedKMeansSelectionResults`. It includes the selected K, all candidate
 inertias, any elbow-ambiguity warning, and the best fitted result.
+
+Passing `minimum_cluster_size` to `fit` filters initialization candidates before
+choosing the lowest inertia. The same option in `select_k` additionally skips k
+values with no eligible initialization. Eligibility checks both positive final
+assignment counts and positive counts contributing to returned centers. Empty
+centers are zero constants. Only `NoEligibleKMeansModelError` is caught while
+skipping candidates; unrelated fit errors propagate. Without a supplied floor,
+core fitting and independent preprocessing retain their existing behavior.
 
 ### Key Differences from scikit-learn
 
@@ -106,11 +116,15 @@ inertias, any elbow-ambiguity warning, and the best fitted result.
 
 The federated core computes exact counts, centers, labels, and inertia because
 they are needed for fitting, reporting, and preprocessing. These values are not
-all public API output. The Exareme3 K-means wrapper masks cluster sizes as
-intervals and suppresses centers/profiles for clusters below the privacy
-threshold. The `kmeans_cluster_creator` preprocessing step validates that any
-exposed categorical output class is large enough before creating the derived
-column.
+all public API output. The Exareme3 K-means reporter checks the configured
+minimum cohort size before building any public report or replay artifact.
+Manual fitting preserves its ordinary lowest-inertia selection and rejects the
+analysis if that model fails the floor. Elbow fitting selects only eligible
+initializations and k values, and omits rejected candidates from diagnostics.
+The core never reads deployment configuration. Exact support counts stay inside
+the worker's fitted results and are not added to the public JSON contract.
+Independent column-creator fitting is not subject to this reporter release
+policy. Minimum cohort sizes do not constitute differential privacy.
 
 ### Multi-start random range
 

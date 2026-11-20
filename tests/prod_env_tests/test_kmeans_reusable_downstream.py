@@ -12,7 +12,7 @@ from tests.algorithm_validation_tests.exareme3.conftest import parse_response
 
 DATA_MODEL = "dementia:0.1"
 DATASETS = [f"edsd{index}" for index in range(10)]
-KMEANS_VARIABLES = ["lefthippocampus", "righthippocampus"]
+KMEANS_VARIABLES = ["leftamygdala", "rightamygdala"]
 GENERATED_CODE = "kmeans_cluster"
 
 
@@ -32,9 +32,9 @@ def _missing_values_step(variables):
     }
 
 
-@pytest.fixture(scope="module")
-def creator_parameters():
-    reporter_payload = {
+def _reporter_payload():
+    # Keep three replay categories using a cohort whose clusters meet the floor.
+    return {
         "inputdata": _inputdata(KMEANS_VARIABLES),
         "preprocessing": [_missing_values_step(KMEANS_VARIABLES)],
         "algorithm": {
@@ -48,6 +48,11 @@ def creator_parameters():
             },
         },
     }
+
+
+@pytest.fixture(scope="module")
+def creator_parameters():
+    reporter_payload = _reporter_payload()
     report = parse_response(analysis_request("kmeans", reporter_payload, drop_na=False))
     reusable = KMeansReusablePreprocessing.model_validate(
         json.loads(json.dumps(report["reusable_preprocessing"]))

@@ -19,6 +19,16 @@ INIT_RANDOM_RANGE = "random_range"
 INIT_MULTI_START_RANDOM_RANGE = "multi_start_random_range"
 
 
+class NoEligibleKMeansModelError(BadInputError):
+    """No fitted candidate satisfies the requested minimum cluster size."""
+
+
+def _counts_meet_minimum(counts, minimum_cluster_size):
+    counts = np.asarray(counts)
+    # Empty centers are reset to the origin, not calculated from participant data.
+    return not np.any((counts > 0) & (counts < minimum_cluster_size))
+
+
 def assign_clusters(x, centers):
     """Assign observations to the nearest supplied centers."""
     X = to_numpy(x)
@@ -43,6 +53,7 @@ class FederatedKMeansResults:
     n_clusters: int
     cluster_centers_: list[list[float]]
     cluster_counts_: list[int]
+    center_support_counts_: list[int]
     labels_: np.ndarray
     inertia_: float
     cluster_inertia_: list[float]
@@ -62,6 +73,14 @@ class FederatedKMeansResults:
         if not self.cluster_centers_:
             return np.asarray([], dtype=int)
         return assign_clusters(x, self.cluster_centers_)
+
+    def meets_minimum_cluster_size(self, minimum_cluster_size):
+        """Check both final assignments and the contributors to returned centers."""
+        return (
+            self.n_obs_ > 0
+            and _counts_meet_minimum(self.cluster_counts_, minimum_cluster_size)
+            and _counts_meet_minimum(self.center_support_counts_, minimum_cluster_size)
+        )
 
 
 @dataclass
@@ -100,10 +119,21 @@ class FederatedKMeans(FederatedEstimator):
         self.maxiter = as_scalar(maxiter, int, name="maxiter")
         self.random_state = as_scalar(random_state, int, name="random_state")
 
-    def fit(self, x, y=None, *, agg_client, feature_names=None):
+    def fit(
+        self, x, y=None, *, agg_client, feature_names=None, minimum_cluster_size=None
+    ):
         del y
         self._agg_client = agg_client
         self._validate_hyperparameters()
+        if minimum_cluster_size is not None:
+            if isinstance(minimum_cluster_size, (bool, np.bool_)):
+                raise BadInputError("minimum_cluster_size must be a positive integer.")
+            check_scalar(
+                minimum_cluster_size,
+                name="minimum_cluster_size",
+                minimum=1,
+                target_type=Integral,
+            )
         X = to_numpy(x)
         check_dimensions(X, (1, 2), input_name="Features")
         if X.ndim == 1:
@@ -129,9 +159,15 @@ class FederatedKMeans(FederatedEstimator):
 
         # If there is no data at all, return empty centers
         if total_n_obs == 0:
+            if minimum_cluster_size is not None:
+                del self._agg_client
+                raise NoEligibleKMeansModelError(
+                    "No K-means initialization meets the minimum cluster size."
+                )
             self.n_obs_ = 0
             self.cluster_centers_ = []
             self.cluster_counts_ = []
+            self.center_support_counts_ = []
             self.labels_ = np.asarray([], dtype=int)
             self.inertia_ = 0.0
             self.cluster_inertia_ = []
@@ -166,8 +202,21 @@ class FederatedKMeans(FederatedEstimator):
                 n_features=n_features,
                 init_idx=init_idx,
             )
+            if minimum_cluster_size is not None and not (
+                _counts_meet_minimum(result["counts"], minimum_cluster_size)
+                and _counts_meet_minimum(
+                    result["center_support_counts"], minimum_cluster_size
+                )
+            ):
+                continue
             if best_result is None or result["inertia"] < best_result["inertia"]:
                 best_result = result
+
+        if best_result is None:
+            del self._agg_client
+            raise NoEligibleKMeansModelError(
+                "No K-means initialization meets the minimum cluster size."
+            )
 
         centers = best_result["centers"]
         labels = best_result["labels"]
@@ -179,6 +228,9 @@ class FederatedKMeans(FederatedEstimator):
             [float(value) for value in center] for center in centers
         ]
         self.cluster_counts_ = [int(value) for value in count_global]
+        self.center_support_counts_ = [
+            int(value) for value in best_result["center_support_counts"]
+        ]
         self.labels_ = labels.astype(int, copy=False)
         self.inertia_ = float(cluster_inertia_global.sum())
         self.cluster_inertia_ = [float(value) for value in cluster_inertia_global]
@@ -204,6 +256,7 @@ class FederatedKMeans(FederatedEstimator):
         maxiter=100,
         random_state=123,
         feature_names=None,
+        minimum_cluster_size=None,
     ):
         k_min = as_scalar(k_min, int, name="k_min")
         k_max = as_scalar(k_max, int, name="k_max")
@@ -215,18 +268,37 @@ class FederatedKMeans(FederatedEstimator):
         models_by_k = {}
         inertia_by_k = {}
         for n_clusters in range(k_min, k_max + 1):
-            model = cls(
-                n_clusters=n_clusters,
-                init_method=init_method,
-                n_init=n_init,
-                tol=tol,
-                maxiter=maxiter,
-                random_state=random_state,
-            ).fit(x, agg_client=agg_client, feature_names=feature_names)
+            try:
+                model = cls(
+                    n_clusters=n_clusters,
+                    init_method=init_method,
+                    n_init=n_init,
+                    tol=tol,
+                    maxiter=maxiter,
+                    random_state=random_state,
+                ).fit(
+                    x,
+                    agg_client=agg_client,
+                    feature_names=feature_names,
+                    minimum_cluster_size=minimum_cluster_size,
+                )
+            except NoEligibleKMeansModelError:
+                continue
             models_by_k[n_clusters] = model
             inertia_by_k[n_clusters] = float(model.inertia_)
 
+        if not models_by_k:
+            raise NoEligibleKMeansModelError(
+                "No K-means model in the requested k range meets the minimum "
+                "cluster size. Choose another range or a larger cohort."
+            )
         selected_k, warning = cls._select_k(inertia_by_k)
+        if len(models_by_k) < k_max - k_min + 1:
+            privacy_warning = (
+                "Some candidate k values were excluded by the minimum cluster "
+                "size requirement. Only eligible models are reported."
+            )
+            warning = f"{warning} {privacy_warning}" if warning else privacy_warning
         return FederatedKMeansSelectionResults(
             models_by_k=models_by_k,
             inertia_by_k=inertia_by_k,
@@ -243,6 +315,7 @@ class FederatedKMeans(FederatedEstimator):
             n_clusters=self.n_clusters,
             cluster_centers_=self.cluster_centers_,
             cluster_counts_=self.cluster_counts_,
+            center_support_counts_=self.center_support_counts_,
             labels_=self.labels_,
             inertia_=self.inertia_,
             cluster_inertia_=self.cluster_inertia_,
@@ -325,6 +398,7 @@ class FederatedKMeans(FederatedEstimator):
             "centers": centers,
             "labels": labels,
             "counts": final_count_global,
+            "center_support_counts": count_global,
             "cluster_inertia": cluster_inertia_global,
             "inertia": float(cluster_inertia_global.sum()),
             "n_iter": n_iter,

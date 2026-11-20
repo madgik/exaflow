@@ -14,6 +14,7 @@ from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.cluster.kmeans import INIT_MULTI_START_RANDOM_RANGE
 from exaflow.algorithms.federated.cluster.kmeans import INIT_RANDOM_RANGE
 from exaflow.algorithms.federated.cluster.kmeans import FederatedKMeans
+from exaflow.algorithms.federated.utils import BadInputError
 
 K_SELECTION_MANUAL = "manual"
 K_SELECTION_ELBOW = "elbow"
@@ -141,18 +142,23 @@ class KMeans(Algorithm):
             desc="K-means clustering report for numerical variables.",
             documentation=(
                 "Partitions observations into k clusters based on selected "
-                "numerical variables and returns a privacy-safe cluster report. "
-                "Cluster centers are statistical mean profiles, not individual "
-                "patients.\n\n"
+                "numerical variables and returns a cluster report subject to "
+                "a minimum cohort size for nonempty clusters and the "
+                "observations contributing to each center.\n\n"
                 "Use k_selection='manual' to provide k directly. Use "
                 "k_selection='elbow' to evaluate k_min..k_max and select k from "
                 "the inertia curve. Elbow selection uses the K-means objective "
                 "(within-cluster sum of squared distances), not a user-defined "
                 "cost function. Use init_method='multi_start_random_range' with "
-                "n_init > 1 to fit multiple random-range initializations and keep "
-                "the lowest-inertia result.\n\n"
-                "The report always includes named cluster centers. Cluster sizes "
-                "are returned as privacy-safe intervals, not exact counts. "
+                "n_init > 1 to fit multiple random-range initializations. In "
+                "elbow mode, only initializations meeting the minimum cohort "
+                "size are considered, and k values with no eligible fit are "
+                "excluded. Manual mode keeps the lowest-inertia fit and fails "
+                "if it does not meet the minimum cohort size; k is not changed "
+                "automatically. If no eligible model exists, no report or "
+                "reusable centers are returned.\n\n"
+                "Accepted reports include named cluster centers. Cluster sizes "
+                "are returned as intervals, not exact counts. "
                 "Cluster identifiers use enumeration_prefix (default cluster_) "
                 "followed by numbers from 1 through the fitted cluster count.\n\n"
                 "K-means can support exploratory subgroup discovery and baseline "
@@ -344,6 +350,11 @@ def local_step(
 ):
     from exaflow.worker import config as worker_config
 
+    # Use the strictest participating requirement so every worker makes the same
+    # candidate-selection decisions and follows the same aggregation sequence.
+    minimum_row_count = int(
+        agg_client.max([worker_config.privacy.minimum_row_count])[0]
+    )
     X = data.loc[:, variables]
     global_mean = _compute_global_mean(
         agg_client=agg_client,
@@ -371,6 +382,7 @@ def local_step(
             maxiter=maxiter,
             random_state=random_state,
             feature_names=variables,
+            minimum_cluster_size=minimum_row_count,
         )
         model = selection.best_model
         elbow = {
@@ -389,7 +401,7 @@ def local_step(
         variables=variables,
         k_selection=k_selection,
         global_mean=global_mean,
-        minimum_row_count=worker_config.privacy.minimum_row_count,
+        minimum_row_count=minimum_row_count,
         elbow=elbow,
     )
 
@@ -476,6 +488,12 @@ def _build_report(
     elbow,
     enumeration_prefix="cluster_",
 ):
+    if not model.meets_minimum_cluster_size(minimum_row_count):
+        raise BadInputError(
+            "K-means cannot return this model because a cluster or its center "
+            "does not meet the minimum cohort size. Choose a different k or "
+            "a larger cohort and run K-means again."
+        )
     size_intervals = [
         _count_interval(count, minimum_row_count=minimum_row_count)
         for count in model.cluster_counts_
@@ -537,8 +555,9 @@ def _build_report(
         "selected_initialization": int(model.best_init_),
         "n_obs_interval": n_obs_interval,
         "center_definition": (
-            "Each center is the per-variable mean of observations assigned to "
-            "that cluster. It is not a real patient or row."
+            "Each data-derived center is the per-variable mean of the "
+            "observations used in its last centroid update. After early "
+            "stopping, these may differ from the final assigned observations."
         ),
         "intended_use": [
             "Explore baseline covariate patterns.",
@@ -546,8 +565,9 @@ def _build_report(
             "Optionally create a downstream categorical covariate with kmeans_cluster_creator.",
         ],
         "privacy_note": (
-            "Cluster sizes are reported as privacy-safe intervals. Cluster centers "
-            "are always returned as model summaries, not individual records."
+            "Nonempty clusters and the observations contributing to each "
+            "data-derived center meet the minimum cohort size. Cluster sizes "
+            "are reported as intervals. Rejected models are not exported."
         ),
         "clusters": [cluster.model_dump() for cluster in clusters],
         "elbow": elbow,
