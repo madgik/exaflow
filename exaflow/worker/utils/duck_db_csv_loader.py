@@ -4,6 +4,8 @@ import json
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from string import ascii_lowercase
+from string import ascii_uppercase
 from typing import NamedTuple
 
 import duckdb
@@ -306,6 +308,48 @@ def _datasets_from_staging_table(
     return datasets
 
 
+class DataModelNameCollisionError(ValueError):
+    """Two loadable data models map to the same DuckDB tables."""
+
+
+def _preflight_data_models(folder_path: Path):
+    candidate_dirs = [folder_path]
+    candidate_dirs.extend(
+        sorted(path for path in folder_path.glob("*/") if path.is_dir())
+    )
+
+    models = []
+    directories_by_prefix = {}
+    for data_model_dir in candidate_dirs:
+        meta_path = Path(data_model_dir) / "CDEsMetadata.json"
+        if not meta_path.exists():
+            continue
+
+        with open(meta_path) as fp:
+            metadata = json.load(fp)
+
+        code = metadata.get("code")
+        version = metadata.get("version")
+        if not code or not version:
+            continue
+
+        csv_paths = _read_data_model_csvs(data_model_dir)
+        if not csv_paths:
+            continue
+        model_id = f"{code}:{version}"
+        table_prefix = _sanitize_name(model_id)
+        key = table_prefix.translate(str.maketrans(ascii_uppercase, ascii_lowercase))
+        if key in directories_by_prefix:
+            other_id, other_dir = directories_by_prefix[key]
+            raise DataModelNameCollisionError(
+                f"Data models {other_id!r} ({other_dir}) and {model_id!r} "
+                f"({data_model_dir}) share a DuckDB table name."
+            )
+        directories_by_prefix[key] = (model_id, data_model_dir)
+        models.append((metadata, code, version, table_prefix, csv_paths))
+    return models
+
+
 def load_all_csvs_from_data_folder(request_id: str) -> str:
     db_path = worker_config.duckdb.path
     folder_path = Path(worker_config.data_path).expanduser()
@@ -318,36 +362,15 @@ def load_all_csvs_from_data_folder(request_id: str) -> str:
         folder_path,
         db_path,
     )
+    models = _preflight_data_models(folder_path)
     conn = duckdb.connect(str(db_path), read_only=False)
     try:
         _reset_metadata_tables(conn)
         data_model_id = 0
         dataset_id = 0
 
-        candidate_dirs = [folder_path]
-        candidate_dirs.extend(
-            sorted(path for path in folder_path.glob("*/") if path.is_dir())
-        )
-
-        for data_model_dir in candidate_dirs:
-            meta_path = Path(data_model_dir) / "CDEsMetadata.json"
-            if not meta_path.exists():
-                continue
-
-            with open(meta_path) as fp:
-                metadata = json.load(fp)
-
-            code = metadata.get("code")
-            version = metadata.get("version")
-            if not code or not version:
-                continue
-
-            csv_paths = _read_data_model_csvs(data_model_dir)
-            if not csv_paths:
-                continue
-
+        for metadata, code, version, table_prefix, csv_paths in models:
             data_model_id += 1
-            table_prefix = _sanitize_name(f"{code}:{version}")
 
             primary_data = _create_primary_data_table(
                 conn, table_prefix, csv_paths, metadata
