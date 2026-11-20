@@ -103,13 +103,16 @@ def test_duplicate_lost_configure_does_not_remove_the_owners_context(monkeypatch
         servicer.Configure(request, _MetadataContext(metadata))
         return _LostResponse()
 
-    def factory(request_id, context_id, aggregator_dns=None, max_message_mb=None):
+    def factory(
+        request_id, context_id, aggregator_dns=None, max_message_mb=None, tls=None
+    ):
         return _wire(
             ControllerAggregationClient(
                 request_id,
                 aggregator_dns=aggregator_dns,
                 max_message_mb=max_message_mb,
                 context_id=request_id,
+                tls=tls,
             ),
             lost_future,
             cleanup,
@@ -119,6 +122,10 @@ def test_duplicate_lost_configure_does_not_remove_the_owners_context(monkeypatch
     strategy = build_strategy(strategies.Exareme3WithAggregationServerStrategy)
     strategy._request_id = request_id
     strategy._context_id = request_id
+    strategy._worker_tasks_handlers = [
+        type("Handler", (), {"worker_id": "w1"})(),
+        type("Handler", (), {"worker_id": "w2"})(),
+    ]
     strategy._logger = logging.getLogger("aggregation-ownership")
 
     with pytest.raises(ControllerShuttingDownError):

@@ -198,6 +198,37 @@ that caller configured it.
   aggregation server through their config files; `exaflow/grpc_options.py`
   turns each component's configured value into gRPC options.
 
+## Aggregation mTLS and identity
+
+The controller, workers, and aggregation server share `exaflow/grpc_tls.py` for
+credentials and certificate-bound identity. Each client certificate carries one
+URI SAN: `exaflow://<federation>/controller` or
+`exaflow://<federation>/worker/<worker_id>`. The aggregation server derives the
+caller's role, federation, and worker id from that SAN and authorizes every RPC:
+`Configure`/`Cleanup` require the controller role, and `Aggregate`/`Unregister`
+require a worker whose id appears in the `ConfigureRequest.worker_ids`
+allow-list. Failures are `UNAUTHENTICATED` (no valid TLS identity),
+`PERMISSION_DENIED` (wrong role, wrong federation, or non-member worker), or
+`ALREADY_EXISTS` (duplicate submission for one worker and step). Authorization
+and duplicate checks never fail the aggregation context itself, so an attacker
+cannot poison honest workers' result.
+
+When `health_port` is configured, a dedicated plaintext gRPC server serves only
+`grpc.health.v1.Health` for kubelet probes; the mTLS-protected `AggregationServer`
+is not registered there and the Service exposes only the main port. TLS clients
+retain the configured DNS name for SNI and SAN verification (no DNS-to-IP
+rewrite) and accept an optional `grpc.ssl_target_name_override`.
+
+Rollout/rollback: provision the CA and per-component Secrets (`tls.crt`/`tls.key`/`ca.crt`
+for server and controller; `ca.crt` plus `<WORKER_IDENTIFIER>.crt`/`.key` per
+worker in `worker_secret`), set `FEDERATION` and `aggregation_server.tls.enabled`,
+and restart controller, workers, and aggregation server together; `worker_ids`
+must match `num_of_workers`. TLS requires `require_client_auth=true` and a
+non-empty `FEDERATION`. Local `tasks.py` deployment remains plaintext-only.
+Rollback disables the flag and restores plaintext channels and the original
+probe port. This is a coordinated internal contract change, not a
+backwards-compatible protocol extension.
+
 ## Known Gaps
 
 - Static typecheck command is unknown.

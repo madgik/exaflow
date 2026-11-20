@@ -23,6 +23,9 @@ message ConfigureRequest {
   string request_id = 1;
   int32 num_of_workers = 2;
   string context_id = 3;
+  // Allow-list of worker identities permitted to aggregate for this context.
+  // Required when the server authenticates peers over mTLS.
+  repeated string worker_ids = 4;
 }
 
 message ConfigureResponse {

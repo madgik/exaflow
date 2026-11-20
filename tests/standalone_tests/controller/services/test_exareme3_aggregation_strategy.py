@@ -17,12 +17,20 @@ from exaflow.protos.aggregation_server import aggregation_server_pb2 as agg_pb2
 
 class _RecordingAggregationClient:
     def __init__(
-        self, request_id, context_id, aggregator_dns=None, max_message_mb=None
+        self,
+        request_id,
+        context_id,
+        aggregator_dns=None,
+        max_message_mb=None,
+        tls=None,
     ):
         self.calls = []
+        self.tls = tls
+        self.configured_worker_ids = None
 
-    def configure(self, num_workers, timeout=None):
+    def configure(self, num_workers, timeout=None, worker_ids=None):
         self.calls.append("configure")
+        self.configured_worker_ids = worker_ids
         return agg_pb2.Status.OK
 
     def cleanup(self, timeout=None):
@@ -41,12 +49,15 @@ def test_aggregation_strategy_cleans_up_and_closes_client_when_algorithm_fails(
 ):
     created = []
 
-    def factory(request_id, context_id, aggregator_dns=None, max_message_mb=None):
+    def factory(
+        request_id, context_id, aggregator_dns=None, max_message_mb=None, tls=None
+    ):
         client = _RecordingAggregationClient(
             request_id,
             context_id,
             aggregator_dns=aggregator_dns,
             max_message_mb=max_message_mb,
+            tls=tls,
         )
         created.append(client)
         return client
@@ -59,7 +70,10 @@ def test_aggregation_strategy_cleans_up_and_closes_client_when_algorithm_fails(
     strategy = object.__new__(strategies.Exareme3WithAggregationServerStrategy)
     strategy._request_id = "req"
     strategy._context_id = "ctx"
-    strategy._worker_tasks_handlers = [object(), object()]
+    strategy._worker_tasks_handlers = [
+        types.SimpleNamespace(worker_id="w1"),
+        types.SimpleNamespace(worker_id="w2"),
+    ]
     strategy._logger = logging.getLogger(__name__)
     strategy._controller = types.SimpleNamespace(task_timeout=300)
 
@@ -71,6 +85,8 @@ def test_aggregation_strategy_cleans_up_and_closes_client_when_algorithm_fails(
         "cleanup",
         "close",
     ]
+    assert created[-1].configured_worker_ids == ["w1", "w2"]
+    assert created[-1].tls is strategies.controller_config.aggregation_server.tls
 
 
 class _DeadlineRpcError(grpc.RpcError):
@@ -105,11 +121,16 @@ def test_configure_and_cleanup_send_the_controller_task_timeout_as_deadline(
 
     class DeadlineClient:
         def __init__(
-            self, request_id, context_id, aggregator_dns=None, max_message_mb=None
+            self,
+            request_id,
+            context_id,
+            aggregator_dns=None,
+            max_message_mb=None,
+            tls=None,
         ):
             pass
 
-        def configure(self, num_workers, timeout=None):
+        def configure(self, num_workers, timeout=None, worker_ids=None):
             seen["configure"] = timeout
             return agg_pb2.Status.OK
 
@@ -194,11 +215,16 @@ class _ConfigureFailsClient:
     calls = []
 
     def __init__(
-        self, request_id, context_id, aggregator_dns=None, max_message_mb=None
+        self,
+        request_id,
+        context_id,
+        aggregator_dns=None,
+        max_message_mb=None,
+        tls=None,
     ):
         pass
 
-    def configure(self, num_workers, timeout=None):
+    def configure(self, num_workers, timeout=None, worker_ids=None):
         self.calls.append("configure")
         raise self.error
 

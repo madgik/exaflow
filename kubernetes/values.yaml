@@ -59,6 +59,22 @@ aggregation_server:
   enabled: true
   max_wait_for_aggregation_inputs: 60
   dns: "exaflow-aggregation-service"
+  # Service type for the aggregation server. The health port below is never
+  # published on the Service; it is only used by the kubelet probe.
+  service_type: ClusterIP
+  health_port: 50052
+  tls:
+    # Mutual TLS also enforces certificate-bound controller/worker roles and
+    # per-context worker_ids membership. Certificates are provisioned outside
+    # this chart:
+    # - server_secret and controller_secret contain tls.crt, tls.key, and ca.crt.
+    # - worker_secret contains ca.crt plus per-worker <WORKER_IDENTIFIER>.crt
+    #   and <WORKER_IDENTIFIER>.key (each with its unique exaflow:// URI SAN).
+    enabled: false
+    server_secret: "exaflow-aggregation-server-tls"
+    controller_secret: "exaflow-controller-aggregation-tls"
+    worker_secret: "exaflow-worker-aggregation-tls"
+    target_name_override: ""
 
 storage:
   type: hostPath

@@ -7,6 +7,7 @@ import envtoml
 from exaflow import AttrDict
 from exaflow import worker
 from exaflow.grpc_options import grpc_max_message_mb
+from exaflow.grpc_tls import load_tls_config
 
 
 def _ensure_duckdb_config(cfg: AttrDict) -> None:
@@ -75,6 +76,12 @@ def _ensure_log_levels(cfg: AttrDict) -> None:
     cfg.framework_log_level = _sanitize(getattr(cfg, "framework_log_level", "INFO"))
 
 
+def _ensure_aggregation_tls_config(cfg: AttrDict) -> None:
+    agg_cfg = getattr(cfg, "aggregation_server", AttrDict({}))
+    agg_cfg.tls = load_tls_config(agg_cfg.get("tls"))
+    cfg.aggregation_server = agg_cfg
+
+
 if config_file := os.getenv("EXAFLOW_WORKER_CONFIG_FILE"):
     with open(config_file, "rb") as fp:
         config = AttrDict(envtoml.load(fp))
@@ -86,3 +93,4 @@ _ensure_duckdb_config(config)
 _ensure_grpc_config(config)
 _ensure_worker_tasks_config(config)
 _ensure_log_levels(config)
+_ensure_aggregation_tls_config(config)

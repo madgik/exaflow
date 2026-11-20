@@ -1,4 +1,16 @@
-{{- if .Values.aggregation_server.enabled }}
+{{- $aggServer := .Values.aggregation_server | default dict }}
+{{- $aggTls := $aggServer.tls | default dict }}
+{{- if $aggServer.enabled }}
+{{- $serviceType := $aggServer.service_type | default "ClusterIP" }}
+{{- if and (ne $serviceType "ClusterIP") (not $aggTls.enabled) }}
+{{- fail "aggregation_server.service_type cannot expose the aggregation server outside ClusterIP while aggregation_server.tls.enabled is false" }}
+{{- end }}
+{{- if $aggTls.enabled }}
+{{- $healthPort := int ($aggServer.health_port | default 0) }}
+{{- if or (le $healthPort 0) (eq $healthPort 50051) }}
+{{- fail "aggregation_server.health_port must be a positive port distinct from 50051 when aggregation_server.tls.enabled is true" }}
+{{- end }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -20,33 +32,66 @@ spec:
       nodeSelector:
         master: "true"
       {{- end }}
+      {{- if $aggTls.enabled }}
+      volumes:
+        - name: aggregation-tls
+          secret:
+            secretName: {{ $aggTls.server_secret | quote }}
+            defaultMode: 0400
+      {{- end }}
       containers:
         - name: aggregation-server
           image: "{{ .Values.exaflow_images.repository }}/exaflow_aggregation_server:{{ .Values.exaflow_images.aggregation_server_tag | default .Values.exaflow_images.version }}"
           imagePullPolicy: IfNotPresent
+          {{- if $aggTls.enabled }}
+          volumeMounts:
+            - name: aggregation-tls
+              mountPath: /etc/exaflow/tls/aggregation
+              readOnly: true
+          {{- end }}
           ports:
             - containerPort: 50051
+            {{- if $aggTls.enabled }}
+            # Plaintext health endpoint; not published on the Service.
+            - containerPort: {{ $aggServer.health_port }}
+            {{- end }}
           env:
+            - name: FEDERATION
+              value: {{ .Values.federation | default "" | quote }}
             - name: PORT
               value: "50051"
             - name: MAX_GRPC_CONNECTIONS
               # note: no outer quotes, and correct pipe-syntax
               value: {{ .Values.worker_count | int | mul .Values.max_concurrent_experiments | quote }}
             - name: MAX_WAIT_FOR_AGGREGATION_INPUTS
-              value: {{ .Values.aggregation_server.max_wait_for_aggregation_inputs | quote }}
+              value: {{ $aggServer.max_wait_for_aggregation_inputs | quote }}
             - name: LOG_LEVEL
               value: {{ .Values.log_level | quote }}
             - name: GRPC_MAX_MESSAGE_MB
               value: {{ quote .Values.grpc_max_message_mb }}
+            {{- if $aggTls.enabled }}
+            - name: AGGREGATION_TLS_ENABLED
+              value: "true"
+            - name: AGGREGATION_TLS_CA_CERT_PATH
+              value: "/etc/exaflow/tls/aggregation/ca.crt"
+            - name: AGGREGATION_TLS_CERT_PATH
+              value: "/etc/exaflow/tls/aggregation/tls.crt"
+            - name: AGGREGATION_TLS_KEY_PATH
+              value: "/etc/exaflow/tls/aggregation/tls.key"
+            - name: AGGREGATION_TLS_REQUIRE_CLIENT_AUTH
+              value: "true"
+            - name: HEALTH_PORT
+              value: {{ $aggServer.health_port | quote }}
+            {{- end }}
           livenessProbe:
             grpc:
-              port: 50051
+              port: {{ if $aggTls.enabled }}{{ $aggServer.health_port }}{{ else }}50051{{ end }}
             initialDelaySeconds: 10
             periodSeconds: 30
             timeoutSeconds: 5
           readinessProbe:
             grpc:
-              port: 50051
+              port: {{ if $aggTls.enabled }}{{ $aggServer.health_port }}{{ else }}50051{{ end }}
             periodSeconds: 15
             timeoutSeconds: 5
 
@@ -57,7 +102,7 @@ metadata:
   name: exaflow-aggregation-service
   namespace: {{ .Values.namespace }}
 spec:
-  type: ClusterIP
+  type: {{ $serviceType }}
   selector:
     app: exaflow-aggregation-server
   ports:
