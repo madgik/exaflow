@@ -24,6 +24,20 @@ When no documentation exception exists, the canonical path is:
 documentation/algorithms/<algorithm>.md
 ```
 
+## Preprocessing coverage
+
+Preprocessing steps use their own registry and specification, not the analysis
+algorithm enum. Standalone tests can live under
+`tests/standalone_tests/exareme3/<domain>/test_<step>.py` or in a grouped test
+that explicitly imports the step module or names its ID. Production coverage
+can likewise be grouped under `tests/prod_env_tests`; all referencing test files
+are executed in strict mode. Each step still needs its own public documentation
+under `documentation/algorithms/<step>.md`.
+
+Analysis algorithms retain the canonical test and expected-fixture requirements
+above. Executable preprocessing assertions do not need a fabricated analysis
+result fixture. Unrelated tests and comments do not count as step references.
+
 ## Legacy Suite Policy
 
 `tests/algorithm_validation_tests` remains non-blocking by design. The validator

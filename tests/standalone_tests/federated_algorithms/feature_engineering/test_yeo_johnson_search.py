@@ -1,19 +1,27 @@
-"""Search termination, actual transformation parity and partition stability."""
+"""Partition, replay and numerical edge-case regressions."""
 
 import json
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import asdict
 
 import numpy as np
 import pytest
-from pydantic import ValidationError
 from scipy.special import ndtri
 from scipy.stats import yeojohnson
 
-from exaflow.algorithms.federated.preprocessing import YeoJohnsonTransformer
-from exaflow.algorithms.federated.preprocessing._yeo_johnson_search import (
+from exaflow.algorithms.federated.feature_engineering.yeo_johnson_transformer import (
+    YeoJohnsonTransformer,
+)
+from exaflow.algorithms.federated.feature_engineering.yeo_johnson_transformer import (
     adaptive_lambda_search,
 )
 from exaflow.algorithms.federated.utils import BadInputError
+from tests.standalone_tests.federated_algorithms.feature_engineering.transformation_test_support import (
+    fit as _fit,
+)
+from tests.standalone_tests.federated_algorithms.feature_engineering.transformation_test_support import (
+    transform as _transform,
+)
 from tests.standalone_tests.federated_algorithms.utils.dummy_agg_client import (
     DummyAggClient,
 )
@@ -30,7 +38,7 @@ def _search(objective, bounds=(-40, 40), budget=64, ftol=1e-10):
         objective,
         bounds,
         max_evaluations=budget,
-        lambda_tolerance=1e-5,
+        lambda_tolerance=1e-05,
         likelihood_tolerance=ftol,
     )
 
@@ -38,7 +46,7 @@ def _search(objective, bounds=(-40, 40), budget=64, ftol=1e-10):
 @pytest.mark.parametrize("target", [-18.0, 18.0])
 def test_search_expands_beyond_old_interval(target):
     lambd, diagnostic = _search(lambda x: (x - target) ** 2)
-    assert lambd == pytest.approx(target, abs=1e-4)
+    assert lambd == pytest.approx(target, abs=0.0001)
     assert diagnostic["status"] == "converged"
     assert diagnostic["evaluations"] <= 64
 
@@ -64,7 +72,7 @@ def test_budget_is_global_across_expansion_and_refinement(budget):
     assert diagnostic["status"] == "approximate"
     assert len(seen) == diagnostic["evaluations"] == budget
     assert lambd in seen
-    assert (lambd - 18) ** 2 == min((value - 18) ** 2 for value in seen)
+    assert (lambd - 18) ** 2 == min(((value - 18) ** 2 for value in seen))
 
 
 def test_numerical_boundary_keeps_finite_candidate_and_marks_approximation():
@@ -91,14 +99,16 @@ def test_actual_power_transform_fits_outside_old_bounds_and_matches_scipy(sign):
     data = sign * np.expm1(np.log1p(8 * (normal + 4)) / 8)
     expected, expected_lambda = yeojohnson(data)
     assert abs(expected_lambda) > 5
-    model = YeoJohnsonTransformer().fit(data, agg_client=DummyAggClient())
-    assert model.lambdas_[0] == pytest.approx(expected_lambda, abs=2e-3)
-    np.testing.assert_allclose(model.transform(data), expected, rtol=1e-3, atol=1e-3)
+    model = _fit(YeoJohnsonTransformer(), data, agg_client=DummyAggClient())
+    assert model.lambdas_[0] == pytest.approx(expected_lambda, abs=0.002)
+    np.testing.assert_allclose(
+        _transform(model, data), expected, rtol=0.001, atol=0.001
+    )
     assert model.fit_diagnostics_[0].evaluations <= 64
     replay = YeoJohnsonTransformer.from_recipe(
-        json.loads(model.recipe_.model_dump_json())
+        json.loads(json.dumps(asdict(model.recipe_), allow_nan=False))
     )
-    np.testing.assert_array_equal(replay.transform(data), model.transform(data))
+    np.testing.assert_array_equal(_transform(replay, data), _transform(model, data))
     assert replay.fit_diagnostics_ == model.fit_diagnostics_
 
 
@@ -109,7 +119,8 @@ def test_partitioned_fit_records_identical_diagnostics_and_lambda(budget):
 
     def fit_one(i):
         try:
-            return YeoJohnsonTransformer(max_evaluations=budget).fit(
+            return _fit(
+                YeoJohnsonTransformer(max_evaluations=budget),
                 parts[i],
                 agg_client=SimulatedAggClient(worker_id=i, coordinator=coordinator),
             )
@@ -119,11 +130,13 @@ def test_partitioned_fit_records_identical_diagnostics_and_lambda(budget):
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         models = list(executor.map(fit_one, range(2)))
-    assert models[0].recipe_.model_dump() == models[1].recipe_.model_dump()
-    pooled = YeoJohnsonTransformer(max_evaluations=budget).fit(
-        np.vstack(parts), agg_client=DummyAggClient()
+    assert asdict(models[0].recipe_) == asdict(models[1].recipe_)
+    pooled = _fit(
+        YeoJohnsonTransformer(max_evaluations=budget),
+        np.vstack(parts),
+        agg_client=DummyAggClient(),
     )
-    np.testing.assert_allclose(models[0].lambdas_, pooled.lambdas_, atol=1e-3)
+    np.testing.assert_allclose(models[0].lambdas_, pooled.lambdas_, atol=0.001)
 
 
 def test_different_search_settings_are_rejected_before_optimizer_rounds():
@@ -131,7 +144,8 @@ def test_different_search_settings_are_rejected_before_optimizer_rounds():
 
     def fit_one(i):
         try:
-            YeoJohnsonTransformer(max_evaluations=[1, 64][i]).fit(
+            _fit(
+                YeoJohnsonTransformer(max_evaluations=[1, 64][i]),
                 [1, 2, 3],
                 agg_client=SimulatedAggClient(worker_id=i, coordinator=coordinator),
             )
@@ -146,8 +160,10 @@ def test_different_search_settings_are_rejected_before_optimizer_rounds():
             coordinator.abort(exc)
             raise
     assert all(
-        isinstance(result, BadInputError) and "settings" in str(result)
-        for result in outcomes
+        (
+            isinstance(result, BadInputError) and "settings" in str(result)
+            for result in outcomes
+        )
     )
 
 
@@ -168,28 +184,31 @@ def test_invalid_search_settings_are_bad_input(settings):
 
 
 def test_constant_feature_has_zero_evaluations_and_exact_identity():
-    model = YeoJohnsonTransformer().fit([0.1] * 100, agg_client=DummyAggClient())
+    model = _fit(YeoJohnsonTransformer(), [0.1] * 100, agg_client=DummyAggClient())
     assert model.lambdas_.tolist() == [1]
     assert model.fit_diagnostics_[0].status == "constant"
     assert model.fit_diagnostics_[0].evaluations == 0
-    np.testing.assert_array_equal(model.transform([0.1, np.nan]), [0.1, np.nan])
+    np.testing.assert_array_equal(_transform(model, [0.1, np.nan]), [0.1, np.nan])
 
 
 def test_real_large_offset_plateau_can_stop_without_consuming_budget():
-    data = 1e4 + ndtri((np.arange(201) + 0.5) / 201)
-    model = YeoJohnsonTransformer(likelihood_tolerance=1e-3).fit(
-        data, agg_client=DummyAggClient()
+    data = 10000.0 + ndtri((np.arange(201) + 0.5) / 201)
+    model = _fit(
+        YeoJohnsonTransformer(likelihood_tolerance=0.001),
+        data,
+        agg_client=DummyAggClient(),
     )
     diagnostic = model.fit_diagnostics_[0]
     assert diagnostic.status == "approximate"
     assert diagnostic.reason == "flat_objective"
     assert diagnostic.evaluations <= 6
     assert model.lambdas_[0] == 1
-    assert np.isfinite(model.transform(data)).all()
+    assert np.isfinite(_transform(model, data)).all()
 
 
 @pytest.mark.parametrize("budget", [1, 8, 64])
 def test_aggregation_work_is_bounded_by_recorded_evaluations(budget):
+
     class CountingClient(DummyAggClient):
         def __init__(self):
             self.calls = 0
@@ -207,8 +226,10 @@ def test_aggregation_work_is_bounded_by_recorded_evaluations(budget):
             return super().max(values)
 
     client = CountingClient()
-    model = YeoJohnsonTransformer(max_evaluations=budget).fit(
-        [-4, -2, 0, 1, 8], agg_client=client
+    model = _fit(
+        YeoJohnsonTransformer(max_evaluations=budget),
+        [-4, -2, 0, 1, 8],
+        agg_client=client,
     )
     evaluations = model.fit_diagnostics_[0].evaluations
     assert evaluations <= budget
@@ -227,8 +248,8 @@ def test_aggregation_work_is_bounded_by_recorded_evaluations(budget):
     ],
 )
 def test_replay_rejects_inconsistent_search_diagnostics(mutate):
-    model = YeoJohnsonTransformer().fit([0, 1, 3], agg_client=DummyAggClient())
-    recipe = model.recipe_.model_dump()
+    model = _fit(YeoJohnsonTransformer(), [0, 1, 3], agg_client=DummyAggClient())
+    recipe = asdict(model.recipe_)
     mutate(recipe)
-    with pytest.raises(ValidationError):
+    with pytest.raises(BadInputError):
         YeoJohnsonTransformer.from_recipe(recipe)

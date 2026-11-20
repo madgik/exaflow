@@ -66,11 +66,17 @@ formatting and import-order checks belong to commit hooks and CI.
 
 Federated domain tests follow `outliers`, `feature_engineering`, and `compose`.
 Mixed-effects tests remain in `mixed_effects`, exercising the renamed
-`mixed_effects_utils.py` through their model imports. During an uncommitted
-package move, the algorithm validator can flag a deliberately deleted package
-initializer as a missing touched registration file. Check the replacement
-package exports and imports directly; do not restore the obsolete package just
-to satisfy that check.
+`mixed_effects_utils.py` through their model imports.
+
+The algorithm validator distinguishes analysis algorithms, preprocessing steps
+and mathematical/helper modules. Preprocessing registration/specifications are
+checked against the preprocessing registry; grouped standalone/HTTP tests must
+explicitly import the step or name its ID. Analysis-result fixtures and enum
+entries are not required for preprocessing. Changed production helpers are
+import-checked and changed standalone tests are executed without inventing
+runtime algorithm IDs. Removed package initializers are accepted only when no
+live Python sources remain there. See `test_algorithm_validator.py` for positive
+and negative tooling regressions.
 
 The existing-algorithm validator still enforces canonical artifact names. Known
 gaps as of the domain refactor: K-means has input-based prod tests without a
