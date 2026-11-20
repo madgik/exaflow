@@ -63,10 +63,13 @@ def test_wla_update_errors_from_the_worker_thread_keep_their_status(
     def update():
         raise error
 
+    async def update_async():
+        await asyncio.to_thread(update)
+
     monkeypatch.setattr(
         endpoints,
         "get_worker_landscape_aggregator",
-        lambda: type("Wla", (), {"update": staticmethod(update)})(),
+        lambda: type("Wla", (), {"update_async": staticmethod(update_async)})(),
     )
 
     status_code, body = asyncio.run(_post("/wla"))

@@ -98,7 +98,7 @@ class FakeWorkerLandscapeAggregator:
     def get_data_models_attributes(self):
         return self._attributes
 
-    def update(self):
+    async def update_async(self):
         return None
 
     def healthcheck(self):

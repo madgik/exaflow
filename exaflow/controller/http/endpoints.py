@@ -124,7 +124,7 @@ async def get_algorithm_specifications() -> AlgorithmSpecificationsDTO:
 
 @router.post("/wla")
 async def update_wla():
-    await asyncio.to_thread(get_worker_landscape_aggregator().update)
+    await get_worker_landscape_aggregator().update_async()
     return Response()
 
 

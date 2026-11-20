@@ -1,8 +1,10 @@
+import asyncio
 import threading
 import traceback
 from abc import ABC
 from collections import OrderedDict
 from collections import defaultdict
+from concurrent.futures import Future
 from concurrent.futures import ThreadPoolExecutor
 from logging import Logger
 from typing import Any
@@ -257,46 +259,68 @@ class WorkerLandscapeAggregator:
         self._deployment_type = deployment_type
         self._workers = workers
         self._registries = _wlaRegistries()
-        self._update_lock = threading.Lock()
+        self._refresh_lock = threading.Lock()
+        self._active_refresh: Future[None] | None = None
         self._stop_event = threading.Event()
         self._update_loop_thread = None
         self._loaded_workers = set()
         self.initial_refresh_complete = threading.Event()
 
-    def update(self):
-        """
-        Worker Landscape Aggregator(wla) is a module that handles the aggregation of necessary information,
-        to keep up-to-date and in sync the Worker Registry and the Data Model Registry.
-        The Worker Registry contains information about the worker such as id, ip, port etc.
-        The Data Model Registry contains two types of information, data_models and datasets_locations.
-        data_models contains information about the data models and their corresponding cdes.
-        datasets_locations contains information about datasets and their locations(workers).
-        wla periodically will send requests (get_worker_info, get_worker_datasets_per_data_model, get_data_model_cdes),
-        to the workers to retrieve the current information that they contain.
-        Once all information about data models and cdes is aggregated,
-        any data model that is incompatible across workers will be removed.
-        A data model is incompatible when the cdes across workers are not identical, except one edge case.
-        The edge case is that the cdes can only contain a difference in the field of 'enumerations' in
-        the cde with code 'dataset' and still be considered compatible.
-        For each data model the 'enumerations' field in the cde with code 'dataset' is updated with all datasets across workers.
-        Once all the information is aggregated and validated the wla will provide the information to the Worker Registry and to the Data Model Registry.
-        """
-        with self._update_lock:
-            (
-                workers_info,
-                data_models_metadata_per_worker,
-            ) = self._fetch_workers_metadata()
-            worker_registry = WorkerRegistry(workers_info=workers_info)
-            dmr = _crunch_data_model_registry_data(
-                data_models_metadata_per_worker, self._logger
-            )
+    def _claim_refresh(self) -> tuple[Future[None], bool]:
+        """Return the shared future and whether this caller must start the refresh."""
+        with self._refresh_lock:
+            if self._active_refresh is not None:
+                return self._active_refresh, False
 
-            self._set_new_registries(worker_registry, dmr)
+            refresh: Future[None] = Future()
+            # Mark the shared future as running so HTTP callers can cancel their
+            # own wait while the refresh continues.
+            refresh.set_running_or_notify_cancel()
+            self._active_refresh = refresh
+            return refresh, True
+
+    def _complete_refresh(
+        self, refresh: Future[None], error: BaseException | None = None
+    ) -> None:
+        with self._refresh_lock:
+            self._active_refresh = None
+        # Future callbacks run inline, so publish the outcome outside the lock.
+        if error is None:
+            refresh.set_result(None)
+        else:
+            refresh.set_exception(error)
+
+    def _run_refresh(self, refresh: Future[None]) -> None:
+        try:
+            workers_info, metadata = self._fetch_workers_metadata()
+            workers = WorkerRegistry(workers_info=workers_info)
+            models = _crunch_data_model_registry_data(metadata, self._logger)
+            self._set_new_registries(workers, models)
             self.initial_refresh_complete.set()
-
             self._logger.debug(
                 f"Workers:{[worker_info.id for worker_info in self.get_workers()]}"
             )
+        except BaseException as error:
+            self._complete_refresh(refresh, error)
+        else:
+            self._complete_refresh(refresh)
+
+    def update(self) -> None:
+        refresh, should_start = self._claim_refresh()
+        if should_start:
+            self._run_refresh(refresh)
+        refresh.result()
+
+    async def update_async(self) -> None:
+        refresh, should_start = self._claim_refresh()
+        if should_start:
+            try:
+                asyncio.get_running_loop().run_in_executor(
+                    None, self._run_refresh, refresh
+                )
+            except BaseException as error:
+                self._complete_refresh(refresh, error)
+        await asyncio.wrap_future(refresh)
 
     def _update_loop(self):
         while not self._stop_event.is_set():
