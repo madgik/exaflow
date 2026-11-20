@@ -16,6 +16,7 @@ all of them through `exaflow.exareme3_preprocessing_step_classes` and
 | Longitudinal transformer | [longitudinal/longitudinal_transformer.py](longitudinal/longitudinal_transformer.py) |
 | K-means cluster creator | [cluster/kmeans_cluster_creator.py](cluster/kmeans_cluster_creator.py) |
 | PCA column creator | [decomposition/pca_column_creator.py](decomposition/pca_column_creator.py) |
+| Standard scaler | [feature_engineering/standard_scaler.py](feature_engineering/standard_scaler.py) |
 
 Outlier reporting reuses `OutlierWinsorizer.validate_outlier_configuration()`
 from `outliers/outlier_winsorizer.py`. K-means owns its replay models and

@@ -31,8 +31,10 @@ availability.
 | Missing Values Handler | Drop or impute missing values per variable. | [missing_values/missing_values_handler.py](../../exaflow/algorithms/exareme3/missing_values/missing_values_handler.py) |
 | Outlier Winsorizer | Clip numerical outliers using configured bounds. | [outliers/outlier_winsorizer.py](../../exaflow/algorithms/exareme3/outliers/outlier_winsorizer.py) |
 | Categorical Column Creator | Create a categorical column from filter rules. | [feature_engineering/categorical_column_creator.py](../../exaflow/algorithms/exareme3/feature_engineering/categorical_column_creator.py) |
+| Standard Scaler | Create numerical columns standardized using pooled sufficient statistics, retaining the sources. | [feature_engineering/standard_scaler.py](../../exaflow/algorithms/exareme3/feature_engineering/standard_scaler.py) |
 | Longitudinal Transformer | Convert two-visit records into first, second, or difference variables. | [longitudinal/longitudinal_transformer.py](../../exaflow/algorithms/exareme3/longitudinal/longitudinal_transformer.py) |
-| KMeans Column Creator | Assign a categorical cluster using stored fitted centers. | [cluster/kmeans_cluster_creator.py](../../exaflow/algorithms/exareme3/cluster/kmeans_cluster_creator.py) |
+| KMeans Column Creator | Assign a categorical cluster using stored centers or an independently fitted model. | [cluster/kmeans_cluster_creator.py](../../exaflow/algorithms/exareme3/cluster/kmeans_cluster_creator.py) |
+| PCA Column Creator | Create selected numerical component scores using a stored or independently fitted model. | [decomposition/pca_column_creator.py](../../exaflow/algorithms/exareme3/decomposition/pca_column_creator.py) |
 
 Related reports and transformations share their domain: the outlier report
 sits beside winsorization, and K-means sits beside its cluster column creator.
@@ -57,11 +59,16 @@ visit identifiers so records can be matched across visits.
 | Outlier Winsorizer | `strategies` | Per-variable outlier clipping strategy. |
 | Outlier Winsorizer | `tails` | Per-variable tail selection. |
 | Outlier Winsorizer | `folds` | Per-variable clipping threshold. |
+| Standard Scaler | `source_variables` | Ordered numerical sources to standardize independently. |
+| Standard Scaler | `new_column_names` | One new name per source, in the same order; sources are retained. |
 | Longitudinal Transformer | `visit1`, `visit2` | Visit identifiers to align. |
 | Longitudinal Transformer | `strategies` | Per-variable strategy: `first`, `second`, or `diff`. |
 | Column creators | `new_column_names` | Ordered names for the created columns. |
-| KMeans Column Creator | `k`, `enumeration_prefix` | Fitted category count and prefix, populated from the reusable model. |
-| KMeans Column Creator | `reusable_preprocessing` | Complete replay payload returned by a fitted K-means analysis. |
+| KMeans Column Creator | `k`, `enumeration_prefix` | Cluster count and category prefix, consistent with the reusable model when provided. |
+| KMeans Column Creator | `reusable_preprocessing` | Optional replay payload returned by a fitted K-means analysis. |
+| KMeans Column Creator | `variables`, `init_method`, `n_init`, `tol`, `maxiter`, `random_state` | Variables and fitting controls for independent execution without a replay payload. |
+| PCA Column Creator | `reusable_preprocessing`, `variables` | Optional fitted PCA payload, or source variables for independent fitting. |
+| PCA Column Creator | `selected_components`, `n_components` | Ordered component identifiers and the number of generated columns. |
 
 ## Preprocessing method
 
@@ -76,6 +83,17 @@ imputation uses user-provided scalar values.
 Numerical variables can be clipped with Gaussian, IQR, MAD, or quantile bounds.
 See [Outlier Winsorizer](outlier_winsorizer.md) for the detailed clipping
 rules.
+
+### Standard scaling
+
+`standard_scaler` subtracts the pooled mean and divides by population standard
+deviation (`ddof=0`). It appends one caller-named numerical output per source and retains
+the sources. Missing values do not enter the fit and remain missing in the
+output; constant scales use one. Empty sites contribute neutral statistics when
+allowed by the execution path. The scaler relies on existing worker and report
+privacy policies, without its own per-dataset/non-missing count floor or silent
+group exclusion. See [Standard Scaler](standard_scaler.md) for the numerical and privacy
+contracts.
 
 ### Longitudinal transformation
 
@@ -92,11 +110,18 @@ but the original variable code is preserved.
 
 ### KMeans cluster creation
 
-KMeans cluster creation replays the centers from a previous K-means analysis;
-it does not fit a new model. It creates one categorical column with one category
+KMeans cluster creation can replay centers from a previous K-means analysis or
+fit directly on explicit clustering variables. It creates one categorical column with one category
 per fitted cluster for downstream algorithms that accept categorical covariates.
 The replay payload must match the data model, datasets, filters, and clustering
 variables of the current analysis.
+
+### PCA component creation
+
+PCA column creation replays a fitted PCA model or fits directly on explicit
+numerical variables. It produces one numerical score column per selected
+component, in the requested order. The output names and selected components must
+both match `n_components`.
 
 ### Categorical column creation
 
@@ -108,7 +133,9 @@ or null. Overlapping matches are rejected.
 
 Preprocessing is applied without sharing row-level data. Most transformations
 are computed independently at each site. Steps that require alignment, such as
-longitudinal matching, use the requested fixed identifier columns.
+longitudinal matching, use the requested fixed identifier columns. Standard
+scaling instead fits pooled statistics through aggregation; independent PCA and
+K-means fitting also require aggregate computation.
 
 ### Aggregated quantities
 
@@ -116,10 +143,15 @@ longitudinal matching, use the requested fixed identifier columns.
 |---|---|
 | Local means, medians, and modes | Impute missing values with per-site summaries. |
 | Local outlier bounds | Clip numerical variables before downstream computation. |
+| Pooled observed sums and counts | Fit the standard scaler's global mean without exchanging observations. |
+| Pooled squared and residual deviation sums | Fit its corrected two-pass population variance. |
 | Dataset, subject, and visit identifiers | Match records for longitudinal transformations. |
 | Updated metadata | Preserve transformed variable types, names, and ranges. |
 
 ### Federated flow
+
+The following outlines available operations, not a fixed execution order: only
+requested steps run, in request-list order.
 
 ```text
 Input:
@@ -148,11 +180,16 @@ Step 4:
         update variable names and metadata
 
 Step 5:
-    Apply KMeans cluster creation when configured:
-        assign rows to the nearest stored K-means center
-        create a categorical cluster column
+    Apply model-derived column creation when configured:
+        replay a stored PCA/K-means model or fit on selected variables
+        create the declared numerical scores or categorical cluster column
 
 Step 6:
+    Apply standard scaling when configured:
+        aggregate sums/counts, then centered deviation statistics
+        retain the sources and append the ordered standardized numerical columns
+
+Step 7:
     Pass transformed data and metadata to the downstream algorithm.
 
 Output:
@@ -165,10 +202,12 @@ Output:
 - Mean and median imputation are restricted to numerical variables.
 - Constant categorical fills must be compatible with metadata categories.
 - Outlier winsorizer bounds are local and can differ across sites.
+- Standard scaler statistics are pooled. Existing worker row checks and report
+  privacy policies apply; the step adds no separate group/non-missing floor.
 - Longitudinal `diff` is restricted to numerical variables.
 - Longitudinal transformation requires exactly one strategy for every selected
   `x` and `y` variable.
-- KMeans cluster creation reuses stored centers and does not fit K-means again.
+- KMeans and PCA column creators can replay stored models or fit independently.
 - KMeans cluster outputs are categorical covariates, not clinical diagnoses.
 - Preprocessing order is defined by the request list. The server validates and
   executes steps in the submitted order.
@@ -177,10 +216,14 @@ Output:
 
 Column creators declare an `outputs` object containing `new_column_names_param`
 and ordered `columns`. Each definition produces one column unless its optional
-`column_count_param` references a required, single-valued integer request
-parameter. In that case it repeats by the supplied positive count. The names
+`column_count_param` references a required integer or list request parameter.
+In that case it repeats by the supplied positive integer or nonempty list's
+length, according to the referenced parameter specification. The names
 parameter is a required list whose length equals the total expanded count.
-Both existing creators produce one column and accept `new_column_names: ["chosen_name"]`.
+The categorical and K-means creators each produce one column and accept
+`new_column_names: ["chosen_name"]`. The PCA creator uses `n_components` to declare
+a dynamic number of numerical score columns. The standard scaler derives its
+output count from `source_variables`, without a separate count parameter.
 
 Each column has a physical `type` and statistical `stattype`. Numerical columns
 serialize `enumerations: null`. Fixed definitions serialize
@@ -218,7 +261,10 @@ must migrate together; no legacy aliases are provided.
 Missing-value behavior is aligned with common imputation strategies such as
 `sklearn.impute.SimpleImputer`, with the important distinction that summary
 statistics are computed per site. Winsorization is aligned with standard
-Gaussian, IQR, MAD, and quantile clipping rules. Longitudinal transformation is a
+Gaussian, IQR, MAD, and quantile clipping rules. Pooled standard scaling is
+aligned with `sklearn.preprocessing.StandardScaler` with `ddof=0`, including
+missing values, empty participants, constant features, and numerical stability
+regressions. Longitudinal transformation is a
 deterministic record-alignment and arithmetic transformation validated by
 focused preprocessing and downstream algorithm tests.
 

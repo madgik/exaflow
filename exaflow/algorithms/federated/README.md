@@ -73,6 +73,7 @@ Existing algorithm/production tests and fixtures remain unchanged.
 
 - [ONE_HOT_ENCODER](docs/one_hot_encoder.md)
 - [ORDINAL_ENCODER](docs/ordinal_encoder.md)
+- [STANDARD_SCALER](docs/standard_scaler.md)
 
 ## outliers
 

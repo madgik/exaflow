@@ -14,7 +14,6 @@ from .transformers import QuantileTransformerApprox
 from .transformers import RobustScalerApprox
 from .transformers import SimpleImputer
 from .transformers import SqrtTransformer
-from .transformers import StandardScaler
 from .transformers import Winsorizer
 from .transformers import YeoJohnsonTransformer
 
@@ -29,7 +28,6 @@ __all__ = [
     "RobustScalerApprox",
     "SimpleImputer",
     "SqrtTransformer",
-    "StandardScaler",
     "Winsorizer",
     "YeoJohnsonTransformer",
 ]

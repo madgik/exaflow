@@ -21,9 +21,7 @@ class FittedRecipe(BaseModel):
 
 
 class ScalerRecipe(FittedRecipe):
-    primitive_name: Literal[
-        "standard_scaler", "robust_scaler", "minmax_scaler", "maxabs_scaler"
-    ]
+    primitive_name: Literal["robust_scaler", "minmax_scaler", "maxabs_scaler"]
     location: list[float] = Field(min_length=1)
     scale: list[float] = Field(min_length=1)
     data_min: Optional[list[float]] = None

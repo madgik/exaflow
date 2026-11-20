@@ -7,7 +7,6 @@ from pydantic import ValidationError
 from scipy.stats import yeojohnson
 from sklearn.preprocessing import MaxAbsScaler as SklearnMaxAbsScaler
 from sklearn.preprocessing import MinMaxScaler as SklearnMinMaxScaler
-from sklearn.preprocessing import StandardScaler as SklearnStandardScaler
 
 from exaflow.algorithms.federated.preprocessing import AsinhTransformer
 from exaflow.algorithms.federated.preprocessing import Log1pTransformer
@@ -19,7 +18,6 @@ from exaflow.algorithms.federated.preprocessing import QuantileTransformerApprox
 from exaflow.algorithms.federated.preprocessing import RobustScalerApprox
 from exaflow.algorithms.federated.preprocessing import SimpleImputer
 from exaflow.algorithms.federated.preprocessing import SqrtTransformer
-from exaflow.algorithms.federated.preprocessing import StandardScaler
 from exaflow.algorithms.federated.preprocessing import Winsorizer
 from exaflow.algorithms.federated.preprocessing import YeoJohnsonTransformer
 from exaflow.algorithms.federated.preprocessing.recipes import QuantileTransformerRecipe
@@ -169,28 +167,6 @@ def test_domain_validation_is_global(transformer):
     parts = [np.array([[1.0], [2.0]]), np.array([[-1.0], [3.0]])]
     with pytest.raises(BadInputError, match="non-negative"):
         _fit_in_workers(lambda: type(transformer)(), parts)
-
-
-def test_standard_scaler_uses_two_pass_global_variance():
-    parts = [np.array([[1e12], [1e12 + 1.0]]), np.array([[1e12 + 2.0]])]
-    fitted = _fit_in_workers(StandardScaler, parts)
-    pooled = np.vstack(parts)
-    reference = SklearnStandardScaler().fit(pooled).transform(pooled)
-    actual = np.vstack([fitted[0].transform(parts[0]), fitted[1].transform(parts[1])])
-
-    assert np.allclose(actual, reference, rtol=1e-10, atol=1e-8)
-    assert fitted[0].recipe_.model_dump_json()
-    replay = StandardScaler.from_recipe(
-        ScalerRecipe.model_validate_json(fitted[0].recipe_.model_dump_json())
-    )
-    assert np.allclose(replay.transform(pooled), actual)
-
-
-def test_standard_scaler_treats_rounding_only_scale_as_constant():
-    data = np.array([[0.1], [0.1], [0.1]])
-    scaler = StandardScaler().fit(data, agg_client=DummyAggClient())
-
-    assert np.allclose(scaler.transform(data), 0.0)
 
 
 def test_outlier_detector_treats_rounding_only_scale_as_constant():
@@ -388,13 +364,6 @@ def test_quantile_transformer_does_not_flatten_nonconstant_features(start, stop)
     assert len(np.unique(actual)) > 2
 
 
-def test_standard_scaler_preserves_real_variation_at_tiny_magnitudes():
-    data = np.array([1e-17, 2e-17, 3e-17]).reshape(-1, 1)
-    fitted = StandardScaler().fit(data, agg_client=DummyAggClient())
-    expected = SklearnStandardScaler().fit_transform(data)
-    np.testing.assert_allclose(fitted.transform(data), expected, atol=1e-14)
-
-
 def test_constant_imputer_numeric_output_supports_numpy_and_json_replay():
     data = np.array([[1.0], [np.nan]])
     fitted = SimpleImputer("constant").fit(data, agg_client=DummyAggClient())
@@ -539,14 +508,6 @@ def test_quantile_histogram_handles_adjacent_representable_values():
     assert np.ptp(model.transform([low, high])) > 0
 
 
-def test_standard_scaler_many_constant_rows_and_sites():
-    data = np.tile(np.linspace(0.01, 100, 200), (10000, 1))
-    fitted = _fit_in_workers(StandardScaler, np.array_split(data, 10))
-    for model in fitted:
-        np.testing.assert_array_equal(model.scale_, np.ones(200))
-        np.testing.assert_allclose(model.transform(data[:1]), 0, atol=1e-10)
-
-
 @pytest.mark.parametrize("feature_range", [(0, 1), (-2, 4)])
 def test_minmax_constant_feature_custom_range_matches_sklearn(feature_range):
     train = np.array([[3.0], [3.0], [np.nan]])
@@ -667,7 +628,6 @@ def test_constructor_errors_are_bad_input(factory):
         Log1pTransformer,
         SqrtTransformer,
         AsinhTransformer,
-        StandardScaler,
         RobustScalerApprox,
         MinMaxScaler,
         MaxAbsScaler,
@@ -688,7 +648,6 @@ def test_unfitted_transform_raises_bad_input(factory):
         Log1pTransformer,
         SqrtTransformer,
         AsinhTransformer,
-        StandardScaler,
         RobustScalerApprox,
         MinMaxScaler,
         MaxAbsScaler,
@@ -706,22 +665,6 @@ def test_numeric_transform_preserves_nan_shape_and_input(factory):
     assert actual.shape == data.shape
     assert np.isnan(actual[1])
     np.testing.assert_array_equal(data, copy)
-
-
-@pytest.mark.parametrize(
-    "mutate",
-    [
-        lambda recipe: recipe.update(scale=[0]),
-        lambda recipe: recipe.update(scale=[1, 2]),
-        lambda recipe: recipe.update(location=[np.nan]),
-    ],
-)
-def test_scaler_replay_rejects_invalid_fitted_state(mutate):
-    model = StandardScaler().fit([[1], [2]], agg_client=DummyAggClient())
-    recipe = model.recipe_.model_dump()
-    mutate(recipe)
-    with pytest.raises(ValidationError):
-        StandardScaler.from_recipe(recipe)
 
 
 def test_mode_uses_metadata_vocabulary_without_observed_value_union():
