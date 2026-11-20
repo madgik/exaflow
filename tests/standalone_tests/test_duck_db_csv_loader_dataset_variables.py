@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import duckdb
 import pytest
+from grpc_health.v1 import health_pb2
 
 from exaflow.worker import config as worker_config
 from exaflow.worker.utils import duck_db_csv_loader
@@ -168,3 +169,43 @@ def test_loader_warns_with_dataset_and_path_when_header_unreadable(
         "age",
         "score",
     ]
+
+
+@pytest.mark.parametrize("other_code", ["test-model", "TEST_MODEL", "test_model"])
+def test_worker_rejects_colliding_model_names_without_reset(
+    data_folder, other_code, caplog
+):
+    from exaflow.worker.grpc_server import WorkerService
+
+    model_dir, db_path = data_folder
+    (model_dir / "CDEsMetadata.json").write_text(
+        json.dumps({**METADATA, "code": "test_model"})
+    )
+    load_all_csvs_from_data_folder("test-request")
+    original = _stored_properties(db_path)
+    other_dir = model_dir.parent / "alternate"
+    other_dir.mkdir()
+    (other_dir / "CDEsMetadata.json").write_text(
+        json.dumps({**METADATA, "code": other_code})
+    )
+    _write_csv(other_dir / "other.csv", ["dataset", "age"], [["other", "27"]])
+
+    health_servicer = MagicMock()
+    WorkerService(health_servicer=health_servicer)
+
+    assert (
+        health_servicer.set.call_args.args[1]
+        == health_pb2.HealthCheckResponse.NOT_SERVING
+    )
+    assert "Failed to load data folder on startup" in caplog.text
+    assert "DataModelNameCollisionError" in caplog.text
+    assert f"{other_code}:0.1" in caplog.text
+    assert model_dir.name in caplog.text
+    assert other_dir.name in caplog.text
+    assert _stored_properties(db_path) == original
+
+    (other_dir / "CDEsMetadata.json").write_text(
+        json.dumps({**METADATA, "code": "distinct"})
+    )
+    load_all_csvs_from_data_folder("test-request")
+    assert set(_stored_properties(db_path)) == {*original, "other"}
