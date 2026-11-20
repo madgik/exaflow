@@ -132,3 +132,64 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  build_and_push_aggregation_server:
+    name: Build AGGREGATION SERVER image and push to dockerhub
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - name: Harbor connectivity probe
+        run: |
+          set -x
+          getent hosts ${{ env.HARBOR_REGISTRY }} || true
+          curl -vI --connect-timeout 10 https://${{ env.HARBOR_REGISTRY }}/v2/ || true
+
+      - name: Disable IPv6 (job-scoped)
+        run: |
+          sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1
+          sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Log in to EBRAINS HARBOR (retry)
+        env:
+          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+        run: |
+          for i in $(seq 1 ${{ env.RETRY_ATTEMPTS }}); do
+            printf '%s\n' "$HARBOR_PASSWORD" | \
+            docker login ${{ env.HARBOR_REGISTRY }} \
+              -u "$HARBOR_USERNAME" --password-stdin && exit 0
+            echo "Harbor login attempt $i failed; retrying in ${{ env.RETRY_SLEEP }}s..."
+            sleep ${{ env.RETRY_SLEEP }}
+          done
+          echo "Harbor login failed after ${{ env.RETRY_ATTEMPTS }} attempts" >&2
+          exit 1
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
+        with:
+          images: |
+            madgik/exaflow_aggregation_server
+            ${{ env.HARBOR_REGISTRY }}/medical-informatics-platform/exaflow_aggregation_server
+
+      - name: Build AGGREGATION SERVER service docker image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: .
+          file: exaflow/aggregation_server/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
