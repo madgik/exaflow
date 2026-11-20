@@ -1,3 +1,5 @@
+{{- $aggServer := .Values.aggregation_server | default dict }}
+{{- $aggTls := $aggServer.tls | default dict }}
 {{- if gt (int .Values.worker_count) 0 }}
 apiVersion: apps/v1
 kind: StatefulSet
@@ -36,7 +38,7 @@ spec:
                 values:
                 - localworker
             topologyKey: kubernetes.io/hostname
-      {{- if .Values.aggregation_server.tls.enabled }}
+      {{- if $aggTls.enabled }}
       securityContext:
         fsGroup: 10001
       {{- end }}
@@ -49,10 +51,10 @@ spec:
           hostPath:
             path: {{ printf "%s/csvs" .Values.storage.hostPath.db.localworker }}
       {{ end }}
-      {{ if .Values.aggregation_server.tls.enabled }}
+      {{ if $aggTls.enabled }}
         - name: aggregation-tls
           secret:
-            secretName: {{ .Values.aggregation_server.tls.worker_secret | quote }}
+            secretName: {{ $aggTls.worker_secret | quote }}
             defaultMode: 288 # 0440 (readable by appuser gid 10001)
       {{ end }}
 
@@ -64,7 +66,7 @@ spec:
           name: duckdb-data
         - mountPath: /opt/csvs
           name: csv-data
-        {{ if .Values.aggregation_server.tls.enabled }}
+        {{ if $aggTls.enabled }}
         - mountPath: /etc/exaflow/tls/aggregation
           name: aggregation-tls
           readOnly: true
@@ -102,7 +104,7 @@ spec:
           value: {{ quote .Values.aggregation_server.enabled }}
         - name: AGGREGATION_SERVER_DNS
           value: {{ quote .Values.aggregation_server.dns }}
-        {{ if .Values.aggregation_server.tls.enabled }}
+        {{ if $aggTls.enabled }}
         - name: AGGREGATION_TLS_ENABLED
           value: "true"
         - name: AGGREGATION_TLS_CA_CERT_PATH
@@ -111,9 +113,9 @@ spec:
           value: "/etc/exaflow/tls/aggregation/$(WORKER_IDENTIFIER).crt"
         - name: AGGREGATION_TLS_KEY_PATH
           value: "/etc/exaflow/tls/aggregation/$(WORKER_IDENTIFIER).key"
-        {{ if .Values.aggregation_server.tls.target_name_override }}
+        {{ if $aggTls.target_name_override }}
         - name: AGGREGATION_TLS_TARGET_NAME_OVERRIDE
-          value: {{ quote .Values.aggregation_server.tls.target_name_override }}
+          value: {{ quote $aggTls.target_name_override }}
         {{ end }}
         {{ end }}
         startupProbe:
