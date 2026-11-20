@@ -1,5 +1,14 @@
 port = "$PORT"
+health_port = "$HEALTH_PORT"
+federation = "$FEDERATION"
 max_grpc_connections = "$MAX_GRPC_CONNECTIONS"
 max_wait_for_aggregation_inputs = "$MAX_WAIT_FOR_AGGREGATION_INPUTS"
 log_level = "$LOG_LEVEL"
 max_message_mb = "$GRPC_MAX_MESSAGE_MB"
+
+[tls]
+enabled = "$AGGREGATION_TLS_ENABLED"
+ca_cert_path = "$AGGREGATION_TLS_CA_CERT_PATH"
+cert_path = "$AGGREGATION_TLS_CERT_PATH"
+key_path = "$AGGREGATION_TLS_KEY_PATH"
+require_client_auth = "$AGGREGATION_TLS_REQUIRE_CLIENT_AUTH"

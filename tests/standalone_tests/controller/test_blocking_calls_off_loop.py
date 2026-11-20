@@ -40,11 +40,16 @@ class _FastAlgorithm:
 def _aggregation_strategy(monkeypatch, configure, cleanup):
     class FakeAggregationClient:
         def __init__(
-            self, request_id, context_id, aggregator_dns=None, max_message_mb=None
+            self,
+            request_id,
+            context_id,
+            aggregator_dns=None,
+            max_message_mb=None,
+            tls=None,
         ):
             pass
 
-        def configure(self, num_workers, timeout=None):
+        def configure(self, num_workers, timeout=None, worker_ids=None):
             return configure(num_workers)
 
         def cleanup(self, timeout=None):

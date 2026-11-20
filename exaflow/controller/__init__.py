@@ -8,6 +8,7 @@ import envtoml
 from exaflow import AttrDict
 from exaflow import controller
 from exaflow.grpc_options import grpc_max_message_mb
+from exaflow.grpc_tls import load_tls_config
 
 BACKGROUND_LOGGER_NAME = "controller_background_service"
 
@@ -34,6 +35,14 @@ def _ensure_log_levels(cfg: AttrDict) -> None:
         cfg[name] = "INFO" if value is None or value == "" else value
 
 
+def _ensure_aggregation_tls_config(cfg: AttrDict) -> None:
+    agg_cfg = getattr(cfg, "aggregation_server", None)
+    if not isinstance(agg_cfg, AttrDict):
+        agg_cfg = AttrDict({})
+    agg_cfg.tls = load_tls_config(agg_cfg.get("tls"))
+    cfg.aggregation_server = agg_cfg
+
+
 # Initializing the configurations from the config file
 config = None
 if config_file := os.getenv("EXAFLOW_CONTROLLER_CONFIG_FILE"):
@@ -45,5 +54,6 @@ else:
 
 _ensure_grpc_message_config(config)
 _ensure_log_levels(config)
+_ensure_aggregation_tls_config(config)
 
 worker_landscape_aggregator = None

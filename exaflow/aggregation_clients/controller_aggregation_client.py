@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from typing import Sequence
 
 import grpc
 
@@ -9,6 +10,7 @@ import exaflow.protos.aggregation_server.aggregation_server_pb2 as pb2
 from exaflow.aggregation_clients import BaseAggregationClient
 from exaflow.controller.services.controller_shutdown import register_inflight_rpc
 from exaflow.controller.services.errors import ControllerShuttingDownError
+from exaflow.grpc_tls import GrpcTlsConfig
 
 logger = logging.getLogger(__name__)
 
@@ -24,24 +26,32 @@ class ControllerAggregationClient(BaseAggregationClient):
         context_id: str,
         aggregator_dns: str | None = None,
         max_message_mb: int | None = None,
+        tls: GrpcTlsConfig | None = None,
     ):
         super().__init__(
             request_id,
             context_id,
             aggregator_dns=aggregator_dns,
             max_message_mb=max_message_mb,
+            tls=tls,
         )
         self._ownership_token = uuid.uuid4().hex
 
     def _ownership_metadata(self):
         return ((OWNERSHIP_TOKEN_METADATA_KEY, self._ownership_token),)
 
-    def configure(self, num_workers: int, timeout: float) -> str:
+    def configure(
+        self,
+        num_workers: int,
+        timeout: float,
+        worker_ids: Sequence[str] | None = None,
+    ) -> str:
         future = self._stub.Configure.future(
             pb2.ConfigureRequest(
                 request_id=self._request_id,
                 context_id=self._context_id,
                 num_of_workers=num_workers,
+                worker_ids=list(worker_ids) if worker_ids is not None else [],
             ),
             timeout=timeout,
             metadata=self._ownership_metadata(),

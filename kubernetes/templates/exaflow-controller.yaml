@@ -27,10 +27,25 @@ spec:
       nodeSelector:
         master: "true"
       {{- end }}
+      {{- if .Values.aggregation_server.tls.enabled }}
+      securityContext:
+        fsGroup: 10001
+      volumes:
+        - name: aggregation-tls
+          secret:
+            secretName: {{ .Values.aggregation_server.tls.controller_secret | quote }}
+            defaultMode: 288 # 0440 (readable by appuser gid 10001)
+      {{- end }}
 
       containers:
       - name: controller
         image: {{ .Values.exaflow_images.repository }}/exaflow_controller:{{ .Values.exaflow_images.controller_tag | default .Values.exaflow_images.version }}
+        {{- if .Values.aggregation_server.tls.enabled }}
+        volumeMounts:
+          - name: aggregation-tls
+            mountPath: /etc/exaflow/tls/aggregation
+            readOnly: true
+        {{- end }}
         ports:
           - containerPort: 5000
 
@@ -85,6 +100,20 @@ spec:
           value: {{ quote .Values.aggregation_server.enabled }}
         - name: AGGREGATION_SERVER_DNS
           value: {{ quote .Values.aggregation_server.dns }}
+        {{- if .Values.aggregation_server.tls.enabled }}
+        - name: AGGREGATION_TLS_ENABLED
+          value: "true"
+        - name: AGGREGATION_TLS_CA_CERT_PATH
+          value: "/etc/exaflow/tls/aggregation/ca.crt"
+        - name: AGGREGATION_TLS_CERT_PATH
+          value: "/etc/exaflow/tls/aggregation/tls.crt"
+        - name: AGGREGATION_TLS_KEY_PATH
+          value: "/etc/exaflow/tls/aggregation/tls.key"
+        {{- if .Values.aggregation_server.tls.target_name_override }}
+        - name: AGGREGATION_TLS_TARGET_NAME_OVERRIDE
+          value: {{ quote .Values.aggregation_server.tls.target_name_override }}
+        {{- end }}
+        {{- end }}
         - name: WORKERS_DNS
           value: {{ quote .Values.controller.workers_dns }}
         - name: WORKERS_PORT

@@ -55,8 +55,11 @@ import threading
 import time
 from concurrent import futures
 from dataclasses import dataclass
+from dataclasses import field
+from typing import Collection
 from typing import Dict
 from typing import List
+from typing import Literal
 from typing import Optional
 from typing import Tuple
 
@@ -73,6 +76,12 @@ from exaflow.aggregation_serialization import values_to_bytes
 from exaflow.aggregation_server import config
 from exaflow.aggregation_types import AggregationType
 from exaflow.grpc_options import grpc_message_options
+from exaflow.grpc_tls import DuplicateWorkerSubmissionError
+from exaflow.grpc_tls import PeerIdentity
+from exaflow.grpc_tls import UnauthenticatedError
+from exaflow.grpc_tls import UnauthorizedError
+from exaflow.grpc_tls import build_server_credentials
+from exaflow.grpc_tls import extract_peer_identity
 from exaflow.protos.aggregation_server.aggregation_server_pb2 import AggregateResponse
 from exaflow.protos.aggregation_server.aggregation_server_pb2 import CleanupResponse
 from exaflow.protos.aggregation_server.aggregation_server_pb2 import ConfigureResponse
@@ -174,6 +183,8 @@ class _Step:
     inputs: List[List[np.ndarray]]
     result: Optional[List[np.ndarray]] = None
     reads: int = 0
+    # With mTLS, one submission per certificate-bound worker id per step.
+    submitted_workers: set[str] = field(default_factory=set)
 
 
 # gRPC metadata key. The controller sends a fresh token on Configure and the
@@ -202,16 +213,54 @@ class AggregationContext:
         expected_workers: int,
         ownership_token: str = "",
         context_id: str = "",
+        worker_ids: Collection[str] | None = None,
     ):
         self.request_id = request_id
         self.context_id = context_id
         self.expected_workers = expected_workers
         self.ownership_token = ownership_token
+        # None means no certificate-bound membership check (plaintext mode).
+        # A set means only these worker ids may submit, at most once per step.
+        self.active_worker_ids: Optional[set[str]] = (
+            set(worker_ids) if worker_ids is not None else None
+        )
+        self.configured_worker_ids: Optional[frozenset[str]] = (
+            frozenset(worker_ids) if worker_ids is not None else None
+        )
+        if self.active_worker_ids is not None:
+            self.expected_workers = len(self.active_worker_ids)
         self.steps: Dict[int, _Step] = {}
         self.last_completed_step = 0
         self.error: Optional[Exception] = None
         self.last_activity = time.monotonic()
         self.condition = threading.Condition()
+
+    def check_worker_step_admission(
+        self, worker_id: Optional[str], step_no: int
+    ) -> None:
+        """Reject non-members and duplicate/replayed steps without failing the context."""
+        with self.condition:
+            if self.active_worker_ids is None:
+                return
+            if worker_id is None or worker_id not in self.active_worker_ids:
+                raise UnauthorizedError(
+                    f"worker '{worker_id}' is not a member of request_id='{self.request_id}' "
+                    f"context_id='{self.context_id}'"
+                )
+            if step_no <= self.last_completed_step:
+                raise DuplicateWorkerSubmissionError(
+                    f"worker '{worker_id}' already completed step {step_no} for "
+                    f"request_id='{self.request_id}' context_id='{self.context_id}'"
+                )
+            existing_step = self.steps.get(step_no)
+            if (
+                existing_step is not None
+                and worker_id in existing_step.submitted_workers
+            ):
+                raise DuplicateWorkerSubmissionError(
+                    f"worker '{worker_id}' already submitted step {step_no} for "
+                    f"request_id='{self.request_id}' context_id='{self.context_id}'"
+                )
 
     def fail(self, exc: Exception, *, log: bool = True) -> None:
         """End the request: every waiting and later call raises the first error."""
@@ -236,9 +285,14 @@ class AggregationContext:
         aggregation_types: List[AggregationType],
         payloads: List[np.ndarray],
         reduce_fn,
+        worker_id: Optional[str] = None,
     ) -> List[np.ndarray]:
         """Add one worker's inputs for `step_no` and wait for the combined result."""
         with self.condition:
+            # Authorization and duplicate-submission failures are local to the
+            # caller: never call self.fail(), or an untrusted/duplicate worker
+            # could poison an otherwise healthy aggregation.
+            self.check_worker_step_admission(worker_id, step_no)
             try:
                 if self.error is not None:
                     self._raise_error()
@@ -249,6 +303,12 @@ class AggregationContext:
                 step = self.steps.setdefault(
                     step_no, _Step(aggregation_types, [[] for _ in aggregation_types])
                 )
+                if step.result is not None:
+                    raise ValueError(
+                        f"Step {step_no} already completed for request_id='{self.request_id}' context_id='{self.context_id}'"
+                    )
+                if self.active_worker_ids is not None:
+                    step.submitted_workers.add(worker_id)
                 self._add_inputs(step, step_no, aggregation_types, payloads)
                 logger.info(
                     "[AGGREGATE] request_id='%s' step %d: %d/%d workers reported",
@@ -286,7 +346,14 @@ class AggregationContext:
     def compute_complete_steps(self, reduce_fn) -> None:
         """Compute every step that has inputs from all expected workers."""
         for step in self.steps.values():
-            if step.result is None and len(step.inputs[0]) >= self.expected_workers:
+            if step.result is not None:
+                continue
+            ready = (
+                self.active_worker_ids <= step.submitted_workers
+                if self.active_worker_ids is not None
+                else len(step.inputs[0]) >= self.expected_workers
+            )
+            if ready:
                 step.result = [
                     reduce_fn(aggregation_type, inputs)
                     for aggregation_type, inputs in zip(
@@ -325,12 +392,48 @@ class AggregationContext:
 
 
 class AggregationServer(AggregationServerServicer):
-    def __init__(self):
+    def __init__(
+        self,
+        *,
+        require_mtls: bool = False,
+        expected_federation: str | None = None,
+    ):
+        self.require_mtls = require_mtls
+        self.expected_federation = expected_federation
         self.aggregation_contexts: Dict[str, AggregationContext] = {}
         # context_id -> monotonic time of Cleanup (or stale eviction). Lets late
         # Aggregate/Unregister calls get ABORTED instead of looking unconfigured.
         self.cleaned_up_context_ids: Dict[str, float] = {}
         self.global_lock = threading.Lock()
+
+    def _authorize(
+        self, context, required_role: Literal["controller", "worker"]
+    ) -> Optional[PeerIdentity]:
+        """Authenticate the mTLS peer and check its role for this RPC.
+
+        Must be called before touching aggregation state and outside any
+        ``try/except Exception``: ``context.abort()`` raises a bare Exception,
+        so catching it would lose the gRPC status.
+        """
+        if not self.require_mtls:
+            return None
+        try:
+            identity = extract_peer_identity(
+                context, expected_federation=self.expected_federation
+            )
+        except UnauthenticatedError as exc:
+            context.abort(grpc.StatusCode.UNAUTHENTICATED, str(exc))
+            raise AssertionError("context.abort() did not raise") from exc
+        except UnauthorizedError as exc:
+            context.abort(grpc.StatusCode.PERMISSION_DENIED, str(exc))
+            raise AssertionError("context.abort() did not raise") from exc
+        if identity.role != required_role:
+            context.abort(
+                grpc.StatusCode.PERMISSION_DENIED,
+                f"RPC requires role '{required_role}', got '{identity.role}'",
+            )
+            raise AssertionError("context.abort() did not raise")
+        return identity
 
     @staticmethod
     def _validate_context_request(agg_ctx, request_id, context):
@@ -423,16 +526,62 @@ class AggregationServer(AggregationServerServicer):
             del self.cleaned_up_context_ids[stale_id]
 
     def Configure(self, request, context):
+        self._authorize(context, "controller")
         if not request.context_id or not request.request_id:
             context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT,
                 "request_id and context_id are required",
+            )
+        worker_ids = list(request.worker_ids)
+        if any(not str(worker_id).strip() for worker_id in worker_ids):
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "worker_ids must not contain blank values",
+            )
+        if len(set(worker_ids)) != len(worker_ids):
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "worker_ids must not contain duplicates",
+            )
+        if request.num_of_workers < 0:
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "num_of_workers must be positive",
+            )
+        if (
+            worker_ids
+            and request.num_of_workers != 0
+            and len(worker_ids) != request.num_of_workers
+        ):
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "worker_ids count does not match num_of_workers",
+            )
+        if self.require_mtls and not worker_ids:
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "worker_ids are required when mTLS authentication is enabled",
+            )
+        expected_workers = len(worker_ids) if worker_ids else request.num_of_workers
+        if expected_workers < 1:
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "num_of_workers must be at least 1",
             )
         with self.global_lock:
             self._evict_stale_contexts()
             current = self.aggregation_contexts.get(request.context_id)
             if current is not None:
                 self._validate_context_request(current, request.request_id, context)
+                if (
+                    self.require_mtls
+                    and current.configured_worker_ids is not None
+                    and frozenset(worker_ids) != current.configured_worker_ids
+                ):
+                    context.abort(
+                        grpc.StatusCode.INVALID_ARGUMENT,
+                        "worker_ids do not match the configured context_id",
+                    )
                 logger.warning(
                     f"[CONFIGURE] Request context already exists for request_id='{request.request_id}' context_id='{request.context_id}'"
                 )
@@ -452,23 +601,76 @@ class AggregationServer(AggregationServerServicer):
                 )
             self.aggregation_contexts[request.context_id] = AggregationContext(
                 request.request_id,
-                request.num_of_workers,
+                expected_workers,
                 _ownership_token(context),
                 context_id=request.context_id,
+                worker_ids=worker_ids if self.require_mtls else None,
             )
 
         logger.info(
             f"[CONFIGURE] Created AggregationContext for request_id='{request.request_id}' context_id='{request.context_id}' "
-            f"with expected workers: {request.num_of_workers}"
+            f"with expected workers: {expected_workers}"
         )
         return ConfigureResponse(status=Status.OK, status_message="Configured")
 
     def Unregister(self, request, context):
+        identity = self._authorize(context, "worker")
         agg_ctx = self._get_aggregation_context(
             request.context_id, context, request.request_id
         )
-        agg_ctx.last_activity = time.monotonic()
+        worker_id = identity.worker_id if identity else None
         with agg_ctx.condition:
+            if agg_ctx.active_worker_ids is not None:
+                # A worker outside the allow-list (including one that already
+                # unregistered) must not shrink the expected worker count.
+                if worker_id is None or worker_id not in agg_ctx.active_worker_ids:
+                    context.abort(
+                        grpc.StatusCode.PERMISSION_DENIED,
+                        f"worker '{worker_id}' is not a member of request_id='{request.request_id}' "
+                        f"context_id='{request.context_id}'",
+                    )
+                if agg_ctx.error is not None:
+                    context.abort(_grpc_status(agg_ctx.error), str(agg_ctx.error))
+                if any(
+                    worker_id in step.submitted_workers
+                    for step in agg_ctx.steps.values()
+                ):
+                    context.abort(
+                        grpc.StatusCode.FAILED_PRECONDITION,
+                        f"worker '{worker_id}' cannot unregister after submitting to an in-progress step",
+                    )
+                agg_ctx.last_activity = time.monotonic()
+                if len(agg_ctx.active_worker_ids) <= 1:
+                    msg = (
+                        f"[UNREGISTER] request_id='{request.request_id}' context_id='{request.context_id}' cannot go below 1 worker "
+                        f"(current: {agg_ctx.expected_workers})"
+                    )
+                    logger.warning(msg)
+                    return UnregisterResponse(
+                        status=Status.MIN_WORKERS,
+                        status_message="Minimum worker count reached",
+                        remaining_workers=agg_ctx.expected_workers,
+                    )
+                agg_ctx.active_worker_ids.remove(worker_id)
+                agg_ctx.expected_workers = len(agg_ctx.active_worker_ids)
+                logger.info(
+                    f"[UNREGISTER] request_id='{request.request_id}' context_id='{request.context_id}' removed worker '{worker_id}'; "
+                    f"expected workers is now {agg_ctx.expected_workers}"
+                )
+                try:
+                    agg_ctx.compute_complete_steps(self._reduce)
+                except Exception as exc:  # noqa: BLE001
+                    agg_ctx.fail(exc)
+                    context.abort(_grpc_status(exc), str(exc))
+                return UnregisterResponse(
+                    status=Status.OK,
+                    status_message="Unregistered one worker",
+                    remaining_workers=agg_ctx.expected_workers,
+                )
+
+            if agg_ctx.error is not None:
+                context.abort(_grpc_status(agg_ctx.error), str(agg_ctx.error))
+            agg_ctx.last_activity = time.monotonic()
             if agg_ctx.expected_workers <= 1:
                 msg = (
                     f"[UNREGISTER] request_id='{request.request_id}' context_id='{request.context_id}' cannot go below 1 worker "
@@ -500,15 +702,31 @@ class AggregationServer(AggregationServerServicer):
         )
 
     def Aggregate(self, request, context):
+        identity = self._authorize(context, "worker")
         agg_ctx = self._get_aggregation_context(
             request.context_id, context, request.request_id
         )
+        worker_id = identity.worker_id if identity else None
+        try:
+            agg_ctx.check_worker_step_admission(worker_id, request.step)
+        except UnauthorizedError as exc:
+            context.abort(grpc.StatusCode.PERMISSION_DENIED, str(exc))
+        except DuplicateWorkerSubmissionError as exc:
+            context.abort(grpc.StatusCode.ALREADY_EXISTS, str(exc))
         agg_ctx.last_activity = time.monotonic()
         try:
             aggregation_types, payloads = _decode_operations(request)
             tensors = agg_ctx.aggregate(
-                request.step, aggregation_types, payloads, self._reduce
+                request.step,
+                aggregation_types,
+                payloads,
+                self._reduce,
+                worker_id=worker_id,
             )
+        except UnauthorizedError as exc:
+            context.abort(grpc.StatusCode.PERMISSION_DENIED, str(exc))
+        except DuplicateWorkerSubmissionError as exc:
+            context.abort(grpc.StatusCode.ALREADY_EXISTS, str(exc))
         except Exception as exc:  # noqa: BLE001
             agg_ctx.fail(exc)
             context.abort(_grpc_status(exc), str(exc))
@@ -525,6 +743,7 @@ class AggregationServer(AggregationServerServicer):
         )
 
     def Cleanup(self, request, context):
+        self._authorize(context, "controller")
         if not request.context_id or not request.request_id:
             context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT,
@@ -573,30 +792,92 @@ class AggregationServer(AggregationServerServicer):
         return CleanupResponse(status=Status.OK, status_message="Cleaned up")
 
 
+def _create_servers():
+    """Create the main server and the optional plaintext health server.
+
+    The dedicated health server exists so kubelet's gRPC probe can reach
+    ``grpc.health.v1.Health`` without TLS while the aggregation RPCs stay
+    behind mTLS. It registers the health servicer only; ``AggregationServer``
+    is never exposed on that port.
+    """
+    if config.tls.enabled:
+        if not config.tls.require_client_auth:
+            raise ValueError(
+                "Aggregation server TLS requires client authentication "
+                "(require_client_auth must be true)"
+            )
+        if not (config.federation or "").strip():
+            raise ValueError(
+                "FEDERATION must be set when aggregation server mTLS is enabled"
+            )
+    if config.health_port > 0 and config.health_port == config.port:
+        raise ValueError(
+            f"health_port ({config.health_port}) must differ from port ({config.port})"
+        )
+
+    server = grpc.server(
+        futures.ThreadPoolExecutor(max_workers=config.max_grpc_connections),
+        options=grpc_message_options(config.max_message_mb),
+    )
+    add_AggregationServerServicer_to_server(
+        AggregationServer(
+            require_mtls=config.tls.enabled,
+            expected_federation=(config.federation or "").strip() or None,
+        ),
+        server,
+    )
+
+    health_servicer = health.HealthServicer()
+    health_servicer.set("Aggregation", health_pb2.HealthCheckResponse.SERVING)
+    health_server = None
+    if config.health_port > 0:
+        health_server = grpc.server(
+            futures.ThreadPoolExecutor(max_workers=2),
+            options=grpc_message_options(config.max_message_mb),
+        )
+        health_pb2_grpc.add_HealthServicer_to_server(health_servicer, health_server)
+    if not config.tls.enabled or config.health_port <= 0:
+        health_pb2_grpc.add_HealthServicer_to_server(health_servicer, server)
+    return server, health_server
+
+
 def serve():
     logging.basicConfig(
         level=config.log_level.upper(),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
-    server = grpc.server(
-        futures.ThreadPoolExecutor(max_workers=config.max_grpc_connections),
-        options=grpc_message_options(config.max_message_mb),
-    )
-    add_AggregationServerServicer_to_server(AggregationServer(), server)
-
-    health_servicer = health.HealthServicer()
-    health_pb2_grpc.add_HealthServicer_to_server(health_servicer, server)
-    health_servicer.set("Aggregation", health_pb2.HealthCheckResponse.SERVING)
-
-    server.add_insecure_port(f"0.0.0.0:{config.port}")
+    server, health_server = _create_servers()
+    listen_addr = f"0.0.0.0:{config.port}"
+    if config.tls.enabled:
+        bound_port = server.add_secure_port(
+            listen_addr, build_server_credentials(config.tls)
+        )
+    else:
+        bound_port = server.add_insecure_port(listen_addr)
+    if bound_port == 0:
+        raise RuntimeError(f"Failed to bind aggregation server on {listen_addr}")
     server.start()
-    logger.info(f"Aggregation server running on 0.0.0.0:{config.port}")
+    logger.info(f"Aggregation server running on {listen_addr}")
+
+    if health_server is not None:
+        health_addr = f"0.0.0.0:{config.health_port}"
+        bound_health_port = health_server.add_insecure_port(health_addr)
+        if bound_health_port == 0:
+            server.stop(0)
+            raise RuntimeError(
+                f"Failed to bind aggregation health server on {health_addr}"
+            )
+        health_server.start()
+        logger.info(f"Aggregation health server running on {health_addr}")
 
     try:
         server.wait_for_termination()
     except KeyboardInterrupt:
         logger.info("Aggregation server shutting down…")
+    finally:
+        if health_server is not None:
+            health_server.stop(0)
         server.stop(0)
 
 

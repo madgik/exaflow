@@ -25,11 +25,16 @@ def test_cancel_during_analysis_cleans_up_only_after_run_finishes(
 
     class FakeAggregationClient:
         def __init__(
-            self, request_id, context_id, aggregator_dns=None, max_message_mb=None
+            self,
+            request_id,
+            context_id,
+            aggregator_dns=None,
+            max_message_mb=None,
+            tls=None,
         ):
             order.append("init")
 
-        def configure(self, num_workers, timeout=None):
+        def configure(self, num_workers, timeout=None, worker_ids=None):
             order.append("configure")
             return agg_pb2.Status.OK
 
@@ -94,12 +99,17 @@ class _RecordingAggregationClient:
     configure_status = agg_pb2.Status.OK
 
     def __init__(
-        self, request_id, context_id, aggregator_dns=None, max_message_mb=None
+        self,
+        request_id,
+        context_id,
+        aggregator_dns=None,
+        max_message_mb=None,
+        tls=None,
     ):
         self.calls = []
         _RecordingAggregationClient.last = self
 
-    def configure(self, num_workers, timeout=None):
+    def configure(self, num_workers, timeout=None, worker_ids=None):
         self.calls.append("configure")
         return self.configure_status
 
@@ -136,10 +146,12 @@ def test_cancel_during_configure_still_cleans_up(monkeypatch):
     release_configure = threading.Event()
 
     class BlockingConfigureClient(_RecordingAggregationClient):
-        def configure(self, num_workers, timeout=None):
+        def configure(self, num_workers, timeout=None, worker_ids=None):
             configure_started.set()
             release_configure.wait(timeout=5)
-            return super().configure(num_workers, timeout=timeout)
+            return super().configure(
+                num_workers, timeout=timeout, worker_ids=worker_ids
+            )
 
     monkeypatch.setattr(
         strategies, "ControllerAggregationClient", BlockingConfigureClient

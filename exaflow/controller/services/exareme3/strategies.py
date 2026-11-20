@@ -122,15 +122,20 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
 
 class Exareme3WithAggregationServerStrategy(Exareme3Strategy):
     async def execute(self) -> str:
-        agg_dns = (
-            getattr(getattr(controller_config, "aggregation_server", {}), "dns", None)
-            or None
-        )
+        agg_config = getattr(controller_config, "aggregation_server", {})
+        agg_dns = getattr(agg_config, "dns", None) or None
+        agg_tls = getattr(agg_config, "tls", None)
+        worker_ids = [
+            worker_id
+            for handler in self._worker_tasks_handlers
+            if (worker_id := getattr(handler, "worker_id", None))
+        ]
         with ControllerAggregationClient(
             self._request_id,
             context_id=self._context_id,
             aggregator_dns=agg_dns,
             max_message_mb=controller_config.grpc.max_message_mb,
+            tls=agg_tls,
         ) as agg_client:
             # Set inside the thread so a cancel during configure still cleans up.
             configured = False
@@ -143,6 +148,7 @@ class Exareme3WithAggregationServerStrategy(Exareme3Strategy):
                 try:
                     status = agg_client.configure(
                         num_workers=len(self._worker_tasks_handlers),
+                        worker_ids=worker_ids,
                         timeout=deadline,
                     )
                 except (grpc.RpcError, ControllerShuttingDownError):

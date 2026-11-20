@@ -13,6 +13,9 @@ from exaflow.aggregation_serialization import bytes_to_values
 from exaflow.aggregation_serialization import ndarray_to_bytes
 from exaflow.aggregation_serialization import values_to_bytes
 from exaflow.grpc_options import grpc_message_options
+from exaflow.grpc_tls import GrpcTlsConfig
+from exaflow.grpc_tls import build_channel_credentials
+from exaflow.grpc_tls import channel_options_with_tls
 
 from .constants import AggregationType
 
@@ -32,33 +35,55 @@ class BaseAggregationClient:
         aggregator_dns: str | None = None,
         max_message_mb: int | None = None,
         timeout: float | None = None,
+        tls: GrpcTlsConfig | None = None,
     ):
         self._request_id = request_id
         self._context_id = context_id
         self._step_counter = 1
         self._timeout = timeout
 
-        target = aggregator_dns or f"172.17.0.1:{DEFAULT_AGGREGATION_PORT}"
-        # If a DNS name is provided, ensure a port is present and resolve it
-        if aggregator_dns:
+        if tls is not None and tls.enabled:
+            # Keep the DNS name for SNI and server SAN verification. Resolving
+            # it to an IP here would make TLS hostname checks fail (or require
+            # an override) whenever the certificate is issued for a service
+            # name rather than a pod IP.
+            if not aggregator_dns:
+                raise ValueError("aggregator_dns is required when TLS is enabled")
             host, port = (
                 aggregator_dns.rsplit(":", 1)
                 if ":" in aggregator_dns
                 else (aggregator_dns, DEFAULT_AGGREGATION_PORT)
             )
             target = f"{host}:{port}"
-            try:
-                resolved = socket.gethostbyname(host)
-                target = f"{resolved}:{port}"
-            except Exception as exc:
-                logger.warning(
-                    "Failed to resolve aggregator DNS %s: %s", aggregator_dns, exc
+            self._channel = grpc.secure_channel(
+                target,
+                build_channel_credentials(tls),
+                options=channel_options_with_tls(
+                    tls, grpc_message_options(max_message_mb)
+                ),
+            )
+        else:
+            target = aggregator_dns or f"172.17.0.1:{DEFAULT_AGGREGATION_PORT}"
+            # If a DNS name is provided, ensure a port is present and resolve it
+            if aggregator_dns:
+                host, port = (
+                    aggregator_dns.rsplit(":", 1)
+                    if ":" in aggregator_dns
+                    else (aggregator_dns, DEFAULT_AGGREGATION_PORT)
                 )
+                target = f"{host}:{port}"
+                try:
+                    resolved = socket.gethostbyname(host)
+                    target = f"{resolved}:{port}"
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to resolve aggregator DNS %s: %s", aggregator_dns, exc
+                    )
 
-        self._channel = grpc.insecure_channel(
-            target,
-            options=grpc_message_options(max_message_mb),
-        )
+            self._channel = grpc.insecure_channel(
+                target,
+                options=grpc_message_options(max_message_mb),
+            )
         self._stub = pb2_grpc.AggregationServerStub(self._channel)
 
     def _next_step(self) -> int:

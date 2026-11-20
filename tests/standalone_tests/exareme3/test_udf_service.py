@@ -252,11 +252,13 @@ def test_preprocessing_requirement_can_create_client_for_non_aggregation_udf(
             aggregator_dns=None,
             max_message_mb=None,
             timeout=None,
+            tls=None,
         ):
             super().__init__()
             self.request_id = request_id
             self.context_id = context_id
             self.aggregator_dns = aggregator_dns
+            self.tls = tls
             created_clients.append(self)
 
     monkeypatch.setattr(udf_service, "AggregationClient", _CreatedAggClient)
@@ -276,6 +278,7 @@ def test_preprocessing_requirement_can_create_client_for_non_aggregation_udf(
     assert client is created_clients[0]
     assert client.request_id == "req"
     assert client.context_id == "test-context"
+    assert client.tls is udf_service.worker_config.aggregation_server.tls
 
 
 def test_execute_udf_does_not_pass_preprocessing_only_agg_client_to_udf():

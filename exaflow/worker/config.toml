@@ -25,3 +25,10 @@ max_message_mb = "${GRPC_MAX_MESSAGE_MB:-100}"
 [aggregation_server]
 enabled = "$AGGREGATION_SERVER_ENABLED"
 dns= "$AGGREGATION_SERVER_DNS"
+
+[aggregation_server.tls]
+enabled = "$AGGREGATION_TLS_ENABLED"
+ca_cert_path = "$AGGREGATION_TLS_CA_CERT_PATH"
+cert_path = "$AGGREGATION_TLS_CERT_PATH"
+key_path = "$AGGREGATION_TLS_KEY_PATH"
+target_name_override = "$AGGREGATION_TLS_TARGET_NAME_OVERRIDE"

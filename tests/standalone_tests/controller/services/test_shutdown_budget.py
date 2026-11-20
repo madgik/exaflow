@@ -181,11 +181,16 @@ def test_shutdown_cleanup_uses_the_short_deadline(monkeypatch):
 
     class FakeAggregationClient:
         def __init__(
-            self, request_id, context_id, aggregator_dns=None, max_message_mb=None
+            self,
+            request_id,
+            context_id,
+            aggregator_dns=None,
+            max_message_mb=None,
+            tls=None,
         ):
             pass
 
-        def configure(self, num_workers, timeout=None):
+        def configure(self, num_workers, timeout=None, worker_ids=None):
             return agg_pb2.Status.OK
 
         def cleanup(self, timeout=None):
