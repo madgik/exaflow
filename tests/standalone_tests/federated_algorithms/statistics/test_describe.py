@@ -482,3 +482,65 @@ class TestFederatedDescriptiveStatistics(FederatedAlgorithmTest):
             X_full=df,
             centralized_agg_client=centralized_agg_client,
         )
+
+
+@pytest.mark.parametrize("offset,dtype", [(50_000, np.int32), (1e12, np.float64)])
+@pytest.mark.parametrize(
+    "dataset_gap,alpha_count",
+    [pytest.param(15, 15, id="adjacent"), pytest.param(1_000, 12, id="wide-gap")],
+)
+@pytest.mark.parametrize("n_workers", [1, 3])
+def test_global_variance_for_large_offsets(
+    offset, dtype, dataset_gap, alpha_count, n_workers
+):
+    # The wide-gap datasets have different sizes and means, so their
+    # between-dataset contributions are both large and differently weighted.
+    beta_count = 30 - alpha_count
+    values = np.concatenate(
+        [offset + np.arange(alpha_count), offset + dataset_gap + np.arange(beta_count)]
+    ).astype(dtype)
+    df = pd.DataFrame(
+        {"dataset": ["alpha"] * alpha_count + ["beta"] * beta_count, "value": values}
+    )
+    case = {
+        "numerical_vars": ["value"],
+        "nominal_vars": [],
+        "min_row_count": 10,
+        "nominal_levels": {},
+    }
+    client = SimulatedAggClient(worker_id=0, coordinator=AggregationCoordinator(1))
+    TestFederatedDescriptiveStatistics().run_comparison(
+        X=df,
+        y=np.zeros(len(df)),
+        n_workers=n_workers,
+        case=case,
+        mode="featurewise",
+        X_full=df,
+        centralized_agg_client=client,
+    )
+
+
+def test_global_numerical_summary_with_all_missing_dataset():
+    values = np.arange(10, dtype=float)
+    df = pd.DataFrame(
+        {
+            "dataset": ["alpha"] * 10 + ["beta"] * 10,
+            "value": [np.nan] * 10 + list(values),
+        }
+    )
+    client = SimulatedAggClient(worker_id=0, coordinator=AggregationCoordinator(1))
+    result = FederatedDescriptiveStatistics(agg_client=client).describe(
+        data=df,
+        numerical_vars=["value"],
+        nominal_vars=[],
+        min_row_count=0,
+        nominal_levels={},
+        dataset_col="dataset",
+    )
+
+    summary = result.global_recs[0]["data"]
+    assert summary["mean"] == pytest.approx(values.mean())
+    assert summary["std"] == pytest.approx(values.std(ddof=1))
+    assert summary["num_dtps"] == 10
+    assert summary["num_na"] == 10
+    assert summary["num_total"] == 20
