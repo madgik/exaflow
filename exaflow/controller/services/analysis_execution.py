@@ -15,6 +15,8 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 
 from exaflow.controller import config as ctrl_config
+from exaflow.controller.services.controller_shutdown import controller_is_shutting_down
+from exaflow.controller.services.errors import ControllerShuttingDownError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,6 +26,7 @@ _THREAD_NAME_PREFIX = "exaflow-analysis"
 _executor: ThreadPoolExecutor | None = None
 _semaphore: asyncio.Semaphore | None = None
 _semaphore_loop: asyncio.AbstractEventLoop | None = None
+_active_analyses: set[asyncio.Future[None]] = set()
 _state_guard = threading.RLock()
 
 
@@ -96,6 +99,21 @@ def reset_analysis_execution() -> None:
     shutdown_analysis_execution()
 
 
+async def wait_for_analysis_cleanup(timeout: float) -> None:
+    """Wait for admitted analyses to leave their scopes, including cleanup."""
+    loop = asyncio.get_running_loop()
+    with _state_guard:
+        active = {
+            analysis for analysis in _active_analyses if analysis.get_loop() is loop
+        }
+    if active:
+        _, pending = await asyncio.wait(active, timeout=timeout)
+        if pending:
+            _LOGGER.warning(
+                "%d analyses still active after %s seconds", len(pending), timeout
+            )
+
+
 def _ensure_executor() -> ThreadPoolExecutor:
     global _executor
     with _state_guard:
@@ -124,7 +142,17 @@ async def analysis_slot(*, wait_for_capacity: bool = False):
         raise AnalysisCapacityExceeded()
     await semaphore.acquire()
     try:
-        yield
+        if controller_is_shutting_down():
+            raise ControllerShuttingDownError()
+        finished = asyncio.get_running_loop().create_future()
+        with _state_guard:
+            _active_analyses.add(finished)
+        try:
+            yield
+        finally:
+            with _state_guard:
+                _active_analyses.remove(finished)
+            finished.set_result(None)
     finally:
         semaphore.release()
 
