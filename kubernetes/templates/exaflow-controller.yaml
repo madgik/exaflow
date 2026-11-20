@@ -43,8 +43,7 @@ spec:
 
         env:
         - name: RABBITMQ_ENABLED
-          value: {{ .Values.rabbitmq.enabled | quote }}
-        {{- if .Values.rabbitmq.enabled }}
+          value: "true"
         - name: RABBITMQ_URL
           valueFrom:
             secretKeyRef:
@@ -57,7 +56,6 @@ spec:
           value: {{ $value | int64 | quote }}
         {{- else }}
           value: {{ $value | quote }}
-        {{- end }}
         {{- end }}
         {{- end }}
         {{- end }}

@@ -180,7 +180,7 @@ set `url = "${RABBITMQ_URL:-}"`. Run the existing config-generation task.
 Credentials are interpolated by the controller loader, not written into the
 sample file. Never commit generated private configuration.
 
-For Helm, enable `rabbitmq.enabled` and supply `rabbitmq.existing_secret` containing
+For Helm, RabbitMQ is always on. Supply `rabbitmq.existing_secret` containing
 an AMQP URL at `rabbitmq.url_secret_key` (default `url`). Other settings are wired
 through the controller's TOML template:
 
