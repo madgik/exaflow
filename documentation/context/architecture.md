@@ -209,8 +209,9 @@ that caller configured it.
 FastAPI lifespan can own a bounded async AMQP consumer alongside HTTP. Both call
 `analysis_service.run_analysis`; HTTP rejects excess analyses while AMQP waits
 for the same capacity and validates after admission. Metadata and health requests
-remain independent of analysis slots. The worker landscape refresher keeps its
-background thread and analyses keep their dedicated executor.
+remain independent of analysis slots. The periodic worker landscape refresher runs in its background thread. The
+periodic refresher and `POST /wla` share a single in-flight refresh. HTTP callers
+await its result without using an executor thread per caller.
 
 A queue backlog can make HTTP analysis submissions return 503 until queued
 waiters are admitted. Each delivery passively checks its reply destination and
