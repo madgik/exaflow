@@ -26,8 +26,10 @@ External GitHub Actions use verified full commit pins with version comments.
 Update the pin and comment together after verifying the upstream release.
 Workflows use read-only repository permissions and disable checkout credential
 persistence. Publishing workflows build without restoring or saving CI caches;
-test caches remain enabled. Controller, worker, and staging aggregation images
-retain separate publishing jobs so one failure does not skip other images. Publishing credentials and triggers are unchanged.
+test caches remain enabled. Separate jobs publish the controller, worker, and
+aggregation server to Docker Hub. Stable releases also publish all three to
+EBRAINS Harbor. Use the same release tag for all three when performing a
+coordinated upgrade or rollback.
 Rollback is a revert of these changes, restoring the corresponding exposures.
 
 ## RabbitMQ analysis transport
