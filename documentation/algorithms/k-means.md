@@ -211,8 +211,16 @@ The result does not include per-observation cluster labels.
 
 ## K-means as preprocessing
 
-The `kmeans_cluster_creator` preprocessing step replays a fitted K-means model
-and creates a new categorical variable for downstream algorithms.
+The `kmeans_cluster_creator` preprocessing step creates a categorical cluster
+variable for downstream algorithms. It uses the supplied fitted centers when
+`reusable_preprocessing` is provided and fits a new model otherwise.
+
+Preprocessing requests accept `k` from 1 to 100, including when replaying a
+fitted model. The fitting parameters have the same accepted ranges as K-means:
+`maxiter` from 1 to 100, `n_init` from 1 to 20, `tol` from 0 to 1.0, and
+`random_state` from 0 to 4,294,967,276. Values outside these ranges are rejected
+during request validation. During fitting, `random_range` uses one
+initialization and `multi_start_random_range` uses `n_init` initializations.
 
 The only supported output mode is `full`, creating one categorical column with
 one category per fitted cluster. With the default prefix, identifiers are

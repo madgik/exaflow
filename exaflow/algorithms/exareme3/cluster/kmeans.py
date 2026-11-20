@@ -17,6 +17,12 @@ from exaflow.algorithms.federated.cluster.kmeans import FederatedKMeans
 
 K_SELECTION_MANUAL = "manual"
 K_SELECTION_ELBOW = "elbow"
+KMEANS_MAX_CLUSTERS = 100
+KMEANS_MAX_ITERATIONS = 100
+KMEANS_MAX_INITIALIZATIONS = 20
+KMEANS_MAX_TOLERANCE = 1.0
+# Each initialization adds its zero-based index to the seed.
+KMEANS_MAX_RANDOM_STATE = 2**32 - KMEANS_MAX_INITIALIZATIONS
 
 
 class KMeansClusterQuality(BaseModel):
@@ -199,7 +205,7 @@ class KMeans(Algorithm):
                     multiple=False,
                     default=4,
                     min=1,
-                    max=100,
+                    max=KMEANS_MAX_CLUSTERS,
                 ),
                 "k_min": specs.ParameterSpecification(
                     label="Minimum K",
@@ -209,7 +215,7 @@ class KMeans(Algorithm):
                     multiple=False,
                     default=2,
                     min=1,
-                    max=100,
+                    max=KMEANS_MAX_CLUSTERS,
                 ),
                 "k_max": specs.ParameterSpecification(
                     label="Maximum K",
@@ -219,7 +225,7 @@ class KMeans(Algorithm):
                     multiple=False,
                     default=8,
                     min=1,
-                    max=100,
+                    max=KMEANS_MAX_CLUSTERS,
                 ),
                 "maxiter": specs.ParameterSpecification(
                     label="Maximum iterations",
@@ -229,7 +235,7 @@ class KMeans(Algorithm):
                     multiple=False,
                     default=100,
                     min=1,
-                    max=100,
+                    max=KMEANS_MAX_ITERATIONS,
                 ),
                 "tol": specs.ParameterSpecification(
                     label="Convergence tolerance",
@@ -239,7 +245,7 @@ class KMeans(Algorithm):
                     multiple=False,
                     default=0.0001,
                     min=0.0,
-                    max=1.0,
+                    max=KMEANS_MAX_TOLERANCE,
                 ),
                 "init_method": specs.ParameterSpecification(
                     label="Initialization method",
@@ -269,7 +275,7 @@ class KMeans(Algorithm):
                     multiple=False,
                     default=5,
                     min=1,
-                    max=20,
+                    max=KMEANS_MAX_INITIALIZATIONS,
                 ),
                 "random_state": specs.ParameterSpecification(
                     label="Random seed",
@@ -279,7 +285,7 @@ class KMeans(Algorithm):
                     multiple=False,
                     default=123,
                     min=0,
-                    max=4294967276,
+                    max=KMEANS_MAX_RANDOM_STATE,
                 ),
             },
             type=specs.AlgorithmType.EXAREME3,
