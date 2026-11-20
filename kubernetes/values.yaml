@@ -39,9 +39,8 @@ controller:
   shutdown_timeout: 60
   shutdown_grace_margin: 20
 
-# External broker; the chart does not provision RabbitMQ.
+# Required external broker; the chart does not provision RabbitMQ.
 rabbitmq:
-  enabled: false
   existing_secret: "exaflow-rabbitmq"
   url_secret_key: "url"
   request_queue: "exaflow.analysis.requests"
