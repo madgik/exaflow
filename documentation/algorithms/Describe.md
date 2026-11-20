@@ -57,7 +57,7 @@ category counts.
 | Non-missing counts | Report valid observations and compute means. |
 | Missing counts | Report missingness. |
 | Total row counts | Report denominator per variable and dataset. |
-| Numerical sums and sums of squares | Compute combined means and sample standard deviations. |
+| Numerical weighted means and centered moments | Compute combined means and sample standard deviations. |
 | Numerical minima and maxima | Compute combined ranges. |
 | Numerical federated histogram | Estimate the combined median across all datasets. |
 | Nominal category counts | Compute combined category frequencies. |
@@ -78,7 +78,7 @@ Step 2:
     For numerical variables:
         compute local count, missing count, total count
         compute mean, sample standard deviation, min, quartiles, median, max
-        store sum and sum of squares for aggregation
+        store the weighted mean and centered sum of squares for aggregation
 
 Step 3:
     For nominal variables:
@@ -86,7 +86,10 @@ Step 3:
         compute category counts
 
 Step 4:
-    Aggregate sufficient statistics and category counts for the combined summary.
+    Compute the global mean from counts and weighted means.
+    Sum each centered moment plus the dataset count times the squared
+    difference between the dataset and global means. Divide by N - 1 for
+    sample variance. Aggregate category counts for the combined summary.
     Estimate the combined median per numerical variable from a federated
     histogram across all datasets.
 
@@ -105,8 +108,9 @@ Output:
 - Per-dataset numerical quartiles (`q1`/`q2`/`q3`) are exact (pandas). The
   combined summary carries federated `q1`/`q2`/`q3` and `median` (= `q2`)
   estimated across all datasets from a histogram-based percentile.
-- Combined numerical standard deviations use aggregated sums and sums of
-  squares with sample-variance denominator `n - 1`.
+- Combined numerical standard deviations use per-dataset centered sums of
+  squares adjusted for differences between dataset means and the global mean.
+  Divide the pooled sum by `n - 1` and take the square root.
 - Nominal combined summaries use metadata-defined category levels and omit
   zero-count levels.
 - Missing values are handled independently for each variable.

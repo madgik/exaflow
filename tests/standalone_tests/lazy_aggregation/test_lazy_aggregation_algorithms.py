@@ -221,7 +221,7 @@ MAX_LAZY_ROUNDS = {
     "chi_squared": 1,  # eager: 2
     "cox_regression_classical": 8,  # eager: 8
     "cox_regression_stacked": 13,  # eager: 29
-    "describe": 38,  # eager: 83
+    "describe": 39,  # centered variance depends on the aggregated mean
     "fisher_exact": 2,  # eager: 4
     "glmm_binary": 53,  # eager: 54
     "glmm_ordinal": 62,  # eager: 63

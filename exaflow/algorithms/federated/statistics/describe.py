@@ -38,7 +38,7 @@ class FederatedDescribe:
     - Per-dataset quantiles (q1/q2/q3) are exact (pandas). The global summary
       carries federated ``q1``/``q2``/``q3`` and ``median`` (= ``q2``) estimated
       across all datasets via a histogram-based percentile.
-    - Means and variances come from aggregated sufficient statistics (sx, sxx).
+    - Means and variances come from aggregated counts and centered moments.
     - Nominal counts flow through the aggregation client and zero-count levels are
       dropped in the global result per our contract.
     - NA handling remains pairwise complete per variable.
@@ -179,15 +179,15 @@ class FederatedDescribe:
         num_total = int(len(df))
         descr_all = df.describe(include="all")
         descr_numerical = (
-            df[numerical_vars].describe() if numerical_vars else pd.DataFrame()
+            df[numerical_vars].astype(np.float64).describe()
+            if numerical_vars
+            else pd.DataFrame()
         )
         num_dtps = descr_all.loc["count"].to_dict()
         num_na = {var: num_total - num_dtps.get(var, 0) for var in variables}
 
         numerical_recs = []
         if numerical_vars:
-            sx = df[numerical_vars].sum().to_dict()
-            sxx = (df[numerical_vars] ** 2).sum().to_dict()
             q1 = descr_numerical.loc["25%"].to_dict()
             q2 = descr_numerical.loc["50%"].to_dict()
             q3 = descr_numerical.loc["75%"].to_dict()
@@ -197,7 +197,8 @@ class FederatedDescribe:
             maxs = descr_numerical.loc["max"].to_dict()
 
             for var in numerical_vars:
-                if num_dtps.get(var, 0) < min_row_count:
+                count = int(num_dtps[var])
+                if count < min_row_count:
                     numerical_recs.append(record(var, dataset, None))
                     continue
                 local_std = stds.get(var)
@@ -208,11 +209,15 @@ class FederatedDescribe:
                         var,
                         dataset,
                         dict(
-                            num_dtps=int(num_dtps[var]),
+                            num_dtps=count,
                             num_na=int(num_na[var]),
                             num_total=num_total,
-                            sx=float(sx[var]),
-                            sxx=float(sxx[var]),
+                            sx=float(means[var]) * count if count else 0.0,
+                            m2=(
+                                (count - 1) * float(local_std) ** 2
+                                if local_std is not None
+                                else 0.0
+                            ),
                             q1=float(q1[var]),
                             q2=float(q2[var]),
                             q3=float(q3[var]),
@@ -263,7 +268,7 @@ class FederatedDescribe:
                 "num_na": 0.0,
                 "num_total": 0.0,
                 "sx": 0.0,
-                "sxx": 0.0,
+                "moments": [],
                 "min": np.inf,
                 "max": -np.inf,
             }
@@ -282,8 +287,10 @@ class FederatedDescribe:
                 stats["num_dtps"] += data["num_dtps"]
                 stats["num_na"] += data["num_na"]
                 stats["num_total"] += data["num_total"]
+                if data["num_dtps"] == 0:
+                    continue
                 stats["sx"] += data["sx"]
-                stats["sxx"] += data["sxx"]
+                stats["moments"].append((data["num_dtps"], data["mean"], data["m2"]))
                 stats["min"] = min(stats["min"], data["min"])
                 stats["max"] = max(stats["max"], data["max"])
             elif var in cat_stats:
@@ -303,7 +310,6 @@ class FederatedDescribe:
             [num_stats[v]["num_total"] for v in numerical_vars], dtype=float
         )
         sx_arr = np.array([num_stats[v]["sx"] for v in numerical_vars], dtype=float)
-        sxx_arr = np.array([num_stats[v]["sxx"] for v in numerical_vars], dtype=float)
         min_arr = np.array([num_stats[v]["min"] for v in numerical_vars], dtype=float)
         max_arr = np.array([num_stats[v]["max"] for v in numerical_vars], dtype=float)
 
@@ -311,7 +317,6 @@ class FederatedDescribe:
         num_na_arr = np.asarray(self.agg_client.sum(num_na_arr), dtype=float)
         num_total_arr = np.asarray(self.agg_client.sum(num_total_arr), dtype=float)
         sx_arr = np.asarray(self.agg_client.sum(sx_arr), dtype=float)
-        sxx_arr = np.asarray(self.agg_client.sum(sxx_arr), dtype=float)
         min_arr = np.asarray(self.agg_client.min(min_arr), dtype=float)
         max_arr = np.asarray(self.agg_client.max(max_arr), dtype=float)
 
@@ -329,6 +334,21 @@ class FederatedDescribe:
         cat_num_na = np.asarray(self.agg_client.sum(cat_num_na), dtype=float)
         cat_num_total = np.asarray(self.agg_client.sum(cat_num_total), dtype=float)
 
+        means = np.divide(
+            sx_arr, num_dtps_arr, out=np.zeros_like(sx_arr), where=num_dtps_arr > 0
+        )
+        local_m2 = np.array(
+            [
+                sum(
+                    m2 + n * (mean - means[idx]) ** 2
+                    for n, mean, m2 in num_stats[var]["moments"]
+                )
+                for idx, var in enumerate(numerical_vars)
+            ],
+            dtype=float,
+        )
+        global_m2 = np.asarray(self.agg_client.sum(local_m2), dtype=float)
+
         global_records: List[Dict] = []
         for idx, var in enumerate(numerical_vars):
             num_dtps = float(num_dtps_arr[idx]) if numerical_vars else 0.0
@@ -337,12 +357,11 @@ class FederatedDescribe:
                     dict(variable=var, dataset=dataset_label, data=None)
                 )
                 continue
-            mean = float(sx_arr[idx]) / num_dtps
+            mean = float(means[idx])
             if num_dtps <= 1:
                 std = None
             else:
-                variance = (float(sxx_arr[idx]) - num_dtps * (mean**2)) / (num_dtps - 1)
-                std = float(np.sqrt(max(variance, 0.0)))
+                std = float(np.sqrt(global_m2[idx] / (num_dtps - 1)))
             global_records.append(
                 dict(
                     variable=var,
