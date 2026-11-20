@@ -8,9 +8,16 @@ import pandas as pd
 from pydantic import ValidationError
 
 from exaflow.algorithms import specifications as specs
+from exaflow.algorithms.exareme3.cluster.kmeans import KMEANS_MAX_CLUSTERS
+from exaflow.algorithms.exareme3.cluster.kmeans import KMEANS_MAX_INITIALIZATIONS
+from exaflow.algorithms.exareme3.cluster.kmeans import KMEANS_MAX_ITERATIONS
+from exaflow.algorithms.exareme3.cluster.kmeans import KMEANS_MAX_RANDOM_STATE
+from exaflow.algorithms.exareme3.cluster.kmeans import KMEANS_MAX_TOLERANCE
 from exaflow.algorithms.exareme3.cluster.kmeans import KMeansReusablePreprocessing
 from exaflow.algorithms.exareme3.cluster.kmeans import make_kmeans_input_fingerprint
 from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
+from exaflow.algorithms.federated.cluster.kmeans import INIT_MULTI_START_RANDOM_RANGE
+from exaflow.algorithms.federated.cluster.kmeans import INIT_RANDOM_RANGE
 from exaflow.algorithms.federated.cluster.kmeans import FederatedKMeans
 from exaflow.algorithms.federated.cluster.kmeans import assign_clusters
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
@@ -75,6 +82,7 @@ class KMeansClusterCreator(PreprocessingStep):
                     required=True,
                     multiple=False,
                     min=1,
+                    max=KMEANS_MAX_CLUSTERS,
                 ),
                 "enumeration_prefix": specs.ParameterSpecification(
                     label="Cluster category prefix",
@@ -97,10 +105,10 @@ class KMeansClusterCreator(PreprocessingStep):
                     types=[specs.ParameterType.TEXT],
                     required=False,
                     multiple=False,
-                    default="random_range",
+                    default=INIT_RANDOM_RANGE,
                     enums=specs.ParameterEnumSpecification(
                         type=specs.ParameterEnumType.LIST,
-                        source=["random_range", "multi_start_random_range"],
+                        source=[INIT_RANDOM_RANGE, INIT_MULTI_START_RANDOM_RANGE],
                     ),
                 ),
                 "n_init": specs.ParameterSpecification(
@@ -111,6 +119,7 @@ class KMeansClusterCreator(PreprocessingStep):
                     multiple=False,
                     default=1,
                     min=1,
+                    max=KMEANS_MAX_INITIALIZATIONS,
                 ),
                 "tol": specs.ParameterSpecification(
                     label="Convergence tolerance",
@@ -119,7 +128,8 @@ class KMeansClusterCreator(PreprocessingStep):
                     required=False,
                     multiple=False,
                     default=0.0001,
-                    min=0,
+                    min=0.0,
+                    max=KMEANS_MAX_TOLERANCE,
                 ),
                 "maxiter": specs.ParameterSpecification(
                     label="Maximum iterations",
@@ -129,6 +139,7 @@ class KMeansClusterCreator(PreprocessingStep):
                     multiple=False,
                     default=100,
                     min=1,
+                    max=KMEANS_MAX_ITERATIONS,
                 ),
                 "random_state": specs.ParameterSpecification(
                     label="Random seed",
@@ -138,6 +149,7 @@ class KMeansClusterCreator(PreprocessingStep):
                     multiple=False,
                     default=123,
                     min=0,
+                    max=KMEANS_MAX_RANDOM_STATE,
                 ),
             },
             outputs=specs.PreprocessingOutputsSpecification(
@@ -217,7 +229,7 @@ class KMeansClusterCreator(PreprocessingStep):
                 )
             model = FederatedKMeans(
                 n_clusters=self._params["k"],
-                init_method=self._params.get("init_method", "random_range"),
+                init_method=self._params.get("init_method", INIT_RANDOM_RANGE),
                 n_init=self._params.get("n_init", 1),
                 tol=self._params.get("tol", 1e-4),
                 maxiter=self._params.get("maxiter", 100),
