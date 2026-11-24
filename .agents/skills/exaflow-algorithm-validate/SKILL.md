@@ -1,11 +1,11 @@
 ---
 name: exaflow-algorithm-validate
-description: "Validate required Exaflow Exareme3 algorithm implementation steps."
+description: "Validate Exaflow Exareme3 analysis algorithms and preprocessing steps, including their registrations, artifacts and focused tests."
 ---
 
 # Exaflow Algorithm Validate
 
-Use this skill to verify that Exareme3 algorithm development artifacts and checks are complete.
+Use this skill to verify that Exareme3 analysis-algorithm and preprocessing-step artifacts and checks are complete.
 
 Human-facing setup guide: `documentation/new-algorithm-setup.md`.
 
@@ -13,7 +13,7 @@ Human-facing setup guide: `documentation/new-algorithm-setup.md`.
 
 1. Run validator from the Exaflow repository root.
 1. Default selection validates changed algorithms.
-1. Use `--algorithms` for explicit targets.
+1. Use `--algorithms` for explicit analysis-algorithm or preprocessing-step IDs.
 1. Use `--new-algorithm` to enforce full canonical integration checks.
 1. Use `--strict` to run standalone + prod_env runtime suites.
 1. Inspect JSON output and resolve `failed` entries first, then `warn` entries.
@@ -87,6 +87,19 @@ Static checks (always):
 - Placeholder token rejection in scaffolded artifacts (`TODO`,
   `NotImplementedError`, `__REPLACE_ME_*__`).
 - Touched registration files are syntactically valid and contain expected symbols.
+
+Preprocessing steps are checked against their own runtime registry and typed
+`PreprocessingStepSpecification`, including its existing output-declaration
+validation. Their standalone coverage may live under `standalone_tests/exareme3`;
+grouped tests must explicitly import the runtime step or name its ID. Grouped
+HTTP assertions do not require an analysis-result JSON fixture. Do not invent
+`AlgorithmName` members or `Federated...` aliases for preprocessing steps.
+
+Changed-file selection distinguishes runtime components from mathematical
+primitives and helpers. Changed production modules still receive import checks,
+and changed standalone tests are run even without a public runtime ID. A deleted
+package initializer is accepted only when no live Python sources remain in that
+package; a missing initializer in a live package remains an error.
 
 `--new-algorithm` mode adds canonical integration requirements:
 

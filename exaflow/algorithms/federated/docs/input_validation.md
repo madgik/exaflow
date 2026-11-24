@@ -61,6 +61,26 @@ converted into validation failures.
 
 ## Algorithm coverage
 
+### Named feature transformations
+
+The transformation classes in `feature_engineering` and `outliers` use the
+existing `FederatedTransformer` DataFrame interface. Their version-2 fitted
+states are validated dataclasses, not Pydantic models. This is a new named-column
+contract replacing the initial internal array API; it does not change the
+pre-existing algorithms' signatures or validation policies.
+
+| Transformation boundary | Checks |
+| --- | --- |
+| Named inputs and replay | Selected columns exist; names/order and categorical declarations match fitted state; missing/extra state fields are rejected. |
+| Numerical transforms | Required finite domains, fitted feature count and method-specific missing-value handling. |
+| Categorical most_frequent | Approved ordered vocabulary; values and fitted modes belong to it; collective invalid-input flags precede count exchanges; no observed-value union. |
+| Scaler/outlier state | Finite aligned locations/bounds and strictly positive scales/thresholds. |
+| Yeo-Johnson state | Finite lambda/objective, valid bounds, coherent stop reason and evaluation budget. |
+| Quantile state | Monotone grid, finite uncertainty intervals, aligned nonnegative support counts, effective platform floor and round budget. |
+
+See [feature transformations](transformations.md) for mathematics, approximation
+limits, execution assumptions and compatibility impact.
+
 Checks run on effective inputs after each method's existing conversions.
 Constructor conversions/checks remain at construction where already present;
 operations also check current mutable parameters that they consume.
