@@ -260,6 +260,10 @@ def test_kmeans_final_statistics_match_returned_centers_when_not_converged():
     expected_inertia = np.sum((X - centers[expected_labels]) ** 2)
 
     np.testing.assert_allclose(result.cluster_centers_, expected_centers)
+    assert (
+        result.center_support_counts_
+        == np.bincount(initial_labels, minlength=model.n_clusters).tolist()
+    )
     np.testing.assert_array_equal(result.labels_, expected_labels)
     np.testing.assert_allclose(result.inertia_, expected_inertia)
     np.testing.assert_allclose(

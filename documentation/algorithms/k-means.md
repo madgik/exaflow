@@ -72,8 +72,39 @@ clinical review.
 Initialization uses aggregated global feature ranges, not raw patient rows.
 With `random_range`, one set of initial centers is sampled uniformly from those
 ranges. With `multi_start_random_range`, several independent random-range
-initializations are fitted and the run with the lowest global inertia is kept.
-This improves stability without selecting a real patient as an initial center.
+initializations are fitted. Manual mode keeps the lowest-inertia run and then
+checks whether its result may be released. Elbow mode keeps the lowest-inertia
+eligible run for each candidate k, excluding initializations that fail the
+minimum cohort size. Initialization does not select patient rows as centers;
+this alone does not protect the fitted centers from disclosure.
+
+### Minimum cohort size and model selection
+
+The reporter uses the strictest configured minimum row count among participating
+workers. This is not a caller-controlled parameter. Both the final nonempty
+clusters and the positive contributor counts used in the last centroid update
+must meet that floor. Checking only final assignments is insufficient after
+early stopping: a center computed from one observation may subsequently attract
+more observations. Empty centers are reset to zero and contain no participant
+measurements; their existing handling is unchanged.
+
+In manual mode, a failure rejects the whole analysis with a user-facing error.
+No report, profiles, or reusable preprocessing artifact is returned, and k is
+not changed or replaced by another initialization after the normal fit selection.
+Users must submit another request with different parameters or a larger cohort.
+
+In elbow mode, a k value with no eligible initialization is omitted from both
+selection and the exported inertia diagnostics. The existing geometric elbow
+criterion is applied only to eligible k values. A single eligible value is
+returned with a warning; with two eligible values the smaller is selected with
+an ambiguity warning. If none qualify, the analysis fails without returning
+model summaries or replay centers. Skipped candidates are identified only by a
+generic warning, without their centers, small counts, or inertia values.
+
+All observations remain in fitting; this policy does not drop outliers or merge
+clusters after fitting. This minimum-size rule addresses small-cohort centroid
+disclosure; it is not differential privacy or protection against every inference
+from repeated or overlapping analyses.
 
 ## Health use cases
 
@@ -145,7 +176,8 @@ Step 4:
         stop if the center-update norm is <= tol
 
 Output:
-    privacy-safe cluster report
+    validate final assignment counts and counts used for the last center update
+    return a cluster report only if the minimum cohort size is satisfied
 ```
 
 ## UI contract
@@ -160,7 +192,7 @@ The UI should expose these controls:
 | Minimum K / Maximum K | integers `k_min`, `k_max` | Used only in elbow mode. |
 | Maximum iterations | integer `maxiter` | Upper bound for Lloyd iterations. |
 | Tolerance | real `tol` | Convergence threshold. |
-| Initialization method | `random_range`, `multi_start_random_range` | Multi-start keeps the lowest-inertia random-range fit. |
+| Initialization method | `random_range`, `multi_start_random_range` | Elbow multi-start keeps the lowest-inertia eligible fit; manual validates its ordinary best fit. |
 | Number of initializations | integer `n_init` | Relevant only for `multi_start_random_range`. |
 
 The result view should show:
@@ -176,14 +208,19 @@ The result view should show:
 
 - Initialization samples uniformly from aggregated feature ranges.
 - `multi_start_random_range` repeats range-based initialization with different
-  seeds and keeps the fitted model with the lowest global inertia.
+  seeds. Elbow mode keeps the eligible model with the lowest global inertia;
+  manual mode validates the ordinary lowest-inertia model before release.
 - Random seed `123` is used for reproducibility.
 - Squared Euclidean distance is used for assignment.
 - Empty clusters are reset to the origin.
 - Convergence uses the Frobenius norm of the center update.
 - Cluster sizes are reported as intervals rather than exact counts.
-- Centers and textual profiles are returned for every fitted cluster; only the
-  cluster-size interval is privacy-masked.
+- A final release check precedes center, profile, interpretation, and reusable
+  artifact generation. Accepted reports include every fitted center; rejected
+  fits return no report or artifact.
+- All centroid updates remain inside the maxiter budget. Final labels and
+  inertia refer to the returned centers, which need not be the means of the
+  final assignments after early stopping.
 
 ## Outputs
 
@@ -198,11 +235,11 @@ The result view should show:
 | `n_init` | Number of initializations actually evaluated. |
 | `selected_initialization` | Zero-based index of the initialization kept. |
 | `n_obs_interval` | Total observation count interval. |
-| `center_definition` | Explains that centers are mean profiles, not patients. |
+| `center_definition` | Explains the mean computed in the last centroid update. |
 | `intended_use` | Supported high-level uses. |
 | `privacy_note` | Summary of privacy masking. |
 | `clusters` | Per-cluster privacy-safe interval, center, profile, and interpretation. |
-| `elbow` | Elbow diagnostics when `k_selection=elbow`. |
+| `elbow` | Elbow diagnostics for eligible candidates when `k_selection=elbow`. |
 | `reusable_preprocessing` | Replay contract for creating a selected K-means categorical variable downstream. |
 | `warnings` | Privacy, convergence, or empty-cluster warnings. |
 | `limitations` | Clinical and statistical limitations. |
@@ -229,7 +266,7 @@ these identifiers consistently in the report, stored centers, and created column
 Internal cluster indices remain zero-based.
 
 The reusable preprocessing contract retains the
-cluster variables, exact fitted centers, source data context, available outputs,
+cluster variables, reported fitted centers rounded to six decimal places, source data context, available outputs,
 and cluster choices, and includes `enumeration_prefix`. It contains neither
 row-level assignments nor random seeds.
 
@@ -262,6 +299,15 @@ Compatibility: this intentionally replaces zero-based identifiers and scalar
 there is no schema-version field, migration, or legacy payload support. Update
 clients and service together; rollback requires restoring both the old service
 and its matching consumers/model payloads.
+
+Privacy compatibility: successful report and replay field shapes are unchanged.
+Manual requests previously returning small-cluster centers now fail. Elbow can
+select a different initialization or k and can return fewer inertia entries than
+the requested range. Clients must handle analysis errors and sparse eligible
+candidate ranges. Independently fitted categorical preprocessing is unchanged;
+this release rule applies to the reporter's public summaries and exported model.
+Rolling back this protection restores the small-cluster disclosure risk and
+requires privacy review.
 
 ## Validation against state-of-the-art implementation
 
