@@ -175,8 +175,8 @@ def test_rejects_blank_count_parameter_name(reference):
     [
         _parameter(specs.ParameterType.REAL),
         _parameter(specs.ParameterType.TEXT),
-        _parameter(specs.ParameterType.INT, multiple=True),
         _parameter(specs.ParameterType.INT, required=False),
+        _parameter(specs.ParameterType.TEXT, multiple=True, required=False),
     ],
 )
 def test_rejects_invalid_count_parameter_contract(parameter):
@@ -300,3 +300,131 @@ def test_public_api_keeps_integer_type_validation(monkeypatch):
             {"test_projection": DynamicProjection.get_specification()},
             _cdes(),
         )
+
+
+def _list_spec(columns=None, *, parameter=None):
+    return _spec(
+        [{**NUMERICAL, "column_count_param": "selected_items"}]
+        if columns is None
+        else columns,
+        selected_items=(
+            _parameter(specs.ParameterType.TEXT, multiple=True)
+            if parameter is None
+            else parameter
+        ),
+    )
+
+
+@pytest.mark.parametrize("count", [1, 2, 4])
+def test_list_length_defines_output_count_and_survives_dto(count):
+    specification = _list_spec()
+    parameters = {
+        "selected_items": [f"item_{i}" for i in range(count)],
+        "new_column_names": [f"derived_{i}" for i in range(count)],
+    }
+    dto = _convert_transformer_specification_to_dto(specification)
+    assert (
+        dto.model_dump(mode="json")["outputs"]["columns"][0]["column_count_param"]
+        == "selected_items"
+    )
+    assert dto.parameters["selected_items"].multiple
+    resolved = resolve_output_metadata(specification, parameters, {})
+    assert list(resolved) == parameters["new_column_names"]
+    assert all(column["sql_type"] == "real" for column in resolved.values())
+
+
+@pytest.mark.parametrize("type_", [specs.ParameterType.TEXT, specs.ParameterType.INT])
+def test_required_list_count_is_based_on_cardinality_not_element_values(type_):
+    specification = _list_spec(parameter=_parameter(type_, multiple=True))
+    items = ["second", "first"] if type_ == specs.ParameterType.TEXT else [100, -1]
+    assert list(
+        resolve_output_metadata(
+            specification, {"selected_items": items, "new_column_names": ["a", "b"]}, {}
+        )
+    ) == ["a", "b"]
+
+
+@pytest.mark.parametrize("items", [None, [], "ab", 2, True, ("a", "b"), {}])
+def test_list_count_rejects_missing_empty_or_nonlist_values(items):
+    with pytest.raises(BadUserInput, match="selected_items.*nonempty list"):
+        resolve_output_metadata(
+            _list_spec(), {"selected_items": items, "new_column_names": ["a"]}, {}
+        )
+
+
+def test_required_list_count_does_not_fall_back_to_a_default():
+    parameter = _parameter(specs.ParameterType.TEXT, multiple=True).model_copy(
+        update={"default": ["item"]}
+    )
+    with pytest.raises(BadUserInput, match="selected_items.*nonempty list"):
+        resolve_output_metadata(
+            _list_spec(parameter=parameter), {"new_column_names": ["a"]}, {}
+        )
+
+
+@pytest.mark.parametrize("names", [["a"], ["a", "b", "c"]])
+def test_list_count_rejects_source_output_length_mismatch(names):
+    with pytest.raises(BadUserInput, match="exactly 2"):
+        resolve_output_metadata(
+            _list_spec(), {"selected_items": ["x", "y"], "new_column_names": names}, {}
+        )
+
+
+def test_list_and_integer_counts_can_be_mixed_with_fixed_outputs():
+    specification = _spec(
+        [NUMERICAL, {**NUMERICAL, "column_count_param": "selected_items"}, DYNAMIC],
+        selected_items=_parameter(specs.ParameterType.TEXT, multiple=True),
+        n_components=_parameter(specs.ParameterType.INT),
+    )
+    names = ["fixed", "left", "right", "component"]
+    resolved = resolve_output_metadata(
+        specification,
+        {"selected_items": ["x", "y"], "n_components": 1, "new_column_names": names},
+        {},
+    )
+    assert list(resolved) == names
+    assert resolved["left"] is not resolved["right"]
+
+
+class ListCountProjection(DynamicProjection):
+    @classmethod
+    def get_specification(cls):
+        return _list_spec()
+
+
+@pytest.mark.parametrize("count", [1, 3])
+def test_list_count_agrees_across_controller_and_worker_protobuf(monkeypatch, count):
+    monkeypatch.setitem(
+        analysis_request_validator.exareme3_preprocessing_step_classes,
+        "test_projection",
+        ListCountProjection,
+    )
+    names = [f"derived_{i}" for i in range(count)]
+    step = AnalysisPreprocessingStepDTO(
+        name="test_projection",
+        parameters={
+            "selected_items": [f"item_{i}" for i in range(count)],
+            "new_column_names": names,
+        },
+    )
+    inputdata, cdes = analysis_request_validator._validate_and_apply_preprocessing(
+        _request(preprocessing=[step]),
+        {"test_projection": ListCountProjection.get_specification()},
+        _cdes(),
+    )
+    request = worker_pb2.RunUdfRequest()
+    ParseDict({"preprocessing": [step.model_dump(mode="json")]}, request.system_args)
+    transported = MessageToDict(request.system_args, preserving_proto_field_name=True)
+    data, metadata = udf_service._apply_preprocessing_steps_to_data_and_metadata(
+        data=pd.DataFrame({"age": [20, 40]}),
+        metadata={"age": _cdes()["age"].model_dump()},
+        preprocessing=transported["preprocessing"],
+        check_min_rows=False,
+        agg_client=None,
+    )
+    assert inputdata.variables[-count:] == list(data.columns[1:]) == names
+    for index, name in enumerate(names):
+        assert cdes[name].sql_type == metadata[name]["sql_type"] == "real"
+        assert not cdes[name].is_categorical
+        assert metadata[name]["is_categorical"] is False
+        assert data[name].tolist() == [20.0 * (index + 1), 40.0 * (index + 1)]

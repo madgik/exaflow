@@ -22,14 +22,18 @@ def resolve_output_metadata(specification, parameters, existing_metadata):
             raise BadUserInput(f"'{parameter_name}' must be a positive integer.")
         return source
 
-    widths = [
-        1
-        if column.column_count_param is None
-        else positive_count(
-            parameters.get(column.column_count_param), column.column_count_param
-        )
-        for column in outputs.columns
-    ]
+    def output_width(column):
+        parameter_name = column.column_count_param
+        if parameter_name is None:
+            return 1
+        source = parameters.get(parameter_name)
+        if specification.parameters[parameter_name].multiple:
+            if not isinstance(source, list) or not source:
+                raise BadUserInput(f"'{parameter_name}' must be a nonempty list.")
+            return len(source)
+        return positive_count(source, parameter_name)
+
+    widths = [output_width(column) for column in outputs.columns]
     output_count = sum(widths)
     names = parameters.get(outputs.new_column_names_param)
     if (

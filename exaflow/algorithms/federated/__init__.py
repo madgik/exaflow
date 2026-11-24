@@ -4,6 +4,7 @@ from exaflow.algorithms.federated.compose.passthrough import FederatedPassthroug
 from exaflow.algorithms.federated.decomposition import FederatedPCA
 from exaflow.algorithms.federated.feature_engineering import FederatedOneHotEncoder
 from exaflow.algorithms.federated.feature_engineering import FederatedOrdinalEncoder
+from exaflow.algorithms.federated.feature_engineering import FederatedStandardScaler
 from exaflow.algorithms.federated.linear_model import FederatedClassicalCoxRegression
 from exaflow.algorithms.federated.linear_model import FederatedLogisticRegression
 from exaflow.algorithms.federated.linear_model import FederatedOLS
@@ -44,6 +45,7 @@ __all__ = [
     "FederatedKFoldSplitter",
     "FederatedOneHotEncoder",
     "FederatedOrdinalEncoder",
+    "FederatedStandardScaler",
     "FederatedPassthrough",
     "FederatedPipeline",
     "FederatedStackedCoxRegression",

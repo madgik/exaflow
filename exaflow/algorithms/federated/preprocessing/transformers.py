@@ -16,6 +16,21 @@ import numpy as np
 import pandas as pd
 from scipy.special import ndtri
 
+from exaflow.algorithms.federated.feature_engineering.numerical_utils import (
+    as_2d_numeric,
+)
+from exaflow.algorithms.federated.feature_engineering.numerical_utils import (
+    global_population_scale,
+)
+from exaflow.algorithms.federated.feature_engineering.numerical_utils import (
+    global_sum_count,
+)
+from exaflow.algorithms.federated.feature_engineering.numerical_utils import (
+    reject_infinite,
+)
+from exaflow.algorithms.federated.feature_engineering.numerical_utils import (
+    require_rows,
+)
 from exaflow.algorithms.federated.preprocessing._batched_quantiles import (
     batched_quantiles,
 )
@@ -38,7 +53,6 @@ from exaflow.algorithms.federated.preprocessing.recipes import WinsorizerRecipe
 from exaflow.algorithms.federated.preprocessing.recipes import YeoJohnsonRecipe
 from exaflow.algorithms.federated.statistics.percentile import Percentile
 from exaflow.algorithms.federated.utils import BadInputError
-from exaflow.algorithms.federated.utils import as_numeric_array
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
@@ -49,30 +63,8 @@ from exaflow.algorithms.federated.validation import check_interval
 from exaflow.algorithms.federated.validation import check_scalar
 
 
-def _as_2d_numeric(data: Any, *, name: str = "Input") -> tuple[np.ndarray, bool]:
-    array = as_numeric_array(data, input_name=name)
-    _reject_infinite(array)
-    if array.ndim == 1:
-        return array.reshape(-1, 1).copy(), True
-    if array.ndim != 2:
-        raise BadInputError(f"{name} must be a one- or two-dimensional array.")
-    if array.shape[1] == 0:
-        raise BadInputError(f"{name} must contain at least one feature.")
-    return array.copy(), False
-
-
 def _restore_shape(array: np.ndarray, squeezed: bool) -> np.ndarray:
     return array[:, 0] if squeezed else array
-
-
-def _require_rows(array: np.ndarray) -> None:
-    if array.shape[0] == 0:
-        raise BadInputError("Input must contain at least one observation.")
-
-
-def _reject_infinite(array: np.ndarray) -> None:
-    if np.isinf(array).any():
-        raise BadInputError("Input must not contain infinite values.")
 
 
 def _validate_local_domain(array: np.ndarray, *, predicate, message: str) -> None:
@@ -81,19 +73,8 @@ def _validate_local_domain(array: np.ndarray, *, predicate, message: str) -> Non
         raise BadInputError(message)
 
 
-def _global_sum_count(
-    array: np.ndarray, agg_client: AggregationClient
-) -> tuple[np.ndarray, np.ndarray]:
-    valid = ~np.isnan(array)
-    local_sum = np.nansum(array, axis=0).astype(float)
-    local_count = valid.sum(axis=0).astype(float)
-    total_sum = np.asarray(agg_client.sum(local_sum), dtype=float)
-    total_count = np.asarray(agg_client.sum(local_count), dtype=float)
-    return total_sum, total_count
-
-
 def _global_mean(array: np.ndarray, agg_client: AggregationClient) -> np.ndarray:
-    total_sum, total_count = _global_sum_count(array, agg_client)
+    total_sum, total_count = global_sum_count(array, agg_client)
     if np.any(total_count <= 0):
         raise BadInputError("At least one feature has no valid observations.")
     return total_sum / total_count
@@ -108,29 +89,6 @@ def _global_min_max(
     if np.any(~np.isfinite(minimum)) or np.any(~np.isfinite(maximum)):
         raise BadInputError("At least one feature has no valid observations.")
     return minimum, maximum
-
-
-def _global_population_scale(
-    array: np.ndarray, agg_client: AggregationClient
-) -> tuple[np.ndarray, np.ndarray]:
-    total_sum, total_count = _global_sum_count(array, agg_client)
-    if np.any(total_count <= 0):
-        raise BadInputError("At least one feature has no valid observations.")
-    mean = total_sum / total_count
-    deviations = array - mean
-    local_statistics = np.concatenate(
-        (np.nansum(deviations**2, axis=0), np.nansum(deviations, axis=0))
-    )
-    total_squared, correction = np.split(
-        np.asarray(agg_client.sum(local_statistics), dtype=float), 2
-    )
-    variance = np.maximum(
-        (total_squared - correction**2 / total_count) / total_count, 0.0
-    )
-    eps = np.finfo(float).eps
-    error_bound = total_count * eps * variance + (total_count * mean * eps) ** 2
-    scale = np.where(variance <= error_bound, 1.0, np.sqrt(variance))
-    return mean, scale
 
 
 def _validate_domain(
@@ -202,7 +160,7 @@ class SimpleImputer(_BaseTransformer):
                 values = values.reshape(-1, 1)
             if values.ndim != 2:
                 raise BadInputError("Input must be one- or two-dimensional.")
-            _require_rows(values)
+            require_rows(values)
             if values.shape[1] == 0:
                 raise BadInputError("Input must contain at least one feature.")
             observed = values[~pd.isna(values)]
@@ -215,15 +173,15 @@ class SimpleImputer(_BaseTransformer):
                     )
                 fill_value = 0
             if self._numeric_output:
-                numeric, _ = _as_2d_numeric(data)
-                _reject_infinite(numeric)
+                numeric, _ = as_2d_numeric(data)
+                reject_infinite(numeric)
                 check_scalar(fill_value, name="fill_value")
             self.statistics_ = np.asarray([fill_value] * values.shape[1], dtype=object)
         elif self.strategy in {"mean", "median"}:
             self._numeric_output = True
-            array, _ = _as_2d_numeric(data)
-            _require_rows(array)
-            _reject_infinite(array)
+            array, _ = as_2d_numeric(data)
+            require_rows(array)
+            reject_infinite(array)
             if self.strategy == "mean":
                 self.statistics_ = _global_mean(array, agg_client)
             else:
@@ -297,22 +255,22 @@ class SimpleImputer(_BaseTransformer):
             missing = pd.isna(values[:, idx])
             values[missing, idx] = statistic
         if self._numeric_output:
-            values, _ = _as_2d_numeric(values)
-            _reject_infinite(values)
+            values, _ = as_2d_numeric(values)
+            reject_infinite(values)
         return values[:, 0] if squeezed else values
 
 
 class MissingIndicator(_BaseTransformer):
     def fit(self, data, *, agg_client=None):
-        array, squeezed = _as_2d_numeric(data)
-        _require_rows(array)
-        _reject_infinite(array)
+        array, squeezed = as_2d_numeric(data)
+        require_rows(array)
+        reject_infinite(array)
         self._n_features = array.shape[1]
         return self
 
     def transform(self, data):
         check_fitted(self, "_n_features")
-        array, squeezed = _as_2d_numeric(data)
+        array, squeezed = as_2d_numeric(data)
         if getattr(self, "_n_features", None) != array.shape[1]:
             raise BadInputError(
                 "Input feature count does not match the fitted indicator."
@@ -323,8 +281,8 @@ class MissingIndicator(_BaseTransformer):
 
 class Log1pTransformer(_BaseTransformer):
     def fit(self, data, *, agg_client):
-        array, squeezed = _as_2d_numeric(data)
-        _require_rows(array)
+        array, squeezed = as_2d_numeric(data)
+        require_rows(array)
         _validate_domain(
             array,
             agg_client,
@@ -336,7 +294,7 @@ class Log1pTransformer(_BaseTransformer):
 
     def transform(self, data):
         check_fitted(self, "_shape")
-        array, squeezed = _as_2d_numeric(data)
+        array, squeezed = as_2d_numeric(data)
         if array.shape[1] != self._shape:
             raise BadInputError(
                 "Input feature count does not match the fitted transformer."
@@ -352,8 +310,8 @@ class Log1pTransformer(_BaseTransformer):
 
 class SqrtTransformer(_BaseTransformer):
     def fit(self, data, *, agg_client):
-        array, squeezed = _as_2d_numeric(data)
-        _require_rows(array)
+        array, squeezed = as_2d_numeric(data)
+        require_rows(array)
         _validate_domain(
             array,
             agg_client,
@@ -365,7 +323,7 @@ class SqrtTransformer(_BaseTransformer):
 
     def transform(self, data):
         check_fitted(self, "_shape")
-        array, squeezed = _as_2d_numeric(data)
+        array, squeezed = as_2d_numeric(data)
         if array.shape[1] != self._shape:
             raise BadInputError(
                 "Input feature count does not match the fitted transformer."
@@ -380,52 +338,20 @@ class SqrtTransformer(_BaseTransformer):
 
 class AsinhTransformer(_BaseTransformer):
     def fit(self, data, *, agg_client=None):
-        array, squeezed = _as_2d_numeric(data)
-        _require_rows(array)
-        _reject_infinite(array)
+        array, squeezed = as_2d_numeric(data)
+        require_rows(array)
+        reject_infinite(array)
         self._shape = array.shape[1]
         return self
 
     def transform(self, data):
         check_fitted(self, "_shape")
-        array, squeezed = _as_2d_numeric(data)
+        array, squeezed = as_2d_numeric(data)
         if array.shape[1] != self._shape:
             raise BadInputError(
                 "Input feature count does not match the fitted transformer."
             )
         return _restore_shape(np.arcsinh(array), squeezed)
-
-
-class StandardScaler(_BaseTransformer):
-    @classmethod
-    def from_recipe(cls, recipe):
-        recipe = ScalerRecipe.model_validate(recipe)
-        if recipe.primitive_name != "standard_scaler":
-            raise BadInputError("Recipe does not belong to StandardScaler.")
-        scaler = cls()
-        scaler.mean_ = np.asarray(recipe.location, dtype=float)
-        scaler.scale_ = np.asarray(recipe.scale, dtype=float)
-        scaler.recipe_ = recipe
-        return scaler
-
-    def fit(self, data, *, agg_client):
-        array, squeezed = _as_2d_numeric(data)
-        _require_rows(array)
-        _reject_infinite(array)
-        self.mean_, self.scale_ = _global_population_scale(array, agg_client)
-        self.recipe_ = ScalerRecipe(
-            primitive_name="standard_scaler",
-            location=self.mean_.tolist(),
-            scale=self.scale_.tolist(),
-        )
-        return self
-
-    def transform(self, data):
-        check_fitted(self, "mean_", "scale_")
-        array, squeezed = _as_2d_numeric(data)
-        if array.shape[1] != len(self.mean_):
-            raise BadInputError("Input feature count does not match the fitted scaler.")
-        return _restore_shape((array - self.mean_) / self.scale_, squeezed)
 
 
 class RobustScalerApprox(_BaseTransformer):
@@ -441,9 +367,9 @@ class RobustScalerApprox(_BaseTransformer):
         return scaler
 
     def fit(self, data, *, agg_client):
-        array, squeezed = _as_2d_numeric(data)
-        _require_rows(array)
-        _reject_infinite(array)
+        array, squeezed = as_2d_numeric(data)
+        require_rows(array)
+        reject_infinite(array)
         q25, self.center_, q75 = _global_quartiles(array, agg_client)
         self.scale_ = np.where(q75 - q25 == 0, 1.0, q75 - q25)
         self.recipe_ = ScalerRecipe(
@@ -455,7 +381,7 @@ class RobustScalerApprox(_BaseTransformer):
 
     def transform(self, data):
         check_fitted(self, "center_", "scale_")
-        array, squeezed = _as_2d_numeric(data)
+        array, squeezed = as_2d_numeric(data)
         if array.shape[1] != len(self.center_):
             raise BadInputError("Input feature count does not match the fitted scaler.")
         return _restore_shape((array - self.center_) / self.scale_, squeezed)
@@ -467,9 +393,9 @@ class MinMaxScaler(_BaseTransformer):
         self.feature_range = tuple(float(value) for value in feature_range)
 
     def fit(self, data, *, agg_client):
-        array, squeezed = _as_2d_numeric(data)
-        _require_rows(array)
-        _reject_infinite(array)
+        array, squeezed = as_2d_numeric(data)
+        require_rows(array)
+        reject_infinite(array)
         self.data_min_, self.data_max_ = _global_min_max(array, agg_client)
         self._scale = np.full_like(
             self.data_min_, self.feature_range[1] - self.feature_range[0], dtype=float
@@ -504,7 +430,7 @@ class MinMaxScaler(_BaseTransformer):
 
     def transform(self, data):
         check_fitted(self, "data_min_", "data_max_", "_scale")
-        array, squeezed = _as_2d_numeric(data)
+        array, squeezed = as_2d_numeric(data)
         if array.shape[1] != len(self.data_min_):
             raise BadInputError("Input feature count does not match the fitted scaler.")
         result = (array - self.data_min_) * self._scale + self.feature_range[0]
@@ -524,9 +450,9 @@ class MaxAbsScaler(_BaseTransformer):
         return scaler
 
     def fit(self, data, *, agg_client):
-        array, squeezed = _as_2d_numeric(data)
-        _require_rows(array)
-        _reject_infinite(array)
+        array, squeezed = as_2d_numeric(data)
+        require_rows(array)
+        reject_infinite(array)
         valid = ~np.isnan(array)
         local_max = np.max(np.where(valid, np.abs(array), 0.0), axis=0)
         self.max_abs_ = np.asarray(agg_client.max(local_max), dtype=float)
@@ -546,7 +472,7 @@ class MaxAbsScaler(_BaseTransformer):
 
     def transform(self, data):
         check_fitted(self, "scale_")
-        array, squeezed = _as_2d_numeric(data)
+        array, squeezed = as_2d_numeric(data)
         if array.shape[1] != len(self.scale_):
             raise BadInputError("Input feature count does not match the fitted scaler.")
         return _restore_shape(array / self.scale_, squeezed)
@@ -573,9 +499,9 @@ class Winsorizer(_BaseTransformer):
         return winsorizer
 
     def fit(self, data, *, agg_client):
-        array, squeezed = _as_2d_numeric(data)
-        _require_rows(array)
-        _reject_infinite(array)
+        array, squeezed = as_2d_numeric(data)
+        require_rows(array)
+        reject_infinite(array)
         self.lower_bounds_ = np.asarray(
             [
                 _percentile(array[:, i], self.lower_quantile, agg_client)
@@ -598,7 +524,7 @@ class Winsorizer(_BaseTransformer):
 
     def transform(self, data):
         check_fitted(self, "lower_bounds_", "upper_bounds_")
-        array, squeezed = _as_2d_numeric(data)
+        array, squeezed = as_2d_numeric(data)
         if array.shape[1] != len(self.lower_bounds_):
             raise BadInputError(
                 "Input feature count does not match the fitted winsorizer."
@@ -628,11 +554,11 @@ class OutlierDetector(_BaseTransformer):
         return detector
 
     def fit(self, data, *, agg_client):
-        array, squeezed = _as_2d_numeric(data)
-        _require_rows(array)
-        _reject_infinite(array)
+        array, squeezed = as_2d_numeric(data)
+        require_rows(array)
+        reject_infinite(array)
         if self.mode == "zscore":
-            self.location_, self.scale_ = _global_population_scale(array, agg_client)
+            self.location_, self.scale_ = global_population_scale(array, agg_client)
             parameters = np.column_stack((self.location_, self.scale_)).tolist()
         else:
             q25, self.location_, q75 = _global_quartiles(array, agg_client)
@@ -647,7 +573,7 @@ class OutlierDetector(_BaseTransformer):
 
     def transform(self, data):
         check_fitted(self, "location_", "scale_")
-        array, squeezed = _as_2d_numeric(data)
+        array, squeezed = as_2d_numeric(data)
         if array.shape[1] != len(self.location_):
             raise BadInputError(
                 "Input feature count does not match the fitted detector."
@@ -739,9 +665,9 @@ class YeoJohnsonTransformer(_BaseTransformer):
         return transformer
 
     def fit(self, data, *, agg_client):
-        array, squeezed = _as_2d_numeric(data)
-        _require_rows(array)
-        _reject_infinite(array)
+        array, squeezed = as_2d_numeric(data)
+        require_rows(array)
+        reject_infinite(array)
         check_common_configuration(
             [
                 array.shape[1],
@@ -850,8 +776,8 @@ class YeoJohnsonTransformer(_BaseTransformer):
 
     def transform(self, data):
         check_fitted(self, "lambdas_")
-        array, squeezed = _as_2d_numeric(data)
-        _reject_infinite(array)
+        array, squeezed = as_2d_numeric(data)
+        reject_infinite(array)
         if array.shape[1] != len(self.lambdas_):
             raise BadInputError(
                 "Input feature count does not match the fitted transformer."
@@ -932,9 +858,9 @@ class QuantileTransformerApprox(_BaseTransformer):
         return transformer
 
     def fit(self, data, *, agg_client):
-        array, squeezed = _as_2d_numeric(data)
-        _require_rows(array)
-        _reject_infinite(array)
+        array, squeezed = as_2d_numeric(data)
+        require_rows(array)
+        reject_infinite(array)
         check_common_configuration(
             [
                 array.shape[1],
@@ -993,8 +919,8 @@ class QuantileTransformerApprox(_BaseTransformer):
 
     def transform(self, data):
         check_fitted(self, "quantiles_", "references_")
-        array, squeezed = _as_2d_numeric(data)
-        _reject_infinite(array)
+        array, squeezed = as_2d_numeric(data)
+        reject_infinite(array)
         if array.shape[1] != self.quantiles_.shape[0]:
             raise BadInputError(
                 "Input feature count does not match the fitted transformer."
