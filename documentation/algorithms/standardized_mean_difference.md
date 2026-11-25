@@ -60,12 +60,12 @@ Groups are ordered deterministically by their string representation. Therefore, 
 
 ## Outputs
 
-The response contains `comparisons`, a list whose entries contain:
+A successful response contains `comparisons`, a list whose entries contain:
 
 - `group1`, `group2`: compared category labels;
 - `smd`: pooled-variance Cohen's d.
 
-When fewer than two eligible groups remain, `comparisons` is empty.
+When fewer than two eligible groups remain, the analysis fails with an insufficient-data error. `POST /analysis` returns HTTP 461, and RabbitMQ reports `insufficient_data`. Previously, this case returned a successful response with an empty `comparisons` list.
 
 ## Validation
 

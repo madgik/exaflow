@@ -1,9 +1,14 @@
 import json
+import logging
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
 import pytest
 
+from exaflow.algorithms.exareme3.statistics.standardized_mean_difference import (
+    StandardizedMeanDifference,
+)
 from exaflow.algorithms.exareme3.statistics.standardized_mean_difference import (
     local_step,
 )
@@ -13,6 +18,9 @@ from exaflow.algorithms.federated.statistics.standardized_mean_difference import
 from exaflow.algorithms.federated.statistics.standardized_mean_difference import (
     FederatedStandardizedMeanDifference,
 )
+from exaflow.algorithms.utils.inputdata_utils import Inputdata
+from exaflow.worker import config as worker_config
+from exaflow.worker_communication import InsufficientDataError
 from tests.standalone_tests.federated_algorithms.utils import FederatedAlgorithmTest
 
 # Test cases for group SMD
@@ -312,3 +320,58 @@ def test_exareme3_result_contains_only_json_safe_pairwise_smd_values():
     assert comparisons[0]["group2"] == "B"
     assert isinstance(comparisons[0]["smd"], float)
     json.dumps(comparisons)
+
+
+@pytest.fixture
+def run_exareme3_smd(monkeypatch):
+    monkeypatch.setattr(worker_config.privacy, "minimum_row_count", 3)
+
+    def run(data):
+        def run_udf(func, add_dataset_variable, kw_args):
+            return [func(_ProductionShapedAggregationClient(), data, **kw_args)]
+
+        algorithm = StandardizedMeanDifference(
+            engine=SimpleNamespace(run_udf=run_udf),
+            logger=logging.getLogger(__name__),
+            inputdata=Inputdata(
+                data_model="dm:1", datasets=["ds"], variables=["group", "value"]
+            ),
+            x=["group"],
+            y=["value"],
+        )
+        return algorithm.run()
+
+    return run
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        {"group": ["A", "A", "A"], "value": [1.0, 2.0, 3.0]},
+        {
+            "group": ["A", "A", "A", "B", "B", "B"],
+            "value": [1.0, 2.0, 3.0, 4.0, 5.0, np.nan],
+        },
+    ],
+    ids=["single_group", "insufficient_after_excluding_missing_outcome"],
+)
+def test_exareme3_smd_raises_when_no_pair_is_eligible(run_exareme3_smd, data):
+    with pytest.raises(InsufficientDataError, match="at least two groups"):
+        run_exareme3_smd(pd.DataFrame(data))
+
+
+def test_exareme3_smd_returns_eligible_pair_when_another_group_is_too_small(
+    run_exareme3_smd,
+):
+    result = run_exareme3_smd(
+        pd.DataFrame(
+            {
+                "group": ["A", "A", "A", "B", "B", "B", "C", "C"],
+                "value": np.arange(1.0, 9.0),
+            }
+        )
+    )
+
+    assert result.model_dump() == {
+        "comparisons": [{"group1": "A", "group2": "B", "smd": -3.0}]
+    }
