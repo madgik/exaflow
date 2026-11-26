@@ -277,11 +277,10 @@ uv run python .agents/skills/exaflow-algorithm-validate/scripts/validate_algorit
 
 Enable the optional external-broker transport through the existing deployment
 configuration and privately supplied `RABBITMQ_URL`. Configuration, Helm Secret
-wiring, producer examples, and test-broker provisioning are documented in
+wiring, producer instructions, and test-broker provisioning are documented in
 `documentation/rabbitmq-analysis.md`.
 
 ```bash
-uv run python examples/rabbitmq_analysis.py analysis-request.json
 uv run pytest -q tests/standalone_tests/controller/rabbitmq
 ```
 
