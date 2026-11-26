@@ -222,18 +222,15 @@ Broker channel failures include bounded, sanitized diagnostic text so queue
 declaration mismatches can be diagnosed. Connection errors and publication errors
 that can contain URLs or message bodies log only their error type.
 
-## Producer example
+## Submitting an analysis
 
-With `RABBITMQ_URL` supplied privately and controller consumption enabled:
-
-```bash
-uv run python examples/rabbitmq_analysis.py analysis-request.json
-```
-
-The example declares a durable reply queue per logical request, confirms request
-publication, prints the matching reply, and acknowledges it. Supply a stable body
-`request_id` when retrying after a client interruption. Idle example reply queues
-expire after two days; result messages expire after one day.
+Connect your AMQP client using the privately supplied `RABBITMQ_URL` after
+controller consumption is enabled. Provision a durable reply queue before
+publishing the request with publisher confirms and mandatory routing. Set
+`reply_to` to the queue name and use the same value for the JSON body's
+`request_id` and the AMQP `correlation_id`. Acknowledge the matching reply
+after processing it. If the client disconnects, reuse the same request ID and
+reply queue when retrying the same logical request.
 
 ## Testing and rollback
 
