@@ -1,86 +1,105 @@
-﻿## Principal Component Analysis (FederatedPCA)
+# Principal component analysis
 
-### Name
+Implementation: [decomposition/pca.py](../decomposition/pca.py).
 
-**Principal Component Analysis (FederatedPCA)**
+Principal component analysis computes orthogonal directions that summarize
+variance in selected numerical variables. The implementation standardizes
+variables using aggregated means and sample standard deviations, then performs an
+eigendecomposition of the aggregated covariance matrix.
 
-### Type
+## Library interface
 
-**Dimensionality Reduction** (unsupervised)
+`FederatedPCA(agg_client, copy=False)` supports `fit(X)`, `transform(X)`, and `fit_transform(X)`. `copy` is keyword-only. `fit` returns the fitted estimator, whose `explained_variance_` and `components_` contain eigenvalues and eigenvectors; `mean_`, `scale_`, and `n_samples_seen_` retain fitting statistics used when transforming new observations.
 
-### Goal (Why we need it)
+## Statistical method
 
-PCA transforms high-dimensional data into a lower-dimensional representation by finding **principal components** (directions of maximum variance).
-In a federated setting, we want the *same* principal components and explained variance as centralized PCA **without sharing raw data**, using only aggregated moments (mean, variance, covariance via Gram matrix).
+After centering and scaling each feature, PCA solves:
 
-### When to use
+```text
+cov(X_standardized) v_j = lambda_j v_j
+```
 
-Use PCA when:
+Eigenvectors `v_j` are component directions, and eigenvalues `lambda_j`
+describe variance explained by each component.
 
-- you need **dimensionality reduction** to reduce feature space
-- you want to remove multicollinearity
-- you want to visualize high-dimensional data (e.g., first 2-3 components)
-- features are numerical and ideally normalized
-- you can accept linear combinations of features
+## Federated computation
 
-### When NOT to use
+The decomposition is computed without sharing row-level data. Sites contribute
+moments needed for global standardization and the standardized Gram matrix.
 
-Avoid / be careful when:
+### Aggregated quantities
 
-- features are categorical without proper encoding
-- features have very different scales and are not standardized (PCA is scale-sensitive)
-- you need interpretable features (principal components are linear combinations)
-- non-linear relationships dominate (consider kernel PCA or other methods)
-- sparse data where standardization amplifies noise
-- privacy is critical beyond aggregate statistics (components can leak distribution info)
+| Quantity | Purpose |
+|---|---|
+| Number of observations | Compute means, sample variances, and covariance denominator. |
+| Feature sums | Compute global means. |
+| Feature sums of squares | Compute global sample variances. |
+| Standardized Gram matrix | Compute the covariance matrix for eigendecomposition. |
 
-______________________________________________________________________
+### Federated flow
 
-### Inputs / Outputs
+```text
+Input:
+    X: numerical feature matrix
 
-| Item | Description |
-| -------------- | ---------------------------------------------------------------- |
-| **X** | Local data matrix, shape `(n_local, p)` |
-| **copy** | Whether to copy data before centering/scaling (default: `False`) |
-| **agg_client** | Federated aggregation client |
+Step 1:
+    At each site, compute:
+        n
+        sum of each feature
+        sum of squares for each feature
 
-**Outputs**
+Step 2:
+    Aggregate n, sums, and sums of squares.
 
-- `components_`: principal components (eigenvectors), shape `(p, p)`
-- `explained_variance_`: variance explained by each component
-- `mean_`: feature means used for centering
-- `scale_`: feature standard deviations used for scaling
-- `n_samples_seen_`: total number of observations across all clients
-- `transform(X)`: project data onto principal components
-- `fit_transform(X)`: fit and transform in one step
+Step 3:
+    Compute global means and sample standard deviations.
 
-`fit_transform(X)` projects the standardized working array produced during fitting,
-so centering and scaling are applied once. With `copy=False`, fitting may overwrite
-writable floating-point input; use `copy=True` to preserve it. Read-only arrays are
-copied when needed. When fitting and transforming the same data with `copy=False`,
-use `fit_transform(X)` rather than `fit(X).transform(X)`, which would standardize
-an already modified array again.
+Step 4:
+    At each site:
+        center and scale X using global statistics
+        compute the local standardized Gram matrix
 
-### Key Differences from scikit-learn
+Step 5:
+    Aggregate the Gram matrix.
 
-| Aspect | scikit-learn | MIP Federated Implementation |
-| ---------------------- | --------------------- | ----------------------------- |
-| Data access | Full centralized data | Data remains local per client |
-| Algorithm | SVD or eigendecomp | Eigendecomposition of cov |
-| Covariance computation | Direct from X | Via aggregated Gram matrix |
-| Centering | Local computation | Federated mean |
-| Scaling | Local computation | Federated std dev |
-| Performance | CPU/memory bound | Network + aggregation bound |
-| n_components parameter | Supports selection | Returns all components |
+Step 6:
+    Compute covariance = Gram / (n - 1).
 
-### Approximation vs Exactness
+Step 7:
+    Eigendecompose covariance and sort eigenvalues descending.
 
-| Component | scikit-learn | MIP |
-| -------------------------- | ------------ | ---------------- |
-| Mean (centering) | Exact | Exact |
-| Variance (scaling) | Exact | Exact |
-| Covariance matrix | Exact | Exact |
-| Eigenvalues | Exact | Exact |
-| Eigenvectors (components) | Exact | Exact |
-| Explained variance | Exact | Exact |
-| Transformation | Exact | Exact |
+Output:
+    observation count, eigenvalues, and eigenvectors
+```
+
+## Numerical decisions
+
+- PCA is covariance-based.
+- Variables are standardized before eigendecomposition.
+- Sample variance uses denominator `n - 1`.
+- Negative variances from round-off are clipped to zero.
+- Zero standard deviations are replaced by `1.0` during scaling to avoid
+  division by zero.
+- Eigenvectors are returned as rows ordered by descending eigenvalue.
+- Component signs are anchored to the first loading tied for largest absolute magnitude, so repeated fitting is deterministic for well-separated eigenvalues.
+- With `copy=False`, a writable floating-point input can be standardized in place; use `copy=True` to retain the original array.
+
+## Reference comparison
+
+Standalone tests compare against scikit-learn PCA pipelines:
+
+```text
+StandardScaler()
+PCA(svd_solver="full")
+```
+
+Reference behavior is aligned with scikit-learn PCA after standardization. The
+implementation uses sample variance (`ddof=1`) for scaling, while scikit-learn's
+`StandardScaler` uses population variance (`ddof=0`), so tests account for this
+difference.
+
+## Limitations
+
+- Inputs must be numerical.
+- PCA is sensitive to scaling and outliers.
+- `transform` returns local component scores; repeated or nearly equal eigenvalues can still allow rotations within their eigenspace.

@@ -1,79 +1,78 @@
-﻿## Categorical Naive Bayes (FederatedCategoricalNB)
+# Categorical Naive Bayes
 
-### Name
+Implementation: [naive_bayes/naive_bayes_categorical.py](../naive_bayes/naive_bayes_categorical.py).
 
-**Categorical Naive Bayes (FederatedCategoricalNB)**
+Categorical Naive Bayes classifies observations with nominal features by
+estimating class-conditional category probabilities.
 
-### Type
+## Library interface
 
-**Probabilistic Classifier** (supervised classification)
+`FederatedCategoricalNB(y_var=..., x_vars=..., categories=...).fit(X, y, *, agg_client)` accepts ordinal-encoded features with aligned category lists. The result exposes `labels`, `class_count`, `category_count`, `class_log_prior`, `category_log_prob`, `nobs`, and prediction methods. Use the separate [ordinal encoder](ordinal_encoder.md) to prepare categories.
 
-### Goal (Why we need it)
+## Statistical method
 
-Categorical Naive Bayes is designed for **discrete/categorical features**. It learns the frequency of each category-value combination within each class using **smoothed categorical distributions**.
-In a federated setting, we want the *same* class priors and category probabilities as centralized Categorical NB **without sharing raw data**, using only aggregated category counts per class.
+For each class `c` and feature category `v`, the model estimates:
 
-### When to use
+```text
+P(x_j = v | y = c)
+```
 
-Use Categorical Naive Bayes when:
+Prediction chooses:
 
-* you need **multi-class classification** with categorical features
-* features are **discrete/categorical** (not continuous)
-* categorical features are ordinal-encoded or integer-coded
-* you have small to moderate sample sizes
-* features are (approximately) conditionally independent given the class
+```text
+argmax_c P(y = c) product_j P(x_j | y = c)
+```
 
-### When NOT to use
+## Federated computation
 
-Avoid / be careful when:
+The model is fitted without sharing row-level data. Features are ordinal-encoded
+with aligned category order, and each site contributes class/category counts.
 
-* features are continuous (use Gaussian Naive Bayes instead)
-* features are highly correlated (violates independence assumption)
-* categories are not properly encoded as integers
-* you have many rare categories (sparse counts)
-* privacy is critical beyond aggregate statistics
+### Aggregated quantities
 
----
+| Quantity | Purpose |
+|---|---|
+| Class labels | Align class rows. |
+| Feature categories | Align category columns for each feature. |
+| Class counts | Estimate class priors. |
+| Class-feature-category counts | Estimate class-conditional likelihoods. |
 
-### Inputs / Outputs
+### Federated flow
 
-| Item             | Description                                                      |
-| ---------------- | ---------------------------------------------------------------- |
-| **X**            | Encoded feature matrix (integer codes), shape `(n_local, p)`     |
-| **y**            | Class labels, shape `(n_local,)`                                 |
-| **y_var**        | Name of the target variable                                      |
-| **x_vars**       | List of categorical feature variable names                       |
-| **categories**   | Dict mapping variable names to ordered category lists            |
-| **alpha**        | Laplace smoothing parameter (default: 1.0)                       |
-| **agg_client**   | Federated aggregation client                                     |
+```text
+Receive ordinal-encoded X, y, and aligned category lists.
+Discover and align global class labels.
+Count local observations per class and feature/category within each class.
+Sum class and category counts.
+Apply additive smoothing (alpha = 1) and compute log probabilities.
+At prediction time, ignore unknown code -1 and choose the largest posterior.
+```
 
-**Outputs (FederatedCategoricalNBResults)**
+## Numerical decisions
 
-* `class_count`: number of samples per class
-* `category_count`: dict of category counts per class per feature
-* `class_log_prior`: log prior probabilities for each class
-* `category_log_prob`: dict of log probabilities per category per class
-* `labels`: list of class labels
-* `predict(X)`: predicted class labels
+- Additive smoothing uses `alpha = 1.0`.
+- Unknown encoded categories are represented as `-1` and ignored during
+  prediction.
+- Class labels are sorted after aggregation.
+- Feature categories come from the aligned encoder/categories supplied to the
+  estimator.
+- Probabilities are stored in log form for fitted parameters.
 
-### Key Differences from scikit-learn
+## Reference comparison
 
-| Aspect                | scikit-learn CategoricalNB | MIP Federated Implementation  |
-| --------------------- | -------------------------- | ----------------------------- |
-| Data access           | Full centralized data      | Data remains local per client |
-| Categories discovery  | Auto-discovered            | Pre-specified via metadata    |
-| Sufficient statistics | Local computation          | Federated category counts     |
-| Smoothing             | Laplace (alpha)            | Laplace (alpha)               |
-| Unknown categories    | Ignored (treated as 0)     | Ignored (treated as 1)        |
-| Performance           | CPU/memory bound           | Network + aggregation bound   |
+Standalone tests compare behavior with:
 
-### Approximation vs Exactness
+```text
+sklearn.naive_bayes.CategoricalNB(alpha=1.0)
+```
 
-| Component                 | scikit-learn | MIP   |
-| ------------------------- | ------------ | ----- |
-| Class priors              | Exact        | Exact |
-| Category frequencies      | Exact        | Exact |
-| Laplace smoothing         | Exact        | Exact |
-| Log-probability estimates | Exact        | Exact |
-| Unknown category handling | Exact        | Exact |
+Reference behavior is aligned with scikit-learn categorical Naive Bayes using
+additive smoothing.
 
+## Limitations
+
+- Features must be categorical.
+- The method assumes conditional independence of features given the class.
+- Unknown categories at prediction time are ignored rather than assigned a
+  learned probability.
+- Category ordering must remain aligned between fitting and prediction.

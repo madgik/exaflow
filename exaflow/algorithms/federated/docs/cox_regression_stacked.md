@@ -1,71 +1,83 @@
-## Cox Regression Stacked (FederatedStackedCoxRegression)
+# Stacked survival regression
 
-### Name
+Implementation: [linear_model/cox_regression_stacked.py](../linear_model/cox_regression_stacked.py).
 
-**Cox Regression Stacked (FederatedStackedCoxRegression)**
+Stacked Cox regression approximates time-to-event modeling by expanding survival
+data into risk-set rows and fitting a logistic regression model with time-bin
+indicators. It reports covariate coefficients, approximate hazard ratios, and
+classification-style model summaries from the stacked fit.
 
-### Type
+## Library interface
 
-**Survival model** implemented as a federated stacked logistic-regression
-estimator.
+`FederatedStackedCoxRegression(time_grid_strategy="distinct_event_times", n_time_bins=10).fit(X, y, *, agg_client, feature_names=None)` takes numeric features and a two-column target: follow-up time and binary event indicator. Constructor settings are keyword-only. Results contain covariate coefficients and approximate hazard ratios; nuisance time-bin coefficients are not covariate effects.
 
-### Goal
+## Statistical method
 
-Approximate Cox proportional hazards regression in a federated setting without
-sharing raw patient-level data. The model treats time-bin effects as nuisance
-baseline-hazard terms and reports only the covariate coefficients and their
-derived hazard ratios.
+The method uses survival stacking. For each selected time point or interval, the
+risk set is expanded into binary rows indicating whether an event occurred at
+that time. A logistic model is then fitted:
 
-### When to use
+```text
+logit(P(event at time bin | at risk, x)) =
+    time_bin_effect + x beta
+```
 
-Use this model when:
+The covariate coefficients are interpreted as approximate log hazard ratios.
 
-- you need interpretable hazard-ratio style coefficients in federated survival analysis
-- data are right-censored and split across workers
-- baseline covariates are sufficient for the first analysis pass
-- a Cox-like approximation is acceptable
+## Federated computation
 
-### When to be careful
+The model is computed without sharing row-level data. Each site constructs its
+own stacked risk-set rows after a shared time grid is determined. The stacked
+logistic regression then uses aggregated gradients, Hessians, and
+log-likelihoods.
 
-Be careful when:
+### Aggregated quantities
 
-- you require exact classical Cox partial-likelihood fitting
-- the event indicator is not binary and `positive_class` is omitted
-- there are too few observed events
-- the chosen time grid is too coarse for the event process
-- time-varying covariates are required
+| Quantity | Purpose |
+|---|---|
+| Maximum follow-up time | Build uniform time bins. |
+| Union of observed event times | Build distinct-event-time grids. |
+| Observation and event counts | Validate identifiability and report sample size. |
+| Number of stacked rows | Report expanded design size. |
+| Logistic gradient vector | Update stacked model coefficients. |
+| Logistic Hessian matrix | Compute Newton updates and standard errors. |
+| Logistic log-likelihood | Compute fit statistics and pseudo R-squared values. |
 
-### Inputs / Outputs
+### Federated flow
 
-| Item | Description |
-| --- | --- |
-| `X` | Local covariate matrix after federated categorical encoding |
-| `times` | Positive follow-up times |
-| `events` | Binary event indicators |
-| `time_grid_strategy` | `distinct_event_times` or `uniform` |
-| `n_time_bins` | Uniform-bin count when that strategy is selected |
-| `agg_client` | Federated aggregation client |
+```text
+Receive numeric X and y[:, 0] = time, y[:, 1] = binary event.
+Validate survival inputs and aggregate event/sample requirements.
+Build a common grid from distinct event times or uniform intervals.
+Expand each local observation into eligible risk-set time rows.
+Include time-bin indicators as nuisance baseline terms.
+Fit the expanded binary model using the shared logistic estimator.
+Return covariate effects, approximate hazard ratios, and grid diagnostics.
+```
 
-Outputs include:
+## Numerical decisions
 
-- `params`: Cox-like log-hazard ratio coefficients
-- `hazard_ratios`
-- `std_err`, `z_scores`, `pvalues`
-- coefficient and hazard-ratio confidence intervals
-- stacked-model fit statistics (`ll`, `aic`, `bic`, pseudo R²)
-- `n_obs`, `n_events`, `n_stacked_rows`
+- The default time grid uses distinct observed event times.
+- Uniform time bins start at zero and end above the maximum follow-up time.
+- The number of time bins is capped when needed for identifiability.
+- Time-bin indicator coefficients are used internally and not reported as
+  covariate effects.
+- This method is not identical to Cox partial likelihood.
 
-### Implementation Notes
+## Reference comparison
 
-- Global distinct event times are negotiated with `agg_client.union(...)`.
-- Uniform grids are available as an explicit fallback mode.
-- Time-bin columns are one-hot encoded and the logistic fit runs with
-  `fit_intercept=False` to avoid redundant intercept terms.
-- The reported `df_resid`, `ll`, `aic`, and `bic` come from the stacked logistic
-  model rather than a classical Cox partial likelihood.
+Standalone Cox tests include comparisons with a centralized
+`statsmodels.duration.hazard_regression.PHReg` reference for Cox methodology.
+The stacked model should be described as methodologically related to
+discrete-time survival stacking, not exactly equivalent to `PHReg`.
 
-### Exactness
+## Limitations
 
-This implementation is an approximation to Cox proportional hazards regression
-through survival stacking. It is not an exact distributed partial-likelihood
-solver.
+- Follow-up times must be strictly positive.
+- At least one observed event is required.
+- More observed events than covariates are required for an identifiable stacked
+  logistic model.
+- Results depend on the chosen time grid.
+- Time-varying covariates are not supported.
+- Hazard ratios are approximate because the model is fitted through survival
+  stacking rather than exact Cox partial likelihood.

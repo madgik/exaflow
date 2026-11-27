@@ -182,6 +182,7 @@ Before editing, read:
 - `AGENTS.md`
 - `documentation/new-algorithm-setup.md`
 - Relevant `.agents/skills/*/SKILL.md`
+- The [library guide](../../exaflow/algorithms/federated/AGENTS.md) when changing the core
 - Nearby algorithm wrappers, federated core modules, tests, and docs
 
 Algorithm:

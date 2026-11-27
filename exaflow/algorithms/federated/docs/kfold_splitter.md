@@ -1,63 +1,25 @@
-﻿## K-Fold Splitter (FederatedKFoldSplitter)
+# K-fold splitting
 
-### Name
+Implementation: [model_selection/cross_validation/splitter_kfold.py](../model_selection/cross_validation/splitter_kfold.py).
 
-**K-Fold Splitter (FederatedKFoldSplitter)**
+`FederatedKFoldSplitter(n_splits, *, shuffle=False, random_state=None)` uses
+scikit-learn's `KFold` separately on each participant's local rows. The default
+preserves local row order. With shuffling, use a valid shared seed for
+reproducibility.
 
-### Type
+`split(X, y)` yields `(X_train, y_train, X_test, y_test)`.
+`split_indices(n_rows)` yields `(train_indices, test_indices)`. Input row
+counts must match, `n_splits >= 2`, and every local partition must contain at
+least `n_splits` rows; otherwise `INSUFFICIENT_FOLD_SAMPLES` is raised.
+Invalid effective splitter settings use `KFOLD_SETTINGS_INVALID`.
 
-**Data Splitter** (cross-validation utility)
+## Behavior and limitations
 
-### Goal (Why we need it)
+No aggregation is required for splitting. Corresponding local fold indices
+are combined by the [cross-validator](cross_validator.md), not constructed
+from one global concatenated row order. Centralized parity therefore requires
+matching that distributed fold membership.
 
-K-Fold splitting divides data into **k equal-sized folds**, using k-1 folds for training and 1 for testing in each iteration.
-In a federated setting, splits are computed locally on each client separately, ensuring deterministic fold assignment without data sharing.
-
-### When to use
-
-Use K-Fold Splitter when:
-
-* you want **standard k-fold cross-validation**
-* data is i.i.d. (independent and identically distributed)
-* no temporal or spatial dependencies exist
-* you want reproducible splits (via random_state)
-
-### When NOT to use
-
-Avoid / be careful when:
-
-* data has temporal order (use time-series or stratified splits)
-* class imbalance is severe (use stratified k-fold)
-* data size is not divisible by k (some folds will differ slightly in size)
-
----
-
-### Inputs / Outputs
-
-| Item             | Description                                              |
-| ---------------- | -------------------------------------------------------- |
-| **n_splits**     | Number of folds (k)                                      |
-| **shuffle**      | Whether to shuffle before splitting (default: False)     |
-| **random_state** | Random seed for reproducibility (if shuffle=True)        |
-
-**Outputs**
-
-* `split(X, y)`: yields (X_train, y_train, X_test, y_test) for each fold
-* `split_indices(n)`: yields (train_indices, test_indices) for each fold
-
-### Key Differences from scikit-learn
-
-| Aspect      | sklearn KFold         | MIP Federated Implementation |
-| ----------- | --------------------- | ---------------------------- |
-| Split logic | Same                  | Same                         |
-| Local/Global| Centralized splitting | Local splitting per client   |
-
-### Approximation vs Exactness
-
-| Component   | sklearn | MIP   |
-| ----------- | ------- | ----- |
-| Fold splits | Exact   | Exact |
-
----
-
-
+Folds can differ by one row when counts are not divisible by `n_splits`.
+Splits are not stratified, group-aware, or time-aware. The array iterator uses
+reusable buffers; consume a fold before advancing or copy it if retaining it.

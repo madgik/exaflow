@@ -1,4 +1,4 @@
-﻿## Ordinal Encoder (FederatedOrdinalEncoder)
+## Ordinal Encoder (FederatedOrdinalEncoder)
 
 Implementation: [feature_engineering/ordinal_encoder.py](../feature_engineering/ordinal_encoder.py).
 
@@ -56,7 +56,7 @@ ______________________________________________________________________
 
 ### Key Differences from scikit-learn
 
-| Aspect | scikit-learn OrdinalEncoder | MIP Federated Implementation |
+| Aspect | scikit-learn OrdinalEncoder | Federated implementation |
 | ------------------- | ----------------------------- | ----------------------------- |
 | Data access | Full centralized data | Data remains local per client |
 | Category discovery | Can learn from data | Must pre-specify via metadata |
@@ -66,7 +66,7 @@ ______________________________________________________________________
 
 ### Approximation vs Exactness
 
-| Component | scikit-learn | MIP |
+| Component | scikit-learn | Library |
 | ---------------- | ------------ | ------------------------ |
 | Encoding | Exact | Exact |
 | Category order | Exact | Exact (pre-specified) |

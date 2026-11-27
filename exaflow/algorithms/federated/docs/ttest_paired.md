@@ -1,72 +1,104 @@
-﻿## 6. ttest_paired.py - FederatedTTestPaired
+# Paired-samples t-test
 
-### Name
+Implementation: [statistics/ttest_paired.py](../statistics/ttest_paired.py).
 
-**Paired T-Test (FederatedTTestPaired)**
+The paired t-test compares two related numerical measurements by testing whether
+the mean paired difference is zero. It returns the t statistic, p-value,
+confidence interval, standard error, and Cohen's d for the paired differences.
 
-### Type
+## Library interface
 
-**Statistical Test** (paired comparison)
+`FederatedTTestPaired(aggregator).compute(sample_x=..., sample_y=..., alpha=..., alternative=...)` requires aligned paired numerical arrays. The result dictionary contains the t statistic, degrees of freedom, p-value, mean paired difference, standard error, confidence bounds, and Cohen's d. `alternative` is `two-sided`, `greater`, or `less`.
 
-### Goal (Why we need it)
+## Statistical method
 
-Compares **means of two related/matched groups** (e.g., before/after measurements).
-In a federated setting, we want the *same* t-statistic and p-value as centralized computation **without sharing raw data**, using only aggregated statistics on the differences.
+For paired measurements `(a_i, b_i)`, define:
 
-### When to use
+```text
+d_i = a_i - b_i
+```
 
-Use Paired T-Test when:
+The null hypothesis is:
 
-* you have **matched pairs** or repeated measurements
-* the outcome variable is continuous
-* differences are approximately normally distributed
+```text
+H0: mean(d) = 0
+```
 
-### When NOT to use
+The test statistic is:
 
-Avoid / be careful when:
+```text
+t = mean(d) / (s_d / sqrt(n))
+df = n - 1
+```
 
-* groups are independent (use independent t-test)
-* pairs are not properly matched
-* differences are highly non-normal with small sample
+## Federated computation
 
----
+The test is computed without sharing row-level data. Each site contributes
+sufficient statistics for the paired differences.
 
-### Inputs / Outputs
+### Aggregated quantities
 
-| Item            | Description                            |
-| --------------- | -------------------------------------- |
-| **data**        | DataFrame with paired measurements     |
-| **value1_var**  | Name of first variable                 |
-| **value2_var**  | Name of second variable                |
-| **alpha**       | Significance level                     |
-| **alternative** | "two-sided", "greater", or "less"      |
-| **aggregator**  | `NumpyAggregator` instance             |
+| Quantity | Purpose |
+|---|---|
+| Number of pairs | Compute degrees of freedom and standard error. |
+| Sum of first and second measurements | Compute measurement means. |
+| Sum of paired differences | Compute mean difference. |
+| Sum of squared paired differences | Compute standard deviation of differences. |
+| Sum of squared first and second measurements | Compute supporting summary statistics. |
 
-**Outputs (dict)**
+### Federated flow
 
-* `t_stat`: t-statistic
-* `df`: degrees of freedom
-* `p_value`: p-value
-* `mean_diff`: mean difference
-* `ci_lower`, `ci_upper`: confidence interval bounds
+```text
+Input:
+    x: first measurement
+    y: second measurement
+    alpha: significance level
+    alternative: two-sided, less, or greater
 
-### Key Differences from scipy.stats
+Step 1:
+    At each site:
+        keep complete pairs
+        compute paired differences
+        compute count, sums, and squared sums
 
-| Aspect      | scipy.stats.ttest_rel | MIP Federated Implementation  |
-| ----------- | --------------------- | ----------------------------- |
-| Data access | Centralized           | Data remains local per client |
-| T-statistic | Exact                 | Exact                         |
-| P-values    | Exact                 | Exact                         |
+Step 2:
+    Aggregate paired-difference sufficient statistics.
 
-### Approximation vs Exactness
+Step 3:
+    Validate that more than one pair is available.
 
-| Component        | scipy.stats | MIP   |
-| ---------------- | ----------- | ----- |
-| Mean difference  | Exact       | Exact |
-| Std of diff      | Exact       | Exact |
-| T-statistic      | Exact       | Exact |
-| P-value          | Exact       | Exact |
+Step 4:
+    Compute mean difference, standard deviation of differences,
+    standard error, t statistic, p-value, confidence interval, and Cohen's d.
 
----
+Output:
+    paired t-test summary
+```
 
+## Numerical decisions
 
+- The sign of the reported mean difference is `x - y`.
+- One-sided alternatives replace one confidence bound with infinity.
+- Cohen's d is computed as mean paired difference divided by the standard
+  deviation of paired differences.
+
+## Reference comparison
+
+Standalone tests compare the result, for every alternative, with
+`statsmodels.stats.weightstats` applied to the paired differences:
+
+```text
+DescrStatsW(sample_x - sample_y).ttest_mean(value=0, alternative=alternative)
+DescrStatsW(sample_x - sample_y).tconfint_mean(alpha=alpha, alternative=alternative)
+```
+
+Reference behavior is aligned with a paired t-test on the differences, with
+additional effect-size reporting.
+
+## Limitations
+
+- Both measurements must be numerical.
+- Measurements must be paired one-to-one.
+- At least two complete pairs are required.
+- Paired differences are assumed approximately normally distributed.
+- Observed pairs are assumed independent of one another.

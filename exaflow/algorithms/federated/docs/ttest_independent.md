@@ -1,81 +1,100 @@
-﻿## 4. ttest_independent.py - FederatedTTestIndependent
+# Independent-samples t-test
 
-### Name
+Implementation: [statistics/ttest_independent.py](../statistics/ttest_independent.py).
 
-**Independent T-Test (FederatedTTestIndependent)**
+The independent t-test compares the mean of a numerical variable between two
+independent groups. This implementation uses the pooled-variance Student t-test
+and reports the t statistic, p-value, confidence interval, standard error, and
+Cohen's d.
 
-### Type
+## Library interface
 
-**Statistical Test** (two-sample comparison)
+`FederatedTTestIndependent(aggregator).compute(data=..., group_var=..., value_var=..., group_a=..., group_b=..., alpha=..., alternative=...)` selects two groups from a dataframe. The result dictionary contains the t statistic, degrees of freedom, p-value, mean difference, standard error, confidence bounds, and Cohen's d. `alternative` is `two-sided`, `greater`, or `less`.
 
-### Goal (Why we need it)
+## Statistical method
 
-Compares **means of two independent groups** under the assumption of equal (pooled) variances.
-In a federated setting, we want the *same* t-statistic, p-value, and Cohen's d as centralized computation **without sharing raw data**, using only aggregated sums, sums of squares, and counts per group.
+The null hypothesis is:
 
-### When to use
+```text
+H0: mean_A = mean_B
+```
 
-Use Independent T-Test when:
+With pooled variance:
 
-* you need to compare **two independent groups**
-* the outcome variable is continuous
-* groups are approximately normally distributed (or large sample)
-* variances are approximately equal (pooled variance assumption)
+```text
+s_p^2 = ((n_A - 1)s_A^2 + (n_B - 1)s_B^2) / (n_A + n_B - 2)
+t = (mean_A - mean_B) / sqrt(s_p^2 * (1 / n_A + 1 / n_B))
+df = n_A + n_B - 2
+```
 
-### When NOT to use
+## Federated computation
 
-Avoid / be careful when:
+The test is computed without sharing row-level data. Each site contributes
+group-specific counts, sums, and sums of squares for the selected categories.
 
-* groups are paired/matched (use paired t-test)
-* variances are very unequal (consider Welch's t-test)
-* distributions are highly non-normal with small samples
-* outcome is not continuous
+### Aggregated quantities
 
----
+| Quantity | Purpose |
+|---|---|
+| Count for group A and group B | Compute means, standard error, and degrees of freedom. |
+| Sum for each group | Compute group means. |
+| Sum of squares for each group | Compute group variances and pooled variance. |
 
-### Inputs / Outputs
+### Federated flow
 
-| Item            | Description                                  |
-| --------------- | -------------------------------------------- |
-| **data**        | DataFrame with grouping variable and outcome |
-| **group_var**   | Name of grouping variable                    |
-| **value_var**   | Name of continuous outcome variable          |
-| **group_a**     | Value identifying group A                    |
-| **group_b**     | Value identifying group B                    |
-| **alpha**       | Significance level                           |
-| **alternative** | "two-sided", "greater", or "less"            |
-| **aggregator**  | `NumpyAggregator` instance                   |
+```text
+Input:
+    y: numerical outcome
+    x: grouping variable
+    groupA, groupB: selected categories
+    alpha: significance level
+    alternative: two-sided, less, or greater
 
-**Outputs (dict)**
+Step 1:
+    At each site:
+        select observations in groupA and groupB
+        compute count, sum, and sum of squares for each group
 
-* `t_stat`: t-statistic
-* `df`: degrees of freedom
-* `p_value`: p-value for specified alternative
-* `mean_diff`: difference in means (group_a - group_b)
-* `se_diff`: standard error of difference
-* `ci_lower`, `ci_upper`: confidence interval bounds
-* `cohens_d`: effect size (Cohen's d)
+Step 2:
+    Aggregate group counts, sums, and sums of squares.
 
-### Key Differences from scipy.stats
+Step 3:
+    Validate that both groups have observations and enough total degrees of freedom.
 
-| Aspect          | scipy.stats.ttest_ind | MIP Federated Implementation  |
-| --------------- | --------------------- | ----------------------------- |
-| Data access     | Centralized           | Data remains local per client |
-| Variance        | Pooled or Welch       | Pooled only                   |
-| T-statistic     | Exact                 | Exact                         |
-| P-values        | Exact                 | Exact                         |
+Step 4:
+    Compute group means, pooled variance, standard error, t statistic,
+    p-value, confidence interval, and Cohen's d.
 
-### Approximation vs Exactness
+Output:
+    independent t-test summary
+```
 
-| Component       | scipy.stats | MIP   |
-| --------------- | ----------- | ----- |
-| Mean per group  | Exact       | Exact |
-| SD per group    | Exact       | Exact |
-| Pooled variance | Exact       | Exact |
-| T-statistic     | Exact       | Exact |
-| P-value         | Exact       | Exact |
-| Cohen's d       | Exact       | Exact |
+## Numerical decisions
 
----
+- The implementation uses pooled variance, equivalent to an equal-variance
+  independent t-test.
+- The selected `group_a` and `group_b` define the sign of the mean difference.
+- One-sided alternatives replace one confidence bound with infinity.
+- Cohen's d is computed from the pooled standard deviation.
 
+## Reference comparison
 
+Standalone tests compare the result, for every alternative, with
+`statsmodels.stats.weightstats`:
+
+```text
+CompareMeans(DescrStatsW(sample_a), DescrStatsW(sample_b))
+    .ttest_ind(usevar="pooled", alternative=alternative)
+CompareMeans(DescrStatsW(sample_a), DescrStatsW(sample_b))
+    .tconfint_diff(alpha=alpha, alternative=alternative, usevar="pooled")
+```
+
+Reference behavior is aligned with an equal-variance independent t-test.
+
+## Limitations
+
+- The outcome must be numerical.
+- Exactly two selected groups are compared.
+- The two groups are assumed independent.
+- The pooled-variance test assumes comparable group variances.
+- The method does not implement Welch's unequal-variance t-test.

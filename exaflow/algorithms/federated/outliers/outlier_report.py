@@ -15,7 +15,6 @@ from exaflow.algorithms.federated.validation import as_scalar
 from exaflow.algorithms.federated.validation import check_choice
 from exaflow.algorithms.federated.validation import check_dataframe
 from exaflow.algorithms.federated.validation import check_scalar
-from exaflow.column_names import DATASET_COL
 
 
 class OutlierStrategy(str, Enum):
@@ -154,7 +153,7 @@ class WinsorizationHelper:
 
 
 class FederatedOutlierReport:
-    """Local per-dataset outlier report using winsorization bounds."""
+    """Local per-group outlier report using winsorization bounds."""
 
     def report(
         self,
@@ -162,32 +161,26 @@ class FederatedOutlierReport:
         data: pd.DataFrame,
         rules: Dict[str, OutlierRule],
         min_row_count: int,
-        dataset_col: str = DATASET_COL,
+        group_column: str,
     ) -> List[Dict[str, object]]:
-        check_dataframe(data, [rule.variable for rule in rules.values()])
-        if dataset_col in data.columns:
-            dataset_values = data[dataset_col]
-            if isinstance(dataset_values, pd.DataFrame):
-                dataset_values = dataset_values.iloc[:, 0]
-            datasets = sorted(dataset_values.dropna().unique().tolist())
-        else:
-            dataset_values = None
-            datasets = ["unknown"]
+        check_dataframe(
+            data, [group_column, *(rule.variable for rule in rules.values())]
+        )
+        group_values = data[group_column]
+        if isinstance(group_values, pd.DataFrame):
+            group_values = group_values.iloc[:, 0]
+        groups = sorted(group_values.dropna().unique().tolist())
 
         records: List[Dict[str, object]] = []
-        for dataset in datasets:
-            dataset_data = (
-                data.loc[dataset_values == dataset]
-                if dataset_values is not None
-                else data
-            )
+        for group in groups:
+            group_data = data.loc[group_values == group]
             for variable, rule in rules.items():
                 records.append(
                     {
                         "variable": variable,
-                        "dataset": str(dataset),
+                        "group": str(group),
                         "data": self._report_variable(
-                            data=dataset_data,
+                            data=group_data,
                             rule=rule,
                             min_row_count=min_row_count,
                         ),

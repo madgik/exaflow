@@ -179,15 +179,20 @@ def test_pearson_checks_alpha_before_aggregation():
     assert client.mock_calls == []
 
 
-def test_describe_checks_frame_without_aggregating():
+@pytest.mark.parametrize(
+    "data,message",
+    [(None, "DataFrame"), (pd.DataFrame({"x": [1]}), "required columns")],
+)
+def test_describe_checks_frame_without_aggregating(data, message):
     client = Mock()
-    with pytest.raises(FedError, match="DataFrame"):
+    with pytest.raises(FedError, match=message):
         FederatedDescribe(client).describe(
-            data=None,
+            data=data,
             numerical_vars=[],
             nominal_vars=[],
             min_row_count=1,
             nominal_levels={},
+            group_column="cohort",
         )
     assert client.mock_calls == []
 

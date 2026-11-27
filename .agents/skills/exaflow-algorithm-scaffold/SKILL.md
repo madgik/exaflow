@@ -9,11 +9,12 @@ Use this skill for end-to-end algorithm integration. Do not stop at placeholders
 
 Human-facing setup guide: `documentation/new-algorithm-setup.md`.
 
-Before implementing failures, read the canonical
-[federated error contract](../../../documentation/context/conventions.md#federated-error-contract).
-Library diagnostics use `FedError` and mandatory reasons; Exareme3 chooses the
-application exception and message. Shared worker/controller boundaries perform
-translation, so wrappers generally need no algorithm-specific catches.
+Read the [library guide](../../../exaflow/algorithms/federated/AGENTS.md)
+for library architecture, diagnostics, numerical conventions, and canonical method
+documentation. For application integration, follow
+[application error translation](../../../documentation/context/conventions.md#application-error-translation).
+Application consumers register message/type policies; shared worker/controller
+boundaries handle translation.
 
 ## Default Execution Policy
 
@@ -43,12 +44,11 @@ Definition of Done:
   concise method-level `desc`, and detailed parent algorithm/preprocessing step
   `documentation` for formulas/defaults/ranges, option lists, assumptions,
   parameter mechanics, outputs, and careful reference anchors.
-- Human-facing docs under `documentation/algorithms/` use the technical
-  algorithm-doc structure: overview, inputs, method/model, computation without
-  row-level data, aggregated quantities, `### Federated flow` pseudocode,
-  technical decisions, outputs, validation reference, and limitations. The
-  outputs section must match the actual Pydantic response model returned by the
-  wrapper.
+- Canonical method documentation lives in `exaflow/algorithms/federated/docs/`
+  and follows the library guide. Application pages under
+  `documentation/algorithms/` document request parameters/defaults, response
+  fields, and preprocessing/replay integration, linking to library methods.
+  Application outputs match the wrapper's actual Pydantic response model.
 - User-facing spec text avoids platform/execution terms such as `Exaflow`,
   `exareme`, `MIP`, `worker`, `engine`, `federated implementation`, and
   `aggregation-server-backed`; use neutral wording such as "computed from

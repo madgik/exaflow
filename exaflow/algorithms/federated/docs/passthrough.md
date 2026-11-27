@@ -1,4 +1,4 @@
-﻿## Passthrough (FederatedPassthrough)
+## Passthrough (FederatedPassthrough)
 
 Implementation: [compose/passthrough.py](../compose/passthrough.py).
 
@@ -43,13 +43,13 @@ ______________________________________________________________________
 
 ### Key Differences from scikit-learn
 
-| Aspect | scikit-learn FunctionTransformer | MIP Federated Implementation |
+| Aspect | scikit-learn FunctionTransformer | Federated implementation |
 | ----------- | -------------------------------- | ---------------------------- |
 | Purpose | Identity transform | Identity transform |
 | API | General callable | Specific to fed interface |
 
 ### Approximation vs Exactness
 
-| Component | scikit-learn | MIP |
+| Component | scikit-learn | Library |
 | --------- | ------------ | ----- |
 | Transform | Exact (none) | Exact |

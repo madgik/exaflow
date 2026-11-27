@@ -9,11 +9,12 @@ Use this skill to verify that Exareme3 algorithm development artifacts and check
 
 Human-facing setup guide: `documentation/new-algorithm-setup.md`.
 
-Review failures against the canonical
-[federated error contract](../../../documentation/context/conventions.md#federated-error-contract).
-Library diagnostics use `FedError` and mandatory reasons; Exareme3 chooses the
-application exception and message. Shared worker/controller boundaries perform
-translation, so wrappers generally need no algorithm-specific catches.
+Read the [library guide](../../../exaflow/algorithms/federated/AGENTS.md)
+for library architecture, diagnostics, numerical conventions, and canonical method
+documentation. For application integration, follow
+[application error translation](../../../documentation/context/conventions.md#application-error-translation).
+Application consumers register message/type policies; shared worker/controller
+boundaries handle translation.
 
 ## Workflow
 
@@ -140,12 +141,12 @@ Manual specification review:
 - Omit explicit optional `None` specification arguments such as
   `parameters=None`, `enumslen=None`, `default=None`,
   `enums=None`, `dict_values_enums=None`, `min=None`, and `max=None`.
-- Human-facing algorithm Markdown under `documentation/algorithms/` should have
-  a technical structure: overview, inputs, method/model, computation without
-  row-level data, aggregated quantities, `### Federated flow` pseudocode,
-  technical decisions, outputs, validation reference, and limitations. Output
-  fields must match the wrapper Pydantic response model, and materially
-  different runtime variants should have separate pages.
+- Application pages under `documentation/algorithms/` describe request
+  parameters/defaults, response fields, and preprocessing/replay integration.
+  Output fields match the wrapper Pydantic response model; materially different
+  runtime contracts have separate pages. Link to canonical library method pages
+  for mathematics, aggregation flow, numerical behavior, and limitations.
+  Validate library documentation against the local library guide.
 
 Path policy:
 

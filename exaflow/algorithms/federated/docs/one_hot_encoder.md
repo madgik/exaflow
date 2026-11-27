@@ -1,4 +1,4 @@
-﻿## One-Hot Encoder (FederatedOneHotEncoder)
+## One-Hot Encoder (FederatedOneHotEncoder)
 
 Implementation: [feature_engineering/one_hot_encoder.py](../feature_engineering/one_hot_encoder.py).
 
@@ -54,7 +54,7 @@ ______________________________________________________________________
 
 ### Key Differences from scikit-learn
 
-| Aspect | scikit-learn OneHotEncoder | MIP Federated Implementation |
+| Aspect | scikit-learn OneHotEncoder | Federated implementation |
 | -------------------- | ----------------------------- | ----------------------------- |
 | Data access | Full centralized data | Data remains local per client |
 | Category discovery | Local observation | Federated union aggregation |
@@ -65,7 +65,7 @@ ______________________________________________________________________
 
 ### Approximation vs Exactness
 
-| Component | scikit-learn | MIP |
+| Component | scikit-learn | Library |
 | ------------------- | ------------ | ---------------- |
 | Category discovery | Exact | Exact (via union)|
 | Encoding | Exact | Exact |

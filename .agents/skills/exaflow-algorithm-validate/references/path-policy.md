@@ -11,12 +11,13 @@ algorithm documentation uses display-style filenames such as `FisherExact.md`,
 validator keeps those paths in `PREFERRED_DOC_PATHS` in
 `scripts/validate_algorithms.py`.
 
-When runtime variants differ materially, prefer one technical page per runtime
-algorithm rather than a combined duplicate overview page. Each page should
-document inputs, method/model, computation without row-level data, aggregated
-quantities, federated-flow pseudocode, technical decisions, outputs, validation
-reference, and limitations. Outputs must match the wrapper Pydantic response
-model.
+When runtime contracts differ materially, use one application page per runtime
+algorithm. Each page documents request inputs/defaults, application response
+fields, and preprocessing/replay integration. Outputs match the wrapper Pydantic
+response model. Link to the canonical method pages under
+`exaflow/algorithms/federated/docs/` for mathematical and numerical details;
+the [library guide](../../../../exaflow/algorithms/federated/AGENTS.md#method-documentation)
+owns their structure.
 
 When no documentation exception exists, the canonical path is:
 

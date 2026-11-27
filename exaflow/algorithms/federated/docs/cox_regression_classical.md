@@ -1,44 +1,78 @@
-# Federated Cox Regression Classical
+# Classical Cox regression
 
-## Overview
+Implementation: [linear_model/cox_regression_classical.py](../linear_model/cox_regression_classical.py).
 
-`FederatedClassicalCoxRegression` implements the classical Cox proportional
-hazards model through the Cox partial likelihood with Breslow handling of ties.
+Cox proportional hazards regression models time-to-event data using the partial
+likelihood. It estimates covariate effects on the hazard while leaving the
+baseline hazard unspecified.
 
-## Federated Sufficient Statistics
+## Library interface
 
-For each global event time `t_j`, every worker computes:
+`FederatedClassicalCoxRegression(ties="breslow", tol=1e-6, max_iter=100, ridge=1e-8, max_step_norm=5.0, verbose=False).fit(X, y, *, agg_client, feature_names=None)` takes numeric features and a two-column target: follow-up time and binary event indicator. Constructor settings are keyword-only. The result exposes covariate estimates, hazard ratios, uncertainty, likelihood, and convergence information.
 
-- `d_j`: local number of events at `t_j`
-- `E1_j = sum_{i in D_j} x_i`
-- `S0_j(beta) = sum_{i in R_j} exp(x_i^T beta)`
-- `S1_j(beta) = sum_{i in R_j} x_i exp(x_i^T beta)`
-- `S2_j(beta) = sum_{i in R_j} x_i x_i^T exp(x_i^T beta)`
+## Statistical method
 
-The controller aggregates these blocks across workers and forms:
+The Cox proportional hazards model is:
 
-- partial log-likelihood
-- score vector
-- observed information matrix
+```text
+h(t | x) = h_0(t) exp(x beta)
+```
 
-## Optimization
+Coefficients are estimated by maximizing the partial log-likelihood. Tied event
+times are handled with the Breslow approximation.
 
-The current implementation keeps the Newton-Raphson logic inside
-`cox_regression_classical.py`:
+## Federated computation
 
-- regularized linear solve for the Newton direction
-- step clipping through `max_step_norm`
-- convergence on both coefficient movement and score norm
+The model is computed without sharing row-level data. Each site contributes
+event-time and risk-set sufficient statistics, and Newton updates are derived
+from aggregated score and information matrices.
 
-## Numerical Details
+### Aggregated quantities
 
-- event times are aggregated globally through exact union, with no binning
-- risk-set sums are computed with reverse cumulative sums on each worker
-- exponential weights are clipped before exponentiation for stability
+| Quantity | Purpose |
+|---|---|
+| Global event-time grid | Align risk sets at every observed event time. |
+| Event counts per event time | Compute Breslow partial likelihood terms. |
+| Sum of covariates among events | Compute score contributions. |
+| Risk-set sums `S0` | Denominator of the partial likelihood. |
+| Risk-set weighted covariate sums `S1` | Compute score and information. |
+| Risk-set weighted outer products `S2` | Compute observed information. |
+| Observation and event counts | Report sample size and validate fit. |
 
-## Benchmarking
+### Federated flow
 
-The standalone test suite compares the federated result against:
+```text
+Receive numeric X and y[:, 0] = time, y[:, 1] = binary event.
+Validate strictly positive times and discover the union of event times.
+Aggregate event counts and event covariate sums on this grid.
+Repeat Newton updates:
+    compute local risk-set S0, S1, and S2 at current beta
+    sum risk-set quantities across participants
+    compute Breslow likelihood, score, and information
+    take a stabilized Newton step and check convergence
+Return coefficients, hazard ratios, uncertainty, and diagnostics.
+```
 
-- `statsmodels.PHReg(..., ties="breslow")`
-- the existing stacked approximation `FederatedStackedCoxRegression`
+## Numerical decisions
+
+- Breslow handling is used for tied event times.
+- Time values must be strictly positive.
+- Exponentiation is clipped for numerical stability.
+- Newton updates use regularization and a pseudo-inverse fallback when needed.
+
+## Reference comparison
+
+Standalone Cox tests use `statsmodels.duration.hazard_regression.PHReg` as the
+centralized reference for classical Cox proportional hazards behavior.
+
+Reference behavior is aligned with Cox partial-likelihood estimation using
+Breslow tie handling.
+
+## Limitations
+
+- Follow-up times must be strictly positive.
+- At least one observed event is required.
+- The proportional hazards assumption is not tested automatically.
+- Time-varying covariates are not supported.
+- Event indicators supplied to the estimator must already be binary.
+- High collinearity can make the information matrix unstable.

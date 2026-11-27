@@ -20,8 +20,7 @@
 
 - [ ] Does the change respect controller, worker, aggregation, algorithm, and
   deployment boundaries?
-- [ ] Is federated core logic kept testable outside the full runtime when
-  practical?
+- [ ] Do library changes follow the [local library guide](../../exaflow/algorithms/federated/AGENTS.md)?
 - [ ] Is configuration handled through existing config modules?
 - [ ] Are generated files consistent with their sources?
 

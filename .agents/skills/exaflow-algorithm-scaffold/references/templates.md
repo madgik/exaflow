@@ -158,17 +158,22 @@ Priority order:
 
 ### Documentation
 
-- Canonical algorithm doc: `documentation/algorithms/<algorithm>.md`, except
-  existing display-style exceptions tracked by the validator path map.
-- Human-facing algorithm docs must be technical and implementation-grounded:
-  overview, inputs, method/model, computation without row-level data,
-  aggregated quantities, `### Federated flow` text pseudocode, technical
-  decisions, outputs, validation reference, and limitations.
-- Use one page per runtime algorithm when variants differ materially. Do not
-  create duplicate overview pages that repeat split pages.
-- Derive response fields from the wrapper's Pydantic result model, not from the
-  federated estimator's internal result object.
-- Federated docs index target: `exaflow/algorithms/federated/docs/<algorithm>.md`
+- Canonical method documentation lives under
+  `exaflow/algorithms/federated/docs/`; follow the
+  [library guide](../../../../exaflow/algorithms/federated/AGENTS.md#method-documentation).
+- Library pages describe actual array/dataframe interfaces, result objects,
+  mathematical methods, aggregated quantities, federated flow, numerical
+  decisions, reference comparisons, and limitations. Shared components have a
+  single method description that callers link to.
+- Application guide: `documentation/algorithms/<algorithm>.md`, except existing
+  display-style exceptions tracked by the validator path map. Describe request
+  parameters/defaults, variable interpretation, application response fields,
+  preprocessing/replay integration, and links to library method pages.
+- Use separate application pages when runtime variants have materially different
+  contracts. Reuse library descriptions rather than duplicating model formulas.
+- Derive application response fields from the wrapper's Pydantic result model;
+  library result objects are documented in their own method pages.
+- Federated docs index target: `exaflow/algorithms/federated/docs/<algorithm>.md`.
 
 ### Optional auto-patching
 

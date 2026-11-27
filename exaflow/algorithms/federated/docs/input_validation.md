@@ -1,20 +1,17 @@
-# Federated package input validation
+# Input validation reference
 
-Validation is local and raises `FedError` subclasses requiring a
-`FedErrorReason` enum member. Expected conversion failures are reported
-without echoing row values. The package does
-not coordinate error propagation or cancellation: callers own the distributed
-execution lifecycle. Exareme3 chooses an application exception and message from
-the reason and cleans up aggregation state; running peers need not stop immediately.
+Shared helpers validate effective library inputs and report declared failures
+using `FedError` reasons. Method-specific behavior remains with the method: these
+helpers do not impose a universal policy for missing values, empty partitions,
+feature counts, or class availability.
 
-The changes preserve successful numerical calculations, public signatures,
-result shapes, defaults, existing conversions, missing-value policies, and
-numerical fallbacks. Existing production and algorithm tests and fixtures are
-unchanged. New tests belong in `tests/standalone_tests/federated_validation/`.
+The [library guide](../AGENTS.md#exceptions-and-diagnostics) defines exception
+construction and development conventions. Callers own propagation, cancellation,
+resource cleanup, and interpretation of diagnostics.
 
 ## Shared checks
 
-The implementation is in `federated/validation/__init__.py`. It reuses public
+The implementation is in [validation/__init__.py](../validation/__init__.py). It reuses public
 scikit-learn `check_array`, `check_consistent_length`, and `check_scalar` helpers.
 NumPy conversion is shared with the existing `utils.to_numpy` adapter and
 re-exported through `validation`, so its conversion/error logic has one owner.
@@ -53,60 +50,12 @@ never inferred from the data.
 | `check_category_order` | pandas' existing category-order constraints, without learning or sorting categories. |
 | `check_survival_target`, `check_survival_inputs` | Shared Cox target parsing and the two models' existing local survival requirements. |
 
-`ValidationIssue` supplies a code, input name and safe message on structured
-helper errors. Callers catch `FedError` for structured and method-specific
-failures.
-Transport and programming errors are not captured by a validation context or
-converted into validation failures.
+## Diagnostics
 
-## Error reasons and message policies
-
-Every explicit library failure supplies a concrete enum reason and its diagnostic
-fields. Values and statistical constraints use `FedValueError`, unsupported types
-use `FedTypeError`, invalid call sequences use `FedStateError`, and observation
-requirements use `FedObservationError`. All inherit from `FedError` and preserve
-the corresponding Python `ValueError`, `TypeError`, or `RuntimeError` semantics.
-
-```python
-from exaflow.algorithms.federated.exceptions import FedErrorReason
-from exaflow.algorithms.federated.exceptions import FedObservationError
-
-raise FedObservationError(
-    FedErrorReason.INSUFFICIENT_FOLD_SAMPLES,
-    n_samples=n_rows,
-    n_splits=n_splits,
-)
-```
-
-Members in `exceptions.py` contain a stable code and a diagnostic
-template. Separate members can share a template when different conditions need
-different application policies. Declare members using `error_reason(template)`;
-the string code is generated from the lowercase enum name, without a handwritten
-code or `auto()` in each declaration. Reordering reasons does not change their
-values, and identical templates do not create aliases.
-The shared constructor requires the enum,
-stores it in `.reason`, retains the keyword arguments in `.details`, and stores
-the formatted diagnostic in `.message` and `str(error)`. Invalid reason types
-raise `FedTypeError` with `INVALID_ERROR_REASON`; a missing required argument
-raises Python's `TypeError`, and missing template fields raise `KeyError`.
-
-The centralized Exareme3 adapter declares an explicit policy for every enum
-member as `(exception_type, message_or_KEEP_MESSAGE)`. It catches only
-`FedError` subclasses. The reason independently selects `BadUserInput`,
-`AnalysisExecutionError`, `InsufficientDataError`, or a native exception; the source
-class does not assign user responsibility. The application classification rules
-are documented in `documentation/context/conventions.md`. `KEEP_MESSAGE` retains
-the diagnostic for any target type.
-Standalone CI checks policy coverage and explicit failure raises. The constructor
-enforces enum types at runtime. Add a policy entry when adding a reason.
-
-This Python interface replaces `BadInputError` and `BadInputReason` imports
-without aliases. Shared checks accept concrete enum reasons. Runtime-owned
-request checks raise `BadUserInput` directly. Dependency exceptions and framework
-wrappers retain their existing library behaviour; no blanket normalization is
-introduced. There are no private control-flow exceptions in the current package.
-Rollback requires reverting the constructor, migrated callers, and policies
-together.
+Declared conversion failures omit raw observations. `ValidationIssue` records
+an input name, code, and diagnostic message on helper failures. Library exception
+classes, reason identity, and chaining are described in the
+[library guide](../AGENTS.md#exceptions-and-diagnostics).
 
 ## Algorithm coverage
 
@@ -140,9 +89,9 @@ operations also check current mutable parameters that they consume.
 | Percentile/quartiles | `q` in `[0, 1]`, positive integral bins and Boolean integer-mode flag. Existing histogram refinements, NaN behavior, empty/all-missing `None` result and integer-specific computation retained. |
 | Binned Mann–Whitney U | Supported alternative, Boolean continuity flag and integral bins of at least two, before aggregation. Existing filtering of non-finite observations, group counts, ties and zero-variance guard retained. |
 | Cross-tabulation | Required frame columns and Boolean `dropna`; existing category union, explicit-category reindexing, missing-value handling, pruning and empty-table guard retained. |
-| Chi-squared | Delegates frame/table validation to cross-tabulation and mathematical table checks to SciPy; no duplicated wrapper validation or new minimum category count. |
+| Chi-squared | Delegates frame/table validation to cross-tabulation and mathematical table checks to SciPy; no duplicated table validation or new minimum category count. |
 | Fisher exact | Same cross-tabulation validation and existing final 2x2 requirement. Unsupported shapes raise `FedValueError` with `FedErrorReason.FISHER_TABLE_SHAPE` and `shape` details. No extra category-discovery collective added. |
-| Describe | Frame check; existing per-variable missing-value handling, missing-column behavior and local/global record privacy masking retained. |
+| Describe | DataFrame and required grouping column; per-variable missing-value handling and local/global record suppression. |
 | Descriptive statistics facade | Delegates to describe, histogram and Pearson implementations, without duplicating their checks. |
 | Primitive statistics | Finite numeric `ddof` where consumed, including existing support for negative/fractional finite values; existing ndarray/rank, paired-shape and global-count guards retained. No new blanket missing-value rule. |
 | Standardized mean difference | Existing sample type/rank and global group-count checks retained; grouped entry checks required columns and effective minimum-group-size setting before SQL execution. |
@@ -156,7 +105,7 @@ operations also check current mutable parameters that they consume.
 | Regression scorer | Prediction/target length alignment before subtraction and nonnegative integer training/feature counts; existing empty-test early path and global score guards retained. No extra aggregation or changed score formula. |
 | Binary classification scorer | Threshold rank, encoded binary target and prediction/target alignment. Threshold order, empty thresholds and infinite threshold sentinels remain accepted. |
 | Multiclass scorer | Nonempty prediction/target rank and length alignment; existing empty paths and ignored unknown labels retained. |
-| Outlier reporting/winsorization | Supported strategy/tail, finite valid fold and required report columns. Existing numerical coercion, per-dataset computation, suppression and privacy thresholds remain. Direct core callers receive input errors rather than relying on wrapper parameter validation. |
+| Outlier reporting/winsorization | Supported strategy/tail, finite valid fold and required report columns. Existing numerical coercion, per-group computation, suppression and privacy thresholds remain. The helper validates rules independently of caller-side parameter checks. |
 | SQL and aggregation utilities | Existing specialized array/category/aggregation checks retained. No blanket numeric conversion of categorical values and no new collectives. |
 
 Percentile ignores NaNs when determining global bounds. Globally empty,
@@ -167,40 +116,10 @@ path recovers only from `HISTOGRAM_FINITE_VALUES_REQUIRED`: it returns `None`
 initially or retains an approximation if refinement cannot determine finite
 bounds. Other histogram failures propagate to the caller.
 
-## Exareme3 boundary
+## Failure behavior
 
-Redundant mathematical checks are removed from:
-
-- One-way and two-way ANOVA: category/level counts are checked in the core.
-- Fisher exact: the core enforces the final contingency-table shape.
-- Gaussian and categorical Naive Bayes CV: the shared splitter enforces local
-  row/split requirements.
-
-Category discovery and feature construction remain in the wrappers where needed.
-Request shape, variable selection, metadata, category interpretation,
-authorization and privacy validation remain at their existing runtime boundaries.
-Outlier request validation continues to call the core fold helper while retaining
-metadata and user-request checks. Cox event-variable selection and runtime
-category-to-binary conversion remain request/metadata concerns.
-
-## Invalid-input errors and compatibility
-
-Explicit `FedError` failures include malformed numeric inputs,
-non-finite solver settings, unsupported options, mismatched target or prediction
-lengths, invalid effective feature widths, bad component structure, invalid
-category ordering and insufficient global PCA/ANOVA observations. These replace
-incidental broadcasting, NumPy/pandas/SciPy failures or invalid mathematical
-results for unsupported inputs. Structured errors do not include raw row values.
-Existing primitive/type diagnostics now use the corresponding `FedError`
-subclass. Global count checks use existing aggregates, never an extra validation
-round.
-
-There are no added aggregation calls. The existing K-means finite-status sum is
-retained. Successful mathematical collective calls and their order are unchanged;
-invalid inputs can fail earlier. Existing missing-value, constant-data,
-singular-matrix and empty-result paths are intentionally method-specific.
-
-No API schema, deployment, dependency, authorization or privacy threshold changes
-are required. To roll back, revert the validation integrations, shared helpers,
-wrapper guard removals and their documentation together; no data migration or
-regeneration of expected numerical fixtures is needed.
+Structural checks report incompatible numeric inputs, unsupported settings,
+misaligned observations or features, invalid component structure, and invalid
+category order. Statistical sample requirements use aggregate counts already
+available to the method. Missing-value, constant-data, singular-matrix, and empty
+result behavior is method-specific; see each method page for its contract.

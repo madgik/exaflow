@@ -6,21 +6,6 @@ The report reuses `OutlierWinsorizer.validate_outlier_configuration()` from
 `outliers/outlier_winsorizer.py`; statistical calculations remain in the
 federated `outliers` family.
 
-## Table of contents
-
-- [Overview](#overview)
-- [Inputs](#inputs)
-  - [Required inputs](#required-inputs)
-  - [Parameters](#parameters)
-- [Method](#method)
-- [Federated computation](#federated-computation)
-  - [Aggregated quantities](#aggregated-quantities)
-  - [Federated flow](#federated-flow)
-- [Technical decisions](#technical-decisions)
-- [Outputs](#outputs)
-- [Validation against state-of-the-art implementation](#validation-against-state-of-the-art-implementation)
-- [Limitations and assumptions](#limitations-and-assumptions)
-
 ## Overview
 
 Outlier Report inspects numerical variables and reports outlier bounds, counts,
@@ -55,62 +40,11 @@ Default folds:
 
 ## Method
 
-For each variable and dataset, the selected rule defines lower and/or upper
-bounds. Values below the lower bound or above the upper bound are counted as
-outliers, depending on the selected tail.
+The mathematical method, library API, aggregation flow, numerical decisions, reference comparisons, and limitations are documented in [Outlier bounds and reporting](../../exaflow/algorithms/federated/docs/outlier_report.md).
 
-## Federated computation
+## Application integration
 
-The report does not aggregate bounds across datasets. Bounds and outlier counts
-are computed per dataset where the data reside, and only summary records are
-returned.
-
-### Aggregated quantities
-
-| Quantity | Purpose |
-|---|---|
-| Per-dataset numerical values | Compute local bounds and counts. |
-| Minimum row-count threshold | Suppress reports with too few non-missing values. |
-
-No cross-site numerical moments or quantiles are aggregated for this report.
-
-### Federated flow
-
-```text
-Input:
-    variables: numerical variables
-    strategies: outlier rule per variable
-    tails: optional inspected tail per variable
-    folds: optional threshold per variable
-
-Step 1:
-    Validate that configured variables are numerical.
-
-Step 2:
-    Resolve default folds for variables without explicit fold values.
-
-Step 3:
-    For each dataset and variable:
-        drop missing and non-numeric values
-        validate minimum non-missing row count
-        compute bounds using the selected strategy
-        count lower and upper outliers
-        mask small non-zero counts
-
-Output:
-    per-variable, per-dataset outlier report records
-```
-
-## Technical decisions
-
-- Bounds are dataset-level, not combined across all datasets.
-- Quantile bounds are dataset-level quantiles.
-- `gaussian`, `iqr`, and `mad` folds must be positive finite numbers.
-- `quantile` folds must be in `(0, 0.5)`.
-- A zero outlier count is reported as `0`; a non-zero count below the minimum
-  row-count threshold is reported as `null`.
-- If either side is suppressed, total outlier count and percentage are also
-  suppressed.
+The wrapper validates numerical variable metadata and dictionary parameters, supplies the dataset grouping column and configured minimum row count, and maps group records into `featurewise` dataset records.
 
 ## Outputs
 
@@ -126,17 +60,3 @@ Output:
 | `data.lower_outlier_count`, `data.upper_outlier_count` | Outlier counts by side, possibly masked. |
 | `data.total_outlier_count` | Total outlier count, possibly masked. |
 | `data.total_outlier_percentage` | Percentage of non-missing observations flagged as outliers. |
-
-## Validation against state-of-the-art implementation
-
-The rules are aligned with standard Gaussian, IQR, MAD, and quantile screening
-methods. Tests validate parameter handling, privacy masking, and expected report
-fixtures rather than comparing to a single external package.
-
-## Limitations and assumptions
-
-- Only numerical variables are supported.
-- Bounds are computed per dataset and can differ across datasets.
-- Quantile, IQR, and MAD rules are descriptive screening methods, not formal
-  hypothesis tests.
-- Small non-zero outlier counts can be suppressed.

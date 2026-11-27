@@ -1,79 +1,82 @@
-﻿## 1. describe.py - FederatedDescribe
+# Descriptive summaries
 
-### Name
+Implementation: [statistics/describe.py](../statistics/describe.py).
 
-**Descriptive Statistics (FederatedDescribe)**
+Numerical and nominal summaries are computed per caller-defined group and across all participants.
 
-### Type
+## Library interface
 
-**Descriptive Statistics** (exploratory data analysis)
+`FederatedDescribe(agg_client).describe(data=..., numerical_vars=..., nominal_vars=..., min_row_count=..., nominal_levels=..., group_column=..., integer_vars=None)` returns `DescribeResult(recs, global_recs)`. Callers supply the grouping column, category levels, and reporting threshold. Records identify a `variable` and `group`; the combined records have `group=None`. Report payloads contain counts and numerical summaries or category counts; suppressed payloads are `None`.
 
-### Goal (Why we need it)
+## Statistical method
 
-Computes **descriptive statistics** (mean, std, min, max, quantiles, mode) for numerical and categorical variables.
-In a federated setting, we want the *same* descriptive statistics as centralized computation **without sharing raw data**, using only aggregated sufficient statistics (sums, min/max, counts, frequencies).
+For numerical variables, the algorithm reports counts, missing-value counts,
+mean, sample standard deviation, minimum, quartiles, median, and maximum where
+available.
 
-### When to use
+For nominal variables, it reports counts, missing-value counts, total rows, and
+category counts.
 
-Use Describe when:
+## Federated computation
 
-- you need **exploratory data analysis** to understand data distributions
-- you want summary statistics for numerical variables (mean, std, quantiles)
-- you want frequency counts for categorical variables
-- you need to check data quality (missing values, outliers)
-- you want statistics grouped by dataset (per-site summaries + global)
+The summaries are computed without sharing row-level data. Group-level
+summaries are computed at each participant subject to a minimum row-count threshold.
+Combined summaries are computed from aggregated sufficient statistics and
+category counts.
 
-### When NOT to use
+### Aggregated quantities
 
-- When you only need one specific statistic (use specialized function)
-- For streaming data with changing distributions
+| Quantity | Purpose |
+|---|---|
+| Non-missing counts | Report valid observations and compute means. |
+| Missing counts | Report missingness. |
+| Total row counts | Report denominator per variable and group. |
+| Numerical weighted means and centered moments | Compute combined means and sample standard deviations. |
+| Numerical minima and maxima | Compute combined ranges. |
+| Numerical federated histogram | Estimate the combined median across all groups. |
+| Nominal category counts | Compute combined category frequencies. |
 
-______________________________________________________________________
+### Federated flow
 
-### Inputs / Outputs
+```text
+Receive data, an explicit grouping column, and numerical/nominal variables.
+For each local group and variable:
+    compute missing/nonmissing counts and the requested local summaries
+    suppress report payloads below the supplied row threshold
+    retain weighted means and centered moments for global aggregation
+Aggregate counts, weighted means, centered moments, ranges, and category counts.
+Estimate combined q1, q2, q3 with the shared Percentile component.
+Return group records and combined records with group=None.
+```
 
-| Item | Description |
-| ------------------- | --------------------------------------------------------- |
-| **data** | DataFrame with numerical and categorical features |
-| **numerical_vars** | List of numerical variable names |
-| **nominal_vars** | List of categorical variable names |
-| **nominal_levels** | Dict mapping categorical variables to category lists |
-| **min_row_count** | Minimum rows required per dataset |
-| **dataset_col** | Column name for dataset/site identification |
-| **agg_client** | Federated aggregation client |
+## Numerical decisions
 
-**Outputs (DescribeResult)**
+- Group-level records below the minimum row-count threshold return `null`
+  summary data.
+- Per-group numerical quartiles (`q1`/`q2`/`q3`) are exact (pandas). The
+  combined summary carries federated `q1`/`q2`/`q3` and `median` (= `q2`)
+  estimated across all groups from a histogram-based percentile.
+- Combined numerical standard deviations use per-group centered sums of
+  squares adjusted for differences between group means and the global mean.
+  Divide the pooled sum by `n - 1` and take the square root.
+- Nominal combined summaries use caller-supplied category levels and omit
+  zero-count levels.
+- Missing values are handled independently for each variable.
+- Combined quartiles use the shared [Percentile](quartiles.md) component; no observation-level rows are combined.
 
-- `recs`: per-`(variable, dataset)` summary records
-- `global_recs`: per-variable combined (`all datasets`) summary records
+## Reference comparison
 
-Per-dataset numerical records include: `num_dtps`, `num_na`, `num_total`,
-`mean`, `std`, `min`, `q1`, `q2` (local median), `q3`, `max`. The combined
-records carry the aggregated `mean`, `std`, `min`, `max` plus federated
-`q1`/`q2`/`q3` and `median` (= `q2`) estimated across all datasets.
+Standalone tests compare numerical summary behavior with
+`statsmodels.stats.weightstats.DescrStatsW` and verify category/count aggregation
+against expected fixtures.
 
-### Key Differences from pandas/statsmodels
+Reference behavior is aligned with standard descriptive-statistics formulas,
+with combined summaries computed from aggregated sufficient statistics.
 
-| Aspect | pandas describe | MIP Federated Implementation |
-| -------------------- | --------------------- | ----------------------------- |
-| Data access | Full centralized data | Data remains local per client |
-| Median/Quantiles | Exact (sorting) | Per-dataset quartiles exact (pandas); combined median is a federated histogram estimate |
-| Mode | Exact | Approximate (top frequencies) |
-| Min/Max | Exact | Exact |
-| Mean/Std | Exact | Exact |
-| Categorical freqs | Exact | Exact |
+## Limitations
 
-### Approximation vs Exactness
-
-| Component | pandas/statsmodels | MIP |
-| ------------------ | ------------------ | ------------------------ |
-| Count | Exact | Exact |
-| Mean | Exact | Exact |
-| Std | Exact | Exact |
-| Min / Max | Exact | Exact |
-| Dataset quartiles | Exact | Exact (pandas, per dataset) |
-| Combined median | Exact | Approximate (federated histogram) |
-| Mode | Exact | Approximate (top-k) |
-| Frequencies | Exact | Exact |
-
-______________________________________________________________________
+- This is descriptive only; no hypothesis tests are performed.
+- Combined `q1`/`q2`/`q3`/`median` are histogram-based estimates (not exact
+  quantiles); per-group quartiles are exact.
+- Suppressed group-level summaries are represented with `null` data.
+- Category counts depend on available caller-supplied category levels for the combined summary.

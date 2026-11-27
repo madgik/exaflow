@@ -1,20 +1,5 @@
 # Paired t-test
 
-## Table of contents
-
-- [Overview](#overview)
-- [Inputs](#inputs)
-  - [Required inputs](#required-inputs)
-  - [Parameters](#parameters)
-- [Statistical model](#statistical-model)
-- [Federated computation](#federated-computation)
-  - [Aggregated quantities](#aggregated-quantities)
-  - [Federated flow](#federated-flow)
-- [Technical decisions](#technical-decisions)
-- [Outputs](#outputs)
-- [Validation against state-of-the-art implementation](#validation-against-state-of-the-art-implementation)
-- [Limitations and assumptions](#limitations-and-assumptions)
-
 ## Overview
 
 The paired t-test compares two related numerical measurements by testing whether
@@ -37,78 +22,9 @@ confidence interval, standard error, and Cohen's d for the paired differences.
 | `alpha` | Significance level for confidence intervals. | `0.05` |
 | `alt_hypothesis` | Alternative hypothesis: `two-sided`, `less`, or `greater`. | `two-sided` |
 
-## Statistical model
+## Method
 
-For paired measurements `(a_i, b_i)`, define:
-
-```text
-d_i = a_i - b_i
-```
-
-The null hypothesis is:
-
-```text
-H0: mean(d) = 0
-```
-
-The test statistic is:
-
-```text
-t = mean(d) / (s_d / sqrt(n))
-df = n - 1
-```
-
-## Federated computation
-
-The test is computed without sharing row-level data. Each site contributes
-sufficient statistics for the paired differences.
-
-### Aggregated quantities
-
-| Quantity | Purpose |
-|---|---|
-| Number of pairs | Compute degrees of freedom and standard error. |
-| Sum of first and second measurements | Compute measurement means. |
-| Sum of paired differences | Compute mean difference. |
-| Sum of squared paired differences | Compute standard deviation of differences. |
-| Sum of squared first and second measurements | Compute supporting summary statistics. |
-
-### Federated flow
-
-```text
-Input:
-    x: first measurement
-    y: second measurement
-    alpha: significance level
-    alternative: two-sided, less, or greater
-
-Step 1:
-    At each site:
-        keep complete pairs
-        compute paired differences
-        compute count, sums, and squared sums
-
-Step 2:
-    Aggregate paired-difference sufficient statistics.
-
-Step 3:
-    Validate that more than one pair is available.
-
-Step 4:
-    Compute mean difference, standard deviation of differences,
-    standard error, t statistic, p-value, confidence interval, and Cohen's d.
-
-Output:
-    paired t-test summary
-```
-
-## Technical decisions
-
-- The sign of the reported mean difference is `x - y`.
-- One-sided alternatives replace one confidence bound with infinity.
-- Cohen's d is computed as mean paired difference divided by the standard
-  deviation of paired differences.
-- The paired samples must have equal length after preprocessing.
+The mathematical method, library API, aggregation flow, numerical decisions, reference comparisons, and limitations are documented in [Paired-samples t-test](../../exaflow/algorithms/federated/docs/ttest_paired.md).
 
 ## Outputs
 
@@ -122,24 +38,3 @@ Output:
 | `ci_lower` | Lower confidence interval bound. |
 | `ci_upper` | Upper confidence interval bound. |
 | `cohens_d` | Standardized paired mean difference. |
-
-## Validation against state-of-the-art implementation
-
-Standalone tests compare the result, for every alternative, with
-`statsmodels.stats.weightstats` applied to the paired differences:
-
-```text
-DescrStatsW(sample_x - sample_y).ttest_mean(value=0, alternative=alternative)
-DescrStatsW(sample_x - sample_y).tconfint_mean(alpha=alpha, alternative=alternative)
-```
-
-Reference behavior is aligned with a paired t-test on the differences, with
-additional effect-size reporting.
-
-## Limitations and assumptions
-
-- Both measurements must be numerical.
-- Measurements must be paired one-to-one.
-- At least two complete pairs are required.
-- Paired differences are assumed approximately normally distributed.
-- Observed pairs are assumed independent of one another.

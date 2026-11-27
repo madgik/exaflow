@@ -37,40 +37,21 @@ Use focused standalone tests while developing:
 uv run pytest -q tests/standalone_tests
 ```
 
-For algorithm core changes:
+Library-only checks, simulated aggregation helpers, and diagnostic/import
+conventions are maintained in the [library guide](../../exaflow/algorithms/federated/AGENTS.md#focused-checks).
 
-```bash
-uv run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py
-```
-
-For shared validation and all federated algorithm integrations:
-
-```bash
-uv run pytest -q tests/standalone_tests/federated_validation tests/standalone_tests/federated_algorithms
-```
-
-The standalone exception-convention test checks every explicit library failure
-raise for a `FedError` subclass and a supplied reason. The shared constructor
-owns runtime enum validation. Translation tests require an explicit exception
-class and message policy for every `FedErrorReason`, including `KEEP_MESSAGE`.
-Focused runtime tests cover worker logging, cleanup, observation failures, native
-exception targets, and controller construction, preprocessing, and execution.
-Worker RPC tests distinguish internal execution failures from connection failures.
-Recognized computational failures are checked separately from user-input errors:
-translation and controller tests cover `AnalysisExecutionError`, HTTP 462, and
-RabbitMQ's matching error code. A real worker gRPC round trip checks all analysis
-error categories, including generic handling of internal diagnostics. Focused
-tests cover nonnumeric transformer output, invalid PCA output, nonfinite input
-observations versus computed K-means centers, and finite replay-center validation.
+Application checks require complete translation coverage for consumed library
+reasons and cover worker logging, cleanup, controller boundaries, HTTP 462,
+RabbitMQ replies, and a real worker gRPC error round trip.
 
 Both algorithm validator tiers run the exception-convention and translation test
 modules once per invocation with selected algorithms. The separate
 `federated_error_contract` result must pass before integration can report
 `"done": true`. Failure output includes the pytest diagnostics and rerun command.
-See the [canonical error contract](conventions.md#federated-error-contract).
+See [application error translation](conventions.md#application-error-translation).
 
 ```bash
-uv run pytest -q tests/standalone_tests/test_federated_exception_convention.py tests/standalone_tests/controller/test_worker_rpc_errors.py
+uv run pytest -q tests/standalone_tests/controller/test_worker_rpc_errors.py
 ```
 
 ```bash
@@ -155,8 +136,7 @@ CI also builds the package and smoke-tests the wheel.
 - Algorithm validation expected fixtures live under
   `tests/algorithm_validation_tests/exareme3/expected`.
 - Worker data path generation is handled by `tests/worker_data_paths_builder.py`.
-- Federated algorithm test helpers live under
-  `tests/standalone_tests/federated_algorithms/utils`.
+- Library helper usage is described in the [local guide](../../exaflow/algorithms/federated/AGENTS.md#focused-checks).
 
 ## Critical Paths That Need Strong Coverage
 
@@ -175,7 +155,7 @@ CI also builds the package and smoke-tests the wheel.
 | Change type | Required validation |
 | --- | --- |
 | Docs-only change | `git diff --check`; inspect rendered paths/links where practical. |
-| Algorithm core change | Focused `tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py`; algorithm validator when relevant. |
+| Algorithm core change | Follow the [library checks](../../exaflow/algorithms/federated/AGENTS.md#focused-checks); run application integration checks when integration changes. |
 | Algorithm wrapper/spec change | Focused standalone tests plus spec/request validation tests or algorithm validation skill. |
 | API behavior change | Controller standalone API tests and relevant prod/algorithm validation tests if runtime behavior changes. |
 | Worker data/UDF change | Focused worker/UDF standalone tests; environment-backed tests if gRPC/runtime behavior changes. |

@@ -15,23 +15,22 @@ from exaflow.algorithms.federated.statistics.pearson_correlation import (
 from exaflow.algorithms.federated.statistics.pearson_correlation import (
     PearsonCorrelationResult,
 )
-from exaflow.column_names import DATASET_COL
 
 
 class FederatedDescriptiveStatistics:
     """
     Statsmodels-style descriptive interface backed by federated primitives.
 
-    ``describe`` returns per-feature summaries for each dataset together
+    ``describe`` returns per-feature summaries for each group together
     with aggregation-backed global aggregates.
     ``hist`` provides federated histograms (numerical or categorical) with
     optional grouping via ``x_vars``.
 
     Notes
     -----
-    - Per-dataset quantiles (q1/q2/q3) are exact (pandas). The global summary
+    - Per-group quantiles (q1/q2/q3) are exact (pandas). The global summary
       carries federated ``q1``/``q2``/``q3`` and ``median`` (= ``q2``) estimated
-      across all datasets via a histogram-based percentile.
+      across all groups via a histogram-based percentile.
     - Means and variances come from aggregated counts and centered moments.
     - Nominal counts flow through the aggregation client and zero-count levels are
       dropped in the global result per our contract.
@@ -53,7 +52,7 @@ class FederatedDescriptiveStatistics:
         nominal_vars: List[str],
         min_row_count: int,
         nominal_levels: Dict[str, List],
-        dataset_col: str = DATASET_COL,
+        group_column: str,
         integer_vars: List[str] | None = None,
     ) -> DescribeResult:
         return self._describe.describe(
@@ -62,7 +61,7 @@ class FederatedDescriptiveStatistics:
             nominal_vars=nominal_vars,
             min_row_count=min_row_count,
             nominal_levels=nominal_levels,
-            dataset_col=dataset_col,
+            group_column=group_column,
             integer_vars=integer_vars,
         )
 

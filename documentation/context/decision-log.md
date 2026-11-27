@@ -160,6 +160,8 @@ Date: 2026-10-02
 
 ### Decision: Keep Federated Core Logic Separately Testable
 
+Current library conventions: [local library guide](../../exaflow/algorithms/federated/AGENTS.md).
+
 Status: Inferred / verify
 
 Context: Runtime wrappers live under `exaflow/algorithms/exareme3`, while core

@@ -53,28 +53,9 @@
   transforms in `utils/metadata.py`.
   Runtime domain and federated family are separate tooling inputs:
   `--runtime-domain` controls wrappers, `--family` controls core placement.
-- Federated algorithm core logic lives under `exaflow/algorithms/federated`,
-  grouped by domain: `outliers`, `feature_engineering`, and `compose` own outlier
-  methods, encoders, and passthrough respectively. Keep shared cross-validation
-  infrastructure in `model_selection/cross_validation`. Existing mixed-effects
-  numerical helpers live in `mixed_effects/mixed_effects_utils.py`.
-- Shared core input checks live in `federated/validation`; coverage and error
-  conventions are documented in `federated/docs/input_validation.md`. Retain each
-  method's existing conversions and
-  apply explicit array/parameter policies rather than blanket restrictions.
-  Validators raise `FedError` subclasses locally without aggregation. The caller owns
-  distributed error propagation, cancellation, and cleanup. Exareme3 owns UI
-  message translation through `utils/error_translation.py`. Keep successful
-  result contracts unchanged
-  and add validation tests under
-  `tests/standalone_tests/federated_validation` without editing existing tests.
-  Array checks default to float conversion; preserve an already-normalized
-  integer outcome dtype when validation would otherwise discard a float copy.
-  Reuse the categorical dtype returned by category-order validation when
-  constructing pandas categorical values, while validating current categories
-  on every transformation.
-- Follow the [federated error contract](#federated-error-contract) when adding
-  library failures and Exareme3 translation policies.
+- Library architecture, numerical conventions, validation, diagnostics, and
+  method documentation are defined in the [library guide](../../exaflow/algorithms/federated/AGENTS.md).
+  Application consumers follow the [translation policy](#application-error-translation).
 - Algorithm specifications are code-defined through `get_specification()`.
 - Specification metadata should be UI-ready: compact standard `label`,
   one-sentence method-level `desc`, and detailed parent `documentation` for
@@ -100,32 +81,11 @@
 - New algorithm work should use `.agents/skills/exaflow-algorithm-scaffold` and
   `.agents/skills/exaflow-algorithm-validate`.
 
-### Federated error contract
+### Application error translation
 
-Define library-authored failures using `FedValueError`, `FedTypeError`,
-`FedStateError`, or `FedObservationError` from
-`exaflow/algorithms/federated/exceptions.py`. That module also owns
-`FedErrorReason`, its unique stable codes, and diagnostic templates. Reuse an
-existing reason for the same condition, or add a new member there. Describe the
-library condition without assigning UI responsibility.
-
-The shared constructor requires an enum reason and its diagnostic fields:
-
-```python
-from exaflow.algorithms.federated.exceptions import FedErrorReason
-from exaflow.algorithms.federated.exceptions import FedObservationError
-
-raise FedObservationError(
-    FedErrorReason.INSUFFICIENT_FOLD_SAMPLES,
-    n_samples=n_rows,
-    n_splits=n_splits,
-)
-```
-
-Invalid reason types raise `FedTypeError`; missing arguments and template fields
-retain Python's `TypeError` and `KeyError` behaviour. Explicit failure raises
-must supply a reason; bare re-raises are permitted. Unexpected dependency errors
-and framework wrappers retain their normal handling.
+The [library guide](../../exaflow/algorithms/federated/AGENTS.md#exceptions-and-diagnostics)
+defines library exceptions and diagnostic reasons. The application owns the
+policies below and must register its response to each consumed reason.
 
 Register every reason explicitly in the existing `_TRANSLATIONS` mapping in
 `exaflow/algorithms/exareme3/utils/error_translation.py` as
@@ -213,8 +173,7 @@ algorithm-specific checks pass.
 ### Testing
 
 - Fast tests live under `tests/standalone_tests`.
-- Federated algorithm parity tests live under
-  `tests/standalone_tests/federated_algorithms`.
+- Library check commands are maintained in the [local guide](../../exaflow/algorithms/federated/AGENTS.md#focused-checks).
 - Prod fixtures live under `tests/prod_env_tests/expected`.
 - Pytest markers include `slow` and `very_slow`.
 
@@ -228,8 +187,7 @@ algorithm-specific checks pass.
 
 - Keep business/runtime orchestration out of FastAPI route handlers where possible;
   delegate to controller services.
-- Keep federated math independent of controller/worker runtime so standalone
-  tests remain cheap.
+- Follow the [library guide](../../exaflow/algorithms/federated/AGENTS.md) for changes inside the statistical core.
 - Keep deployment-specific values in config files, Helm values, or environment
   variables rather than hardcoding them in service logic.
 - Add regression tests for bug fixes when the behavior can be reproduced in a
@@ -252,7 +210,7 @@ algorithm-specific checks pass.
 
 - Use domain-specific exceptions already present in the repo, such as
   `FedError` subclasses, `BadUserInput`, `AnalysisExecutionError`, and validation
-  errors. Follow the [federated error contract](#federated-error-contract) for
+  errors. Follow the [application error translation](#application-error-translation) for
   classification and translation.
 - Preserve detailed logs for operators, but do not log secrets or sensitive data.
 - Do not hide controller/worker/aggregation failures behind generic success

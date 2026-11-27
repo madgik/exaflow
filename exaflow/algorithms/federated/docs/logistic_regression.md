@@ -1,126 +1,92 @@
-﻿## Logistic Regression (FederatedLogisticRegression)
+# Binary logistic regression
 
-### Name
+Implementation: [linear_model/logistic_regression.py](../linear_model/logistic_regression.py).
 
-**Logistic Regression (FederatedLogisticRegression)**
+Binary logistic regression estimates a probability from a numeric design matrix and an already binary-encoded outcome.
 
-### Type
+## Library interface
 
-**Statistical Model** (supervised binary classification)
+`FederatedLogisticRegression(fit_intercept=True).fit(X, y, *, agg_client)` requires numeric features and outcomes already encoded as `0` or `1`. The intercept flag is keyword-only. The result exposes `params`, `stderr`, `z_scores`, `pvalues`, `lower_ci`, `upper_ci`, `ll`, `ll0`, `r_squared_cs`, `r_squared_mcf`, `aic`, `bic`, degrees of freedom, and `predict(X)` probabilities. Iteration limit 50, tolerance `1e-4`, and significance level `0.05` are module constants, not constructor options. Encoding belongs to separate [one-hot](one_hot_encoder.md) and [column transformation](column_transformer.md) components.
 
-### Goal (Why we need it)
+## Statistical method
 
-Logistic Regression models the probability of a **binary outcome** using a logistic function.
-In a federated setting, we want the *same* maximum likelihood estimates (coefficients, standard errors, p-values, confidence intervals) as centralized logistic regression **without sharing raw data**, using only aggregated gradient and Hessian information.
+The model is binary logistic regression with a logit link:
 
-### When to use
+```text
+P(y_i = 1 | x_i) = sigmoid(eta_i)
+eta_i = beta_0 + beta_1 x_i1 + ... + beta_p x_ip
+sigmoid(eta) = 1 / (1 + exp(-eta))
+```
 
-Use Logistic Regression when:
+Coefficients maximize the binomial log-likelihood:
 
-- you need **binary classification** with probabilistic interpretation
-- you want interpretable coefficients (log-odds ratios)
-- you need statistical inference (p-values, confidence intervals, AIC/BIC)
-- features are numerical or properly encoded categorical
-- you have sufficient sample size relative to number of features
+```text
+LL(beta) = sum_i [y_i log(mu_i) + (1 - y_i) log(1 - mu_i)]
+```
 
-### When NOT to use
+## Federated computation
 
-Avoid / be careful when:
+The model is computed without sharing row-level data. Each site contributes
+gradient, Hessian, and log-likelihood terms for the current coefficient vector.
+Aggregated quantities drive Newton-style coefficient updates.
 
-- outcome is not binary (use multinomial or ordinal models)
-- features are highly collinear (Hessian may be singular)
-- extreme class imbalance without proper handling
-- non-linear decision boundaries (consider polynomial features or other models)
-- very small sample size (n < 10\*p is risky)
-- complete or quasi-complete separation exists
+### Aggregated quantities
 
-______________________________________________________________________
+| Quantity | Purpose |
+|---|---|
+| Number of observations | Validate model size and compute fit statistics. |
+| Number of positive outcomes | Validate class support and compute null log-likelihood. |
+| Gradient vector | Update coefficients. |
+| Hessian matrix | Compute Newton step and coefficient covariance approximation. |
+| Log-likelihood | Compute convergence diagnostics and model fit statistics. |
 
-### Inputs / Outputs
+### Federated flow
 
-| Item | Description |
-| -------------------- | ------------------------------------------------------- |
-| **X** | Feature matrix, shape `(n_local, p)` |
-| **y** | Binary target vector, shape `(n_local,)` |
-| **fit_intercept** | Whether to fit intercept term (default: `True`) |
-| **MAX_ITER** | Fixed maximum IRLS iterations: 50 |
-| **TOL** | Fixed convergence tolerance: 1e-4 |
-| **ALPHA** | Fixed confidence-interval significance level: 0.05 |
-| **agg_client** | Federated aggregation client |
+```text
+Receive numeric X and binary y; add an intercept when configured.
+Validate effective inputs, then aggregate total and per-class sample counts.
+Initialize beta to zero.
+Repeat up to 50 iterations:
+    compute local probabilities, score, Hessian, and log-likelihood
+    sum these quantities across participants
+    stop if the largest absolute score component is <= 1e-4
+    update beta with a Newton step (pseudo-inverse fallback)
+Compute Wald uncertainty, likelihood statistics, and fitted probabilities.
+```
 
-**Outputs (FederatedLogisticRegressionResults)**
+## Numerical decisions
 
-- `params`: coefficient estimates (including intercept if fitted)
-- `stderr`: standard errors of coefficients
-- `z_scores`: z-statistics
-- `pvalues`: two-tailed p-values
-- `lower_ci`, `upper_ci`: confidence interval bounds
-- `ll`: log-likelihood
-- `r_squared_cs`: Cox-Snell pseudo RΒ²
-- `r_squared_mcf`: McFadden pseudo RΒ²
-- `aic`, `bic`: information criteria
-- `predict(X)`: predicted class probabilities
+- The optimizer uses Newton updates.
+- `MAX_ITER` is 50 and convergence tolerance is `1e-4` on the maximum absolute
+  gradient component.
+- If the Hessian is singular, a pseudo-inverse is used.
+- Validation requires enough observations and enough positive/negative outcomes
+  relative to the number of predictors.
+- Wald standard errors and confidence intervals use the inverse Hessian.
+- An intercept is included only when `fit_intercept=True`. Features and encoded targets must be finite and row-aligned. Global observation and class counts must exceed the fitted parameter count.
 
-### Input validation
+## Reference comparison
 
-`fit_intercept` is checked at fitting time and accepts Python or NumPy booleans.
-The iteration limit, tolerance, and significance level above remain module
-constants, not constructor parameters.
+Standalone tests compare with `statsmodels`:
 
-Features and targets retain their existing NumPy float conversion. Features
-must be finite, and effective target values must be finite and encoded as `0`
-or `1`. Existing target flattening, feature reshaping, intercept addition, and
-row-alignment transposition are retained in their original order. With no
-intercept, the existing promotion of scalar/flat training features to 2D remains
-available. Validation checks matching rows after those conversions; it does not
-impute values or drop observations.
+```text
+smf.logit(formula, df).fit(
+    method="newton",
+    maxiter=200,
+    tol=1e-8,
+    start_params=start_params,
+    disp=False,
+)
+```
 
-Empty local partitions, a single local outcome class, and zero-feature input
-with an intercept are permitted. The existing global requirements remain:
-the observation count and each outcome-class count must exceed the number of
-fitted parameters, including the intercept when present.
+Reference behavior is aligned with `statsmodels` logistic regression using a
+Newton optimizer and an intercept.
 
-Local parameter and input validation raises `FedError` subclasses before estimation
-without adding aggregation calls. The caller owns distributed error propagation,
-cancellation, and cleanup. Exareme3 uses its existing request-error and cleanup
-handling; independent callers must provide their own lifecycle handling.
-Participants must still use the same configuration and aligned feature layout
-for estimation. Transport/programming errors are not converted to input errors.
+## Limitations
 
-Prediction checks finite numeric features and compatibility with the fitted
-parameter count after its existing conversions. Flat prediction input remains
-a single feature column with an intercept, or one observation without an
-intercept. Empty-result prediction behavior is unchanged.
-
-Invalid inputs now fail explicitly at the package boundary rather than producing
-incidental NumPy errors, invalid likelihood calculations, or non-finite results.
-Global sample-count errors now advise selecting more observations or fewer
-covariates. Public signatures, successful result fields, and predicted
-probabilities are unchanged. Reverting the validation integration and its helper
-imports restores the preceding behavior without a data or deployment migration.
-
-### Key Differences from statsmodels
-
-| Aspect | statsmodels | MIP Federated Implementation |
-| ------------------ | --------------------- | ----------------------------- |
-| Data access | Full centralized data | Data remains local per client |
-| Algorithm | IRLS (Newton-Raphson) | Federated IRLS |
-| Gradients/Hessian | Local computation | Federated aggregation |
-| Convergence check | Max absolute gradient | Max absolute gradient |
-| Performance | CPU/memory bound | Network + aggregation bound |
-| Results API | Full statsmodels API | Simplified results container |
-
-### Approximation vs Exactness
-
-| Component | statsmodels | MIP |
-| --------------------------- | ----------- | ---------------------- |
-| Coefficient estimates | Exact MLE | Exact MLE |
-| Standard errors | Exact | Exact |
-| Log-likelihood | Exact | Exact |
-| P-values | Exact | Exact |
-| Confidence intervals | Exact | Exact |
-| Pseudo RΒ² | Exact | Exact |
-| AIC/BIC | Exact | Exact |
-| Convergence detection | Exact | Exact |
-
-______________________________________________________________________
+- Observations are assumed independent.
+- No regularization is applied.
+- P-values and confidence intervals rely on large-sample Wald approximations.
+- Complete or quasi-complete separation can prevent convergence.
+- The model can fail when observations or class counts are too small relative to
+  the number of predictors.
