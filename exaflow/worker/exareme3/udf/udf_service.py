@@ -71,6 +71,9 @@ def run_udf(
                 udf_registry_key
             ),
         )
+    except InsufficientDataError:
+        _unregister_aggregation_client(agg_client)
+        raise
     except FedError as e:
         error = translate_federated_error(e)
         log_message = (
@@ -180,7 +183,6 @@ def _check_min_rows_or_raise(
     *,
     data,
     check_min_rows: bool,
-    agg_client: Optional[AggregationClient],
 ) -> None:
     if not check_min_rows:
         return
@@ -189,8 +191,6 @@ def _check_min_rows_or_raise(
     min_required = worker_config.privacy.minimum_row_count
     if num_rows >= min_required:
         return
-
-    _unregister_aggregation_client(agg_client)
 
     raise InsufficientDataError(
         f"Insufficient data returned {num_rows} rows; minimum required is {min_required}."
@@ -221,7 +221,6 @@ def _apply_preprocessing_steps_to_data_and_metadata(
     _check_min_rows_or_raise(
         data=data,
         check_min_rows=check_min_rows,
-        agg_client=agg_client,
     )
 
     for preprocessing_step in preprocessing or []:
@@ -242,7 +241,6 @@ def _apply_preprocessing_steps_to_data_and_metadata(
         _check_min_rows_or_raise(
             data=data,
             check_min_rows=check_min_rows,
-            agg_client=agg_client,
         )
     return data, metadata
 

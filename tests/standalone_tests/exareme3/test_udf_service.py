@@ -7,6 +7,9 @@ import pandas as pd
 import pytest
 
 from exaflow.algorithms import specifications as specs
+from exaflow.algorithms.exareme3.missing_values.missing_values_handler import (
+    MissingValuesHandler,
+)
 from exaflow.algorithms.exareme3.statistics.fisher_exact import fisher_exact_local_step
 from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
 from exaflow.algorithms.exareme3.utils.registry import get_udf_registry_key
@@ -32,12 +35,15 @@ class _DummyAggClient(DummyAggClient):
     def __init__(self):
         self.unregistered = False
         self.closed = False
+        self.cleanup_calls = []
 
     def unregister(self):
         self.unregistered = True
+        self.cleanup_calls.append("unregister")
 
     def close(self):
         self.closed = True
+        self.cleanup_calls.append("close")
 
 
 class _UnreachableServerError(grpc.RpcError):
@@ -141,16 +147,12 @@ class _NoAggSpecStep(_BaseTransformAggStep):
 def test_check_min_rows_uses_pandas_row_count(monkeypatch):
     monkeypatch.setattr(udf_service.worker_config.privacy, "minimum_row_count", 3)
     data = pd.DataFrame({"x": [1, 2]})
-    agg_client = _DummyAggClient()
 
     with pytest.raises(InsufficientDataError, match="minimum required is 3"):
         udf_service._check_min_rows_or_raise(
             data=data,
             check_min_rows=True,
-            agg_client=agg_client,
         )
-
-    assert agg_client.unregistered is True
 
 
 def test_apply_preprocessing_checks_min_rows_after_each_step(monkeypatch):
@@ -607,18 +609,37 @@ def test_run_udf_closes_agg_client_without_unregistering(monkeypatch, udf, expec
     assert agg_client.unregistered is False
 
 
+@pytest.mark.parametrize("unregister_fails", [False, True])
 @pytest.mark.parametrize(
-    "preprocessing, minimum_row_count, expected_error",
+    "preprocessing, minimum_row_count, expected_error, message",
     [
-        ([], 3, InsufficientDataError),
-        ([{"name": "bad_input", "parameters": {}}], 1, BadUserInput),
+        ([], 3, InsufficientDataError, "minimum required is 3"),
+        (
+            [
+                {
+                    "name": "missing_values_handler",
+                    "parameters": {"strategies": {"x": "mean"}},
+                }
+            ],
+            2,
+            InsufficientDataError,
+            "has only missing values",
+        ),
+        ([{"name": "bad_input", "parameters": {}}], 1, BadUserInput, None),
     ],
-    ids=["insufficient_data", "bad_input"],
+    ids=["minimum_rows", "imputation", "bad_input"],
 )
-def test_run_udf_keeps_error_when_unregister_fails(
-    monkeypatch, preprocessing, minimum_row_count, expected_error
+def test_run_udf_unregisters_once_before_closing_on_error(
+    monkeypatch,
+    preprocessing,
+    minimum_row_count,
+    expected_error,
+    message,
+    unregister_fails,
 ):
-    agg_client = _FailingUnregisterAggClient()
+    agg_client = (
+        _FailingUnregisterAggClient() if unregister_fails else _DummyAggClient()
+    )
     monkeypatch.setattr(
         udf_service.worker_config.privacy, "minimum_row_count", minimum_row_count
     )
@@ -636,12 +657,12 @@ def test_run_udf_keeps_error_when_unregister_fails(
     monkeypatch.setattr(
         udf_service,
         "_load_worker_data_for_udf",
-        lambda **_: pd.DataFrame({"x": [1, 2]}),
+        lambda **_: pd.DataFrame({"x": [None, None]}),
     )
     monkeypatch.setattr(
         udf_service,
         "exareme3_preprocessing_step_classes",
-        {"bad_input": _BadInputStep},
+        {"bad_input": _BadInputStep, "missing_values_handler": MissingValuesHandler},
     )
     system_args = SimpleNamespace(
         context_id="test-context",
@@ -651,7 +672,7 @@ def test_run_udf_keeps_error_when_unregister_fails(
         add_dataset_variable=False,
     )
 
-    with pytest.raises(expected_error):
+    with pytest.raises(expected_error, match=message):
         udf_service.run_udf(
             request_id="req",
             udf_registry_key="udf",
@@ -659,5 +680,4 @@ def test_run_udf_keeps_error_when_unregister_fails(
             system_args=system_args,
         )
 
-    assert agg_client.unregistered is True
-    assert agg_client.closed is True
+    assert agg_client.cleanup_calls == ["unregister", "close"]
