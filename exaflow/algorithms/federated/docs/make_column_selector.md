@@ -1,4 +1,4 @@
-﻿## make_column_selector
+## make_column_selector
 
 ### Name
 
@@ -16,37 +16,36 @@ Creates a callable column selector that filters columns by **dtype** (similar to
 
 Use make_column_selector when:
 
-* you want to select columns by dtype in ColumnTransformer
-* you need to differentiate numeric vs categorical features automatically
-* you want flexible dtype-based selection (include/exclude patterns)
+- you want to select columns by dtype in ColumnTransformer
+- you need to differentiate numeric vs categorical features automatically
+- you want flexible dtype-based selection (include/exclude patterns)
 
 ### When NOT to use
 
-* When column names are known statically (use explicit column lists)
+- When column names are known statically (use explicit column lists)
 
----
+______________________________________________________________________
 
 ### Inputs / Outputs
 
-| Item              | Description                                                |
+| Item | Description |
 | ----------------- | ---------------------------------------------------------- |
-| **dtype_include** | Optional list of dtypes to include (e.g., ["number"])      |
-| **dtype_exclude** | Optional list of dtypes to exclude (e.g., ["object"])      |
+| **dtype_include** | Optional list of dtypes to include (e.g., ["number"]) |
+| **dtype_exclude** | Optional list of dtypes to exclude (e.g., ["object"]) |
 
 **Outputs**
 
-* Returns a callable that takes a DataFrame and returns list of column names matching criteria
+- Returns a callable that takes a DataFrame and returns list of column names matching criteria
 
 ### Key Differences from scikit-learn
 
-| Aspect         | sklearn make_column_selector | MIP  |
+| Aspect | sklearn make_column_selector | Library |
 | -------------- | ---------------------------- | ---- |
-| Functionality  | Same                         | Same |
-| Dtype matching | Same                         | Same |
+| Functionality | Same | Same |
+| Dtype matching | Same | Same |
 
 ### Approximation vs Exactness
 
-| Component      | sklearn | MIP   |
+| Component | sklearn | Library |
 | -------------- | ------- | ----- |
-| Dtype matching | Exact   | Exact |
-
+| Dtype matching | Exact | Exact |

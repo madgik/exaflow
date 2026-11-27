@@ -7,7 +7,8 @@ from exaflow.algorithms.federated.cluster.kmeans import INIT_MULTI_START_RANDOM_
 from exaflow.algorithms.federated.cluster.kmeans import FederatedKMeans
 from exaflow.algorithms.federated.cluster.kmeans import FederatedKMeansResults
 from exaflow.algorithms.federated.cluster.kmeans import assign_clusters
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
 from tests.standalone_tests.federated_algorithms.utils import FederatedAlgorithmTest
 from tests.standalone_tests.federated_algorithms.utils.simulated_agg_client import (
     AggregationCoordinator,
@@ -359,8 +360,28 @@ def test_kmeans_rejects_non_finite_values():
         random_state=5,
     )
 
-    with pytest.raises(BadInputError, match="requires finite numerical values"):
+    with pytest.raises(FedError, match="requires finite numerical values"):
         model.fit(X, agg_client=agg_client)
+
+
+@pytest.mark.parametrize("invalid_value", [np.nan, np.inf, -np.inf])
+@pytest.mark.parametrize("invalid_input", ["observations", "centers"])
+def test_cluster_assignment_distinguishes_nonfinite_inputs(
+    invalid_value, invalid_input
+):
+    observations = np.array([[1.0]])
+    centers = np.array([[0.0]])
+    if invalid_input == "observations":
+        observations[0, 0] = invalid_value
+        expected = FedErrorReason.KMEANS_FINITE_VALUES_REQUIRED
+    else:
+        centers[0, 0] = invalid_value
+        expected = FedErrorReason.KMEANS_CENTERS_FINITE_VALUES_REQUIRED
+
+    with pytest.raises(FedError) as error:
+        assign_clusters(observations, centers)
+
+    assert error.value.reason is expected
 
 
 def test_kmeans_coordinates_non_finite_validation_across_workers():
@@ -376,7 +397,7 @@ def test_kmeans_coordinates_non_finite_validation_across_workers():
             worker_id=worker_id,
             coordinator=coordinator,
         )
-        with pytest.raises(BadInputError, match="requires finite numerical values"):
+        with pytest.raises(FedError, match="requires finite numerical values"):
             FederatedKMeans(
                 n_clusters=2,
                 random_state=5,
@@ -402,7 +423,7 @@ def test_kmeans_rejects_invalid_hyperparameters(params, error):
     agg_client = SimulatedAggClient(worker_id=0, coordinator=coordinator)
     model = FederatedKMeans(**params)
 
-    with pytest.raises(BadInputError, match=error):
+    with pytest.raises(FedError, match=error):
         model.fit(np.array([[0.0], [1.0]]), agg_client=agg_client)
 
 

@@ -5,21 +5,6 @@ Runtime wrapper: [linear_model/logistic_regression.py](../../exaflow/algorithms/
 The CV wrapper is colocated at `linear_model/logistic_regression_cv.py`.
 Shared federated cross-validation utilities remain under `model_selection`.
 
-## Table of contents
-
-- [Overview](#overview)
-- [Inputs](#inputs)
-  - [Required inputs](#required-inputs)
-  - [Parameters](#parameters)
-- [Statistical model](#statistical-model)
-- [Federated computation](#federated-computation)
-  - [Aggregated quantities](#aggregated-quantities)
-  - [Federated flow](#federated-flow)
-- [Technical decisions](#technical-decisions)
-- [Outputs](#outputs)
-- [Validation against state-of-the-art implementation](#validation-against-state-of-the-art-implementation)
-- [Limitations and assumptions](#limitations-and-assumptions)
-
 ## Overview
 
 Logistic regression models a binary outcome as a function of numerical and/or
@@ -41,104 +26,13 @@ outcome classes are encoded as `0`.
 |---|---|---|
 | `positive_class` | Outcome category treated as the positive outcome. | Required |
 
-## Statistical model
+## Method
 
-The model is binary logistic regression with a logit link:
+The mathematical method, library API, aggregation flow, numerical decisions, reference comparisons, and limitations are documented in [Binary logistic regression](../../exaflow/algorithms/federated/docs/logistic_regression.md).
 
-```text
-P(y_i = 1 | x_i) = sigmoid(eta_i)
-eta_i = beta_0 + beta_1 x_i1 + ... + beta_p x_ip
-sigmoid(eta) = 1 / (1 + exp(-eta))
-```
+## Application integration
 
-Coefficients maximize the binomial log-likelihood:
-
-```text
-LL(beta) = sum_i [y_i log(mu_i) + (1 - y_i) log(1 - mu_i)]
-```
-
-## Federated computation
-
-The model is computed without sharing row-level data. Each site contributes
-gradient, Hessian, and log-likelihood terms for the current coefficient vector.
-Aggregated quantities drive Newton-style coefficient updates.
-
-### Aggregated quantities
-
-| Quantity | Purpose |
-|---|---|
-| Global categorical levels | Align one-hot encoded covariate columns. |
-| Number of observations | Validate model size and compute fit statistics. |
-| Number of positive outcomes | Validate class support and compute null log-likelihood. |
-| Gradient vector | Update coefficients. |
-| Hessian matrix | Compute Newton step and coefficient covariance approximation. |
-| Log-likelihood | Compute convergence diagnostics and model fit statistics. |
-
-### Federated flow
-
-```text
-Input:
-    y: nominal outcome
-    X: covariates
-    positive_class: category mapped to 1
-
-Step 1:
-    Convert y to binary:
-        1 if y equals positive_class
-        0 otherwise
-
-Step 2:
-    Build the design matrix:
-        one-hot encode categorical covariates
-        include numerical covariates directly
-        add an intercept
-
-Step 3:
-    Validate local inputs and parameters; raise an input error if invalid.
-    Aggregate sample counts:
-        total observations
-        total positive outcomes
-
-Step 4:
-    Initialize coefficients to zero.
-
-Step 5:
-    Repeat up to the maximum iteration count:
-        each site computes fitted probabilities
-        each site computes local gradient, Hessian, and log-likelihood
-        aggregate gradient, Hessian, and log-likelihood
-        invert the Hessian, using a pseudo-inverse if needed
-        update coefficients with the Newton step
-        stop when max absolute gradient <= tolerance
-
-Step 6:
-    Compute standard errors, z statistics, p-values, confidence intervals,
-    pseudo R-squared values, AIC, and BIC.
-
-Output:
-    coefficients and model summary
-```
-
-## Technical decisions
-
-- An intercept is always included.
-- Categorical covariates are one-hot encoded with globally aligned categories.
-- The optimizer uses Newton updates.
-- `MAX_ITER` is 50 and convergence tolerance is `1e-4` on the maximum absolute
-  gradient component.
-- If the Hessian is singular, a pseudo-inverse is used.
-- Validation requires enough observations and enough positive/negative outcomes
-  relative to the number of predictors.
-- Wald standard errors and confidence intervals use the inverse Hessian.
-- Missing values are handled before fitting by the required missing-values
-  preprocessing step.
-- The core also validates finite numerical features, binary encoded outcomes,
-  row alignment after existing conversions, and the Boolean intercept setting.
-  These checks raise local errors before estimation; the execution runtime
-  handles request failure and cleanup without additional validation aggregation.
-  Prediction checks compatible feature counts. Invalid inputs receive explicit
-  `BadInputError` messages; successful responses and numerical calculations are
-  unchanged.
+The wrapper maps the selected `positive_class` to 1 and all other outcome levels to 0, one-hot encodes categorical covariates, and always includes an intercept. Required missing-value preprocessing runs before fitting.
 
 ## Outputs
 
@@ -158,30 +52,3 @@ Output:
 | `ll` | Fitted-model log-likelihood. |
 | `aic` | Akaike information criterion. |
 | `bic` | Bayesian information criterion. |
-
-## Validation against state-of-the-art implementation
-
-Standalone tests compare with `statsmodels`:
-
-```text
-smf.logit(formula, df).fit(
-    method="newton",
-    maxiter=200,
-    tol=1e-8,
-    start_params=start_params,
-    disp=False,
-)
-```
-
-Reference behavior is aligned with `statsmodels` logistic regression using a
-Newton optimizer and an intercept.
-
-## Limitations and assumptions
-
-- The dependent variable is binarized by the selected positive class.
-- Observations are assumed independent.
-- No regularization is applied.
-- P-values and confidence intervals rely on large-sample Wald approximations.
-- Complete or quasi-complete separation can prevent convergence.
-- The model can fail when observations or class counts are too small relative to
-  the number of predictors.

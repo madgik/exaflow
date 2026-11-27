@@ -5,6 +5,7 @@ import pytest
 
 from exaflow.algorithms.federated.cluster.kmeans import FederatedKMeans
 from exaflow.algorithms.federated.decomposition.pca import FederatedPCA
+from exaflow.algorithms.federated.exceptions import FedError
 from exaflow.algorithms.federated.linear_model.cox_regression_classical import (
     FederatedClassicalCoxRegression,
 )
@@ -35,7 +36,6 @@ from exaflow.algorithms.federated.naive_bayes.naive_bayes_categorical import (
 from exaflow.algorithms.federated.naive_bayes.naive_bayes_gaussian import (
     FederatedGaussianNB,
 )
-from exaflow.algorithms.federated.utils import BadInputError
 
 
 @pytest.mark.parametrize(
@@ -68,7 +68,7 @@ def test_model_row_mismatch_fails_without_aggregation(factory):
         if isinstance(model, (FederatedLMM, FederatedGLMMBinary, FederatedGLMMOrdinal))
         else {}
     )
-    with pytest.raises(BadInputError):
+    with pytest.raises(FedError):
         model.fit(np.ones((1, 1)), y, agg_client=client, **kwargs)
     assert client.mock_calls == []
 
@@ -107,7 +107,7 @@ def test_mutated_parameters_are_checked_before_aggregation(factory, parameter, v
         )
         else np.array([0, 1])
     )
-    with pytest.raises(BadInputError) as error:
+    with pytest.raises(FedError) as error:
         model.fit(np.ones((2, 1)), y, agg_client=client, **kwargs)
     assert "private-value" not in str(error.value)
     assert client.mock_calls == []
@@ -118,7 +118,7 @@ def test_mutated_parameters_are_checked_before_aggregation(factory, parameter, v
 )
 def test_mixed_effects_scalar_features_fail_as_input_errors(factory):
     client = Mock()
-    with pytest.raises(BadInputError):
+    with pytest.raises(FedError):
         factory().fit(2, [0], center_ids=np.array([0]), agg_client=client)
     assert client.mock_calls == []
 
@@ -128,7 +128,7 @@ def test_mixed_effects_scalar_features_fail_as_input_errors(factory):
 )
 def test_survival_feature_names_are_checked_before_aggregation(factory):
     client = Mock()
-    with pytest.raises(BadInputError, match="feature name"):
+    with pytest.raises(FedError, match="feature name"):
         factory().fit(
             [[1], [2]], [[1, 0], [2, 1]], feature_names=["a", "b"], agg_client=client
         )
@@ -150,7 +150,7 @@ def test_prediction_checks_effective_feature_count(result_type):
     result = object.__new__(result_type)
     object.__setattr__(result, "params", np.ones(2))
     object.__setattr__(result, "fit_intercept", False)
-    with pytest.raises(BadInputError, match="Prediction features must match"):
+    with pytest.raises(FedError, match="Prediction features must match"):
         result.predict(np.ones((3, 3)))
 
 
@@ -159,20 +159,20 @@ def test_prediction_checks_effective_feature_count(result_type):
 )
 def test_pca_validates_before_aggregation(features):
     client = Mock()
-    with pytest.raises(BadInputError):
+    with pytest.raises(FedError):
         FederatedPCA(client).fit(features)
     assert client.mock_calls == []
 
 
 def test_pca_checks_fitted_state_before_transformation():
-    with pytest.raises(BadInputError, match="not fitted"):
+    with pytest.raises(FedError, match="not fitted"):
         FederatedPCA(Mock()).transform([[1]])
 
 
 def test_pca_checks_existing_global_count_before_dividing():
     client = Mock()
     client.sum.side_effect = [np.array([1.0]), np.array([1.0]), np.array([1.0])]
-    with pytest.raises(BadInputError, match="at least 2"):
+    with pytest.raises(FedError, match="at least 2"):
         FederatedPCA(client).fit([[1.0]])
     assert client.sum.call_count == 3
 
@@ -204,7 +204,7 @@ def test_mutated_boolean_parameters_are_rejected_locally(factory, parameter):
     client = Mock()
     model = factory()
     setattr(model, parameter, "false")
-    with pytest.raises(BadInputError, match="boolean"):
+    with pytest.raises(FedError, match="boolean"):
         model.fit([[1]], [0], center_ids=np.array([0]), agg_client=client)
     assert client.mock_calls == []
 
@@ -244,7 +244,7 @@ def test_existing_unbounded_and_fixed_variance_settings_pass_validation(
 )
 def test_ragged_class_labels_are_safe_local_input_errors(factory):
     client = Mock()
-    with pytest.raises(BadInputError, match="class labels") as error:
+    with pytest.raises(FedError, match="class labels") as error:
         factory().fit([[0], [1]], [["private-value"], ["a", "b"]], agg_client=client)
     assert "private-value" not in str(error.value)
     assert client.mock_calls == []
@@ -255,6 +255,6 @@ def test_ragged_encoded_features_are_safe_local_input_errors():
     model = FederatedCategoricalNB(
         y_var="y", x_vars=["x"], categories={"x": ["a", "b"]}
     )
-    with pytest.raises(BadInputError, match="rectangular"):
+    with pytest.raises(FedError, match="rectangular"):
         model.fit([[0], [0, 1]], [0, 1], agg_client=client)
     assert client.mock_calls == []

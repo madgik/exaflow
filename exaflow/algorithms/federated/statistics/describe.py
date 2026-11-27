@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections import Counter
 from typing import Dict
-from typing import Iterable
 from typing import List
 
 import numpy as np
@@ -13,7 +12,6 @@ from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
 from exaflow.algorithms.federated.validation import check_dataframe
-from exaflow.column_names import DATASET_COL
 
 
 class DescribeResult:
@@ -35,9 +33,9 @@ class FederatedDescribe:
 
     Notes
     -----
-    - Per-dataset quantiles (q1/q2/q3) are exact (pandas). The global summary
+    - Per-group quantiles (q1/q2/q3) are exact (pandas). The global summary
       carries federated ``q1``/``q2``/``q3`` and ``median`` (= ``q2``) estimated
-      across all datasets via a histogram-based percentile.
+      across all groups via a histogram-based percentile.
     - Means and variances come from aggregated counts and centered moments.
     - Nominal counts flow through the aggregation client and zero-count levels are
       dropped in the global result per our contract.
@@ -56,26 +54,19 @@ class FederatedDescribe:
         nominal_vars: List[str],
         min_row_count: int,
         nominal_levels: Dict[str, List],
-        dataset_col: str = DATASET_COL,
+        group_column: str,
         integer_vars: List[str] | None = None,
     ) -> DescribeResult:
-        check_dataframe(data)
-        datasets: Iterable[str]
-        if dataset_col in data.columns:
-            datasets = set(data[dataset_col])
-        else:
-            datasets = ["unknown"]
+        """Summarize rows by the values in a required grouping column."""
+        check_dataframe(data, [group_column])
+        group_values = data[group_column]
 
         recs = [
             rec
-            for dataset in datasets
+            for group in set(group_values)
             for rec in self._compute_stats_records(
-                df=(
-                    data[data[dataset_col] == dataset]
-                    if dataset_col in data.columns
-                    else data
-                ),
-                dataset=str(dataset),
+                df=data[group_values == group],
+                group=group,
                 numerical_vars=numerical_vars,
                 nominal_vars=nominal_vars,
                 min_row_count=min_row_count,
@@ -93,12 +84,12 @@ class FederatedDescribe:
             recs=recs,
             data=data,
             numerical_vars=numerical_vars,
-            dataset_col=dataset_col,
+            group_values=group_values,
             integer_vars=integer_vars or [],
         )
 
         return DescribeResult(
-            recs=recs,
+            recs=[dict(rec, group=str(rec["group"])) for rec in recs],
             global_recs=global_recs,
         )
 
@@ -109,21 +100,21 @@ class FederatedDescribe:
         recs: List[Dict],
         data: pd.DataFrame,
         numerical_vars: List[str],
-        dataset_col: str,
+        group_values: pd.Series,
         integer_vars: List[str],
     ) -> None:
         """Estimate federated q1/q2/q3 and median per numerical variable across
-        all datasets and attach them to the global summary record.
+        all groups and attach them to the global summary record.
 
-        Unlike the per-dataset ``q1``/``q2``/``q3`` (exact, computed locally with
+        Unlike the per-group ``q1``/``q2``/``q3`` (exact, computed locally with
         pandas), these are histogram-based estimates aggregated across every
         worker — true global quartiles rather than local ones. ``median`` is set
         to the same value as ``q2`` for readability.
 
-        The estimate is restricted to rows from ``(variable, dataset)`` groups
+        The estimate is restricted to rows from ``(variable, group)`` pairs
         that cleared the ``min_row_count`` threshold (those with a non-null
-        per-dataset record), matching the population used for the other global
-        statistics. Otherwise rows withheld at the dataset level for privacy
+        per-group record), matching the population used for the other global
+        statistics. Otherwise rows withheld at the group level for privacy
         would still influence the published quartiles.
 
         Every worker iterates ``numerical_vars`` in the same order and the
@@ -136,18 +127,14 @@ class FederatedDescribe:
         estimator = Percentile(NumpyAggregator(self.agg_client))
         recs_by_var = {rec["variable"]: rec for rec in global_recs}
         integer_var_set = set(integer_vars)
-        has_dataset_col = dataset_col in data.columns
         for var in numerical_vars:
             is_integer = var in integer_var_set
             allowed = {
-                rec["dataset"]
+                rec["group"]
                 for rec in recs
                 if rec["variable"] == var and rec["data"] is not None
             }
-            if has_dataset_col:
-                col = data.loc[data[dataset_col].astype(str).isin(allowed), var]
-            else:
-                col = data[var] if allowed else data[var].iloc[0:0]
+            col = data.loc[group_values.isin(allowed), var]
             values = {}
             for key, q in [("q1", 0.25), ("q2", 0.5), ("q3", 0.75)]:
                 result = estimator.compute(col, q, is_integer=is_integer)
@@ -164,17 +151,17 @@ class FederatedDescribe:
         self,
         *,
         df: pd.DataFrame,
-        dataset: str,
+        group: object,
         numerical_vars: List[str],
         nominal_vars: List[str],
         min_row_count: int,
     ) -> List[Dict]:
-        def record(var, dataset_name, payload):
-            return dict(variable=var, dataset=dataset_name, data=payload)
+        def record(var, group_label, payload):
+            return dict(variable=var, group=group_label, data=payload)
 
         variables = numerical_vars + nominal_vars
         if len(df) < min_row_count:
-            return [record(var, dataset, None) for var in variables]
+            return [record(var, group, None) for var in variables]
 
         num_total = int(len(df))
         descr_all = df.describe(include="all")
@@ -199,7 +186,7 @@ class FederatedDescribe:
             for var in numerical_vars:
                 count = int(num_dtps[var])
                 if count < min_row_count:
-                    numerical_recs.append(record(var, dataset, None))
+                    numerical_recs.append(record(var, group, None))
                     continue
                 local_std = stds.get(var)
                 if local_std is not None and np.isnan(local_std):
@@ -207,7 +194,7 @@ class FederatedDescribe:
                 numerical_recs.append(
                     record(
                         var,
-                        dataset,
+                        group,
                         dict(
                             num_dtps=count,
                             num_na=int(num_na[var]),
@@ -232,12 +219,12 @@ class FederatedDescribe:
         nominal_recs = []
         for var in nominal_vars:
             if num_dtps.get(var, 0) < min_row_count:
-                nominal_recs.append(record(var, dataset, None))
+                nominal_recs.append(record(var, group, None))
                 continue
             nominal_recs.append(
                 record(
                     var,
-                    dataset,
+                    group,
                     dict(
                         num_dtps=int(num_dtps[var]),
                         num_na=int(num_na[var]),
@@ -255,7 +242,6 @@ class FederatedDescribe:
         records: List[Dict],
         variables: List[str],
         nominal_levels: Dict[str, List],
-        dataset_label: str = "all datasets",
     ) -> List[Dict]:
         valid = [r for r in records if r.get("data") is not None]
 
@@ -353,9 +339,7 @@ class FederatedDescribe:
         for idx, var in enumerate(numerical_vars):
             num_dtps = float(num_dtps_arr[idx]) if numerical_vars else 0.0
             if num_dtps <= 0:
-                global_records.append(
-                    dict(variable=var, dataset=dataset_label, data=None)
-                )
+                global_records.append(dict(variable=var, group=None, data=None))
                 continue
             mean = float(means[idx])
             if num_dtps <= 1:
@@ -365,7 +349,7 @@ class FederatedDescribe:
             global_records.append(
                 dict(
                     variable=var,
-                    dataset=dataset_label,
+                    group=None,
                     data=dict(
                         num_dtps=int(num_dtps),
                         num_na=int(num_na_arr[idx]),
@@ -381,9 +365,7 @@ class FederatedDescribe:
         for idx, var in enumerate(nominal_vars):
             num_dtps = float(cat_num_dtps[idx]) if nominal_vars else 0.0
             if num_dtps <= 0:
-                global_records.append(
-                    dict(variable=var, dataset=dataset_label, data=None)
-                )
+                global_records.append(dict(variable=var, group=None, data=None))
                 continue
             levels = nominal_levels[var]
             local_counts = np.array(
@@ -399,7 +381,7 @@ class FederatedDescribe:
             global_records.append(
                 dict(
                     variable=var,
-                    dataset=dataset_label,
+                    group=None,
                     data=dict(
                         num_dtps=int(num_dtps),
                         num_na=int(cat_num_na[idx]),

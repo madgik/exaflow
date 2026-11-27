@@ -1,121 +1,90 @@
-﻿## KMeans (FederatedKMeans)
+# K-means clustering
 
-### Name
+Implementation: [cluster/kmeans.py](../cluster/kmeans.py).
 
-**KMeans (FederatedKMeans)**
+K-means partitions numeric observations using squared Euclidean distance and aggregated cluster sufficient statistics.
 
-### Type
+## Library interface
 
-**Statistical Model** (unsupervised clustering)
+`FederatedKMeans(n_clusters=..., init_method="random_range", n_init=1, tol=1e-4, maxiter=100, random_state=123).fit(x, y=None, *, agg_client, feature_names=None)` fits numerical features. Constructor settings are keyword-only. `select_k(x, *, k_min, k_max, agg_client, ...)` evaluates a candidate range for elbow selection.
 
-### Goal (Why we need it)
+`FederatedKMeansResults` includes centers, exact counts, local labels, inertia, iterations, and convergence/selection diagnostics. These are library results; callers decide which fitted statistics to release. The library default is one initialization; multi-start behavior is explicit.
 
-KMeans groups observations into **K clusters** by learning **K cluster centers (centroids)**.
-In a federated setting, we want the *same* clustering result as centralized KMeans **without sharing raw data**, using only aggregated statistics (sums, counts, min/max).
+## Statistical method
 
-### When to use
+The method follows Lloyd K-means:
 
-Use KMeans when:
+```text
+minimize sum_i ||x_i - c_{z_i}||^2
+```
 
-- you need **unsupervised clustering** (no labels)
-- features are **numerical** (continuous or numeric-encoded)
-- you can accept iterative training (multiple rounds)
-- you want to discover natural groupings in distributed data
+where `c_k` is a cluster center and `z_i` is the assigned cluster for
+observation `i`.
 
-### When NOT to use
+Range-based initialization samples from global feature minima and maxima. Multi-start fitting keeps the run with the lowest global inertia. Elbow selection evaluates this same objective over a candidate cluster range.
 
-Avoid / be careful when:
+## Federated computation
 
-- variables are categorical without proper encoding
-- features have very different scales and are not scaled (KMeans is scale-sensitive)
-- heavy outliers dominate (consider clipping / robust scaling)
-- you need strong privacy beyond aggregates (centroids can leak some distribution info)
-- K is unknown (KMeans requires specifying number of clusters)
-- clusters have non-spherical shapes (KMeans assumes spherical clusters)
+The algorithm is computed without sharing row-level data. Each site assigns its
+observations to the current centers and contributes cluster-wise sums and
+counts.
 
-______________________________________________________________________
+### Aggregated quantities
 
-### Inputs / Outputs
+| Quantity | Purpose |
+|---|---|
+| Number of observations | Report sample size and handle empty input. |
+| Feature minima and maxima | Initialize centers from global feature ranges. |
+| Cluster-wise feature sums | Update cluster centers. |
+| Cluster-wise counts | Convert sums to means. |
 
-| Item | Description |
-| ------------------ | ----------------------------------------------------------- |
-| **X** | Local data matrix, shape `(n_local, p)` |
-| **n_clusters (K)** | Number of clusters |
-| **tol** | Convergence threshold on centroid movement (Frobenius norm) |
-| **maxiter** | Maximum Lloyd iterations |
-| **random_state** | Seed for centroid initialization |
-| **init_method** | `random_range` or `multi_start_random_range` |
-| **n_init** | Number of initializations for multi-start fitting |
+### Federated flow
 
-**Outputs / fitted results**
+```text
+Receive numeric X and a shared cluster/initialization configuration.
+Aggregate counts and feature ranges; sample initial centers from these ranges.
+For each requested initialization:
+    assign local rows to nearest centers by squared Euclidean distance
+    aggregate cluster counts and feature sums
+    update centers as sums / counts; reset empty clusters to zero
+    repeat until center-update norm <= tol or maxiter is reached
+    compute global inertia
+Keep the initialization with the lowest inertia.
+Return fitted centers, exact counts, local assignments, and diagnostics.
+For select_k, repeat fitting over the candidate range and locate the elbow.
+```
 
-Public wrappers should expose only privacy-safe summaries. The federated core
-returns `FederatedKMeansResults` from `fit(X, agg_client=...)`. It holds the
-following values for internal reporter and preprocessing use:
+## Numerical decisions
 
-- `cluster_centers_`: list of `K` statistical mean centers, each length `p`
-- `cluster_counts_`: exact global cluster counts, internal only
-- `labels_`: local worker labels, internal only
-- `n_obs_`: exact global number of observations, internal only
-- `inertia_`: global within-cluster sum of squared distances
-- `cluster_inertia_`: per-cluster inertia, internal only
-- `n_iter_`: number of Lloyd iterations used
-- `converged_`: convergence flag
-- `empty_clusters_`: cluster indexes with zero assigned observations
-- `init_method_`: initialization strategy used
-- `n_init_`: number of initializations actually evaluated
-- `best_init_`: zero-based initialization index with the lowest inertia
+- Initialization samples uniformly from aggregated feature ranges.
+- `multi_start_random_range` repeats range-based initialization with different
+  seeds and keeps the fitted model with the lowest global inertia.
+- Random seed `123` is used for reproducibility.
+- Squared Euclidean distance is used for assignment.
+- Empty clusters are reset to the origin.
+- Convergence uses the Frobenius norm of the center update.
 
-`FederatedKMeansResults.predict(X)` assigns local observations to the saved
-centers. The shared `assign_clusters(X, centers)` helper supports replay from
-stored centers without constructing an estimator.
+## Reference comparison
 
-### Selecting K
+The method is aligned with classical Lloyd K-means as exposed by:
 
-`FederatedKMeans.select_k(X, k_min=..., k_max=..., agg_client=...)` fits one
-model for each candidate value of K and returns
-`FederatedKMeansSelectionResults`. It includes the selected K, all candidate
-inertias, any elbow-ambiguity warning, and the best fitted result.
+```text
+sklearn.cluster.KMeans(algorithm="lloyd")
+```
 
-### Key Differences from scikit-learn
+Important differences from common scikit-learn defaults:
 
-| Aspect | scikit-learn | MIP Federated Implementation |
-| ----------------- | --------------------- | ----------------------------- |
-| Data access | Full centralized data | Data remains local per client |
-| Initialization | K-means++ | Uniform random in min/max box |
-| Multi-start | Supported through `n_init` | Supported through `multi_start_random_range` |
-| Empty clusters | Multiple strategies | Reset to origin |
-| Aggregation | In-memory operations | Federated primitives only |
-| Performance | CPU/memory bound | Network + aggregation bound |
-| Public result | Raw model attributes | Privacy-safe wrapper report |
+| Aspect | This method | scikit-learn default |
+|---|---|---|
+| Initialization | Uniform sampling from aggregated feature ranges | `k-means++` |
+| Number of initializations | One, or multiple with `multi_start_random_range` | Depends on `n_init` |
+| Empty clusters | Reset center to zero | Internal reassignment behavior |
+| Objective | Lloyd K-means | Lloyd K-means by default in current releases |
 
-### Approximation vs Exactness
+## Limitations
 
-| Component | scikit-learn | MIP |
-| ---------------- | ------------ | ------------------- |
-| Lloyd iterations | Exact | Exact |
-| Mean (centroid) | Exact | Exact |
-| Sum / count | Exact | Exact |
-| Min / max | Exact | Exact |
-| Initialization | K-means++ | Random uniform |
-| Multi-start | Optional | Optional with `multi_start_random_range` |
-| Empty clusters | Various | Reset to zero |
-| Convergence | Exact | Exact (Frob. norm) |
-
-### Privacy boundary
-
-The federated core computes exact counts, centers, labels, and inertia because
-they are needed for fitting, reporting, and preprocessing. These values are not
-all public API output. The Exareme3 K-means wrapper masks cluster sizes as
-intervals and suppresses centers/profiles for clusters below the privacy
-threshold. The `kmeans_cluster_creator` preprocessing step validates that any
-exposed categorical output class is large enough before creating the derived
-column.
-
-### Multi-start random range
-
-`multi_start_random_range` is the privacy-safe initialization improvement used
-before any K-means++ implementation. It runs Lloyd K-means multiple times with
-different random seeds sampled from the global feature ranges, computes global
-inertia for each run, and keeps the fitted model with the lowest inertia. It
-does not select raw patient rows as centers.
+- Only numerical variables are supported.
+- Feature scaling strongly affects results.
+- The solution can be a local optimum.
+- Empty-cluster handling can affect final centers.
+- Outliers can strongly influence centers.

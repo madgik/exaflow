@@ -12,6 +12,7 @@ from exaflow.grpc_options import grpc_max_message_size
 from exaflow.grpc_options import grpc_message_options
 from exaflow.protos.worker import worker_pb2_grpc
 from exaflow.utils import Singleton
+from exaflow.worker_communication import AnalysisExecutionError
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import InsufficientDataError
 
@@ -101,6 +102,12 @@ class WorkerClient:
 
         if status_code == grpc.StatusCode.FAILED_PRECONDITION:
             raise InsufficientDataError(details)
+
+        if status_code == grpc.StatusCode.ABORTED:
+            raise AnalysisExecutionError(details) from exc
+
+        if status_code == grpc.StatusCode.INTERNAL:
+            raise RuntimeError("Analysis execution failed.") from exc
 
         if status_code == grpc.StatusCode.RESOURCE_EXHAUSTED:
             raise WorkerMessageTooLargeError(

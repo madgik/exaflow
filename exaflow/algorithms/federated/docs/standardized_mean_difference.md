@@ -1,12 +1,14 @@
 # Standardized Mean Difference
 
+Implementation: [statistics/standardized_mean_difference.py](../statistics/standardized_mean_difference.py).
+
 `FederatedStandardizedMeanDifference` computes Cohen's d for independent groups from aggregated sufficient statistics. Raw observations remain local; only counts, sums, and squared deviations are combined.
 
 ## Inputs
 
 The `compute(x, y)` method accepts two one-dimensional NumPy arrays. The arrays may have different lengths. Missing numeric values are excluded by the aggregation layer, and each group must contain at least two valid observations.
 
-The `pairwise_by_group(data=..., value_var=..., group_var=...)` method accepts a local DataFrame partition, the continuous value column, and the grouping column. It discovers the union of observed group labels and computes every unique group pair in deterministic order. Groups with fewer than two valid values are omitted from all comparisons.
+The `pairwise_by_group(data=..., value_var=..., group_var=..., minimum_group_size=2)` method accepts a local DataFrame partition, the continuous value column, and the grouping column. It discovers the union of observed group labels and computes every unique group pair in deterministic order. Groups below `minimum_group_size` valid values are omitted from all comparisons; its default is two. The caller supplies the reporting threshold independently of this statistical default.
 
 ## Statistical method
 

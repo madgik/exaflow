@@ -99,6 +99,25 @@ run, elapsed time, and any blocker.
 The gate fails on warnings for new algorithms. Treat every `failed` and `warn`
 entry as something to fix before the integration is complete.
 
+## Library and application contracts
+
+Follow the [library guide](../exaflow/algorithms/federated/AGENTS.md) for library
+implementation, diagnostics, numerical conventions, and method documentation.
+Application integration follows
+[application error translation](context/conventions.md#application-error-translation):
+register each consumed reason's exception type and message policy in the shared
+translator. Shared worker/controller boundaries handle translation; algorithm
+wrappers generally need no additional translation catches.
+
+Canonical method details belong in the library docs. Application algorithm pages
+own request parameters/defaults, response fields, and preprocessing/replay
+integration, with links to library methods. Document actual library and wrapper
+contracts separately, including any different defaults or field names.
+
+Fast and strict validation run the existing convention and translation tests
+once and report `federated_error_contract`. Its failure prevents integration
+completion. The application translation guide includes examples and the focused rerun command.
+
 ## Files You Normally Implement
 
 | File | Purpose |
@@ -108,8 +127,8 @@ entry as something to fix before the integration is complete.
 | `tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py` | Fast parity tests for the federated core and edge cases. |
 | `tests/prod_env_tests/test_<algorithm_id>.py` | Prod validation test wired to Exaflow request fixtures. |
 | `tests/prod_env_tests/expected/<algorithm_id>_expected.json` | Non-empty expected fixture with at least one runnable case. |
-| `documentation/algorithms/<algorithm_id>.md` | User-facing algorithm description and request shape. |
-| `exaflow/algorithms/federated/docs/<algorithm_id>.md` | Federated implementation notes. |
+| `documentation/algorithms/<algorithm_id>.md` | Application contract, integration, and links to library methods. |
+| `exaflow/algorithms/federated/docs/<algorithm_id>.md` | Canonical library method, API, and numerical behavior. |
 
 The scaffold also patches common integration touchpoints when enabled:
 
@@ -187,6 +206,8 @@ tests without invoking them.
 - The algorithm appears in the runtime catalog.
 - Exareme3 wrapper and federated core import successfully.
 - Standalone parity tests pass.
+- Library failures have registered reasons and explicit translation policies,
+  and `federated_error_contract` passes.
 - Prod validation test and expected fixture exist, and the fixture has at least
   one runnable test case.
 - User docs and federated docs exist.

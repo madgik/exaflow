@@ -656,7 +656,12 @@ def docs_template(algorithm: str) -> str:
 
 ## Overview
 
-TODO: document algorithm purpose, inputs, outputs, and constraints.
+TODO: describe the application purpose and link to the library method.
+
+## Method
+
+See the [library method](../../exaflow/algorithms/federated/docs/{algorithm}.md)
+for mathematics, aggregated quantities, numerical behavior, and limitations.
 
 ## API Contract
 
@@ -664,9 +669,9 @@ TODO: document algorithm purpose, inputs, outputs, and constraints.
 - **Type**: `exareme3`
 - **Status**: placeholder
 
-## Validation Notes
+## Application integration
 
-TODO: add standalone and production validation strategy.
+TODO: document request parameters/defaults, response fields, and preprocessing.
 """
 
 
@@ -681,10 +686,27 @@ def federated_docs_template(algorithm: str, family: str) -> str:
 
 TODO: describe federated core behavior for `{algorithm}`.
 
-## Notes
+## Library interface
 
-- Generated scaffold placeholder.
-- Replace with concrete algorithm-specific documentation.
+TODO: document actual inputs, defaults, result objects, and declared failures.
+
+## Statistical method
+
+TODO: describe the mathematical method and its assumptions.
+
+## Federated computation
+
+TODO: document aggregated quantities and computation without row-level sharing.
+
+### Federated flow
+
+TODO: describe the operation order and local versus aggregated quantities.
+
+## Numerical decisions and limitations
+
+TODO: document numerical behavior, reference comparisons, and limitations.
+
+Follow the [library guide](../AGENTS.md#method-documentation).
 """
 
 

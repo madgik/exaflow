@@ -5,6 +5,10 @@ import itertools
 import numpy as np
 import pandas as pd
 
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedObservationError
+from exaflow.algorithms.federated.exceptions import FedTypeError
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.sql import FederatedSQL
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
@@ -43,7 +47,9 @@ class FederatedStandardizedMeanDifference:
         n1 = self.aggregator.global_count(x)
         n2 = self.aggregator.global_count(y)
         if n1 < 2 or n2 < 2:
-            raise ValueError("Each group needs at least 2 points for SMD")
+            raise FedObservationError(
+                FedErrorReason.SMD_GROUP_OBSERVATIONS_INSUFFICIENT,
+            )
 
         mean1 = self.aggregator.global_avg(x)
         mean2 = self.aggregator.global_avg(y)
@@ -119,9 +125,9 @@ class FederatedStandardizedMeanDifference:
     @staticmethod
     def _validate_sample(sample):
         if not isinstance(sample, np.ndarray):
-            raise TypeError("Input must be a numpy array")
+            raise FedTypeError(FedErrorReason.NUMPY_ARRAY_REQUIRED)
         if sample.ndim > 1:
-            raise ValueError("Input must be a 1D array")
+            raise FedValueError(FedErrorReason.ONE_DIMENSIONAL_ARRAY_REQUIRED)
 
     @staticmethod
     def _smd(n1, mean1, var1, n2, mean2, var2) -> float:

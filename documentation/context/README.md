@@ -16,6 +16,10 @@ on Exaflow.
 - `code-review-checklist.md`: human and AI review checklist.
 - `ai-task-templates.md`: reusable prompts for common agent tasks.
 
+Library-specific development context is maintained in the
+[federated library guide](../../exaflow/algorithms/federated/AGENTS.md), alongside its implementation.
+This directory owns application architecture, integration, and operational context.
+
 ## How To Use This Context
 
 Start with `AGENTS.md` at the repository root, then open the context file that

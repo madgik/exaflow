@@ -21,7 +21,7 @@ from exaflow.algorithms.federated.linear_model.cox_regression_stacked import (
 from exaflow.algorithms.federated.linear_model.logistic_regression import (
     FederatedLogisticRegression,
 )
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.worker_communication import BadUserInput
 
 
 class StackedCoxRegressionSummary(BaseModel):
@@ -180,13 +180,13 @@ class StackedCoxRegression(Algorithm):
         n_time_bins = int(self.get_parameter("n_time_bins", 10))
 
         if event_var not in self.x:
-            raise BadInputError(
+            raise BadUserInput(
                 "event_var must refer to one of the selected x variables."
             )
 
         covariate_vars = [var for var in self.x if var != event_var]
         if not covariate_vars:
-            raise BadInputError(
+            raise BadUserInput(
                 "cox_regression_stacked requires at least one covariate besides event_var."
             )
 
@@ -221,7 +221,7 @@ class StackedCoxRegression(Algorithm):
 
 def _validate_time_grid_strategy(time_grid_strategy: str) -> None:
     if time_grid_strategy not in ALLOWED_TIME_GRID_STRATEGIES:
-        raise BadInputError(
+        raise BadUserInput(
             "Unsupported time_grid_strategy. Expected one of "
             f"{sorted(ALLOWED_TIME_GRID_STRATEGIES)}."
         )
@@ -230,7 +230,7 @@ def _validate_time_grid_strategy(time_grid_strategy: str) -> None:
 def _to_binary_event_array(series, *, positive_class, agg_client) -> np.ndarray:
     non_null = series.dropna()
     if non_null.empty:
-        raise BadInputError("Event indicator contains only missing values.")
+        raise BadUserInput("Event indicator contains only missing values.")
 
     global_levels = list(agg_client.union(non_null.tolist()))
     if positive_class is not None:
@@ -243,7 +243,7 @@ def _to_binary_event_array(series, *, positive_class, agg_client) -> np.ndarray:
             for level in global_levels
         }
         if coerced not in coerced_global_levels:
-            raise BadInputError(
+            raise BadUserInput(
                 "positive_class for event_var should match one of the observed "
                 "event variable levels."
             )
@@ -263,7 +263,7 @@ def _to_binary_event_array(series, *, positive_class, agg_client) -> np.ndarray:
     if set(global_levels).issubset({False, True}):
         return series.astype(float).to_numpy(copy=False)
 
-    raise BadInputError(
+    raise BadUserInput(
         "Event variable must be stored as 0/1 or false/true, or positive_class "
         "must be provided to define which observed level maps to event=1."
     )

@@ -78,24 +78,11 @@ families; outlier reporting uses `outliers` for both runtime and core.
 
 ## `exaflow/algorithms/federated`
 
-Purpose: Testable federated/statistical core logic and implementation docs.
+Purpose: Federated statistics library consumed by runtime adapters.
 
-Key files: domain folders such as `statistics`, `linear_model`,
-`decomposition`, `naive_bayes`, `mixed_effects`, plus `docs/`.
-
-Used by: Exareme3 wrappers and standalone parity tests.
-
-Rules: Keep core logic independent of full controller/worker runtime when
-possible.
-
-Tests: `tests/standalone_tests/federated_algorithms`.
-
-Notes: Prefer extending existing family utilities over duplicating math.
-
-Domain placement: `outliers/outlier_report.py` owns reporting and winsorization
-helpers; encoders live in `feature_engineering`; passthrough lives in `compose`.
-Mixed-effects numerical helpers are in `mixed_effects/mixed_effects_utils.py`.
-Shared cross-validation infrastructure stays in `model_selection/cross_validation`.
+Entry points: [library guide](../../exaflow/algorithms/federated/AGENTS.md),
+[method index](../../exaflow/algorithms/federated/README.md), and domain modules.
+The local guide owns structure, interfaces, numerical rules, and library checks.
 
 ## `exaflow/protos`
 

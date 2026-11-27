@@ -5,7 +5,9 @@ from typing import List
 import numpy as np
 import pandas as pd
 
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedStateError
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
@@ -52,7 +54,7 @@ class FederatedGaussianNBResults(FederatedEstimatorResults):
         from scipy import stats as scipy_stats
 
         if self.theta is None or self.var is None or self.class_prior is None:
-            raise BadInputError("GaussianNB is not fitted yet.")
+            raise FedStateError(FedErrorReason.GAUSSIAN_NB_NOT_FITTED)
 
         X_enc = _ensure_numeric_features(X, self.x_vars)
         if X_enc.shape[0] == 0 or len(self.labels) == 0:
@@ -204,7 +206,7 @@ def _ensure_numeric_features(X: np.ndarray, x_vars: List[str]) -> np.ndarray:
     check_dimensions(X_enc, (1, 2), input_name="Features")
     if X_enc.ndim == 1:
         if not x_vars or X_enc.size % len(x_vars):
-            raise BadInputError("Features must match the configured feature columns.")
+            raise FedValueError(FedErrorReason.NB_FEATURE_SCHEMA_INVALID)
         X_enc = X_enc.reshape(-1, len(x_vars))
     check_array(X_enc, policy=ArrayPolicy(), input_name="Features")
     check_feature_schema(X_enc, n_features=len(x_vars))

@@ -97,9 +97,6 @@ def fisher_exact_local_step(agg_client, data, metadata, factor, outcome):
         outcome=outcome,
         factor_categories=factor_categories,
         outcome_categories=outcome_categories,
-        # Missing values are always dropped: NaN rows are excluded from the
-        # contingency table. Fisher's Exact Test requires a clean 2x2 table
-        # of observed counts with no missing observations.
         dropna=True,
     )
     return (res[0], res[1], res.x_labels, res.y_labels)

@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from exaflow.algorithms.federated.exceptions import FedError
 from exaflow.algorithms.federated.statistics.cross_tabular_table import CrossTabTable
-from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
@@ -268,7 +268,7 @@ class TestFederatedCrossTabTable(FederatedAlgorithmTest):
     def test_federated_algorithm_with_one_worker(self, case):
         dataset = case["dataset"]
         if case["name"] == "empty_dataset":
-            with pytest.raises(BadInputError):
+            with pytest.raises(FedError):
                 self.run_comparison(
                     X=dataset,
                     y=dataset["outcome"],  # Dummy y just to satisfy run_comparison
@@ -295,7 +295,7 @@ class TestFederatedCrossTabTable(FederatedAlgorithmTest):
     def test_federated_algorithm_with_multiple_workers(self, case):
         dataset = case["dataset"]
         if case["name"] == "empty_dataset":
-            with pytest.raises(BadInputError):
+            with pytest.raises(FedError):
                 self.run_comparison(
                     X=dataset,
                     y=dataset["outcome"],

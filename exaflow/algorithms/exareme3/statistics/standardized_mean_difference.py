@@ -6,6 +6,7 @@ from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.standardized_mean_difference import (
     FederatedStandardizedMeanDifference,
 )
+from exaflow.worker_communication import InsufficientDataError
 
 
 class StandardizedMeanDifferenceComparison(BaseModel):
@@ -35,7 +36,8 @@ class StandardizedMeanDifference(Algorithm):
                 "calculation. A zero pooled variance produces an effect size of 0.\n\n"
                 "The result contains one entry per eligible pair with the category "
                 "labels and standardized mean difference. Pair ordering determines "
-                "the sign of the effect size.\n\n"
+                "the sign of the effect size. The analysis reports insufficient data "
+                "if fewer than two groups meet the minimum size.\n\n"
                 "The methodology is consistent with the pooled-variance definition "
                 "of Cohen's d and is computed from aggregated sufficient statistics "
                 "without sharing raw data."
@@ -73,7 +75,13 @@ class StandardizedMeanDifference(Algorithm):
             },
             identical_results=True,
         )
-        return StandardizedMeanDifferenceResult(comparisons=comparisons)
+        result = StandardizedMeanDifferenceResult(comparisons=comparisons)
+        if not result.comparisons:
+            raise InsufficientDataError(
+                "Standardized Mean Difference requires at least two groups that meet "
+                "the minimum size."
+            )
+        return result
 
 
 @exareme3_udf(with_aggregation_server=True)

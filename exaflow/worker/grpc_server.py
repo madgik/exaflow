@@ -21,6 +21,7 @@ from exaflow.worker import config as worker_config
 from exaflow.worker.exareme3.udf import udf_service
 from exaflow.worker.utils import duck_db_csv_loader
 from exaflow.worker.worker_info import worker_info_service
+from exaflow.worker_communication import AnalysisExecutionError
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import CommonDataElement
 from exaflow.worker_communication import CommonDataElements
@@ -136,6 +137,8 @@ class WorkerService(worker_pb2_grpc.WorkerServiceServicer):
             context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(exc))
         elif isinstance(exc, InsufficientDataError):
             context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(exc))
+        elif isinstance(exc, AnalysisExecutionError):
+            context.abort(grpc.StatusCode.ABORTED, str(exc))
         else:
             LOGGER.exception("Worker gRPC call failed", exc_info=exc)
             context.abort(grpc.StatusCode.INTERNAL, str(exc))

@@ -1,4 +1,5 @@
 import contextlib
+import logging
 from types import SimpleNamespace
 
 import grpc
@@ -6,23 +7,43 @@ import pandas as pd
 import pytest
 
 from exaflow.algorithms import specifications as specs
+from exaflow.algorithms.exareme3.missing_values.missing_values_handler import (
+    MissingValuesHandler,
+)
+from exaflow.algorithms.exareme3.statistics.fisher_exact import fisher_exact_local_step
 from exaflow.algorithms.exareme3.utils.preprocessing_step import PreprocessingStep
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.exareme3.utils.registry import get_udf_registry_key
+from exaflow.algorithms.federated.exceptions import FedError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedObservationError
+from exaflow.algorithms.federated.exceptions import FedStateError
+from exaflow.algorithms.federated.exceptions import FedTypeError
+from exaflow.algorithms.federated.exceptions import FedValueError
+from exaflow.algorithms.federated.model_selection.cross_validation.splitter_kfold import (
+    FederatedKFoldSplitter,
+)
 from exaflow.worker.exareme3.udf import udf_service
+from exaflow.worker_communication import AnalysisExecutionError
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import InsufficientDataError
+from tests.standalone_tests.federated_algorithms.utils.dummy_agg_client import (
+    DummyAggClient,
+)
 
 
-class _DummyAggClient:
+class _DummyAggClient(DummyAggClient):
     def __init__(self):
         self.unregistered = False
         self.closed = False
+        self.cleanup_calls = []
 
     def unregister(self):
         self.unregistered = True
+        self.cleanup_calls.append("unregister")
 
     def close(self):
         self.closed = True
+        self.cleanup_calls.append("close")
 
 
 class _UnreachableServerError(grpc.RpcError):
@@ -77,7 +98,9 @@ class _AggAwareStep(_BaseStep):
 
 class _BadInputStep(_BaseStep):
     def transform_data_and_metadata(self, *, data, metadata, agg_client=None):
-        raise BadInputError("bad preprocessing input")
+        raise FedValueError(
+            FedErrorReason.NUMERIC_VALUES_REQUIRED, input_name="Preprocessing input"
+        )
 
 
 class _BaseTransformAggStep(PreprocessingStep):
@@ -124,16 +147,12 @@ class _NoAggSpecStep(_BaseTransformAggStep):
 def test_check_min_rows_uses_pandas_row_count(monkeypatch):
     monkeypatch.setattr(udf_service.worker_config.privacy, "minimum_row_count", 3)
     data = pd.DataFrame({"x": [1, 2]})
-    agg_client = _DummyAggClient()
 
     with pytest.raises(InsufficientDataError, match="minimum required is 3"):
         udf_service._check_min_rows_or_raise(
             data=data,
             check_min_rows=True,
-            agg_client=agg_client,
         )
-
-    assert agg_client.unregistered is True
 
 
 def test_apply_preprocessing_checks_min_rows_after_each_step(monkeypatch):
@@ -348,7 +367,7 @@ def test_run_udf_converts_preprocessing_bad_input_to_bad_user_input(monkeypatch)
         add_dataset_variable=False,
     )
 
-    with pytest.raises(BadUserInput, match="bad preprocessing input"):
+    with pytest.raises(BadUserInput, match="Preprocessing input must contain numeric"):
         udf_service.run_udf(
             request_id="req",
             udf_registry_key="udf",
@@ -360,8 +379,187 @@ def test_run_udf_converts_preprocessing_bad_input_to_bad_user_input(monkeypatch)
     assert agg_client.closed is True
 
 
+def test_fisher_shape_error_reports_category_requirement_and_unregisters(monkeypatch):
+    data = pd.DataFrame({"factor": ["A", "B", "C"], "outcome": ["X", "Y", "X"]})
+    agg_client = _DummyAggClient()
+    monkeypatch.setattr(
+        udf_service.worker_config.privacy, "minimum_row_count", len(data)
+    )
+    monkeypatch.setattr(udf_service, "_load_worker_data_for_udf", lambda **_: data)
+    monkeypatch.setattr(
+        udf_service, "_create_aggregation_client_if_required", lambda **_: agg_client
+    )
+    system_args = SimpleNamespace(
+        context_id="test-context",
+        preprocessing=[],
+        metadata={},
+        inputdata=None,
+        add_dataset_variable=False,
+    )
+
+    with pytest.raises(BadUserInput) as exc_info:
+        udf_service.run_udf(
+            request_id="req",
+            udf_registry_key=get_udf_registry_key(fisher_exact_local_step),
+            kw_args={"factor": "factor", "outcome": "outcome"},
+            system_args=system_args,
+        )
+
+    assert str(exc_info.value) == (
+        "Fisher's Exact Test requires exactly two observed categories in each "
+        "variable. Choose two variables that meet this requirement in the "
+        "selected data."
+    )
+    assert isinstance(exc_info.value.__cause__, FedError)
+    assert agg_client.unregistered is True
+    assert agg_client.closed is True
+
+
+@pytest.mark.parametrize("unregister_fails", [False, True])
+def test_fold_error_translates_without_logging_local_count(
+    monkeypatch, caplog, unregister_fails
+):
+    agg_client = (
+        _FailingUnregisterAggClient() if unregister_fails else _DummyAggClient()
+    )
+
+    def udf(data):
+        return list(FederatedKFoldSplitter(n_splits=8).split_indices(len(data)))
+
+    monkeypatch.setattr(udf_service.worker_config.privacy, "minimum_row_count", 1)
+    monkeypatch.setattr(udf_service, "_get_udf_or_raise", lambda _: udf)
+    monkeypatch.setattr(
+        udf_service, "_wrap_udf_with_lazy_aggregation_if_enabled", lambda _, udf: udf
+    )
+    monkeypatch.setattr(
+        udf_service, "_create_aggregation_client_if_required", lambda **_: agg_client
+    )
+    monkeypatch.setattr(
+        udf_service,
+        "_load_worker_data_for_udf",
+        lambda **_: pd.DataFrame({"x": range(7)}),
+    )
+    monkeypatch.setattr(udf_service, "get_logger", lambda: logging.getLogger(__name__))
+    system_args = SimpleNamespace(
+        context_id="test-context",
+        preprocessing=[],
+        metadata={},
+        inputdata=None,
+        add_dataset_variable=False,
+    )
+
+    with caplog.at_level(logging.INFO), pytest.raises(BadUserInput) as exc_info:
+        udf_service.run_udf(
+            request_id="req",
+            udf_registry_key="udf",
+            kw_args={},
+            system_args=system_args,
+        )
+
+    assert str(exc_info.value) == (
+        "There are too few usable observations for the requested number of folds. "
+        "Reduce the number of folds or adjust the filters."
+    )
+    cause = exc_info.value.__cause__
+    assert isinstance(cause, FedError)
+    assert cause.reason is FedErrorReason.INSUFFICIENT_FOLD_SAMPLES
+    assert "(7)" in str(cause)
+    assert str(cause) not in caplog.text
+    assert str(exc_info.value) in caplog.text
+    assert agg_client.unregistered is True
+    assert agg_client.closed is True
+
+
 def _raise_value_error(data):
     raise ValueError("udf failed")
+
+
+@pytest.mark.parametrize(
+    "error, target",
+    [
+        (FedStateError(FedErrorReason.MODEL_NOT_FITTED), RuntimeError),
+        (FedTypeError(FedErrorReason.NUMPY_ARRAY_REQUIRED), TypeError),
+        (
+            FedValueError(FedErrorReason.LOGISTIC_CONVERGENCE_FAILED),
+            AnalysisExecutionError,
+        ),
+        (
+            FedValueError(
+                FedErrorReason.ARRAY_DIMENSIONS_INVALID,
+                input_name="Transformer output",
+                ranks="2",
+            ),
+            ValueError,
+        ),
+        (
+            AnalysisExecutionError("Analysis could not complete."),
+            AnalysisExecutionError,
+        ),
+        (
+            FedObservationError(
+                FedErrorReason.OUTLIER_OBSERVATIONS_INSUFFICIENT,
+                variable="v",
+                num_dtps=2,
+                min_row_count=3,
+            ),
+            InsufficientDataError,
+        ),
+    ],
+)
+def test_shared_boundary_translates_all_fed_error_types_and_cleans_up(
+    monkeypatch, caplog, error, target
+):
+    agg_client = _DummyAggClient()
+
+    def udf(data):
+        raise error
+
+    monkeypatch.setattr(udf_service.worker_config.privacy, "minimum_row_count", 1)
+    monkeypatch.setattr(udf_service, "_get_udf_or_raise", lambda _: udf)
+    monkeypatch.setattr(
+        udf_service, "_wrap_udf_with_lazy_aggregation_if_enabled", lambda _, udf: udf
+    )
+    monkeypatch.setattr(
+        udf_service, "_create_aggregation_client_if_required", lambda **_: agg_client
+    )
+    monkeypatch.setattr(
+        udf_service,
+        "_load_worker_data_for_udf",
+        lambda **_: pd.DataFrame({"x": [1, 2]}),
+    )
+    monkeypatch.setattr(udf_service, "get_logger", lambda: logging.getLogger(__name__))
+    system_args = SimpleNamespace(
+        context_id="test-context",
+        preprocessing=[],
+        metadata={},
+        inputdata=None,
+        add_dataset_variable=False,
+    )
+
+    with caplog.at_level(logging.INFO), pytest.raises(target) as exc_info:
+        udf_service.run_udf(
+            request_id="req",
+            udf_registry_key="udf",
+            kw_args={},
+            system_args=system_args,
+        )
+
+    assert type(exc_info.value) is target
+    expected_message = (
+        "Logistic regression could not converge to a stable solution."
+        if isinstance(error, FedError)
+        and error.reason is FedErrorReason.LOGISTIC_CONVERGENCE_FAILED
+        else str(error)
+    )
+    assert str(exc_info.value) == expected_message
+    if isinstance(error, FedError):
+        assert exc_info.value.__cause__ is error
+    else:
+        assert exc_info.value is error
+    assert agg_client.unregistered is True
+    assert agg_client.closed is True
+    if target is InsufficientDataError:
+        assert str(error) not in caplog.text
 
 
 @pytest.mark.parametrize(
@@ -411,18 +609,37 @@ def test_run_udf_closes_agg_client_without_unregistering(monkeypatch, udf, expec
     assert agg_client.unregistered is False
 
 
+@pytest.mark.parametrize("unregister_fails", [False, True])
 @pytest.mark.parametrize(
-    "preprocessing, minimum_row_count, expected_error",
+    "preprocessing, minimum_row_count, expected_error, message",
     [
-        ([], 3, InsufficientDataError),
-        ([{"name": "bad_input", "parameters": {}}], 1, BadUserInput),
+        ([], 3, InsufficientDataError, "minimum required is 3"),
+        (
+            [
+                {
+                    "name": "missing_values_handler",
+                    "parameters": {"strategies": {"x": "mean"}},
+                }
+            ],
+            2,
+            InsufficientDataError,
+            "has only missing values",
+        ),
+        ([{"name": "bad_input", "parameters": {}}], 1, BadUserInput, None),
     ],
-    ids=["insufficient_data", "bad_input"],
+    ids=["minimum_rows", "imputation", "bad_input"],
 )
-def test_run_udf_keeps_error_when_unregister_fails(
-    monkeypatch, preprocessing, minimum_row_count, expected_error
+def test_run_udf_unregisters_once_before_closing_on_error(
+    monkeypatch,
+    preprocessing,
+    minimum_row_count,
+    expected_error,
+    message,
+    unregister_fails,
 ):
-    agg_client = _FailingUnregisterAggClient()
+    agg_client = (
+        _FailingUnregisterAggClient() if unregister_fails else _DummyAggClient()
+    )
     monkeypatch.setattr(
         udf_service.worker_config.privacy, "minimum_row_count", minimum_row_count
     )
@@ -440,12 +657,12 @@ def test_run_udf_keeps_error_when_unregister_fails(
     monkeypatch.setattr(
         udf_service,
         "_load_worker_data_for_udf",
-        lambda **_: pd.DataFrame({"x": [1, 2]}),
+        lambda **_: pd.DataFrame({"x": [None, None]}),
     )
     monkeypatch.setattr(
         udf_service,
         "exareme3_preprocessing_step_classes",
-        {"bad_input": _BadInputStep},
+        {"bad_input": _BadInputStep, "missing_values_handler": MissingValuesHandler},
     )
     system_args = SimpleNamespace(
         context_id="test-context",
@@ -455,7 +672,7 @@ def test_run_udf_keeps_error_when_unregister_fails(
         add_dataset_variable=False,
     )
 
-    with pytest.raises(expected_error):
+    with pytest.raises(expected_error, match=message):
         udf_service.run_udf(
             request_id="req",
             udf_registry_key="udf",
@@ -463,5 +680,4 @@ def test_run_udf_keeps_error_when_unregister_fails(
             system_args=system_args,
         )
 
-    assert agg_client.unregistered is True
-    assert agg_client.closed is True
+    assert agg_client.cleanup_calls == ["unregister", "close"]

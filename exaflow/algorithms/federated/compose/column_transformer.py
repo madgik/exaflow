@@ -13,6 +13,8 @@ import numpy as np
 import pandas as pd
 
 from exaflow.algorithms.federated.compose.passthrough import FederatedPassthrough
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedTransformer
 from exaflow.algorithms.federated.validation import as_numeric_array
@@ -93,9 +95,9 @@ class FederatedColumnTransformer(FederatedTransformer):
         if self.remainder == "passthrough":
             remaining_cat = [v for v in categorical_vars if v not in used_cat]
             if remaining_cat:
-                raise ValueError(
-                    "FederatedColumnTransformer remainder passthrough does not "
-                    f"support categorical vars: {remaining_cat}"
+                raise FedValueError(
+                    FedErrorReason.CATEGORICAL_PASSTHROUGH_UNSUPPORTED,
+                    remaining_cat=remaining_cat,
                 )
             remaining_num = [v for v in numerical_vars if v not in used_num]
             if remaining_num:
@@ -148,7 +150,12 @@ class FederatedColumnTransformer(FederatedTransformer):
                 categorical_vars=resolved.categorical_vars,
                 numerical_vars=resolved.numerical_vars,
             )
-            block = as_numeric_array(block, input_name="Transformer output")
+            try:
+                block = as_numeric_array(block, input_name="Transformer output")
+            except FedValueError as exc:
+                raise FedValueError(
+                    FedErrorReason.TRANSFORMER_OUTPUT_NONNUMERIC
+                ) from exc
             check_dimensions(block, (1, 2), input_name="Transformer output")
             check_consistent_length(data, block)
             blocks.append(block)
@@ -174,9 +181,7 @@ class FederatedColumnTransformer(FederatedTransformer):
         columns = list(columns)
         if columns and all(isinstance(col, bool) for col in columns):
             if len(columns) != len(data.columns):
-                raise ValueError(
-                    "Boolean column mask length must match number of columns."
-                )
+                raise FedValueError(FedErrorReason.COLUMN_MASK_LENGTH_INVALID)
             columns = list(data.columns[np.asarray(columns, dtype=bool)])
         elif columns and all(isinstance(col, int) for col in columns):
             columns = list(data.columns[np.asarray(columns, dtype=int)])

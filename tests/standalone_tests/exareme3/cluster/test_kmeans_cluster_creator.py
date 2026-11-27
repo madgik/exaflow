@@ -228,6 +228,15 @@ def test_creator_rejects_center_missing_a_clustering_feature():
         KMeansClusterCreator(params=params)
 
 
+@pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
+def test_creator_rejects_nonfinite_replay_centers(value):
+    params = _params()
+    params["reusable_preprocessing"]["centers"]["cluster_1"]["x"] = value
+
+    with pytest.raises(BadUserInput, match="finite"):
+        KMeansClusterCreator(params=params)
+
+
 def test_creator_metadata_contains_all_fitted_clusters():
     creator = KMeansClusterCreator(params=_params())
 

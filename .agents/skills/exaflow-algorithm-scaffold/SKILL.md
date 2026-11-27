@@ -9,6 +9,13 @@ Use this skill for end-to-end algorithm integration. Do not stop at placeholders
 
 Human-facing setup guide: `documentation/new-algorithm-setup.md`.
 
+Read the [library guide](../../../exaflow/algorithms/federated/AGENTS.md)
+for library architecture, diagnostics, numerical conventions, and canonical method
+documentation. For application integration, follow
+[application error translation](../../../documentation/context/conventions.md#application-error-translation).
+Application consumers register message/type policies; shared worker/controller
+boundaries handle translation.
+
 ## Default Execution Policy
 
 1. Scaffold missing files for the target algorithm.
@@ -37,12 +44,11 @@ Definition of Done:
   concise method-level `desc`, and detailed parent algorithm/preprocessing step
   `documentation` for formulas/defaults/ranges, option lists, assumptions,
   parameter mechanics, outputs, and careful reference anchors.
-- Human-facing docs under `documentation/algorithms/` use the technical
-  algorithm-doc structure: overview, inputs, method/model, computation without
-  row-level data, aggregated quantities, `### Federated flow` pseudocode,
-  technical decisions, outputs, validation reference, and limitations. The
-  outputs section must match the actual Pydantic response model returned by the
-  wrapper.
+- Canonical method documentation lives in `exaflow/algorithms/federated/docs/`
+  and follows the library guide. Application pages under
+  `documentation/algorithms/` document request parameters/defaults, response
+  fields, and preprocessing/replay integration, linking to library methods.
+  Application outputs match the wrapper's actual Pydantic response model.
 - User-facing spec text avoids platform/execution terms such as `Exaflow`,
   `exareme`, `MIP`, `worker`, `engine`, `federated implementation`, and
   `aggregation-server-backed`; use neutral wording such as "computed from
@@ -60,6 +66,11 @@ Definition of Done:
   `parameters=None`, `enumslen=None`, `default=None`,
   `enums=None`, `dict_values_enums=None`, `min=None`, and `max=None`.
 - Standalone parity test exists and passes.
+- Library-authored failures use `FedError` subclasses with `FedErrorReason`
+  members, and every reason has an explicit Exareme3 exception/message policy.
+- The validator's `federated_error_contract` check passes. A library failure
+  does not automatically become `BadUserInput`; keeping a diagnostic requires
+  an explicit `KEEP_MESSAGE` policy.
 - Prod validation test and non-empty expected fixture exist.
 - Registration touchpoints and docs are patched.
 - `validate_algorithms.py --new-algorithm <name>` passes with no warnings.
@@ -147,6 +158,8 @@ gates run validation and focused tests without invoking Ruff.
    min/max bounds, or requiredness. Avoid advisory "when to use" language unless
    it is required product copy.
 1. Implement federated core in `exaflow/algorithms/federated/<family>/<name>.py`.
+1. Register each failure reason and its Exareme3 translation policy following
+   the canonical error contract; require `federated_error_contract` to pass.
 1. Confirm registration patches:
    - `exaflow/algorithms/federated/<family>/__init__.py`
    - `exaflow/algorithms/federated/__init__.py`

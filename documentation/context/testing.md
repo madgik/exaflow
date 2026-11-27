@@ -37,16 +37,25 @@ Use focused standalone tests while developing:
 uv run pytest -q tests/standalone_tests
 ```
 
-For algorithm core changes:
+Library-only checks, simulated aggregation helpers, and diagnostic/import
+conventions are maintained in the [library guide](../../exaflow/algorithms/federated/AGENTS.md#focused-checks).
+
+Application checks require complete translation coverage for consumed library
+reasons and cover worker logging, cleanup, controller boundaries, HTTP 462,
+RabbitMQ replies, and a real worker gRPC error round trip.
+
+Both algorithm validator tiers run the exception-convention and translation test
+modules once per invocation with selected algorithms. The separate
+`federated_error_contract` result must pass before integration can report
+`"done": true`. Failure output includes the pytest diagnostics and rerun command.
+See [application error translation](conventions.md#application-error-translation).
 
 ```bash
-uv run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py
+uv run pytest -q tests/standalone_tests/controller/test_worker_rpc_errors.py
 ```
 
-For shared validation and all federated algorithm integrations:
-
 ```bash
-uv run pytest -q tests/standalone_tests/federated_validation tests/standalone_tests/federated_algorithms
+uv run pytest -q tests/standalone_tests/exareme3/test_error_translation.py tests/standalone_tests/exareme3/test_udf_service.py tests/standalone_tests/controller/services/test_exareme3_strategy_execution.py
 ```
 
 ## Algorithm Integration Tooling
@@ -127,8 +136,7 @@ CI also builds the package and smoke-tests the wheel.
 - Algorithm validation expected fixtures live under
   `tests/algorithm_validation_tests/exareme3/expected`.
 - Worker data path generation is handled by `tests/worker_data_paths_builder.py`.
-- Federated algorithm test helpers live under
-  `tests/standalone_tests/federated_algorithms/utils`.
+- Library helper usage is described in the [local guide](../../exaflow/algorithms/federated/AGENTS.md#focused-checks).
 
 ## Critical Paths That Need Strong Coverage
 
@@ -147,7 +155,7 @@ CI also builds the package and smoke-tests the wheel.
 | Change type | Required validation |
 | --- | --- |
 | Docs-only change | `git diff --check`; inspect rendered paths/links where practical. |
-| Algorithm core change | Focused `tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py`; algorithm validator when relevant. |
+| Algorithm core change | Follow the [library checks](../../exaflow/algorithms/federated/AGENTS.md#focused-checks); run application integration checks when integration changes. |
 | Algorithm wrapper/spec change | Focused standalone tests plus spec/request validation tests or algorithm validation skill. |
 | API behavior change | Controller standalone API tests and relevant prod/algorithm validation tests if runtime behavior changes. |
 | Worker data/UDF change | Focused worker/UDF standalone tests; environment-backed tests if gRPC/runtime behavior changes. |

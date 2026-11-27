@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
+from exaflow.algorithms.federated.exceptions import FedError
 from exaflow.algorithms.federated.statistics.histogram import SimpleHistogram
-from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
@@ -43,7 +43,7 @@ TEST_CASES = [
         "name": "all_nans",
         "x": [np.nan, np.nan, np.nan, np.nan],
         "bins": 3,
-        "expect_error": (BadInputError, "No finite data"),
+        "expect_error": (FedError, "No finite data"),
     },
     {
         "name": "single_value",
@@ -134,10 +134,10 @@ class TestSimpleHistogram(FederatedAlgorithmTest):
         self.run_comparison(X=x, y=np.zeros(len(x)), n_workers=3, bins=2)
 
     def test_federated_histogram_invalid_ndim(self):
-        """Verify that passing a 2D array raises a BadInputError."""
+        """Verify that passing a 2D array raises a FedValueError."""
         x = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=float)
         aggregator = NumpyAggregator(None)  # Mocking aggregator for direct call
         hist_algo = SimpleHistogram(aggregator)
 
-        with pytest.raises(BadInputError, match="must be a 1D array"):
+        with pytest.raises(FedError, match="must be a 1D array"):
             hist_algo.compute(x, num_bins=2)

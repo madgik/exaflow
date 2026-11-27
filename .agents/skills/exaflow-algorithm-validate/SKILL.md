@@ -9,6 +9,13 @@ Use this skill to verify that Exareme3 algorithm development artifacts and check
 
 Human-facing setup guide: `documentation/new-algorithm-setup.md`.
 
+Read the [library guide](../../../exaflow/algorithms/federated/AGENTS.md)
+for library architecture, diagnostics, numerical conventions, and canonical method
+documentation. For application integration, follow
+[application error translation](../../../documentation/context/conventions.md#application-error-translation).
+Application consumers register message/type policies; shared worker/controller
+boundaries handle translation.
+
 ## Workflow
 
 1. Run validator from the Exaflow repository root.
@@ -32,6 +39,11 @@ Definition of Done:
   output fields, compatibility shims, and silent normalization for old callers
   as invalid unless the user explicitly asks for backwards compatibility.
 - Focused standalone tests pass.
+- Library-authored failures use `FedErrorReason` members and `FedError`
+  subclasses; every reason has an explicit Exareme3 exception/message policy.
+- `federated_error_contract` passes. Check that user responsibility is assigned
+  by the reason's application policy, and that unchanged messages explicitly
+  use `KEEP_MESSAGE`.
 - Ignore import-order and formatting-only lint findings. Automated tools handle
   those mechanical edits.
 - Strict mode is run when the user requests prod-env confidence.
@@ -98,8 +110,11 @@ Static checks (always):
 
 Runtime checks:
 
-- Fast tier: targeted standalone tests. Ignore import-order and formatting-only
-  lint findings; automated tools handle those mechanical edits.
+- Fast tier: targeted standalone tests and one `federated_error_contract` check
+  running the existing exception-convention and translation test modules.
+  A failing contract check includes pytest output and the rerun command and
+  fails validation. Ignore import-order and formatting-only lint findings;
+  automated tools handle those mechanical edits.
 - Strict tier: fast tier + targeted prod_env tests.
 
 Manual specification review:
@@ -126,12 +141,12 @@ Manual specification review:
 - Omit explicit optional `None` specification arguments such as
   `parameters=None`, `enumslen=None`, `default=None`,
   `enums=None`, `dict_values_enums=None`, `min=None`, and `max=None`.
-- Human-facing algorithm Markdown under `documentation/algorithms/` should have
-  a technical structure: overview, inputs, method/model, computation without
-  row-level data, aggregated quantities, `### Federated flow` pseudocode,
-  technical decisions, outputs, validation reference, and limitations. Output
-  fields must match the wrapper Pydantic response model, and materially
-  different runtime variants should have separate pages.
+- Application pages under `documentation/algorithms/` describe request
+  parameters/defaults, response fields, and preprocessing/replay integration.
+  Output fields match the wrapper Pydantic response model; materially different
+  runtime contracts have separate pages. Link to canonical library method pages
+  for mathematics, aggregation flow, numerical behavior, and limitations.
+  Validate library documentation against the local library guide.
 
 Path policy:
 
@@ -142,10 +157,12 @@ Path policy:
 
 1. Scaffold with family-aware options from `$exaflow-algorithm-scaffold`.
 1. Implement Exareme3 wrapper and federated core logic.
+1. Verify reason registration and the explicit Exareme3 translation policy for
+   every library failure using the canonical error contract.
 1. Ensure exports/registrations are patched and importable.
 1. Add standalone parity tests.
 1. Add prod environment test + non-empty expected fixture.
-1. Run validator fast mode.
+1. Run validator fast mode, including a passing `federated_error_contract` check.
 1. Run validator strict mode when requested.
 
 ## Family Cookbook

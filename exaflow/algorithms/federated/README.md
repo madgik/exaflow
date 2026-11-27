@@ -1,35 +1,20 @@
-# Federated Algorithms
+# Federated Statistics Library
 
-Implementations are grouped by domain. Encoders live in `feature_engineering`,
-column composition and passthrough in `compose`, and outlier reporting with its
-winsorization helpers in `outliers`. Cross-validation machinery remains under
-`model_selection/cross_validation` because it serves multiple model families.
-Mixed-effects numerical helpers live in `mixed_effects/mixed_effects_utils.py`.
+Reusable statistical models, tests, transformations, and model-selection
+components operating on local arrays/dataframes and aggregated quantities.
+Callers provide the data and aggregation client.
 
-## Input validation
+The method pages below are the canonical descriptions of library inputs,
+results, mathematical methods, aggregation flow, numerical decisions, and
+limitations. Shared validation helpers are described in
+[input validation](docs/input_validation.md).
 
-The `validation` package provides reusable parameter type rules, numeric-array
-policies, row/feature checks, binary-target checks, and sample-count checks. It
-uses public scikit-learn validation helpers without requiring estimator
-inheritance or importing controller/worker services. Algorithm integrations keep
-their existing normalization and method-specific mathematical requirements. See
-the [validation coverage and error conventions](docs/input_validation.md) for the
-complete inventory, retained behaviors, and Exareme3 boundary changes.
+For development conventions, architecture, diagnostic reasons, documentation
+standards, and focused checks, read the [library guide](AGENTS.md).
 
-Apply each method's existing normalization before checking its effective inputs.
-Do not introduce uniform restrictions on missing values, empty partitions,
-feature counts, or class availability. Preserve method-specific behavior.
+## composition
 
-Validators raise `BadInputError` locally without performing aggregation. The
-caller owns error propagation, cancellation, and cleanup of the distributed
-computation. Exareme3 handles request failure and aggregation cleanup through
-its existing worker/controller error handling; it does not guarantee immediate
-cancellation of every running participant. Independent callers must provide
-their own lifecycle handling. Participants still require the same model
-configuration and aligned feature layout for the mathematical aggregations.
-
-Validation unit tests live in `tests/standalone_tests/federated_validation/`.
-Existing algorithm/production tests and fixtures remain unchanged.
+- [PIPELINE](docs/pipeline.md)
 
 ## cluster
 
@@ -80,14 +65,32 @@ Existing algorithm/production tests and fixtures remain unchanged.
 
 ## statistics
 
+- [CROSS_TABULATION](docs/cross_tabular_table.md)
+
+- [CHI_SQUARED](docs/chi_squared.md)
+
+- [FISHER_EXACT](docs/fisher_exact.md)
+
+- [PERCENTILES_AND_QUARTILES](docs/quartiles.md)
+
 - [DESCRIBE](docs/describe.md)
+
 - [DESCRIPTIVE_STATISTICS](docs/descriptive_statistics.md)
+
 - [PEARSON_CORRELATION](docs/pearson_correlation.md)
+
 - [TTEST_INDEPENDENT](docs/ttest_independent.md)
+
 - [TTEST_ONE_SAMPLE](docs/ttest_one_sample.md)
+
 - [TTEST_PAIRED](docs/ttest_paired.md)
+
 - [ANOVA_ONE_WAY](docs/anova_one_way.md)
+
 - [ANOVA_TWO_WAY](docs/anova_two_way.md)
+
 - [HISTOGRAM](docs/histogram.md)
+
 - [BINNED_MANN_WHITNEY_U_TEST](docs/binned_mann_whitney_u_test.md)
+
 - [STANDARDIZED_MEAN_DIFFERENCE](docs/standardized_mean_difference.md)

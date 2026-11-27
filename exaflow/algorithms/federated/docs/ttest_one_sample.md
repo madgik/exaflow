@@ -1,72 +1,99 @@
-﻿## 5. ttest_onesample.py - FederatedTTestOneSample
+# One-sample t-test
 
-### Name
+Implementation: [statistics/ttest_onesample.py](../statistics/ttest_onesample.py).
 
-**One-Sample T-Test (FederatedTTestOneSample)**
+The one-sample t-test compares the mean of a numerical variable with a reference
+mean `mu`. It returns the t statistic, p-value, confidence interval, standard
+error, and Cohen's d.
 
-### Type
+## Library interface
 
-**Statistical Test** (one-sample location test)
+`FederatedTTestOneSample(aggregator).compute(sample=..., mu=..., alpha=..., alternative=...)` tests a numerical sample against `mu`. The result dictionary contains the t statistic, degrees of freedom, p-value, mean difference, standard error, confidence bounds, and Cohen's d. `alternative` is `two-sided`, `greater`, or `less`.
 
-### Goal (Why we need it)
+## Statistical method
 
-Compares the **mean of a single sample** to a specified value (null hypothesis mean).
-In a federated setting, we want the *same* t-statistic and p-value as centralized computation **without sharing raw data**, using only aggregated sum, sum of squares, and count.
+The null hypothesis is:
 
-### When to use
+```text
+H0: mean(y) = mu
+```
 
-Use One-Sample T-Test when:
+The test statistic is:
 
-* you need to test if the sample mean differs from a hypothesized value
-* the outcome variable is continuous
-* data are approximately normally distributed (or large sample)
+```text
+t = (mean(y) - mu) / (s / sqrt(n))
+```
 
-### When NOT to use
+with `df = n - 1`, where `s` is the sample standard deviation.
 
-Avoid / be careful when:
+## Federated computation
 
-* comparing two groups (use independent or paired t-test)
-* distribution is highly non-normal with small sample
-* outcome is not continuous
+The test is computed without sharing row-level data. Each site contributes
+sample sufficient statistics, and the statistic is computed from aggregated
+totals.
 
----
+### Aggregated quantities
 
-### Inputs / Outputs
+| Quantity | Purpose |
+|---|---|
+| Number of observations | Compute mean, standard error, and degrees of freedom. |
+| Sum of values | Compute sample mean. |
+| Sum of squared values | Compute sample variance. |
+| Sum of deviations from `mu` | Compute mean difference. |
+| Sum of squared deviations from `mu` | Compute standard deviation around the null mean. |
 
-| Item           | Description                            |
-| -------------- | -------------------------------------- |
-| **data**       | DataFrame with outcome variable        |
-| **value_var**  | Name of continuous outcome variable    |
-| **popmean**    | Hypothesized population mean           |
-| **alpha**      | Significance level                     |
-| **alternative**| "two-sided", "greater", or "less"      |
-| **aggregator** | `NumpyAggregator` instance             |
+### Federated flow
 
-**Outputs (dict)**
+```text
+Input:
+    y: numerical variable
+    mu: null mean
+    alpha: significance level
+    alternative: two-sided, less, or greater
 
-* `t_stat`: t-statistic
-* `df`: degrees of freedom
-* `p_value`: p-value
-* `mean`: sample mean
-* `ci_lower`, `ci_upper`: confidence interval bounds
+Step 1:
+    At each site:
+        remove missing y values
+        compute n, sum(y), sum(y^2)
+        compute sum(y - mu) and sum((y - mu)^2)
 
-### Key Differences from scipy.stats
+Step 2:
+    Aggregate all scalar sufficient statistics.
 
-| Aspect      | scipy.stats.ttest_1samp | MIP Federated Implementation  |
-| ----------- | ----------------------- | ----------------------------- |
-| Data access | Centralized             | Data remains local per client |
-| T-statistic | Exact                   | Exact                         |
-| P-values    | Exact                   | Exact                         |
+Step 3:
+    Validate that the total number of observations is greater than one.
 
-### Approximation vs Exactness
+Step 4:
+    Compute mean, standard deviation, standard error, t statistic,
+    degrees of freedom, p-value, confidence interval, and Cohen's d.
 
-| Component   | scipy.stats | MIP   |
-| ----------- | ----------- | ----- |
-| Mean        | Exact       | Exact |
-| Std         | Exact       | Exact |
-| T-statistic | Exact       | Exact |
-| P-value     | Exact       | Exact |
+Output:
+    one-sample t-test summary
+```
 
----
+## Numerical decisions
 
+- Confidence intervals use the Student t distribution.
+- One-sided alternatives replace one confidence bound with infinity.
+- Cohen's d is computed as `(mean - mu) / standard_deviation`.
 
+## Reference comparison
+
+Standalone tests compare the result, for every alternative, with
+`statsmodels.stats.weightstats.DescrStatsW` using:
+
+```text
+DescrStatsW(sample).ttest_mean(value=mu, alternative=alternative)
+DescrStatsW(sample).tconfint_mean(alpha=alpha, alternative=alternative)
+```
+
+The method is also aligned with standard one-sample t-test formulas used by
+`scipy.stats`.
+
+## Limitations
+
+- The variable must be numerical.
+- At least two observations are required.
+- Observations are assumed independent.
+- The test assumes the sample mean is approximately t-distributed under the null.
+- Cohen's d is undefined when the sample standard deviation is zero.

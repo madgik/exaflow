@@ -3,9 +3,9 @@ import math
 import numpy as np
 import pytest
 
+from exaflow.algorithms.federated.exceptions import FedError
 from exaflow.algorithms.federated.statistics.histogram import WilkinsonHistogram
 from exaflow.algorithms.federated.statistics.histogram import _wilkinson_step
-from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
@@ -82,7 +82,7 @@ TEST_CASES = [
         "name": "all_nans",
         "x": [np.nan, np.nan, np.nan],
         "bins": 3,
-        "expect_error": (BadInputError, "No finite data"),
+        "expect_error": (FedError, "No finite data"),
     },
 ]
 
@@ -229,7 +229,7 @@ class TestWilkinsonHistogram(FederatedAlgorithmTest):
     def test_invalid_ndim(self):
         x = np.array([[1.0, 2.0], [3.0, 4.0]])
         hist = WilkinsonHistogram(NumpyAggregator(None))
-        with pytest.raises(BadInputError, match="must be a 1D array"):
+        with pytest.raises(FedError, match="must be a 1D array"):
             hist.compute(x, num_bins=5)
 
 

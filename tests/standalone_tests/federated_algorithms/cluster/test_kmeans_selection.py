@@ -3,7 +3,7 @@ import pytest
 
 from exaflow.algorithms.federated.cluster.kmeans import FederatedKMeans
 from exaflow.algorithms.federated.cluster.kmeans import FederatedKMeansResults
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedError
 from tests.standalone_tests.federated_algorithms.utils.simulated_agg_client import (
     AggregationCoordinator,
 )
@@ -62,7 +62,7 @@ def test_kmeans_select_k_inertia_does_not_increase_across_k_range():
 
 
 def test_kmeans_select_k_rejects_invalid_k_range():
-    with pytest.raises(BadInputError, match="k_min"):
+    with pytest.raises(FedError, match="k_min"):
         FederatedKMeans.select_k(
             np.array([[1.0]]),
             k_min=0,
@@ -70,7 +70,7 @@ def test_kmeans_select_k_rejects_invalid_k_range():
             agg_client=_agg_client(),
         )
 
-    with pytest.raises(BadInputError, match="k_max"):
+    with pytest.raises(FedError, match="k_max"):
         FederatedKMeans.select_k(
             np.array([[1.0]]),
             k_min=3,

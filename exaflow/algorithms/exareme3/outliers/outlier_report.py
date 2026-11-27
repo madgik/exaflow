@@ -14,6 +14,7 @@ from exaflow.algorithms.federated.outliers.outlier_report import FederatedOutlie
 from exaflow.algorithms.federated.outliers.outlier_report import OutlierStrategy
 from exaflow.algorithms.federated.outliers.outlier_report import OutlierTail
 from exaflow.algorithms.federated.outliers.outlier_report import WinsorizationHelper
+from exaflow.column_names import DATASET_COL
 from exaflow.worker_communication import BadUserInput
 
 
@@ -215,10 +216,15 @@ def local_step(data, rules):
         for variable, payload in rules.items()
     }
     report = FederatedOutlierReport()
+    records = report.report(
+        data=data,
+        rules=typed_rules,
+        min_row_count=worker_config.privacy.minimum_row_count,
+        group_column=DATASET_COL,
+    )
     return {
-        "featurewise": report.report(
-            data=data,
-            rules=typed_rules,
-            min_row_count=worker_config.privacy.minimum_row_count,
-        )
+        "featurewise": [
+            dict(variable=rec["variable"], dataset=rec["group"], data=rec["data"])
+            for rec in records
+        ]
     }

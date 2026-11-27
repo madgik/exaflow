@@ -67,10 +67,8 @@ flowchart TD
   recursive discovery determine runtime roles independently of folder names.
   See the [runtime author guide](../../exaflow/algorithms/exareme3/README.md#domain-layout)
   for the complete preprocessing module index.
-- Testable algorithm math and reusable federated primitives should stay in
-  domain folders under `exaflow/algorithms/federated`: outlier methods in
-  `outliers`, encoders in `feature_engineering`, and passthrough in `compose`.
-  Cross-validation infrastructure remains in `model_selection/cross_validation`.
+- Algorithm math belongs to the statistical library; its [local guide](../../exaflow/algorithms/federated/AGENTS.md)
+  owns the domain layout and library interfaces.
 - Deployment manifests should stay in `kubernetes` and Dockerfiles.
 - Data-model folder validation should stay inside `exadata-validator`.
 
@@ -80,9 +78,23 @@ The normal dependency direction is:
 
 `controller API -> controller services -> worker clients -> worker gRPC service -> worker UDF service -> algorithm wrappers/core`.
 
-Federated core modules should remain testable without a running controller or
-worker deployment. Runtime wrappers can depend on controller/worker interfaces,
-registries, and specifications.
+The statistical library has its own [development guide](../../exaflow/algorithms/federated/AGENTS.md).
+Runtime adapters supply application configuration, interpret library results,
+and apply application error policies.
+
+The shared translator in `exareme3/utils/error_translation.py` explicitly maps
+each reason to an exception class and replacement text or `KEEP_MESSAGE`.
+Worker UDF execution and the controller strategy catch only `FedError` for
+translation and retain it as the cause. The reason determines whether the
+application raises actionable `BadUserInput`, recognized computational
+`AnalysisExecutionError`, a native internal exception, or `InsufficientDataError`.
+The latter preserves worker skipping for the Outlier Report threshold check.
+Runtime privacy checks remain outside the library. Worker gRPC `INTERNAL`
+responses become generic controller `RuntimeError` failures, rather than worker
+connection errors. `AnalysisExecutionError` crosses worker gRPC as `ABORTED` and
+reaches clients as HTTP 462 or the matching RabbitMQ error code. Unexpected
+dependency exceptions retain their library types;
+there is no blanket wrapping or Pydantic unwrapping.
 
 ## Persistence Layer
 

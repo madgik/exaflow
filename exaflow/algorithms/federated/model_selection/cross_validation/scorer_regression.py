@@ -4,7 +4,8 @@ from numbers import Integral
 
 import numpy as np
 
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
 from exaflow.algorithms.federated.utils.interfaces import FederatedScorer
 from exaflow.algorithms.federated.validation import as_numeric_array
@@ -78,16 +79,14 @@ class FederatedRegressionScorer(FederatedScorer):
         sum_y = float(np.asarray(sum_y_arr, dtype=float).reshape(-1)[0])
         sum_y_sq = float(np.asarray(sum_y_sq_arr, dtype=float).reshape(-1)[0])
         if n_test == 0:
-            raise BadInputError(
-                "Regression scoring requires a nonempty global test set."
-            )
+            raise FedValueError(FedErrorReason.REGRESSION_TEST_SET_EMPTY)
 
         mean_correction = sum_y * (sum_y / n_test)
         tss = sum_y_sq - mean_correction
         # The subtraction can leave a small signed residual for constant outcomes.
         tss_tol = 100.0 * np.finfo(float).eps * max(abs(sum_y_sq), abs(mean_correction))
         if tss < -tss_tol:
-            raise BadInputError("Aggregated test outcome variance is negative.")
+            raise FedValueError(FedErrorReason.REGRESSION_OUTCOME_VARIANCE_INVALID)
         has_variation = tss > tss_tol
 
         rmse_val = float(np.sqrt(rss / n_test))

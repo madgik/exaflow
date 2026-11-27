@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
 from exaflow.algorithms.federated.validation import ArrayPolicy
 from exaflow.algorithms.federated.validation import ParameterRule
 from exaflow.algorithms.federated.validation import check_array
@@ -32,12 +33,12 @@ def test_finite_policy_is_explicit():
     assert (
         check_array(values, policy=ArrayPolicy(finite=False), input_name="X") is values
     )
-    with pytest.raises(BadInputError, match="finite"):
+    with pytest.raises(FedError, match="finite"):
         check_array(values, policy=ArrayPolicy(), input_name="X")
 
 
 def test_array_error_has_safe_structured_issue():
-    with pytest.raises(BadInputError) as error:
+    with pytest.raises(FedError) as error:
         check_array([["private-value"]], policy=ArrayPolicy(), input_name="X")
     assert error.value.issue.code == "invalid_array"
     assert error.value.issue.input_name == "X"
@@ -51,12 +52,12 @@ def test_binary_check_does_not_require_local_classes_or_observations(values):
 
 @pytest.mark.parametrize("value", [2.0, -1.0, 0.5, np.nan, np.inf])
 def test_binary_check_rejects_invalid_encoded_values(value):
-    with pytest.raises(BadInputError, match="encoded as 0 or 1"):
+    with pytest.raises(FedError, match="encoded as 0 or 1"):
         check_binary_target(np.array([value]))
 
 
 def test_length_check_rejects_broadcastable_mismatch():
-    with pytest.raises(BadInputError, match="one outcome"):
+    with pytest.raises(FedError, match="one outcome"):
         check_consistent_length(np.ones((3, 2)), np.array([1.0]))
 
 
@@ -76,7 +77,7 @@ def test_parameter_validation_retains_valid_parameter_objects(value):
 
 
 def test_invalid_parameter_is_not_normalized():
-    with pytest.raises(BadInputError, match="enabled must be a boolean"):
+    with pytest.raises(FedError, match="enabled must be a boolean"):
         validate_parameters(
             {"enabled": "false"},
             {"enabled": ParameterRule(types=(bool,), description="a boolean")},
@@ -86,10 +87,22 @@ def test_invalid_parameter_is_not_normalized():
 @pytest.mark.parametrize("strict, fails", [(False, False), (True, True)])
 def test_count_boundary_is_method_specific(strict, fails):
     if fails:
-        with pytest.raises(BadInputError, match="more than 2"):
-            check_sample_counts(2, minimum=2, name="Sample", strict=strict)
+        with pytest.raises(FedError, match="more than 2"):
+            check_sample_counts(
+                2,
+                minimum=2,
+                name="Sample",
+                strict=strict,
+                reason=FedErrorReason.INSUFFICIENT_SAMPLE_COUNT,
+            )
     else:
-        check_sample_counts(2, minimum=2, name="Sample", strict=strict)
+        check_sample_counts(
+            2,
+            minimum=2,
+            name="Sample",
+            strict=strict,
+            reason=FedErrorReason.INSUFFICIENT_SAMPLE_COUNT,
+        )
 
 
 def test_programming_errors_are_not_converted_to_input_errors():

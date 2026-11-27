@@ -185,10 +185,10 @@ def local_step(
     from exaflow.worker import config as worker_config
 
     min_row_count = worker_config.privacy.minimum_row_count
-    if "dataset" in data.columns:
-        ds = data["dataset"]
+    if DATASET_VAR_NAME in data.columns:
+        ds = data[DATASET_VAR_NAME]
         if isinstance(ds, pd.DataFrame):
-            data["dataset"] = ds.iloc[:, 0]
+            data[DATASET_VAR_NAME] = ds.iloc[:, 0]
 
     descriptive_stats = FederatedDescriptiveStatistics(agg_client=agg_client)
     result = descriptive_stats.describe(
@@ -197,12 +197,18 @@ def local_step(
         nominal_vars=nominal_vars,
         min_row_count=min_row_count,
         nominal_levels=nominal_levels,
-        dataset_col=DATASET_VAR_NAME,
+        group_column=DATASET_VAR_NAME,
         integer_vars=integer_vars,
     )
     return {
-        "recs": result.recs,
-        "global_recs": result.global_recs,
+        "recs": [
+            dict(variable=rec["variable"], dataset=rec["group"], data=rec["data"])
+            for rec in result.recs
+        ],
+        "global_recs": [
+            dict(variable=rec["variable"], dataset="all datasets", data=rec["data"])
+            for rec in result.global_recs
+        ],
     }
 
 

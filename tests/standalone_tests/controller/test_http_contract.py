@@ -13,8 +13,15 @@ import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import httpx
 import pytest
 
+from exaflow.algorithms.exareme3.utils.error_translation import (
+    translate_federated_error,
+)
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedStateError
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.controller.http import endpoints
 from exaflow.controller.http import request_body_limit
 from exaflow.controller.http.app import app
@@ -289,6 +296,34 @@ def test_analysis_success_route_contract(monkeypatch):
     assert body == ANALYSIS_SUCCESS_BODY
 
 
+def test_internal_federated_failure_returns_generic_500(monkeypatch):
+    _stub_analysis(monkeypatch)
+    error = translate_federated_error(FedStateError(FedErrorReason.MODEL_NOT_FITTED))
+
+    class FailingStrategy:
+        async def execute(self):
+            raise error
+
+    monkeypatch.setattr(
+        analysis_service,
+        "get_algorithm_execution_strategy",
+        lambda dto: FailingStrategy(),
+    )
+
+    async def request():
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app, raise_app_exceptions=False),
+            base_url="http://controller",
+        ) as client:
+            return await client.post("/analysis", json=ANALYSIS_REQUEST)
+
+    response = asyncio.run(request())
+    assert response.status_code == 500
+    assert response.headers["content-type"] == TEXT_CONTENT_TYPE
+    assert response.text == "Internal Server Error"
+    assert str(error) not in response.text
+
+
 @pytest.mark.parametrize("request_id", INVALID_REQUEST_IDS)
 def test_invalid_request_id_returns_422_before_orchestration(monkeypatch, request_id):
     execute = AsyncMock()
@@ -392,6 +427,27 @@ def test_request_body_at_the_limit_is_accepted(monkeypatch):
         (lambda: BadRequest("bad request"), 400, lambda error: error.message),
         (lambda: FilterError("filter error"), 400, lambda error: error.message),
         (lambda: BadUserInput("bad user input"), 460, lambda error: error.message),
+        (
+            lambda: translate_federated_error(
+                FedValueError(FedErrorReason.LOGISTIC_CONVERGENCE_FAILED)
+            ),
+            462,
+            lambda error: (
+                "Logistic regression could not converge to a stable solution."
+            ),
+        ),
+        (
+            lambda: translate_federated_error(
+                FedValueError(
+                    FedErrorReason.INSUFFICIENT_FOLD_SAMPLES, n_samples=7, n_splits=8
+                )
+            ),
+            460,
+            lambda error: (
+                "There are too few usable observations for the requested number of "
+                "folds. Reduce the number of folds or adjust the filters."
+            ),
+        ),
         (
             lambda: DataModelUnavailable("worker", "data_model"),
             460,

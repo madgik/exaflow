@@ -6,12 +6,15 @@ import pytest
 
 from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.outliers.outlier_report import OutlierReport
+from exaflow.algorithms.exareme3.outliers.outlier_report import local_step
+from exaflow.algorithms.federated.exceptions import FedObservationError
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.outliers.outlier_report import FederatedOutlierReport
 from exaflow.algorithms.federated.outliers.outlier_report import OutlierRule
 from exaflow.algorithms.federated.outliers.outlier_report import WinsorizationHelper
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
+from exaflow.worker import config as worker_config
 from exaflow.worker_communication import BadUserInput
-from exaflow.worker_communication import InsufficientDataError
 
 
 def _make_algorithm(params):
@@ -167,6 +170,7 @@ def test_report_respects_tail_selection(tail, lower_count, upper_count, total_co
         data=data,
         rules={"v": OutlierRule("v", "quantile", tail, 0.2)},
         min_row_count=1,
+        group_column="dataset",
     )
 
     payload = records[0]["data"]
@@ -188,6 +192,7 @@ def test_report_masks_small_non_zero_counts_and_total():
         data=data,
         rules={"v": OutlierRule("v", "quantile", "both", 0.2)},
         min_row_count=3,
+        group_column="dataset",
     )
 
     payload = records[0]["data"]
@@ -205,6 +210,7 @@ def test_report_keeps_zero_counts_visible():
         data=data,
         rules={"v": OutlierRule("v", "iqr", "both", 1.5)},
         min_row_count=3,
+        group_column="dataset",
     )
 
     payload = records[0]["data"]
@@ -214,22 +220,53 @@ def test_report_keeps_zero_counts_visible():
     assert payload["total_outlier_percentage"] == 0.0
 
 
-def test_report_raises_insufficient_data_for_small_dataset():
+def test_report_requires_minimum_observations():
     data = pd.DataFrame({"dataset": ["d1", "d1"], "v": [1.0, 2.0]})
     report = FederatedOutlierReport()
 
-    with pytest.raises(InsufficientDataError, match="Insufficient non-missing data"):
+    with pytest.raises(FedObservationError, match="Insufficient non-missing data"):
         report.report(
             data=data,
             rules={"v": OutlierRule("v", "iqr", "both", 1.5)},
             min_row_count=3,
+            group_column="dataset",
         )
 
 
-def test_report_returns_local_dataset_records_without_describe_fields():
+def test_exareme3_report_leaves_translation_to_shared_boundary(monkeypatch):
+    data = pd.DataFrame({"dataset": ["d1", "d1"], "v": [1.0, 2.0]})
+    monkeypatch.setattr(worker_config.privacy, "minimum_row_count", 3)
+
+    with pytest.raises(FedObservationError):
+        local_step(data, rules={"v": {"strategy": "iqr", "tail": "both", "fold": 1.5}})
+
+
+def test_exareme3_report_preserves_dataset_labels(monkeypatch):
+    data = pd.DataFrame({"dataset": ["d1", "d1"], "v": [1.0, 2.0]})
+    monkeypatch.setattr(worker_config.privacy, "minimum_row_count", 1)
+
+    result = local_step(
+        data, rules={"v": {"strategy": "iqr", "tail": "both", "fold": 1.5}}
+    )
+
+    assert set(result["featurewise"][0]) == {"variable", "dataset", "data"}
+    assert result["featurewise"][0]["dataset"] == "d1"
+
+
+def test_report_rejects_missing_group_column():
+    with pytest.raises(FedValueError, match="required columns"):
+        FederatedOutlierReport().report(
+            data=pd.DataFrame({"v": [1.0, 2.0]}),
+            rules={"v": OutlierRule("v", "iqr", "both", 1.5)},
+            min_row_count=1,
+            group_column="cohort",
+        )
+
+
+def test_report_returns_local_group_records_without_describe_fields():
     data = pd.DataFrame(
         {
-            "dataset": ["d1", "d1", "d1", "d2", "d2", "d2"],
+            "cohort": ["d1", "d1", "d1", "d2", "d2", "d2"],
             "v": [1.0, 2.0, 100.0, 10.0, 11.0, 12.0],
         }
     )
@@ -239,9 +276,10 @@ def test_report_returns_local_dataset_records_without_describe_fields():
         data=data,
         rules={"v": OutlierRule("v", "iqr", "both", 1.5)},
         min_row_count=1,
+        group_column="cohort",
     )
 
-    assert [record["dataset"] for record in records] == ["d1", "d2"]
+    assert [record["group"] for record in records] == ["d1", "d2"]
     payload_keys = set(records[0]["data"])
     assert {
         "strategy",

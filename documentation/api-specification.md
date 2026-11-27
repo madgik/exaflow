@@ -548,7 +548,7 @@ ______________________________________________________________________
 
 ## 7) Error And Status Mapping
 
-Exaflow maps API exceptions to status codes:
+The API returns the following error statuses:
 
 | Status | Meaning | Client Handling |
 | --- | --- | --- |
@@ -558,6 +558,8 @@ Exaflow maps API exceptions to status codes:
 | `503` | The controller is already running its maximum number of concurrent analyses. | Retry later. The limit is `max_concurrent_experiments`. |
 | `460` | Semantic user-input validation error. | Show the server message near the relevant form field when possible. |
 | `461` | Insufficient data for algorithm execution. | Explain that the chosen datasets/filters/variables do not leave enough usable data. |
+| `462` | The accepted analysis could not produce a valid result, for example because it did not converge. | Show the server explanation without treating the input as incorrect. |
+| `500` | Internal analysis execution failure. | Show a generic failure message; algorithm diagnostics are not user-input guidance. |
 | `512` | Worker unresponsive during execution. | Treat as execution infrastructure failure. |
 | `513` | Worker task timeout during execution. | Treat as execution timeout. |
 

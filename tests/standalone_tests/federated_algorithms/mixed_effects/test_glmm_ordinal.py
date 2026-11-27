@@ -6,11 +6,11 @@ from functools import lru_cache
 import numpy as np
 import pytest
 
+from exaflow.algorithms.federated.exceptions import FedError
 from exaflow.algorithms.federated.mixed_effects import FederatedGLMMOrdinal
 from exaflow.algorithms.federated.mixed_effects.glmm_ordinal import (
     _prepare_ordinal_clusters,
 )
-from exaflow.algorithms.federated.utils import BadInputError
 from tests.standalone_tests.federated_algorithms.mixed_effects.glmm_test_template import (
     CASE_MATRIX,
 )
@@ -362,7 +362,7 @@ def test_glmm_ordinal_invalid_inputs_raise():
 
     y_bad = y.copy()
     y_bad[0] = 9
-    with pytest.raises(BadInputError):
+    with pytest.raises(FedError):
         model.fit(
             X,
             y_bad,
@@ -372,7 +372,7 @@ def test_glmm_ordinal_invalid_inputs_raise():
 
     X_bad = np.asarray(X, dtype=float).copy()
     X_bad[0, 0] = np.nan
-    with pytest.raises(BadInputError):
+    with pytest.raises(FedError):
         model.fit(
             X_bad,
             y,
@@ -380,5 +380,5 @@ def test_glmm_ordinal_invalid_inputs_raise():
             agg_client=agg_client,
         )
 
-    with pytest.raises(BadInputError):
+    with pytest.raises(FedError):
         FederatedGLMMOrdinal(K=1)

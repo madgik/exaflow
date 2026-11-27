@@ -21,6 +21,7 @@ from exaflow.controller.services.exareme3.algorithm_flow_engine_interface import
 )
 from exaflow.controller.worker_client.app import WorkerClientConnectionError
 from exaflow.controller.worker_client.app import WorkerClientTimeoutException
+from exaflow.worker_communication import AnalysisExecutionError
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import InsufficientDataError
 
@@ -151,8 +152,12 @@ def test_insufficient_data_worker_is_still_skipped():
 
 @pytest.mark.parametrize(
     "error",
-    [BadUserInput("bad input"), ControllerShuttingDownError()],
-    ids=["bad_user_input", "shutting_down"],
+    [
+        BadUserInput("bad input"),
+        AnalysisExecutionError("Analysis could not complete."),
+        ControllerShuttingDownError(),
+    ],
+    ids=["bad_user_input", "analysis_execution", "shutting_down"],
 )
 def test_errors_that_already_have_a_status_code_propagate_unchanged(error):
     failing = _Handler("worker-0", outcome=error)
@@ -161,6 +166,7 @@ def test_errors_that_already_have_a_status_code_propagate_unchanged(error):
         _run([failing])
 
     assert exc_info.value is error
+    assert failing.call.cancelled is True
 
 
 def _analysis_request(datasets):

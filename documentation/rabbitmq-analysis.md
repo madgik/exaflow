@@ -100,7 +100,11 @@ Replies contain parsed result JSON, rather than a JSON string inside JSON:
 Protocol error codes include `invalid_request`, `request_too_large`,
 `result_too_large`, `insufficient_data`, and `internal_error`. Recognized user-input
 and method errors use their existing exception class name, for example
-`BadRequest`. Unexpected errors return a generic message without exception details.
+`BadRequest`. `BadUserInput` means a known analysis requirement needs an input
+adjustment. `AnalysisExecutionError` means the accepted analysis could not produce
+a valid result, for example because it did not converge; show its explanation
+without treating the input as incorrect. Unexpected errors return `internal_error`
+with a generic message without exception details.
 Validation and algorithm errors are terminal replies, not automatic retry jobs.
 
 ## Delivery, recovery, and shutdown

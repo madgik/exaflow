@@ -1,85 +1,93 @@
-﻿## Ordinary Least Squares (FederatedOLS)
+# Ordinary least squares
 
-### Name
+Implementation: [linear_model/ols.py](../linear_model/ols.py).
 
-**Ordinary Least Squares (FederatedOLS)**
+Linear regression fits an ordinary least squares model for a numerical outcome
+using a numerical design matrix, with categorical covariates encoded separately. The result includes coefficients,
+standard errors, t-tests, p-values, confidence intervals, goodness-of-fit
+statistics, and information criteria.
 
-### Type
+## Library interface
 
-**Statistical Model** (supervised regression)
+`FederatedOLS(fit_intercept=True).fit(X, y, *, agg_client)` accepts a numeric design matrix and outcome. The intercept flag is keyword-only. The fitted result exposes `params`, `bse`, `tvalues`, `pvalues`, `df_model`, `df_resid`, `rse`, `fvalue`, `f_pvalue`, `rsquared`, `rsquared_adj`, `ll`, `aic`, `bic`, `nobs`, residual sums, covariance information, and `predict(X)`. Categorical encoding is a separate component; see [column transformation](column_transformer.md) and [one-hot encoding](one_hot_encoder.md).
 
-### Goal (Why we need it)
+## Statistical method
 
-OLS fits a **linear regression model** by minimizing squared residuals.
-In a federated setting, we want the *same* regression estimates (coefficients, RΒ², F-statistic, t-tests) as centralized OLS **without sharing raw data**, using only aggregated sufficient statistics (X'X, X'y, sum(y)) and centered sums of squares (residuals and `sum((y - mean_y)^2)`).
+The model is ordinary least squares; with an intercept it is:
 
-### When to use
+```text
+y = beta_0 + beta_1 x_1 + ... + beta_p x_p + epsilon
+```
 
-Use OLS when:
+Coefficients minimize the residual sum of squares:
 
-- you need **continuous outcome prediction** with linear relationships
-- you want interpretable coefficients
-- you need statistical inference (t-tests, F-tests, RΒ², confidence intervals)
-- features are numerical or properly encoded categorical
-- residuals are approximately normal with constant variance
+```text
+RSS(beta) = sum_i (y_i - x_i beta)^2
+```
 
-### When NOT to use
+The fitted coefficients are computed from the normal equations using a
+pseudo-inverse:
 
-Avoid / be careful when:
+```text
+beta = (X'X)^+ X'y
+```
 
-- outcome is binary/categorical (use logistic/multinomial regression)
-- features are highly collinear (X'X may be singular)
-- heteroscedasticity is severe (consider robust standard errors)
-- non-linear relationships exist (consider transformations or polynomial features)
-- outliers are influential (consider robust regression)
-- sample size is very small relative to features
+## Federated computation
 
-______________________________________________________________________
+The model is computed without sharing row-level data. Each site contributes OLS
+sufficient statistics, and the coefficient vector and summary statistics are
+computed from the aggregated cross-products. The total sum of squares uses a
+second pass around the global outcome mean instead of raw moments
+(`sum(y^2) - n * mean^2`), which lose all precision when the mean is large
+relative to the spread.
 
-### Inputs / Outputs
+### Aggregated quantities
 
-| Item | Description |
-| ----------------- | ---------------------------------------------------- |
-| **X** | Feature matrix, shape `(n_local, p)` |
-| **y** | Continuous target vector, shape `(n_local,)` |
-| **fit_intercept** | Whether to fit intercept term (default: `True`) |
-| **alpha** | Significance level for confidence intervals (0.05) |
-| **agg_client** | Federated aggregation client |
+| Quantity | Purpose |
+|---|---|
+| `X'X` | Estimate coefficients, covariance matrix, and rank. |
+| `X'y` | Estimate coefficients. |
+| Number of observations | Compute degrees of freedom and information criteria. |
+| `sum(y)` | Compute the global outcome mean. |
+| `sum((y - mean_y)^2)` | Compute total sum of squares. |
+| Residual sum of squares | Compute residual standard error, R-squared, F statistic, and log-likelihood. |
+| Sum of absolute residuals | Stored as a diagnostic quantity. |
 
-**Outputs (FederatedOLSResults)**
+### Federated flow
 
-- `params`: coefficient estimates (including intercept if fitted)
-- `bse`: standard errors of coefficients
-- `tvalues`: t-statistics
-- `pvalues`: two-tailed p-values
-- `r_squared`: coefficient of determination
-- `r_squared_adjusted`: adjusted RΒ²
-- `fvalue`: F-statistic
-- `f_pvalue`: p-value for F-test
-- `rse`: residual standard error
-- `ll`, `aic`, `bic`: likelihood and information criteria
-- `predict(X)`: predicted values
-- `conf_int(alpha)`: confidence intervals for coefficients
+```text
+Receive an aligned numeric design matrix and outcome.
+Add an intercept when configured.
+Sum X'X, X'y, counts, and outcome moments across participants.
+Solve beta = pinv(X'X) X'y.
+Compute residual statistics and coefficient covariance from aggregated quantities.
+Return the fitted results object; predict locally using X beta.
+```
 
-### Key Differences from statsmodels
+## Numerical decisions
 
-| Aspect | statsmodels | MIP Federated Implementation |
-| ------------------ | --------------------- | ----------------------------- |
-| Data access | Full centralized data | Data remains local per client |
-| Algorithm | Direct matrix solve | Federated sufficient stats |
-| Sufficient stats | Local X'X, X'y | Aggregated X'X, X'y, sum(y) |
-| Performance | CPU/memory bound | Network + aggregation bound |
-| Results API | Full statsmodels API | Simplified results container |
+- The pseudo-inverse of `X'X` is used, which allows rank-deficient designs to be
+  handled numerically.
+- Standard errors are computed from the diagonal of `(X'X)^+ * RSE^2`.
+- Intercept inclusion follows `fit_intercept`. Categorical encoding is supplied separately. Undefined and perfect-fit F diagnostics retain their numerical representation in the result.
 
-### Approximation vs Exactness
+## Reference comparison
 
-| Component | statsmodels | MIP |
-| --------------------------- | ----------- | ---------------------- |
-| Coefficient estimates | Exact | Exact |
-| Standard errors | Exact | Exact |
-| RΒ² / Adjusted RΒ² | Exact | Exact |
-| F-statistic | Exact | Exact |
-| T-statistics / P-values | Exact | Exact |
-| Confidence intervals | Exact | Exact |
-| AIC/BIC | Exact | Exact |
-| Residuals | Local only | Not computed globally |
+Standalone tests compare results with `statsmodels` OLS:
+
+```text
+X_sm = sm.add_constant(X, has_constant="add")
+sm.OLS(y, X_sm).fit()
+```
+
+Reference behavior is aligned with OLS using an intercept, while the computation
+uses aggregated cross-products rather than centralized row-level data.
+
+## Limitations
+
+- The outcome must be numerical.
+- Observations are assumed independent.
+- Standard inference assumes homoscedastic, approximately normal residuals.
+- Strong multicollinearity or rank deficiency can affect interpretability even
+  though the pseudo-inverse returns coefficients.
+- No regularization is applied.

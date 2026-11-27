@@ -6,15 +6,25 @@ from concurrent import futures
 
 import grpc
 import pytest
+from google.protobuf.json_format import ParseDict
 from grpc_health.v1 import health
 from grpc_health.v1 import health_pb2
 from grpc_health.v1 import health_pb2_grpc
 
+from exaflow.algorithms.exareme3.utils.error_translation import (
+    translate_federated_error,
+)
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
+from exaflow.controller.worker_client.app import WorkerClient
 from exaflow.protos.worker import worker_pb2
 from exaflow.protos.worker import worker_pb2_grpc
 from exaflow.worker import config as worker_config
 from exaflow.worker.grpc_server import WorkerService
 from exaflow.worker.utils import duck_db_csv_loader
+from exaflow.worker_communication import AnalysisExecutionError
+from exaflow.worker_communication import BadUserInput
+from exaflow.worker_communication import InsufficientDataError
 
 
 def _allocate_port() -> int:
@@ -104,6 +114,77 @@ def test_worker_service_serves_basic_requests(worker_test_config, monkeypatch):
         )
         assert info_resp.worker.id == worker_config.identifier
         assert info_resp.worker.port == worker_config.grpc.port
+    finally:
+        server.stop(0).wait()
+        channel.close()
+
+
+@pytest.mark.parametrize(
+    "error, status, target, message",
+    [
+        (
+            translate_federated_error(
+                FedValueError(FedErrorReason.LOGISTIC_CONVERGENCE_FAILED)
+            ),
+            grpc.StatusCode.ABORTED,
+            AnalysisExecutionError,
+            "Logistic regression could not converge to a stable solution.",
+        ),
+        (
+            BadUserInput("Choose two categories."),
+            grpc.StatusCode.INVALID_ARGUMENT,
+            BadUserInput,
+            "Choose two categories.",
+        ),
+        (
+            InsufficientDataError("Insufficient observations."),
+            grpc.StatusCode.FAILED_PRECONDITION,
+            InsufficientDataError,
+            "Insufficient observations.",
+        ),
+        (
+            RuntimeError("private worker diagnostic"),
+            grpc.StatusCode.INTERNAL,
+            RuntimeError,
+            "Analysis execution failed.",
+        ),
+    ],
+)
+def test_worker_error_categories_survive_grpc_round_trip(
+    worker_test_config, monkeypatch, error, status, target, message
+):
+    def failing_udf(**kwargs):
+        raise error
+
+    monkeypatch.setattr("exaflow.worker.grpc_server.udf_service.run_udf", failing_udf)
+    listen_addr = worker_test_config["listen_addr"]
+    server = _start_worker_server(monkeypatch, listen_addr)
+    channel = grpc.insecure_channel(listen_addr)
+    stub = worker_pb2_grpc.WorkerServiceStub(channel)
+    request = worker_pb2.RunUdfRequest(request_id="error-test", udf_registry_key="udf")
+    ParseDict(
+        {
+            "context_id": "error-test",
+            "inputdata": {
+                "data_model": "dm:1",
+                "datasets": ["dataset"],
+                "variables": ["x"],
+            },
+            "metadata": {},
+            "add_dataset_variable": False,
+        },
+        request.system_args,
+    )
+    client = object.__new__(WorkerClient)
+    client._socket_addr = listen_addr
+
+    try:
+        call = stub.RunUdf.future(request, timeout=3)
+        with pytest.raises(target) as exc_info:
+            client.finish_call("RunUdf", call)
+        assert call.code() == status
+        assert type(exc_info.value) is target
+        assert str(exc_info.value) == message
     finally:
         server.stop(0).wait()
         channel.close()

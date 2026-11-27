@@ -9,6 +9,10 @@ Durable reference material lives under `documentation/context/` — start with
 non-negotiable rules, algorithm workflow, and scope; use the context directory
 for full command lists, architecture detail, and validation matrices.
 
+For library-only work, follow the [federated library guide](exaflow/algorithms/federated/AGENTS.md).
+The application integration workflow below applies when application integration
+is requested.
+
 ## Project Overview
 
 Exaflow is the execution engine behind the Medical Informatics Platform. It
@@ -78,7 +82,6 @@ Focused tests while developing (preferred for agents):
 
 ```bash
 uv run pytest -q tests/standalone_tests
-uv run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py
 ```
 
 Run an analysis through the helper CLI:
@@ -141,15 +144,17 @@ ownership. Non-negotiable boundaries:
 - Worker data loading and UDF execution in `exaflow/worker`.
 - Runtime wrappers and specs in `exaflow/algorithms/exareme3`; testable federated
   core in `exaflow/algorithms/federated`.
+- Exareme3 owns application exception types and message policies. Follow the
+  [application error translation](documentation/context/conventions.md#application-error-translation)
+  rules; the [library guide](exaflow/algorithms/federated/AGENTS.md#exceptions-and-diagnostics)
+  owns the library diagnostic contract.
 - Organize Exareme3 runtime modules by domain. Keep reports, preprocessing steps,
   and model CV variants beside their related algorithms; do not introduce a
   generic preprocessing folder. `PreprocessingStep` inheritance and the registry
   identify steps independently of their location. Runtime domains may differ
   from federated core families when needed; use `--runtime-domain` explicitly.
-- Organize federated implementations by domain too: outlier reporting and its
-  clipping helpers in `outliers`, encoders in `feature_engineering`, and
-  passthrough in `compose`. Keep shared cross-validation machinery in
-  `model_selection/cross_validation`; it serves multiple model families.
+- Library structure, numerical conventions, diagnostics, and focused checks
+  are owned by the [local library guide](exaflow/algorithms/federated/AGENTS.md).
 - Proto, deployment, and `exadata-validator` package boundaries unchanged without
   documented compatibility impact.
 
@@ -169,10 +174,10 @@ ownership. Non-negotiable boundaries:
 - Keep specification metadata UI-ready: compact standard `label`, one concise
   method-level `desc`, and detailed parent `documentation` for formulas,
   defaults, ranges, options, assumptions, outputs, and reference anchors.
-- Keep human-facing algorithm Markdown under `documentation/algorithms/`
-  technical and implementation-grounded. Use one page per runtime algorithm
-  when variants differ materially; do not keep duplicate overview pages that
-  repeat split algorithm pages.
+- Keep application algorithm pages under `documentation/algorithms/` focused
+  on request parameters, application results, and integration. Link to the
+  canonical library method documentation for mathematics and computation.
+  Keep distinct runtime contracts in separate pages when variants differ.
 - Prefer specification-level validation in `exaflow/algorithms/specifications.py`
   over ad-hoc algorithm checks when the constraint is part of the public
   algorithm contract.
@@ -256,12 +261,8 @@ ______________________________________________________________________
 Use `documentation/new-algorithm-setup.md` as the human-facing guide. For agent
 work, the canonical path is:
 
-1. Pick a lower snake_case `<algorithm_id>` and a federated `<family>`. Common
-   families include `statistics`, `linear_model`, `decomposition`,
-   `naive_bayes`, `mixed_effects`, `cluster`, `model_selection`, and
-   `feature_engineering`, `outliers`, and `compose`. See
-   `tests/standalone_tests/federated_algorithms/` for the
-   full set of existing families.
+1. Pick a lower snake_case `<algorithm_id>` and choose the implementation
+   family using the [library guide](exaflow/algorithms/federated/AGENTS.md#architecture-and-interfaces).
 
 1. Run the integration driver once to scaffold and expose the first failing
    gates:
@@ -420,15 +421,13 @@ ______________________________________________________________________
   "aligned with" or "methodology consistent with" for packages or methods such
   as `statsmodels`, `scipy.stats`, `scikit-learn`, or standard methodology; do
   not claim exact equivalence when defaults or implementation details differ.
-- **Algorithm Markdown documentation:** Files under `documentation/algorithms/`
-  should use a consistent technical structure: overview, inputs, statistical
-  model/method, computation without row-level data, aggregated quantities,
-  `### Federated flow` text pseudocode, technical decisions, outputs,
-  validation against a reference package or method, and limitations. Inspect the
-  Exareme3 wrapper, federated core, and tests before writing; output fields must
-  match the actual Pydantic response model returned by `.run()`. For variants
-  such as one-way vs two-way ANOVA or Gaussian vs categorical Naive Bayes, prefer
-  separate pages over combined duplicate pages.
+- **Algorithm Markdown documentation:** Application pages describe observable
+  request parameters/defaults, response fields, and preprocessing/replay
+  integration. Derive outputs from the actual wrapper result model. Link to
+  library method pages for statistical models, formulas, aggregation flow,
+  numerical decisions, reference comparisons, and limitations; do not duplicate
+  those explanations in application pages. The local library guide owns the
+  structure of canonical method documentation.
 - **User-facing terminology:** Do not mention platform or execution-engine terms
   in user-facing spec text, including "Exaflow", "exareme", "MIP", "worker",
   "engine", "federated implementation", or "aggregation-server-backed". Prefer

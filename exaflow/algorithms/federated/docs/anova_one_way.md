@@ -1,79 +1,125 @@
-﻿## 7. anova_oneway.py - FederatedAnovaOneWay
+# One-way ANOVA
 
-### Name
+Implementation: [statistics/anova_oneway.py](../statistics/anova_oneway.py).
 
-**One-Way ANOVA (FederatedAnovaOneWay)**
+One-way analysis of variance tests whether a numerical outcome has the same mean
+across the observed levels of one categorical grouping variable. The algorithm
+returns an ANOVA table, group descriptive statistics, and Tukey-style pairwise
+comparisons.
 
-### Type
+## Library interface
 
-**Statistical Test** (multi-group comparison)
+`FederatedAnovaOneWay(agg_client, alpha=0.05).fit(groups, categories)` accepts one numerical iterable per aligned category. `alpha` is keyword-only. `fit` returns the estimator with `table_`, group summaries, and Tukey pairwise comparisons.
 
-### Goal (Why we need it)
+## Statistical method
 
-Tests for **differences in means across multiple groups** (one grouping factor).
-In a federated setting, we want the *same* F-statistic and p-value as centralized computation **without sharing raw data**, using only aggregated sufficient statistics per group.
+For groups `g = 1, ..., k`, the model is:
 
-### When to use
+```text
+y_ij = mu + alpha_g + epsilon_ij
+```
 
-Use One-Way ANOVA when:
+The null hypothesis is that all group means are equal:
 
-* you need to compare **three or more groups**
-* the outcome variable is continuous
-* groups are approximately normally distributed with equal variances
-* you want an overall test for group differences
-* you need post-hoc tests (Tukey HSD)
+```text
+H0: mean_1 = mean_2 = ... = mean_k
+```
 
-### When NOT to use
+The F statistic compares between-group variation with within-group variation:
 
-Avoid / be careful when:
+```text
+F = MS_between / MS_within
+```
 
-* you have only two groups (use t-test)
-* variances are very unequal across groups
-* distributions are highly non-normal
-* you have multiple factors (use two-way ANOVA)
+where `MS_between = SS_between / (k - 1)` and
+`MS_within = SS_within / (n - k)`.
 
----
+## Federated computation
 
-### Inputs / Outputs
+The algorithm is computed without sharing row-level data. Each site contributes
+group-level sufficient statistics, and the ANOVA table is derived from the
+aggregated counts, sums, and sums of squares.
 
-| Item           | Description                              |
-| -------------- | ---------------------------------------- |
-| **groups**     | Sequence of arrays, one per group        |
-| **categories** | Labels for each group                    |
-| **alpha**      | Significance level for Tukey HSD         |
-| **agg_client** | Federated aggregation client             |
+### Aggregated quantities
 
-**Outputs (dict)**
+| Quantity | Purpose |
+|---|---|
+| Group counts | Define group sizes and degrees of freedom. |
+| Group sums | Compute group means and between-group sums of squares. |
+| Group sums of squares | Compute within-group sums of squares and sample standard deviations. |
+| Overall count, sum, and sum of squares | Compute total sample size and the overall mean. |
+| Group minima and maxima | Report group-level descriptive ranges. |
 
-* `f_stat`: F-statistic
-* `df_between`: degrees of freedom between groups
-* `df_within`: degrees of freedom within groups
-* `p_value`: p-value
-* `ss_between`: sum of squares between groups
-* `ss_within`: sum of squares within groups
-* `ms_between`: mean square between
-* `ms_within`: mean square within
-* `tukey_results`: Tukey HSD post-hoc comparisons
+### Federated flow
 
-### Key Differences from scipy/statsmodels
+```text
+Input:
+    y: numerical outcome
+    x: categorical grouping variable
 
-| Aspect          | scipy.stats.f_oneway | MIP Federated Implementation  |
-| --------------- | -------------------- | ----------------------------- |
-| Data access     | Centralized          | Data remains local per client |
-| F-statistic     | Exact                | Exact                         |
-| P-values        | Exact                | Exact                         |
-| Post-hoc tests  | Separate function    | Integrated (Tukey HSD)        |
+Step 1:
+    Determine the globally observed group labels.
 
-### Approximation vs Exactness
+Step 2:
+    At each site, for each group:
+        remove missing values
+        compute count
+        compute sum(y)
+        compute sum(y^2)
+        compute minimum and maximum
 
-| Component       | scipy/statsmodels | MIP   |
-| --------------- | ----------------- | ----- |
-| Group means     | Exact             | Exact |
-| SS between/within | Exact           | Exact |
-| F-statistic     | Exact             | Exact |
-| P-value         | Exact             | Exact |
-| Tukey HSD       | Exact             | Exact |
+Step 3:
+    Aggregate group counts, sums, sums of squares, minima, and maxima.
 
----
+Step 4:
+    Remove globally empty groups.
+    Validate that at least two groups remain.
 
+Step 5:
+    Compute:
+        overall mean
+        between-group sum of squares
+        within-group sum of squares
+        mean squares
+        F statistic
+        p-value
 
+Step 6:
+    Compute pairwise Tukey-style comparisons from aggregated group means,
+    residual mean square, and group counts.
+
+Output:
+    ANOVA table, group summaries, and pairwise comparisons
+```
+
+## Numerical decisions
+
+- Empty groups are removed after aggregation.
+- At least two non-empty groups are required.
+- Within-group variance is computed from aggregated sums and sums of squares.
+- The pairwise comparison table uses the residual mean square from the fitted
+  one-way ANOVA model.
+- Missing values are removed before group statistics are computed.
+
+## Reference comparison
+
+Standalone tests compare the ANOVA table with `statsmodels` OLS ANOVA using a
+centralized reference model:
+
+```text
+ols("y ~ x", data=df).fit()
+sm.stats.anova_lm(lm)
+```
+
+Pairwise comparison behavior is aligned with the Tukey HSD methodology exposed
+through `statsmodels.stats.libqsturng.psturng`.
+
+## Limitations
+
+- The outcome must be numerical.
+- The grouping variable must have at least two non-empty levels.
+- Observations are assumed independent.
+- The model assumes approximately normal residuals within groups.
+- The model assumes comparable within-group variances.
+- The pairwise comparison table is post-hoc and uses the fitted ANOVA residual
+  mean square.

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 from types import SimpleNamespace
 
 import grpc
@@ -932,6 +933,43 @@ def test_failed_context_raises_a_fresh_copy_of_the_error():
     assert raised[0] is not raised[1]
     assert all(error.__cause__ is agg_ctx.error for error in raised)
     assert agg_ctx.error.__traceback__ is None
+
+
+def test_unregister_releases_waiting_worker(inline_grpc_stub, monkeypatch):
+    monkeypatch.setattr(aggregation_config, "max_wait_for_aggregation_inputs", 5)
+    request_id = "unregister-without-input"
+    inline_grpc_stub.Configure(
+        server_pb2.ConfigureRequest(
+            request_id=request_id, num_of_workers=2, context_id=request_id
+        ),
+        InlineGrpcContext(),
+    )
+    condition = inline_grpc_stub.aggregation_contexts[request_id].condition
+    wait_for = condition.wait_for
+    worker_waiting = Event()
+
+    def signal_then_wait(predicate, timeout):
+        worker_waiting.set()
+        return wait_for(predicate, timeout=timeout)
+
+    monkeypatch.setattr(condition, "wait_for", signal_then_wait)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        waiting = pool.submit(
+            inline_grpc_stub.Aggregate,
+            _sum_request(request_id),
+            InlineGrpcContext(),
+        )
+        assert worker_waiting.wait(timeout=2)
+        assert not waiting.done()
+
+        response = inline_grpc_stub.Unregister(
+            server_pb2.UnregisterRequest(request_id=request_id, context_id=request_id),
+            InlineGrpcContext(),
+        )
+        assert response.status == server_pb2.Status.OK
+        assert response.remaining_workers == 1
+        result = waiting.result(timeout=2)
+        assert bytes_to_ndarray(result.tensors[0]).tolist() == [1.0]
 
 
 def test_step_result_reaches_every_worker_after_an_unregister(

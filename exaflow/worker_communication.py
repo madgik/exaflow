@@ -74,6 +74,14 @@ class BadUserInput(Exception):
         self.message = message
 
 
+class AnalysisExecutionError(Exception):
+    """A recognized analysis failure with a message suitable for clients."""
+
+    def __init__(self, message):
+        super().__init__(message)
+        self.message = message
+
+
 # ~~~~~~~~~~~~~~~~~~~ DTOs ~~~~~~~~~~~~~~~~~~~~~~ #
 
 

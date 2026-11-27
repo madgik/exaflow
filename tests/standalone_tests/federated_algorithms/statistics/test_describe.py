@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 from statsmodels.stats.weightstats import DescrStatsW
 
+from exaflow.algorithms.exareme3.statistics.describe import local_step
 from exaflow.algorithms.federated.statistics.descriptive_stats import (
     FederatedDescriptiveStatistics,
 )
@@ -16,7 +17,40 @@ from tests.standalone_tests.federated_algorithms.utils.simulated_agg_client impo
     SimulatedAggClient,
 )
 
-ALL_DATASET_LABEL = "all datasets"
+
+def test_exareme3_describe_preserves_dataset_labels(monkeypatch):
+    from exaflow.worker import config as worker_config
+
+    monkeypatch.setattr(worker_config.privacy, "minimum_row_count", 1)
+    client = SimulatedAggClient(worker_id=0, coordinator=AggregationCoordinator(1))
+    result = local_step(
+        agg_client=client,
+        data=pd.DataFrame({"dataset": ["d1", "d1"], "value": [1.0, 2.0]}),
+        variable_names=["value"],
+        numerical_vars=["value"],
+        nominal_vars=[],
+        nominal_levels={},
+        integer_vars=[],
+    )
+
+    assert result["recs"][0]["dataset"] == "d1"
+    assert result["global_recs"][0]["dataset"] == "all datasets"
+
+
+def test_global_quartiles_exclude_small_groups_with_matching_display_labels():
+    client = SimulatedAggClient(worker_id=0, coordinator=AggregationCoordinator(1))
+    result = FederatedDescriptiveStatistics(agg_client=client).describe(
+        data=pd.DataFrame({"cohort": [1, 1, "1"], "value": [5.0, 5.0, 1000.0]}),
+        numerical_vars=["value"],
+        nominal_vars=[],
+        min_row_count=2,
+        nominal_levels={},
+        group_column="cohort",
+    )
+
+    summary = result.global_recs[0]["data"]
+    assert summary["q1"] == summary["q2"] == summary["q3"] == 5.0
+
 
 TEST_CASES = [
     {
@@ -142,7 +176,7 @@ def _build_dataframe(case):
                     loc=var_idx + ds_idx + 1, scale=1.0, size=count
                 )
         for row_idx in range(count):
-            row = {"dataset": dataset}
+            row = {"cohort": dataset}
             for var in case["numerical_vars"]:
                 value = numeric_rows[var][row_idx]
                 if _should_missing(missing, var, dataset, row_idx):
@@ -164,7 +198,7 @@ def _expected_describe(df, case, *, analysis_set):
     nominal_vars = case["nominal_vars"]
     min_row_count = case["min_row_count"]
     dataset_groups = {
-        dataset: group for dataset, group in stats_df.groupby("dataset", sort=False)
+        dataset: group for dataset, group in stats_df.groupby("cohort", sort=False)
     }
     expected_varbased = {}
     dataset_info = {
@@ -233,7 +267,7 @@ def _expected_describe(df, case, *, analysis_set):
             if info["numerical"].get(var)
         ]
         if not contributions:
-            expected_global[(var, ALL_DATASET_LABEL)] = None
+            expected_global[(var, None)] = None
             continue
         total_dtps = sum(info["num_dtps"] for info in contributions)
         total_total = sum(info["num_total"] for info in contributions)
@@ -241,7 +275,7 @@ def _expected_describe(df, case, *, analysis_set):
         combined = pd.concat([info["arr"] for info in contributions], ignore_index=True)
         desc = DescrStatsW(combined)
         std = None if total_dtps <= 1 else float(np.std(combined, ddof=1))
-        expected_global[(var, ALL_DATASET_LABEL)] = {
+        expected_global[(var, None)] = {
             "num_dtps": total_dtps,
             "num_na": total_na,
             "num_total": total_total,
@@ -257,7 +291,7 @@ def _expected_describe(df, case, *, analysis_set):
             if info["nominal"].get(var)
         ]
         if not contributions:
-            expected_global[(var, ALL_DATASET_LABEL)] = None
+            expected_global[(var, None)] = None
             continue
         total_dtps = sum(info["num_dtps"] for info in contributions)
         total_total = sum(info["num_total"] for info in contributions)
@@ -266,7 +300,7 @@ def _expected_describe(df, case, *, analysis_set):
         for info in contributions:
             counts.update(info["counts"])
         counts_dict = {level: int(val) for level, val in counts.items() if val > 0}
-        expected_global[(var, ALL_DATASET_LABEL)] = {
+        expected_global[(var, None)] = {
             "num_dtps": total_dtps,
             "num_na": total_na,
             "num_total": total_total,
@@ -313,12 +347,12 @@ class TestFederatedDescriptiveStatistics(FederatedAlgorithmTest):
         except ImportError:  # pragma: no cover - pandas required for this test
             pd = None
 
-        if pd is None or not isinstance(X, pd.DataFrame) or "dataset" not in X.columns:
+        if pd is None or not isinstance(X, pd.DataFrame) or "cohort" not in X.columns:
             return super()._split_inputs(X, y, n_workers)
 
-        datasets = list(X["dataset"].unique())
+        datasets = list(X["cohort"].unique())
         x_parts = [
-            X[X["dataset"].isin(datasets[i::n_workers])] for i in range(n_workers)
+            X[X["cohort"].isin(datasets[i::n_workers])] for i in range(n_workers)
         ]
         X_full = X
 
@@ -336,7 +370,7 @@ class TestFederatedDescriptiveStatistics(FederatedAlgorithmTest):
         def _normalize(result):
             return {
                 "global_varbased": {
-                    (rec["variable"], rec["dataset"]): rec["data"]
+                    (rec["variable"], rec["group"]): rec["data"]
                     for rec in result.global_recs
                 },
             }
@@ -357,7 +391,7 @@ class TestFederatedDescriptiveStatistics(FederatedAlgorithmTest):
             nominal_vars=kwargs["case"]["nominal_vars"],
             min_row_count=kwargs["case"]["min_row_count"],
             nominal_levels=kwargs["case"]["nominal_levels"],
-            dataset_col="dataset",
+            group_column="cohort",
         )
 
     def compute_federated_result(self, X, y, *, agg_client, **kwargs):
@@ -370,7 +404,7 @@ class TestFederatedDescriptiveStatistics(FederatedAlgorithmTest):
             nominal_vars=kwargs["case"]["nominal_vars"],
             min_row_count=kwargs["case"]["min_row_count"],
             nominal_levels=kwargs["case"]["nominal_levels"],
-            dataset_col="dataset",
+            group_column="cohort",
         )
 
     def compare(self, federated_output, centralized_output, **kwargs):
@@ -379,11 +413,11 @@ class TestFederatedDescriptiveStatistics(FederatedAlgorithmTest):
         mode = kwargs["mode"]
 
         varbased_map = {
-            (rec["variable"], rec["dataset"]): rec["data"]
+            (rec["variable"], rec["group"]): rec["data"]
             for rec in federated_output.recs
         }
         global_map = {
-            (rec["variable"], rec["dataset"]): rec["data"]
+            (rec["variable"], rec["group"]): rec["data"]
             for rec in federated_output.global_recs
         }
         expected_varbased, expected_global = _expected_describe(
@@ -411,7 +445,7 @@ class TestFederatedDescriptiveStatistics(FederatedAlgorithmTest):
         # Federated global quartiles q1/q2/q3 (+ median == q2): histogram
         # estimates across all datasets (per-dataset quartiles are exact).
         centralized_global = {
-            (rec["variable"], rec["dataset"]): rec["data"]
+            (rec["variable"], rec["group"]): rec["data"]
             for rec in centralized_output.global_recs
         }
         describe_data = df if mode == "featurewise" else df.dropna()
@@ -420,17 +454,17 @@ class TestFederatedDescriptiveStatistics(FederatedAlgorithmTest):
         survived = {}
         for rec in centralized_output.recs:
             if rec["data"] is not None:
-                survived.setdefault(rec["variable"], set()).add(str(rec["dataset"]))
+                survived.setdefault(rec["variable"], set()).add(str(rec["group"]))
         for var in case["numerical_vars"]:
-            fed = global_map.get((var, ALL_DATASET_LABEL))
+            fed = global_map.get((var, None))
             if fed is None:
                 continue
             allowed = survived.get(var, set())
             col = describe_data.loc[
-                describe_data["dataset"].astype(str).isin(allowed), var
+                describe_data["cohort"].astype(str).isin(allowed), var
             ].to_numpy(dtype=float)
             col = col[~np.isnan(col)]
-            cen = centralized_global[(var, ALL_DATASET_LABEL)]
+            cen = centralized_global[(var, None)]
             for qk in ("q1", "q2", "q3"):
                 if len(col) == 0:
                     assert fed[qk] is None
@@ -500,7 +534,7 @@ def test_global_variance_for_large_offsets(
         [offset + np.arange(alpha_count), offset + dataset_gap + np.arange(beta_count)]
     ).astype(dtype)
     df = pd.DataFrame(
-        {"dataset": ["alpha"] * alpha_count + ["beta"] * beta_count, "value": values}
+        {"cohort": ["alpha"] * alpha_count + ["beta"] * beta_count, "value": values}
     )
     case = {
         "numerical_vars": ["value"],
@@ -524,7 +558,7 @@ def test_global_numerical_summary_with_all_missing_dataset():
     values = np.arange(10, dtype=float)
     df = pd.DataFrame(
         {
-            "dataset": ["alpha"] * 10 + ["beta"] * 10,
+            "cohort": ["alpha"] * 10 + ["beta"] * 10,
             "value": [np.nan] * 10 + list(values),
         }
     )
@@ -535,7 +569,7 @@ def test_global_numerical_summary_with_all_missing_dataset():
         nominal_vars=[],
         min_row_count=0,
         nominal_levels={},
-        dataset_col="dataset",
+        group_column="cohort",
     )
 
     summary = result.global_recs[0]["data"]

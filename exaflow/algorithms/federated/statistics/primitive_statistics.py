@@ -2,6 +2,10 @@ import math
 
 import numpy as np
 
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedObservationError
+from exaflow.algorithms.federated.exceptions import FedTypeError
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
@@ -17,18 +21,18 @@ class PrimitiveStatistics:
     def _validate_univariate(self, x: np.ndarray):
         """Validates that the input is a 1D numpy array."""
         if not isinstance(x, np.ndarray):
-            raise TypeError("Input must be a numpy array")
+            raise FedTypeError(FedErrorReason.NUMPY_ARRAY_REQUIRED)
         if x.ndim > 1:
-            raise ValueError("Input must be a 1D array")
+            raise FedValueError(FedErrorReason.ONE_DIMENSIONAL_ARRAY_REQUIRED)
 
     def _validate_bivariate(self, x: np.ndarray, y: np.ndarray):
         """Validates that the inputs are 1D numpy arrays of the same shape."""
         if not isinstance(x, np.ndarray) or not isinstance(y, np.ndarray):
-            raise TypeError("Inputs must be numpy arrays")
+            raise FedTypeError(FedErrorReason.NUMPY_ARRAYS_REQUIRED)
         if x.ndim > 1 or y.ndim > 1:
-            raise ValueError("Inputs must be 1D arrays")
+            raise FedValueError(FedErrorReason.ONE_DIMENSIONAL_ARRAYS_REQUIRED)
         if x.shape != y.shape:
-            raise ValueError("Arrays must have the same shape")
+            raise FedValueError(FedErrorReason.ARRAY_SHAPES_MISMATCH)
 
     def count(self, x: np.ndarray):
         """
@@ -58,10 +62,12 @@ class PrimitiveStatistics:
         self._validate_univariate(x)
         n = self.aggregator.global_count(x)
         if n == 0:
-            raise ValueError("Data array cannot be empty")
+            raise FedObservationError(FedErrorReason.DATA_ARRAY_EMPTY)
         if n <= ddof:
-            raise ValueError(
-                f"Not enough data points for ddof={ddof}. Need at least {ddof + 1} points."
+            raise FedObservationError(
+                FedErrorReason.DDOF_OBSERVATIONS_INSUFFICIENT,
+                ddof=ddof,
+                minimum=ddof + 1,
             )
         return self.aggregator.global_avg(x)
 
@@ -80,10 +86,12 @@ class PrimitiveStatistics:
         self._validate_univariate(x)
         n = self.aggregator.global_count(x)
         if n == 0:
-            raise ValueError("Data array cannot be empty")
+            raise FedObservationError(FedErrorReason.DATA_ARRAY_EMPTY)
         if n <= ddof:
-            raise ValueError(
-                f"Not enough data points for ddof={ddof}. Need at least {ddof + 1} points."
+            raise FedObservationError(
+                FedErrorReason.DDOF_OBSERVATIONS_INSUFFICIENT,
+                ddof=ddof,
+                minimum=ddof + 1,
             )
         mean = self.aggregator.global_avg(x)
         sum_squared_diff = self.aggregator.global_sum((x - mean) ** 2)
@@ -195,10 +203,12 @@ class PrimitiveStatistics:
 
         n = self.aggregator.global_count(x)
         if n == 0:
-            raise ValueError("Data arrays cannot be empty")
+            raise FedObservationError(FedErrorReason.DATA_ARRAYS_EMPTY)
         if n <= ddof:
-            raise ValueError(
-                f"Not enough data points for ddof={ddof}. Need at least {ddof + 1} points."
+            raise FedObservationError(
+                FedErrorReason.DDOF_OBSERVATIONS_INSUFFICIENT,
+                ddof=ddof,
+                minimum=ddof + 1,
             )
 
         avg_x = self.aggregator.global_avg(x)
@@ -222,7 +232,7 @@ class PrimitiveStatistics:
 
         n = self.aggregator.global_count(x)
         if n == 0:
-            raise ValueError("Data arrays cannot be empty")
+            raise FedObservationError(FedErrorReason.DATA_ARRAYS_EMPTY)
         if n <= 1:
             return 0  # Cannot compute correlation with less than 2 points
 

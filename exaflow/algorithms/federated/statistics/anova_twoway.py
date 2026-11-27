@@ -8,8 +8,9 @@ import numpy as np
 import pandas as pd
 import scipy.stats as st
 
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.linear_model.ols import FederatedOLS
-from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.validation import check_choice
 from exaflow.algorithms.federated.validation import check_dataframe
 
@@ -72,14 +73,14 @@ class FederatedAnovaTwoWay:
         levels_a = list(levels_a)
         levels_b = list(levels_b)
         if len(levels_a) < 2:
-            raise BadInputError(
-                f"The variable {x1} has less than 2 levels and Anova cannot be "
-                "performed. Please choose another variable."
+            raise FedValueError(
+                FedErrorReason.ANOVA_FACTOR_LEVELS_INSUFFICIENT,
+                variable=x1,
             )
         if len(levels_b) < 2:
-            raise BadInputError(
-                f"The variable {x2} has less than 2 levels and Anova cannot be "
-                "performed. Please choose another variable."
+            raise FedValueError(
+                FedErrorReason.ANOVA_FACTOR_LEVELS_INSUFFICIENT,
+                variable=x2,
             )
 
         df = self._build_dataframe(
@@ -248,16 +249,14 @@ class FederatedAnovaTwoWay:
         df_resid = max(n_obs - rank_full, 0)
 
         if df_a == 0:
-            raise BadInputError(
-                f"The data of variable {x1_name} contain less than 2 levels and "
-                "Anova cannot be performed. Please select more data or choose another "
-                "variable."
+            raise FedValueError(
+                FedErrorReason.ANOVA_OBSERVED_LEVELS_INSUFFICIENT,
+                variable=x1_name,
             )
         if df_b == 0:
-            raise BadInputError(
-                f"The data of variable {x2_name} contain less than 2 levels and "
-                "Anova cannot be performed. Please select more data or choose another "
-                "variable."
+            raise FedValueError(
+                FedErrorReason.ANOVA_OBSERVED_LEVELS_INSUFFICIENT,
+                variable=x2_name,
             )
 
         df_list = [df_a, df_b, df_inter, df_resid]

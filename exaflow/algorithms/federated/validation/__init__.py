@@ -1,7 +1,7 @@
 """Reusable input checks independent of the execution runtime.
 
 Algorithms retain their existing normalization before applying these checks.
-Validation failures raise BadInputError locally. The caller owns cancellation
+Validation failures raise FedError subclasses locally. The caller owns cancellation
 and cleanup of the distributed computation.
 """
 
@@ -17,7 +17,12 @@ from sklearn.utils.validation import check_array as sklearn_check_array
 from sklearn.utils.validation import check_consistent_length as sklearn_check_length
 from sklearn.utils.validation import check_scalar as sklearn_check_scalar
 
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedObservationError
+from exaflow.algorithms.federated.exceptions import FedStateError
+from exaflow.algorithms.federated.exceptions import FedTypeError
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.utils import as_numeric_array
 
 
@@ -45,14 +50,32 @@ class ValidationIssue:
     message: str
 
 
-class _ValidationError(BadInputError):
-    def __init__(self, issue: ValidationIssue):
-        super().__init__(issue.message)
-        self.issue = issue
+class _ValidationError(FedValueError):
+    def __init__(
+        self, reason: FedErrorReason, *, code: str, input_name: str, **details
+    ):
+        super().__init__(reason, input_name=input_name, **details)
+        self.issue = ValidationIssue(code, input_name, self.message)
 
 
-def _fail(code: str, input_name: str, message: str) -> None:
-    raise _ValidationError(ValidationIssue(code, input_name, message)) from None
+class _ValidationTypeError(FedTypeError):
+    def __init__(
+        self, reason: FedErrorReason, *, code: str, input_name: str, **details
+    ):
+        super().__init__(reason, input_name=input_name, **details)
+        self.issue = ValidationIssue(code, input_name, self.message)
+
+
+def _fail(code: str, input_name: str, reason: FedErrorReason, **details) -> None:
+    raise _ValidationError(
+        reason, code=code, input_name=input_name, **details
+    ) from None
+
+
+def _fail_type(code: str, input_name: str, reason: FedErrorReason, **details) -> None:
+    raise _ValidationTypeError(
+        reason, code=code, input_name=input_name, **details
+    ) from None
 
 
 def validate_parameters(
@@ -61,7 +84,13 @@ def validate_parameters(
     """Check current parameter types without coercing or changing parameters."""
     for name, rule in rules.items():
         if not isinstance(values[name], rule.types):
-            _fail("invalid_parameter", name, f"{name} must be {rule.description}.")
+            _fail_type(
+                "invalid_parameter",
+                name,
+                FedErrorReason.PARAMETER_TYPE_INVALID,
+                name=name,
+                description=rule.description,
+            )
 
 
 def check_array(
@@ -73,14 +102,11 @@ def check_array(
     enforce their own local or global sample requirements separately.
     """
     dimensions = " or ".join(str(value) for value in policy.dimensions)
-    message = f"{input_name} must be a numeric array with {dimensions} dimensions"
-    if policy.finite:
-        message += " containing only finite values"
-    message += "."
+    finite_requirement = " containing only finite values" if policy.finite else ""
     try:
         array = as_numeric_array(data, input_name=input_name, dtype=dtype)
-    except BadInputError as exc:
-        _fail("invalid_array", input_name, str(exc))
+    except FedError:
+        _fail("invalid_array", input_name, FedErrorReason.NUMERIC_VALUES_REQUIRED)
     try:
         result = sklearn_check_array(
             array,
@@ -92,49 +118,63 @@ def check_array(
             ensure_min_features=0,
         )
     except (TypeError, ValueError):
-        _fail("invalid_array", input_name, message)
+        _fail(
+            "invalid_array",
+            input_name,
+            FedErrorReason.NUMERIC_ARRAY_REQUIRED,
+            dimensions=dimensions,
+            finite_requirement=finite_requirement,
+        )
     check_dimensions(result, policy.dimensions, input_name=input_name)
     return result
 
 
-def check_dimensions(array, dimensions, *, input_name="Input", message=None) -> None:
+def check_dimensions(
+    array,
+    dimensions,
+    *,
+    input_name="Input",
+    reason: FedErrorReason = FedErrorReason.ARRAY_DIMENSIONS_INVALID,
+) -> None:
     """Check rank independently of dtype, conversion, or missing-value policy."""
     if getattr(array, "ndim", None) not in dimensions:
         ranks = " or ".join(str(rank) for rank in dimensions)
         _fail(
             "invalid_array",
             input_name,
-            message or f"{input_name} must be an array with {ranks} dimensions.",
+            reason,
+            ranks=ranks,
         )
 
 
-def check_consistent_length(*arrays, message=None) -> None:
+def check_consistent_length(
+    *arrays, reason: FedErrorReason = FedErrorReason.INCONSISTENT_LENGTH
+) -> None:
     try:
         sklearn_check_length(*arrays)
     except ValueError:
         _fail(
             "inconsistent_length",
             "X_y",
-            message
-            or "Provide one outcome value for each observation in the feature matrix.",
+            reason,
         )
 
 
 def check_binary_target(y: np.ndarray) -> None:
     """Check encoded values without requiring both classes locally."""
     if not np.isin(y, (0.0, 1.0)).all():
-        _fail("invalid_binary_target", "y", "Outcome values must be encoded as 0 or 1.")
+        _fail("invalid_binary_target", "y", FedErrorReason.BINARY_TARGET_INVALID)
 
 
 def check_classification_target(X, y) -> np.ndarray:
     """Retain label dtype without requiring local classes or dropping labels."""
     if y is None:
-        raise BadInputError("Provide outcome labels for fitting.")
+        raise FedValueError(FedErrorReason.CLASSIFICATION_LABELS_REQUIRED)
     try:
         labels = np.asarray(y)
     except (TypeError, ValueError):
-        raise BadInputError(
-            "Outcome must be a one-dimensional array of class labels."
+        raise FedValueError(
+            FedErrorReason.CLASSIFICATION_LABEL_DIMENSIONS_INVALID
         ) from None
     check_dimensions(labels, (1,), input_name="Outcome")
     check_consistent_length(X, labels)
@@ -148,21 +188,24 @@ def check_feature_schema(X: np.ndarray, *, n_features: int) -> None:
         _fail(
             "inconsistent_features",
             "X",
-            "Prediction features must match the fitted model. Provide the same "
-            "features in the same order used for fitting.",
+            FedErrorReason.FEATURE_SCHEMA_MISMATCH,
         )
 
 
 def check_sample_counts(
-    count: float, *, minimum: int, name: str, strict: bool = False
+    count: float,
+    *,
+    minimum: int,
+    name: str,
+    strict: bool = False,
+    reason: FedErrorReason,
 ) -> None:
     """Apply a method's count requirement to an already computed count."""
     invalid = count <= minimum if strict else count < minimum
     if invalid:
         comparison = "more than" if strict else "at least"
-        raise BadInputError(
-            f"{name} requires {comparison} {minimum} observations. "
-            "Select more observations or fewer covariates."
+        raise FedObservationError(
+            reason, name=name, comparison=comparison, minimum=minimum
         )
 
 
@@ -185,9 +228,8 @@ def check_scalar(
     if maximum is not None:
         comparison = "<=" if include_boundaries in ("both", "right") else "<"
         conditions.append(f"{comparison} {maximum}")
-    message = f"{name} must be a {'finite ' if finite else ''}{kind}"
-    if conditions:
-        message += " " + " and ".join(conditions)
+    description = f"{'finite ' if finite else ''}{kind}"
+    bounds = " " + " and ".join(conditions) if conditions else ""
     try:
         sklearn_check_scalar(
             value,
@@ -201,9 +243,23 @@ def check_scalar(
             not np.isnan(value) and (not finite or np.isfinite(value))
         )
     except (TypeError, ValueError, OverflowError):
-        _fail("invalid_parameter", name, message + ".")
+        _fail(
+            "invalid_parameter",
+            name,
+            FedErrorReason.PARAMETER_RANGE_INVALID,
+            name=name,
+            kind=description,
+            bounds=bounds,
+        )
     if not valid:
-        _fail("invalid_parameter", name, message + ".")
+        _fail(
+            "invalid_parameter",
+            name,
+            FedErrorReason.PARAMETER_RANGE_INVALID,
+            name=name,
+            kind=description,
+            bounds=bounds,
+        )
     return value
 
 
@@ -211,15 +267,19 @@ def check_choice(value, choices, *, name: str) -> None:
     """Check a method's supported options without echoing supplied values."""
     if not isinstance(value, (str, int, float, np.generic)) or value not in choices:
         options = ", ".join(repr(choice) for choice in choices)
-        _fail("invalid_parameter", name, f"{name} must be one of: {options}.")
+        _fail(
+            "invalid_parameter",
+            name,
+            FedErrorReason.PARAMETER_CHOICE_INVALID,
+            name=name,
+            options=options,
+        )
 
 
 def check_fitted(estimator, *attributes) -> None:
     """Check state on estimators that expose fitted attributes."""
     if any(not hasattr(estimator, attr) for attr in attributes):
-        raise BadInputError(
-            "This model is not fitted yet. Fit it before prediction or transformation."
-        )
+        raise FedStateError(FedErrorReason.MODEL_NOT_FITTED)
 
 
 def check_dataframe(data, columns=()) -> None:
@@ -227,9 +287,9 @@ def check_dataframe(data, columns=()) -> None:
     import pandas as pd
 
     if not isinstance(data, pd.DataFrame):
-        raise BadInputError("Provide the input data as a pandas DataFrame.")
+        raise FedTypeError(FedErrorReason.DATAFRAME_REQUIRED)
     if any(column not in data.columns for column in columns):
-        raise BadInputError("Input data is missing one or more required columns.")
+        raise FedValueError(FedErrorReason.DATAFRAME_COLUMN_MISSING)
 
 
 def as_scalar(value, converter, *, name: str):
@@ -240,7 +300,9 @@ def as_scalar(value, converter, *, name: str):
         _fail(
             "invalid_parameter",
             name,
-            f"{name} must be a valid {converter.__name__} value.",
+            FedErrorReason.PARAMETER_CONVERSION_INVALID,
+            name=name,
+            type_name=converter.__name__,
         )
 
 
@@ -248,11 +310,9 @@ def check_survival_target(y):
     """Parse the existing [time, event] target shared by the Cox estimators."""
     y = check_array(y, policy=ArrayPolicy(), input_name="Survival target")
     if y.shape[1] != 2:
-        raise BadInputError(
-            "Survival target y must have shape (n_obs, 2) with columns [time, event]."
-        )
+        raise FedValueError(FedErrorReason.SURVIVAL_TARGET_SHAPE_INVALID)
     if y.shape[0] == 0:
-        raise BadInputError("Survival target y must contain at least one observation.")
+        raise FedValueError(FedErrorReason.SURVIVAL_TARGET_EMPTY)
     times = y[:, 0].reshape(-1)
     events = y[:, 1].reshape(-1)
     check_binary_target(events)
@@ -268,11 +328,14 @@ def check_survival_inputs(X, times, events, *, name):
     check_array(events, policy=ArrayPolicy(dimensions=(1,)), input_name="Events")
     check_consistent_length(X, times, events)
     if X.shape[0] == 0:
-        raise BadInputError(f"{name} requires at least one observation.")
+        raise FedObservationError(
+            FedErrorReason.SURVIVAL_OBSERVATIONS_REQUIRED,
+            name=name,
+        )
     if X.shape[1] == 0:
-        raise BadInputError(f"{name} requires at least one covariate.")
+        raise FedValueError(FedErrorReason.SURVIVAL_COVARIATE_REQUIRED, name=name)
     if np.min(times) <= 0:
-        raise BadInputError("All time values must be strictly positive.")
+        raise FedValueError(FedErrorReason.TIMES_POSITIVE_REQUIRED)
     check_binary_target(events)
     return X, times, events
 
@@ -280,7 +343,7 @@ def check_survival_inputs(X, times, events, *, name):
 def check_feature_names(names, n_features):
     """Check explicit feature metadata without imposing uniqueness or ordering."""
     if names is not None and len(names) > 0 and len(names) != n_features:
-        raise BadInputError("Provide one feature name for each feature column.")
+        raise FedValueError(FedErrorReason.FEATURE_NAMES_MISMATCH)
 
 
 def check_parameter_ranges(values, *, positive=(), nonnegative=()) -> None:
@@ -302,7 +365,7 @@ def check_interval(bounds, *, name="bounds", strict=True, finite=True) -> None:
         or (array[0] >= array[1] if strict else array[0] > array[1])
         or (array[0] == array[1] and not np.isfinite(array[0]))
     ):
-        raise BadInputError(f"{name} must contain two ordered limits without NaN.")
+        raise FedValueError(FedErrorReason.INTERVAL_INVALID, name=name)
 
 
 def check_named_steps(steps, *, size=2) -> None:
@@ -310,15 +373,13 @@ def check_named_steps(steps, *, size=2) -> None:
     names = []
     for step in steps:
         if not isinstance(step, (tuple, list)) or len(step) != size:
-            raise BadInputError(
-                "Provide each component as a named step with the required arguments."
-            )
+            raise FedValueError(FedErrorReason.NAMED_STEP_INVALID)
         name = step[0]
         if not isinstance(name, str) or not name:
-            raise BadInputError("Each component must have a nonempty string name.")
+            raise FedValueError(FedErrorReason.STEP_NAME_INVALID)
         names.append(name)
     if len(set(names)) != len(names):
-        raise BadInputError("Component names must be unique.")
+        raise FedValueError(FedErrorReason.STEP_NAMES_DUPLICATED)
 
 
 def check_category_order(categories):
@@ -326,10 +387,8 @@ def check_category_order(categories):
     import pandas as pd
 
     if categories is None:
-        raise BadInputError("Category ordering must be provided explicitly.")
+        raise FedValueError(FedErrorReason.CATEGORY_ORDER_REQUIRED)
     try:
         return pd.CategoricalDtype(categories=categories)
     except (TypeError, ValueError):
-        raise BadInputError(
-            "Category ordering must contain unique, non-missing category values."
-        ) from None
+        raise FedValueError(FedErrorReason.CATEGORY_ORDER_INVALID) from None

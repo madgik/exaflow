@@ -53,25 +53,9 @@
   transforms in `utils/metadata.py`.
   Runtime domain and federated family are separate tooling inputs:
   `--runtime-domain` controls wrappers, `--family` controls core placement.
-- Federated algorithm core logic lives under `exaflow/algorithms/federated`,
-  grouped by domain: `outliers`, `feature_engineering`, and `compose` own outlier
-  methods, encoders, and passthrough respectively. Keep shared cross-validation
-  infrastructure in `model_selection/cross_validation`. Existing mixed-effects
-  numerical helpers live in `mixed_effects/mixed_effects_utils.py`.
-- Shared core input checks live in `federated/validation`; coverage and error
-  conventions are documented in `federated/docs/input_validation.md`. Retain each
-  method's existing conversions and
-  apply explicit array/parameter policies rather than blanket restrictions.
-  Validators raise `BadInputError` locally without aggregation. The caller owns
-  distributed error propagation, cancellation, and cleanup; Exareme3 retains its
-  existing request-error handling. Keep successful result contracts unchanged
-  and add validation tests under
-  `tests/standalone_tests/federated_validation` without editing existing tests.
-  Array checks default to float conversion; preserve an already-normalized
-  integer outcome dtype when validation would otherwise discard a float copy.
-  Reuse the categorical dtype returned by category-order validation when
-  constructing pandas categorical values, while validating current categories
-  on every transformation.
+- Library architecture, numerical conventions, validation, diagnostics, and
+  method documentation are defined in the [library guide](../../exaflow/algorithms/federated/AGENTS.md).
+  Application consumers follow the [translation policy](#application-error-translation).
 - Algorithm specifications are code-defined through `get_specification()`.
 - Specification metadata should be UI-ready: compact standard `label`,
   one-sentence method-level `desc`, and detailed parent `documentation` for
@@ -97,11 +81,99 @@
 - New algorithm work should use `.agents/skills/exaflow-algorithm-scaffold` and
   `.agents/skills/exaflow-algorithm-validate`.
 
+### Application error translation
+
+The [library guide](../../exaflow/algorithms/federated/AGENTS.md#exceptions-and-diagnostics)
+defines library exceptions and diagnostic reasons. The application owns the
+policies below and must register its response to each consumed reason.
+
+Register every reason explicitly in the existing `_TRANSLATIONS` mapping in
+`exaflow/algorithms/exareme3/utils/error_translation.py` as
+`(exception_type, message_or_KEEP_MESSAGE)`. For example, the mapping includes:
+
+```python
+_TRANSLATIONS = {
+    FedErrorReason.INSUFFICIENT_FOLD_SAMPLES: (
+        BadUserInput,
+        "There are too few usable observations for the requested number of "
+        "folds. Reduce the number of folds or adjust the filters.",
+    ),
+    FedErrorReason.LOGISTIC_CONVERGENCE_FAILED: (
+        AnalysisExecutionError,
+        "Logistic regression could not converge to a stable solution.",
+    ),
+    FedErrorReason.MODEL_NOT_FITTED: (RuntimeError, KEEP_MESSAGE),
+}
+```
+
+Choose the application policy by the actual condition and the responsibility for
+correcting it:
+
+| Category | Rule | Examples | Client behavior |
+| --- | --- | --- | --- |
+| `BadUserInput` | A known analysis requirement is violated and the user can make a meaningful adjustment to inputs, filters, preprocessing, or parameters. | Fisher requires two observed categories; too few observations; incompatible variable selections. | HTTP 460 or RabbitMQ `BadUserInput`, with actionable guidance. |
+| `AnalysisExecutionError` | A recognized computational failure prevents a valid result without establishing that the user supplied incorrect input. | Logistic regression does not converge; K-means produces nonfinite centers from finite inputs. | HTTP 462 or RabbitMQ `AnalysisExecutionError`, with a safe explanation and no assignment of user fault. |
+| System error | A programming, integration, infrastructure, or unexpected failure occurred. Use a native exception target for library contract failures. | Invalid internal configuration, nonnumeric transformer output, mismatched internal shapes, or a PCA result with the wrong row count. | Existing system-error responses with generic client text and internal diagnostics. |
+
+Specifications own exposed parameter types, allowed choices, individual bounds,
+and variable metadata constraints. If a core check rejects the same constraint
+after request validation, treat it as an integration defect. Keep the core checks
+for standalone library callers. Cross-parameter requirements and requirements
+that depend on actual observations may still require runtime validation; for
+example, `k_min <= k_max`, observed category counts, or finite numerical data.
+Passing request validation does not guarantee numerical convergence or successful
+execution.
+
+Separate conditions that need different application policies with distinct
+library reasons. In particular, invalid input observations and invalid computed
+centers must not share a reason; transformer output is an internal contract rather
+than user-supplied data. Keep these distinctions computational in the library,
+without adding UI categories to `FedError` or its reasons. Do not infer category
+from the source exception class, the phase of execution, or message text.
+
+The reason selects both the application exception and message. `KEEP_MESSAGE`
+preserves the diagnostic verbatim for any target exception. For either visible
+category, use it only when the library text is suitable for clients; otherwise
+register a safe replacement. Never expose raw data or sensitive diagnostics.
+Runtime-owned request validation can raise `BadUserInput` directly. Unexpected
+exceptions retain system-error handling; do not catch them broadly and relabel
+them as `AnalysisExecutionError`.
+
+Privacy checks retain `InsufficientDataError`, including the observation-threshold
+reason's translation and HTTP 461, because it can skip a worker. Neither visible
+analysis category skips workers or turns a failed analysis into a warning result.
+
+Translation is handled by the shared worker UDF service and controller strategy.
+They catch `FedError` and use `raise translate_federated_error(exc) from exc`,
+preserving cleanup. Algorithm wrappers generally should not add their own
+translation catches. Application exceptions live in `worker_communication`.
+Worker gRPC carries `BadUserInput` as `INVALID_ARGUMENT`, `InsufficientDataError`
+as `FAILED_PRECONDITION`, and `AnalysisExecutionError` as `ABORTED`; the controller
+worker client reconstructs them. Other worker failures use `INTERNAL` and become
+generic controller failures. Analysis failures preserve fan-out cancellation and
+aggregation cleanup.
+
+HTTP 462 and RabbitMQ `AnalysisExecutionError` extend the public error contract.
+Deploy controller and worker changes together so the worker category is preserved.
+Rollback reverts both ends of the routing change; no data migration is needed.
+
+Both validator tiers run these existing checks once per invocation with selected
+algorithms and report the result as `federated_error_contract`:
+
+```bash
+uv run pytest -q \
+  tests/standalone_tests/test_federated_exception_convention.py \
+  tests/standalone_tests/exareme3/test_error_translation.py
+```
+
+The checks enforce explicit failure types/reasons and complete translation
+coverage. Algorithm integration is complete only when this check and the
+algorithm-specific checks pass.
+
 ### Testing
 
 - Fast tests live under `tests/standalone_tests`.
-- Federated algorithm parity tests live under
-  `tests/standalone_tests/federated_algorithms`.
+- Library check commands are maintained in the [local guide](../../exaflow/algorithms/federated/AGENTS.md#focused-checks).
 - Prod fixtures live under `tests/prod_env_tests/expected`.
 - Pytest markers include `slow` and `very_slow`.
 
@@ -115,8 +187,7 @@
 
 - Keep business/runtime orchestration out of FastAPI route handlers where possible;
   delegate to controller services.
-- Keep federated math independent of controller/worker runtime so standalone
-  tests remain cheap.
+- Follow the [library guide](../../exaflow/algorithms/federated/AGENTS.md) for changes inside the statistical core.
 - Keep deployment-specific values in config files, Helm values, or environment
   variables rather than hardcoding them in service logic.
 - Add regression tests for bug fixes when the behavior can be reproduced in a
@@ -138,7 +209,9 @@
 ## Error Handling
 
 - Use domain-specific exceptions already present in the repo, such as
-  `BadInputError`, `BadUserInput`, and validation errors.
+  `FedError` subclasses, `BadUserInput`, `AnalysisExecutionError`, and validation
+  errors. Follow the [application error translation](#application-error-translation) for
+  classification and translation.
 - Preserve detailed logs for operators, but do not log secrets or sensitive data.
 - Do not hide controller/worker/aggregation failures behind generic success
   responses.

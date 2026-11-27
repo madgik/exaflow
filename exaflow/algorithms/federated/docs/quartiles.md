@@ -1,88 +1,53 @@
-## quartiles.py - Quartiles
+# Percentiles and quartiles
 
-### Name
+Implementation: [statistics/percentile.py](../statistics/percentile.py).
 
-**Quartiles (Histogram-Based)**
+`Percentile(aggregator).compute(x, q, *, num_bins=20, is_integer=False)` estimates
+a percentile of a pandas Series distributed across participants. The aggregator
+is a `NumpyAggregator`; `q` is in `[0, 1]` and `num_bins` is a positive integer.
+Quartiles are obtained by calling it with `q=0.25`, `0.5`, and `0.75`.
 
-### Type
+## Result
 
-**Descriptive Statistics** (quartile estimation)
+The result is `None` when the computation has no usable histogram/range, or
+`(value, actual_q)`. `actual_q` is the empirical cumulative fraction at or below
+the returned value; it is replaced by `None` when it matches `q` within `1e-9`.
+Repeated values can make that fraction exceed the requested percentile.
 
-### Goal (Why we need it)
+## Statistical method
 
-Estimates the **three quartiles** — Q1 (25th percentile), Q2 (median / 50th percentile),
-and Q3 (75th percentile) — for a numerical variable in a federated setting by iteratively
-refining a histogram-based estimate, without ever sharing raw values across workers.
-Also returns `actual_q` per entry — the true cumulative fraction achieved — so the
-caller can measure the approximation error.
+The method locates the bin containing the target rank, restricts each local
+partition to that bin, and repeats with the rank adjusted to the retained
+population. Real-valued input uses equal-width bins and can interpolate when
+the refinement budget is exhausted. Integer mode uses whole-number Wilkinson
+edges and seeks the smallest integer with cumulative fraction at least `q`.
+Both delegate counting/bin construction to the shared [histograms](histogram.md).
 
-### When to use
+### Federated flow
 
-Use `QuartilesAlgorithm` (backed by the `Percentile` primitive) when:
+```text
+Validate q, num_bins, and is_integer.
+Build shared bin edges from aggregated extrema and sum local bin counts.
+Locate the bin containing the requested cumulative rank.
+Return a matching boundary when possible.
+Otherwise keep only that bin's local observations and refine its range/rank.
+For a final estimate, count observations at or below the chosen value.
+Reconstruct the cumulative fraction in the original population.
+Return the estimate and achieved fraction, or None when no range is usable.
+```
 
-- you need the standard quartile summary (Q1, Q2, Q3) of a numerical variable
-- exact order statistics cannot be computed because raw data must stay local
-- an approximate result with a reported error (`actual_q`) is acceptable
+## Numerical decisions and limitations
 
-### When NOT to use
-
-Avoid / be careful when:
-
-- you need exact quartiles (this is a histogram-based approximation)
-- the variable has very few finite observations (the estimate degrades)
-- the distribution is bimodal with a large gap and the target quartile falls
-  in the gap — any value in that gap is mathematically valid, but different
-  conventions will disagree
-
-______________________________________________________________________
-
-### Inputs / Outputs
-
-| Item | Description |
-| ------------------- | ---------------------------------------------------------------- |
-| **x** | `pandas.Series` of numerical values for this client |
-| **num_bins** | Bin count used for each histogram refinement step (default 20) |
-| **max_iterations** | Number of zoom/refine rounds (default 5) |
-| **threshold** | Early-stop: stop if cumulative fraction is within this of the target quartile |
-| **aggregator** | `NumpyAggregator` wrapping the federated agg client |
-
-The quartile values `q = [0.25, 0.5, 0.75]` are fixed and not exposed as a
-user parameter. The histogram strategy is determined automatically from the
-`sql_type` of `y`: `INT` variables use Wilkinson whole-number bin edges;
-`REAL` variables use equal-width bins.
-
-**Outputs** (one entry per quartile)
-
-- `q`: the quartile level (0.25, 0.50, or 0.75).
-- `value`: estimated value at that quartile.
-- `actual_q`: the true cumulative fraction of data at or below `value`. It is
-  `null` when the value falls exactly on the requested quartile (no deviation),
-  and a number otherwise — the achieved fraction, which exceeds `q` when
-  repeated values make the discrete quantile overshoot or when histogram
-  binning approximates.
-
-### How it works
-
-`QuartilesAlgorithm.run()` hardcodes `q_values = [0.25, 0.5, 0.75]` and calls
-`Percentile.compute(x, q, ...)` once per quartile.
-
-For **continuous** variables the call computes a federated `SimpleHistogram`
-over the data range, walks the bins accumulating `total_counter`, and when
-`total_counter / n` crosses the target `q` it pushes only that bin's data into
-the next round — re-binned over its own extent (matching `np.histogram` bin
-membership: half-open `[lo, hi)` for every bin except the last, which is closed)
-— for up to `max_iterations` passes.
-
-For **integer** variables the call uses `WilkinsonHistogram` with `min_step=1.0`
-and repeatedly re-bins the bucket holding the target rank with whole-number
-edges until it spans a single integer — the discrete quantile, the smallest
-value with `CDF(value) >= q`.
-
-In both cases `value` is paired with its true empirical CDF, obtained by a
-federated count of the points at or below it. The public `Percentile.compute`
-reports `actual_q` as `null` when that CDF equals the requested `q` (an exact
-landing) and as the achieved fraction otherwise. Constant (zero-range) data —
-including a sub-range that collapses to a repeated value during refinement — is
-short-circuited to the exact value rather than interpolated.
-
-All three quartiles are computed inside a single aggregation server session.
+- The refinement budget is internal (`_MAX_ITERATIONS=5`), not a public option.
+- Constant real-valued ranges return the repeated value without interpolation.
+- Real mode returns `None` for nonfinite global extrema; it does not promise
+  to discard infinities and estimate from the finite subset.
+- Integer mode converts only the histogram's `HISTOGRAM_FINITE_VALUES_REQUIRED`
+  diagnostic into `None`. Other failures propagate.
+- Missing observations do not satisfy interval comparisons during refinement.
+  Callers should prepare inputs according to the intended population.
+- Estimates can differ from NumPy/pandas interpolation conventions, especially
+  for duplicates and large gaps. The achieved fraction describes the returned
+  estimate rather than claiming exact reference-package quantiles.
+- Refinement requires repeated aggregation; `num_bins` trades communication
+  volume against resolution. Local rows remain local.

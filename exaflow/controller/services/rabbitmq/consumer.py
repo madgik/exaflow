@@ -30,6 +30,7 @@ from exaflow.controller.services.rabbitmq.settings import RabbitMQSettings
 from exaflow.controller.worker_client.app import WorkerMessageTooLargeError
 from exaflow.data_filters import FilterError
 from exaflow.logging_utils import safe_log_value
+from exaflow.worker_communication import AnalysisExecutionError
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import DataModelUnavailable
 from exaflow.worker_communication import DatasetUnavailable
@@ -372,6 +373,7 @@ class AnalysisConsumer:
         except (
             BadRequest,
             BadUserInput,
+            AnalysisExecutionError,
             DataModelUnavailable,
             DatasetUnavailable,
             FilterError,

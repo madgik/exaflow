@@ -141,11 +141,7 @@ CI standalone suite:
 uv run pytest -q -n auto --dist worksteal --cov=exaflow --cov-report=xml:standalone_cov.xml tests/standalone_tests
 ```
 
-Focused federated algorithm test:
-
-```bash
-uv run pytest -q tests/standalone_tests/federated_algorithms/<family>/test_<algorithm_id>.py
-```
+For library-only checks, use the [library guide](../../exaflow/algorithms/federated/AGENTS.md#focused-checks).
 
 Algorithm validation suite:
 

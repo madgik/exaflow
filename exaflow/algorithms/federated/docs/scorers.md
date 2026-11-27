@@ -1,90 +1,78 @@
-﻿## Scorers (Classification, Regression, Multiclass)
+# Federated scorers
 
-### Name
+Implementations: [regression](../model_selection/cross_validation/scorer_regression.py),
+[binary classification](../model_selection/cross_validation/scorer_classification.py),
+and [multiclass classification](../model_selection/cross_validation/scorer_multiclass.py).
 
-**Scorers (FederatedScorerClassification, FederatedScorerRegression, FederatedScorerMulticlass)**
+Each scorer exposes `score(results, X_test, y_test, *, agg_client, n_train, p)`,
+with separate `local` and `aggregate` methods. Predictions remain local; only
+residual statistics or confusion counts are summed. `results` must support
+prediction in the format expected by the selected scorer.
 
-### Type
+## Regression
 
-**Evaluation Metrics** (model scoring)
+`FederatedRegressionScorer` returns `rmse`, `r2`, `mae`, and `f_stat`.
+Let `p` be encoded predictor width excluding an estimator-added intercept;
+`n_train` and `n_test` are global training and test counts.
 
-### Goal (Why we need it)
+```text
+RSS = sum_test((y - prediction)^2)
+TSS = sum_test(y^2) - sum_test(y)^2 / n_test
+RMSE = sqrt(RSS / n_test)
+MAE = sum_test(abs(y - prediction)) / n_test
+R_squared = 1 - RSS / TSS
+F_diagnostic = (TSS - RSS) * (n_train - p - 1) / (p * RSS)
+```
 
-Scorers compute **performance metrics** for trained models on test data.
-In a federated setting, metrics are computed using federated aggregation of confusion matrix elements (classification) or sums of residuals (regression) **without sharing raw predictions**.
+RMSE and MAE have the outcome's units. R-squared and the F diagnostic can be
+negative. The F diagnostic combines held-out sums of squares with training
+degrees of freedom; it is not a conventional fitted-model F-test and has no
+significance p-value.
 
-### When to use
+### Federated flow
 
-Use Scorers when:
+```text
+Predict on each local test partition.
+Compute RSS, absolute residual sum, test count, outcome sum, and squared sum.
+Sum each statistic across participants.
+Compute TSS and each metric independently using the global counts.
+Return raw numeric metric values, including NaN/inf for undefined cases.
+```
 
-* you need to evaluate model performance
-* you want standard metrics (accuracy, precision, recall, F1, MSE, RΒ², etc.)
-* you're using cross-validation or model selection
+Zero prediction error remains zero. R-squared is `NaN` with fewer than two test
+observations or no numerically resolvable outcome variation. The F diagnostic
+is `NaN` when `p=0`, residual degrees of freedom are nonpositive, or TSS has no
+resolvable variation; a perfect nonconstant fit gives infinity. Floating-point
+tolerances handle cancellation/perfect-fit detection without rounding RMSE or
+MAE to zero. Large offsets with small variation can still cause cancellation.
+An empty global test set raises `REGRESSION_TEST_SET_EMPTY`; empty local test
+partitions contribute zeros. Materially negative computed variance has the
+separate `REGRESSION_OUTCOME_VARIANCE_INVALID` diagnostic.
 
-**Classification Scorer**: Use for binary classification
-**Regression Scorer**: Use for continuous outcomes
-**Multiclass Scorer**: Use for multi-class classification
+## Binary classification
 
-### When NOT to use
+`FederatedClassificationScorer(thresholds=None)` aggregates `tp`, `fp`, `tn`,
+`fn`, and threshold-specific counts. It returns these confusion counts plus
+`roc_tpr` and `roc_fpr` lists. Its threshold grid defaults to 101 values between
+0 and 1. ROC points are threshold-based, not an exact rank-based AUC.
+`compute_classification_metrics_from_confmat` separately derives accuracy,
+precision, recall, and F score; zero denominators produce zero.
 
-* When you need custom metrics not provided by these scorers
+## Multiclass classification
 
----
+`FederatedMulticlassClassificationScorer(labels=None)` uses explicit labels or
+`results.labels`, aggregates an aligned class-by-class confusion matrix, and
+returns `confmat` as nested lists. Missing label configuration is an explicit
+failure. Rows with true or predicted labels outside the configured universe
+are ignored. `multiclass_classification_metrics` separately computes per-class
+accuracy, precision, recall, and F score; its summary helper combines fold
+metrics. Neither scorer silently adds regression metrics or adjusted R-squared.
 
-### Inputs / Outputs
+## Reference comparisons
 
-**Classification Scorer**
-
-| Item           | Description                                    |
-| -------------- | ---------------------------------------------- |
-| **results**    | Fitted model results object                    |
-| **X_test**     | Test feature matrix                            |
-| **y_test**     | Test target vector                             |
-| **agg_client** | Federated aggregation client                   |
-| **n_train**    | Number of training observations                |
-| **p**          | Number of features                             |
-
-**Outputs (dict)**
-
-* `accuracy`: proportion of correct predictions
-* `precision`: TP / (TP + FP)
-* `recall`: TP / (TP + FN)
-* `f1`: harmonic mean of precision and recall
-* `specificity`: TN / (TN + FP)
-* `auc`: area under ROC curve (if available)
-
-**Regression Scorer**
-
-**Outputs (dict)**
-
-* `mse`: mean squared error
-* `rmse`: root mean squared error
-* `mae`: mean absolute error
-* `r2`: coefficient of determination
-* `r2_adjusted`: adjusted RΒ² (accounting for p features)
-
-**Multiclass Scorer**
-
-**Outputs (dict)**
-
-* `accuracy`: proportion of correct predictions
-* `macro_precision`: average precision across classes
-* `macro_recall`: average recall across classes
-* `macro_f1`: average F1 across classes
-
-### Key Differences from scikit-learn
-
-| Aspect            | sklearn metrics       | MIP Federated Implementation  |
-| ----------------- | --------------------- | ----------------------------- |
-| Data access       | Full centralized data | Data remains local per client |
-| Metric computation| Local computation     | Federated aggregation         |
-| Available metrics | Extensive library     | Core metrics only             |
-
-### Approximation vs Exactness
-
-| Component      | sklearn | MIP   |
-| -------------- | ------- | ----- |
-| All metrics    | Exact   | Exact |
-| Confusion matrix elements | Exact | Exact |
-| Aggregated sums/counts | Exact | Exact |
-
+Regression tests compare held-out metrics with centralized calculations using
+the same predictions and folds, and check the retained F formula separately.
+Confusion counts are exact for aligned labels and thresholds; derived metrics
+follow their documented denominator conventions. The
+[cross-validator](cross_validator.md) retains per-fold values without imposing
+a consuming application's summary or missing-value serialization policy.

@@ -1,81 +1,98 @@
-﻿## Gaussian Naive Bayes (FederatedGaussianNB)
+# Gaussian Naive Bayes
 
-### Name
+Implementation: [naive_bayes/naive_bayes_gaussian.py](../naive_bayes/naive_bayes_gaussian.py).
 
-**Gaussian Naive Bayes (FederatedGaussianNB)**
+Gaussian Naive Bayes classifies observations with numerical features by modeling
+each feature as Gaussian within each class.
 
-### Type
+## Library interface
 
-**Probabilistic Classifier** (supervised classification)
+`FederatedGaussianNB(x_vars=..., labels=..., var_smoothing=1e-9).fit(X, y, *, agg_client)` takes numerical features and aligned class labels. The result exposes `theta`, `var`, `class_count`, `class_prior`, `nobs`, and prediction methods. Variance smoothing is configurable at the library level.
 
-### Goal (Why we need it)
+## Statistical method
 
-Gaussian Naive Bayes assumes features are **conditionally independent given the class** and follow **Gaussian distributions**. It learns class-conditional means and variances to predict class probabilities.
-In a federated setting, we want the *same* class priors, means, and variances as centralized Gaussian NB **without sharing raw data**, using only aggregated sufficient statistics (sums, sums of squares, counts per class).
+For class `c` and feature `j`:
 
-### When to use
+```text
+x_j | y = c ~ Normal(theta_cj, var_cj)
+```
 
-Use Gaussian Naive Bayes when:
+Prediction chooses the class with largest posterior probability:
 
-* you need **multi-class classification** with probabilistic outputs
-* features are **continuous/numerical** and approximately Gaussian per class
-* you have small to moderate sample sizes
-* features are (approximately) conditionally independent given the class
-* you want a fast, simple baseline classifier
+```text
+argmax_c P(y = c) product_j P(x_j | y = c)
+```
 
-### When NOT to use
+## Federated computation
 
-Avoid / be careful when:
+The model is fitted without sharing row-level data. Each site contributes
+class-feature sufficient statistics.
 
-* features are categorical (use Categorical Naive Bayes instead)
-* features are highly correlated (violates independence assumption)
-* feature distributions are very non-Gaussian (consider transformations)
-* you need complex decision boundaries (NB assumes simple boundaries)
-* privacy is critical beyond aggregate statistics
+### Aggregated quantities
 
----
+| Quantity | Purpose |
+|---|---|
+| Class labels | Align class rows. |
+| Class-feature counts | Compute class counts and handle missing feature values. |
+| Class-feature sums | Compute class-conditional means. |
+| Class-feature sums of squares | Compute class-conditional variances. |
 
-### Inputs / Outputs
+### Federated flow
 
-| Item              | Description                                                  |
-| ----------------- | ------------------------------------------------------------ |
-| **X**             | Feature matrix, shape `(n_local, p)`                         |
-| **y**             | Class labels, shape `(n_local,)`                             |
-| **x_vars**        | List of feature variable names                               |
-| **labels**        | List of expected class labels                                |
-| **var_smoothing** | Variance smoothing parameter (default: 1e-9)                 |
-| **agg_client**    | Federated aggregation client                                 |
+```text
+Input:
+    y: class labels
+    X: numerical features
 
-**Outputs (FederatedGaussianNBResults)**
+Step 1:
+    Determine the global class labels.
 
-* `theta`: class-conditional means, shape `(n_classes, n_features)`
-* `var`: class-conditional variances, shape `(n_classes, n_features)`
-* `class_count`: number of samples per class
-* `class_prior`: prior probabilities for each class
-* `labels`: list of class labels
-* `predict_proba(X)`: predicted class probabilities
-* `predict(X)`: predicted class labels
+Step 2:
+    At each site, for each class and feature:
+        count non-missing values
+        compute sum
+        compute sum of squares
 
-### Key Differences from scikit-learn
+Step 3:
+    Aggregate counts, sums, and sums of squares.
 
-| Aspect                | scikit-learn          | MIP Federated Implementation  |
-| --------------------- | --------------------- | ----------------------------- |
-| Data access           | Full centralized data | Data remains local per client |
-| Classes discovery     | Auto-discovered       | Pre-specified in constructor  |
-| Sufficient statistics | Local computation     | Federated sums/sums_sq/counts |
-| Variance smoothing    | Same formula          | Same formula                  |
-| Performance           | CPU/memory bound      | Network + aggregation bound   |
+Step 4:
+    Compute class means, variances, class counts, and class priors.
 
-### Approximation vs Exactness
+Step 5:
+    For prediction:
+        evaluate Gaussian likelihoods
+        multiply by class priors
+        normalize posterior probabilities
+        choose the largest posterior
 
-| Component             | scikit-learn | MIP   |
-| --------------------- | ------------ | ----- |
-| Class priors          | Exact        | Exact |
-| Class-conditional ΞΌ   | Exact        | Exact |
-| Class-conditional ΟƒΒ²  | Exact        | Exact |
-| Variance smoothing    | Exact        | Exact |
-| Probability estimates | Exact        | Exact |
+Output:
+    fitted Gaussian Naive Bayes parameters
+```
 
----
+## Numerical decisions
 
+- Feature values are coerced to numerical arrays.
+- Class priors are estimated from aggregated class counts.
+- Variances use class-conditional population variance.
+- Variances are clipped by `var_smoothing * max_variance`; if this is invalid,
+  `var_smoothing` is used directly.
+- The implementation default for `var_smoothing` is `1e-9`.
 
+## Reference comparison
+
+Standalone tests compare behavior with:
+
+```text
+sklearn.naive_bayes.GaussianNB()
+```
+
+Reference behavior is aligned with scikit-learn Gaussian Naive Bayes, with
+parameters computed from aggregated class-feature statistics.
+
+## Limitations
+
+- Features must be numerical.
+- The method assumes conditional independence of features given the class.
+- Each feature is modeled as Gaussian within each class.
+- Strongly non-Gaussian feature distributions can reduce classifier quality.

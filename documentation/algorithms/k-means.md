@@ -6,24 +6,6 @@ K-means owns its replay models, parameter builder, and fingerprint helpers in
 `cluster/kmeans.py`. The adjacent cluster column creator imports the fitted
 result contract from that module.
 
-## Table of contents
-
-- [Overview](#overview)
-- [Inputs](#inputs)
-  - [Required inputs](#required-inputs)
-  - [Parameters](#parameters)
-- [Clustering method](#clustering-method)
-- [Health use cases](#health-use-cases)
-- [Federated computation](#federated-computation)
-  - [Aggregated quantities](#aggregated-quantities)
-  - [Federated flow](#federated-flow)
-- [UI contract](#ui-contract)
-- [Technical decisions](#technical-decisions)
-- [Outputs](#outputs)
-- [K-means as preprocessing](#k-means-as-preprocessing)
-- [Validation against state-of-the-art implementation](#validation-against-state-of-the-art-implementation)
-- [Limitations and assumptions](#limitations-and-assumptions)
-
 ## Overview
 
 K-means partitions observations into `k` clusters using numerical variables.
@@ -53,27 +35,13 @@ nearest center by squared Euclidean distance.
 | `n_init` | Number of initializations evaluated when `init_method=multi_start_random_range`. | `5` |
 | `random_state` | Seed used for reproducible center initialization. | `123` |
 
-## Clustering method
+## Method
 
-The method follows Lloyd K-means:
+The mathematical method, library API, aggregation flow, numerical decisions, reference comparisons, and limitations are documented in [K-means clustering](../../exaflow/algorithms/federated/docs/kmeans.md).
 
-```text
-minimize sum_i ||x_i - c_{z_i}||^2
-```
+## Application integration
 
-where `c_k` is a cluster center and `z_i` is the assigned cluster for
-observation `i`.
-
-The elbow method uses the same K-means objective, the within-cluster sum of
-squared distances. It is not a user-defined clinical cost function. It helps
-choose a plausible number of clusters, but the selected value still needs
-clinical review.
-
-Initialization uses aggregated global feature ranges, not raw patient rows.
-With `random_range`, one set of initial centers is sampled uniformly from those
-ranges. With `multi_start_random_range`, several independent random-range
-initializations are fitted and the run with the lowest global inertia is kept.
-This improves stability without selecting a real patient as an initial center.
+The wrapper chooses manual fitting or elbow selection, supplies request defaults, and returns cluster identifiers numbered from 1 using `enumeration_prefix`. It reports privacy-masked size intervals and cluster profiles. The multi-start request default is `n_init=5`, while the library constructor defaults to one initialization.
 
 ## Health use cases
 
@@ -102,52 +70,6 @@ categorical variable as a covariate in linear regression, logistic regression,
 or Cox regression. This supports questions such as whether a baseline cluster
 is associated with an outcome after adjustment.
 
-## Federated computation
-
-The algorithm is computed without sharing row-level data. Each site assigns its
-observations to the current centers and contributes cluster-wise sums and
-counts.
-
-### Aggregated quantities
-
-| Quantity | Purpose |
-|---|---|
-| Number of observations | Report sample size and handle empty input. |
-| Feature minima and maxima | Initialize centers from global feature ranges. |
-| Cluster-wise feature sums | Update cluster centers. |
-| Cluster-wise counts | Convert sums to means. |
-
-### Federated flow
-
-```text
-Input:
-    X: numerical data matrix
-    k: number of clusters
-    maxiter: maximum iterations
-    tol: convergence tolerance
-
-Step 1:
-    Aggregate the total number of observations.
-
-Step 2:
-    Aggregate feature-wise minima and maxima.
-
-Step 3:
-    Initialize k centers uniformly between global minima and maxima.
-
-Step 4:
-    Repeat up to maxiter:
-        each site assigns observations to nearest centers
-        each site computes cluster-wise feature sums and counts
-        aggregate sums and counts
-        update each center as sum / count
-        reset empty-cluster centers to zero
-        stop if the center-update norm is <= tol
-
-Output:
-    privacy-safe cluster report
-```
-
 ## UI contract
 
 The UI should expose these controls:
@@ -171,19 +93,6 @@ The result view should show:
 - cluster center for every fitted cluster
 - textual profile and interpretation per cluster
 - warnings for non-convergence and empty clusters
-
-## Technical decisions
-
-- Initialization samples uniformly from aggregated feature ranges.
-- `multi_start_random_range` repeats range-based initialization with different
-  seeds and keeps the fitted model with the lowest global inertia.
-- Random seed `123` is used for reproducibility.
-- Squared Euclidean distance is used for assignment.
-- Empty clusters are reset to the origin.
-- Convergence uses the Frobenius norm of the center update.
-- Cluster sizes are reported as intervals rather than exact counts.
-- Centers and textual profiles are returned for every fitted cluster; only the
-  cluster-size interval is privacy-masked.
 
 ## Outputs
 
@@ -253,7 +162,8 @@ The creator's output enumeration specification is:
 Clients generate categories by concatenating the prefix with numbers 1 through
 `k`, without inspecting nested centers. The creator validates that these
 identifiers exactly match its replay model. It also requires the original data
-model, datasets, filters, and clustering features. Assignment uses generated
+model, datasets, filters, and clustering features. Replay center coordinates must
+be finite numerical values. Assignment uses generated
 numeric order, including for more than nine clusters or prefixes containing
 underscores.
 
@@ -262,33 +172,3 @@ Compatibility: this intentionally replaces zero-based identifiers and scalar
 there is no schema-version field, migration, or legacy payload support. Update
 clients and service together; rollback requires restoring both the old service
 and its matching consumers/model payloads.
-
-## Validation against state-of-the-art implementation
-
-The method is aligned with classical Lloyd K-means as exposed by:
-
-```text
-sklearn.cluster.KMeans(algorithm="lloyd")
-```
-
-Important differences from common scikit-learn defaults:
-
-| Aspect | This method | scikit-learn default |
-|---|---|---|
-| Initialization | Uniform sampling from aggregated feature ranges | `k-means++` |
-| Number of initializations | One, or multiple with `multi_start_random_range` | Depends on `n_init` |
-| Empty clusters | Reset center to zero | Internal reassignment behavior |
-| Objective | Lloyd K-means | Lloyd K-means by default in current releases |
-
-## Limitations and assumptions
-
-- Only numerical variables are supported.
-- Feature scaling strongly affects results.
-- The solution can be a local optimum.
-- Empty-cluster handling can affect final centers.
-- The number of clusters is selected manually or by elbow; neither choice is
-  clinical validation.
-- Outliers can strongly influence centers.
-- K-means does not infer diagnosis, prognosis, treatment effect, or causality.
-- Clusters produced from baseline covariates should be treated as hypotheses or
-  covariates, not as final clinical labels.

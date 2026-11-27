@@ -3,7 +3,8 @@ from __future__ import annotations
 import numpy as np
 import scipy.stats as st
 
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedObservationError
 from exaflow.algorithms.federated.utils import to_numpy
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
@@ -30,7 +31,7 @@ class FederatedTTestPaired:
         sample_x = to_numpy(sample_x).reshape(-1)
         sample_y = to_numpy(sample_y).reshape(-1)
         check_consistent_length(
-            sample_x, sample_y, message="Paired samples must have the same length."
+            sample_x, sample_y, reason=FedErrorReason.PAIRED_SAMPLE_LENGTH_MISMATCH
         )
 
         n_obs = sample_x.size
@@ -68,7 +69,9 @@ class FederatedTTestPaired:
         total_y_sq = float(np.asarray(total_y_sq_arr).reshape(-1)[0])
 
         if total_n_obs <= 1:
-            raise BadInputError("Not enough observations for paired t-test.")
+            raise FedObservationError(
+                FedErrorReason.TTEST_PAIRED_OBSERVATIONS_INSUFFICIENT,
+            )
 
         mean_x = total_sum_x / total_n_obs
         mean_y = total_sum_y / total_n_obs

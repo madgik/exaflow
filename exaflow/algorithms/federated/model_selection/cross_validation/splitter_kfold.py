@@ -7,7 +7,8 @@ import numpy as np
 from sklearn.model_selection import KFold
 from sklearn.utils import check_random_state
 
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.utils.interfaces import FederatedSplitter
 from exaflow.algorithms.federated.validation import as_scalar
 from exaflow.algorithms.federated.validation import check_consistent_length
@@ -72,9 +73,10 @@ class FederatedKFoldSplitter(FederatedSplitter):
         check_scalar(self.n_splits, name="n_splits", minimum=2, target_type=Integral)
         check_scalar(n_rows, name="n_rows", minimum=0, target_type=Integral)
         if n_rows == 0 or n_rows < self.n_splits:
-            raise BadInputError(
-                "Cross validation cannot run because the number of observations "
-                f"({n_rows}) is smaller than the number of splits ({self.n_splits})."
+            raise FedValueError(
+                FedErrorReason.INSUFFICIENT_FOLD_SAMPLES,
+                n_samples=n_rows,
+                n_splits=self.n_splits,
             )
         try:
             if self.shuffle:
@@ -85,6 +87,4 @@ class FederatedKFoldSplitter(FederatedSplitter):
                 random_state=self.random_state,
             )
         except (TypeError, ValueError):
-            raise BadInputError(
-                "Provide valid K-fold settings. Set random_state only when shuffle is enabled."
-            ) from None
+            raise FedValueError(FedErrorReason.KFOLD_SETTINGS_INVALID) from None

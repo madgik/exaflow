@@ -7,7 +7,8 @@ import pandas as pd
 import scipy.stats as st
 from scipy import special
 
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedObservationError
 from exaflow.algorithms.federated.utils import to_numpy
 from exaflow.algorithms.federated.validation import check_dataframe
 from exaflow.algorithms.federated.validation import check_scalar
@@ -76,12 +77,10 @@ class FederatedPearsonCorrelation:
 
         df = total_n_obs - 2
         if total_n_obs == 0:
-            raise BadInputError("Cannot compute Pearson correlation on empty data.")
+            raise FedObservationError(FedErrorReason.PEARSON_DATA_EMPTY)
 
         if df <= 0:
-            raise BadInputError(
-                "Not enough observations to compute Pearson correlation."
-            )
+            raise FedObservationError(FedErrorReason.PEARSON_OBSERVATIONS_INSUFFICIENT)
 
         d = (
             np.sqrt(total_n_obs * total_sxx - total_sx * total_sx)
