@@ -7,7 +7,8 @@ from scipy import stats
 from scipy.special import expit
 from scipy.special import xlogy
 
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
@@ -237,12 +238,19 @@ class FederatedLogisticRegression(FederatedEstimator):
 
     @staticmethod
     def _handle_logreg_errors(nobs: int, p: int, y_sum: float) -> None:
-        check_sample_counts(nobs, minimum=p, name="Logistic regression", strict=True)
+        check_sample_counts(
+            nobs,
+            minimum=p,
+            name="Logistic regression",
+            strict=True,
+            reason=FedErrorReason.INSUFFICIENT_SAMPLE_COUNT,
+        )
         check_sample_counts(
             min(y_sum, nobs - y_sum),
             minimum=p,
             name="Each outcome class",
             strict=True,
+            reason=FedErrorReason.INSUFFICIENT_SAMPLE_COUNT,
         )
 
     @staticmethod
@@ -294,7 +302,7 @@ class FederatedLogisticRegression(FederatedEstimator):
             if self._max_abs(grad) <= TOL:
                 break
         else:
-            raise BadInputError("Logistic regression cannot converge. Cancelling run.")
+            raise FedValueError(FedErrorReason.LOGISTIC_CONVERGENCE_FAILED)
 
         return {
             "coefficients": coeff.reshape(-1).tolist(),

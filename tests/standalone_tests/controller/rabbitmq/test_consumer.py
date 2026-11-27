@@ -11,6 +11,12 @@ from aio_pika.exceptions import DeliveryError
 from aio_pika.exceptions import PublishError
 from pamqp.commands import Basic
 
+from exaflow.algorithms.exareme3.utils.error_translation import (
+    translate_federated_error,
+)
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedStateError
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.controller.services.rabbitmq import consumer as module
 from exaflow.controller.services.rabbitmq.consumer import AnalysisConsumer
 from exaflow.controller.services.rabbitmq.settings import RabbitMQSettings
@@ -75,6 +81,57 @@ def test_success_confirms_reply_before_acknowledging(monkeypatch):
     assert outgoing.delivery_mode == 2
     assert channel.default_exchange.publish.call_args.kwargs["timeout"] == 45
     assert not runtime.executions
+
+
+def test_translated_statistical_error_replies_with_bad_user_input(monkeypatch):
+    error = FedValueError(
+        FedErrorReason.INSUFFICIENT_FOLD_SAMPLES, n_samples=7, n_splits=8
+    )
+    monkeypatch.setattr(
+        module.analysis_service,
+        "run_analysis",
+        AsyncMock(side_effect=translate_federated_error(error)),
+    )
+    message, channel, events = resources()
+
+    asyncio.run(deliver(consumer(), message, channel))
+
+    reply = json.loads(channel.default_exchange.publish.call_args.args[0].body)
+    assert reply == {
+        "status": "failed",
+        "error": {
+            "code": "BadUserInput",
+            "message": (
+                "There are too few usable observations for the requested number of "
+                "folds. Reduce the number of folds or adjust the filters."
+            ),
+        },
+    }
+    assert events == ["publish", "ack"]
+
+
+def test_convergence_failure_replies_with_analysis_execution_error(monkeypatch):
+    error = translate_federated_error(
+        FedValueError(FedErrorReason.LOGISTIC_CONVERGENCE_FAILED)
+    )
+    monkeypatch.setattr(
+        module.analysis_service,
+        "run_analysis",
+        AsyncMock(side_effect=error),
+    )
+    message, channel, events = resources()
+
+    asyncio.run(deliver(consumer(), message, channel))
+
+    reply = json.loads(channel.default_exchange.publish.call_args.args[0].body)
+    assert reply == {
+        "status": "failed",
+        "error": {
+            "code": "AnalysisExecutionError",
+            "message": "Logistic regression could not converge to a stable solution.",
+        },
+    }
+    assert events == ["publish", "ack"]
 
 
 @pytest.mark.parametrize("body", [{}, {**ANALYSIS_BODY, "request_id": "conflict"}])
@@ -459,16 +516,23 @@ def test_request_and_result_size_limits(monkeypatch):
     )
 
 
-def test_unexpected_errors_do_not_expose_exception_details(monkeypatch):
+@pytest.mark.parametrize(
+    "error",
+    [
+        RuntimeError("secret payload"),
+        translate_federated_error(FedStateError(FedErrorReason.MODEL_NOT_FITTED)),
+    ],
+)
+def test_unexpected_errors_do_not_expose_exception_details(monkeypatch, error):
     monkeypatch.setattr(
         module.analysis_service,
         "run_analysis",
-        AsyncMock(side_effect=RuntimeError("secret payload")),
+        AsyncMock(side_effect=error),
     )
     message, channel, _ = resources()
     asyncio.run(deliver(consumer(), message, channel))
     body = channel.default_exchange.publish.call_args.args[0].body
-    assert b"internal_error" in body and b"secret payload" not in body
+    assert b"internal_error" in body and str(error).encode() not in body
 
 
 def test_shutdown_error_is_redelivered_not_terminal(monkeypatch):

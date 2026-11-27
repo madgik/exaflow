@@ -5,7 +5,8 @@ from typing import Iterable
 
 import numpy as np
 
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.validation import ArrayPolicy
 from exaflow.algorithms.federated.validation import check_array
 from exaflow.algorithms.federated.validation import check_consistent_length
@@ -37,7 +38,7 @@ def validate_inputs(
         check_array(w, policy=ArrayPolicy(dimensions=(1,)), input_name="Weights")
         check_consistent_length(X, w)
         if (w < 0).any():
-            raise BadInputError("w must be non-negative and finite.")
+            raise FedValueError(FedErrorReason.MIXED_EFFECTS_WEIGHTS_INVALID)
 
 
 def apply_weights(
@@ -71,9 +72,9 @@ def compute_vinv_random_intercept(
     sigma_u2: float,
 ) -> tuple[np.ndarray, float]:
     if nj <= 0:
-        raise BadInputError("nj must be positive.")
+        raise FedValueError(FedErrorReason.MIXED_EFFECTS_GROUP_SIZE_INVALID)
     if sigma2 <= 0 or sigma_u2 < 0:
-        raise BadInputError("Require sigma2>0 and sigma_u2>=0.")
+        raise FedValueError(FedErrorReason.MIXED_EFFECTS_VARIANCES_INVALID)
 
     inv_sigma2 = 1.0 / sigma2
     alpha_j = sigma_u2 / (sigma2 * (sigma2 + nj * sigma_u2))
@@ -84,9 +85,9 @@ def compute_vinv_random_intercept(
 
 def logdet_v_random_intercept(nj: int, sigma2: float, sigma_u2: float) -> float:
     if nj <= 0:
-        raise BadInputError("nj must be positive.")
+        raise FedValueError(FedErrorReason.MIXED_EFFECTS_GROUP_SIZE_INVALID)
     if sigma2 <= 0 or sigma_u2 < 0:
-        raise BadInputError("Require sigma2>0 and sigma_u2>=0.")
+        raise FedValueError(FedErrorReason.MIXED_EFFECTS_VARIANCES_INVALID)
     return (nj - 1) * np.log(sigma2) + np.log(sigma2 + nj * sigma_u2)
 
 
@@ -188,7 +189,7 @@ def sum_logdet_random_intercept_from_hist(
     sigma_u2: float,
 ) -> float:
     if sigma2 <= 0 or sigma_u2 < 0:
-        raise BadInputError("Require sigma2>0 and sigma_u2>=0.")
+        raise FedValueError(FedErrorReason.MIXED_EFFECTS_VARIANCES_INVALID)
     if hist.size == 0:
         return 0.0
     k = np.arange(1, hist.size + 1, dtype=float)

@@ -6,10 +6,11 @@ from numbers import Integral
 import numpy as np
 from scipy import stats
 
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.mixed_effects.mixed_effects_utils import (
     validate_inputs,
 )
-from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
@@ -34,7 +35,7 @@ def _sigmoid(z: np.ndarray | float) -> np.ndarray | float:
 
 def _ordinal_param_dim(K: int, fit_intercept: bool) -> int:
     if K < 2:
-        raise BadInputError("K must be >= 2.")
+        raise FedValueError(FedErrorReason.ORDINAL_CATEGORY_COUNT_INVALID)
     if fit_intercept:
         return max(0, K - 2)
     return K - 1
@@ -48,13 +49,17 @@ def _build_kappas_from_theta(
 ) -> tuple[np.ndarray, float, np.ndarray]:
     theta = np.asarray(theta, dtype=float).reshape(-1)
     if K < 2:
-        raise BadInputError(f"K must be >= 2 (got {K}).")
+        raise FedValueError(FedErrorReason.ORDINAL_CATEGORY_COUNT_VALUE_INVALID, K=K)
     ordinal_dim = _ordinal_param_dim(K, fit_intercept)
     expected_len = p + 1 + ordinal_dim
     if theta.shape[0] != expected_len:
-        raise BadInputError(
-            f"theta length {theta.shape[0]} != expected {expected_len} "
-            f"(p={p}, K={K}, fit_intercept={fit_intercept})."
+        raise FedValueError(
+            FedErrorReason.ORDINAL_THETA_LENGTH_INVALID,
+            theta_length=theta.shape[0],
+            expected_len=expected_len,
+            p=p,
+            K=K,
+            fit_intercept=fit_intercept,
         )
 
     log_su2 = float(theta[p])
@@ -111,13 +116,16 @@ def _ordinal_loglik_derivatives_batch(
     kappas = np.asarray(kappas, dtype=float).reshape(-1)
     K = kappas.shape[0] + 1
     if eta.shape[0] != y.shape[0]:
-        raise BadInputError("eta and y must have same length.")
+        raise FedValueError(FedErrorReason.ORDINAL_TARGET_LENGTH_INVALID)
     if eta.size == 0:
         empty_k = np.zeros((0, K - 1), dtype=float)
         empty = np.zeros(0, dtype=float)
         return empty, empty, empty, empty, empty_k, empty_k, empty_k
     if np.any((y < 0) | (y > K - 1)):
-        raise BadInputError(f"y must be in [0, {K - 1}].")
+        raise FedValueError(
+            FedErrorReason.ORDINAL_TARGET_RANGE_INVALID,
+            max_category=K - 1,
+        )
 
     a = kappas[None, :] - eta[:, None]
     s = np.asarray(_sigmoid(a), dtype=float)
@@ -374,7 +382,7 @@ def _mode_u_for_center_with_k_warm(
     eta_base = np.asarray(eta_base, dtype=float).reshape(-1)
     y = np.asarray(y, dtype=int).reshape(-1)
     if sigma_u2 <= 0.0:
-        raise BadInputError("sigma_u2 must be > 0.")
+        raise FedValueError(FedErrorReason.ORDINAL_VARIANCE_POSITIVE_REQUIRED)
 
     u = float(init_u)
     h_sum = -1.0 / sigma_u2
@@ -784,7 +792,10 @@ class FederatedGLMMOrdinal(FederatedEstimator):
             X = self._add_intercept(X)
         validate_inputs(X, y, center_ids)
         if y.min() < 0 or y.max() >= self.K:
-            raise BadInputError(f"y must be in [0, {self.K - 1}].")
+            raise FedValueError(
+                FedErrorReason.ORDINAL_TARGET_RANGE_INVALID,
+                max_category=self.K - 1,
+            )
 
         n_obs = int(
             np.asarray(

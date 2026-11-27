@@ -80,7 +80,7 @@ with an intercept are permitted. The existing global requirements remain:
 the observation count and each outcome-class count must exceed the number of
 fitted parameters, including the intercept when present.
 
-Local parameter and input validation raises `BadInputError` before estimation
+Local parameter and input validation raises `FedError` subclasses before estimation
 without adding aggregation calls. The caller owns distributed error propagation,
 cancellation, and cleanup. Exareme3 uses its existing request-error and cleanup
 handling; independent callers must provide their own lifecycle handling.

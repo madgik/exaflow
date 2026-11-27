@@ -6,10 +6,10 @@ from exaflow.algorithms.exareme3.utils.registry import exareme3_udf
 from exaflow.algorithms.federated.statistics.binned_mann_whitney_u_test import (
     FederatedBinnedMannWhitneyUTest,
 )
-from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
+from exaflow.worker_communication import BadUserInput
 
 
 class BinnedMannWhitneyUTestResult(BaseModel):
@@ -120,7 +120,7 @@ class BinnedMannWhitneyUTest(Algorithm):
         num_bins = int(num_bins)
 
         if group_a == group_b:
-            raise BadInputError(
+            raise BadUserInput(
                 "groupA and groupB must select two different categories; "
                 f"both were set to '{group_a}'."
             )

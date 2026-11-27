@@ -9,6 +9,8 @@ from typing import Protocol
 import numpy as np
 import pandas as pd
 
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedStateError
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
@@ -170,11 +172,9 @@ class _AfterAggregateStep(_BaseStep, FederatedSQLAfterAggregate):
 
     def run(self) -> FederatedSQLResults:
         if self._state.has_run:
-            raise RuntimeError(
-                "run() can only be executed once per query builder object."
-            )
+            raise FedStateError(FedErrorReason.SQL_QUERY_ALREADY_EXECUTED)
         if not self._state.aggregations:
-            raise RuntimeError("At least one aggregate() must be defined before run().")
+            raise FedStateError(FedErrorReason.SQL_AGGREGATES_REQUIRED)
         self._state.has_run = True
         return FederatedSQLResults(_execute(self._state))
 

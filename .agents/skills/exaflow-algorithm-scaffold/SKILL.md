@@ -9,6 +9,12 @@ Use this skill for end-to-end algorithm integration. Do not stop at placeholders
 
 Human-facing setup guide: `documentation/new-algorithm-setup.md`.
 
+Before implementing failures, read the canonical
+[federated error contract](../../../documentation/context/conventions.md#federated-error-contract).
+Library diagnostics use `FedError` and mandatory reasons; Exareme3 chooses the
+application exception and message. Shared worker/controller boundaries perform
+translation, so wrappers generally need no algorithm-specific catches.
+
 ## Default Execution Policy
 
 1. Scaffold missing files for the target algorithm.
@@ -60,6 +66,11 @@ Definition of Done:
   `parameters=None`, `enumslen=None`, `default=None`,
   `enums=None`, `dict_values_enums=None`, `min=None`, and `max=None`.
 - Standalone parity test exists and passes.
+- Library-authored failures use `FedError` subclasses with `FedErrorReason`
+  members, and every reason has an explicit Exareme3 exception/message policy.
+- The validator's `federated_error_contract` check passes. A library failure
+  does not automatically become `BadUserInput`; keeping a diagnostic requires
+  an explicit `KEEP_MESSAGE` policy.
 - Prod validation test and non-empty expected fixture exist.
 - Registration touchpoints and docs are patched.
 - `validate_algorithms.py --new-algorithm <name>` passes with no warnings.
@@ -147,6 +158,8 @@ gates run validation and focused tests without invoking Ruff.
    min/max bounds, or requiredness. Avoid advisory "when to use" language unless
    it is required product copy.
 1. Implement federated core in `exaflow/algorithms/federated/<family>/<name>.py`.
+1. Register each failure reason and its Exareme3 translation policy following
+   the canonical error contract; require `federated_error_contract` to pass.
 1. Confirm registration patches:
    - `exaflow/algorithms/federated/<family>/__init__.py`
    - `exaflow/algorithms/federated/__init__.py`

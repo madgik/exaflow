@@ -6,7 +6,9 @@ from typing import List
 import numpy as np
 import pandas as pd
 
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedStateError
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
@@ -55,7 +57,7 @@ class FederatedCategoricalNBResults(FederatedEstimatorResults):
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         if self.class_count is None or self.category_count is None:
-            raise BadInputError("CategoricalNB is not fitted yet.")
+            raise FedStateError(FedErrorReason.CATEGORICAL_NB_NOT_FITTED)
 
         X_enc = self._prepare_encoded_features(X)
         if X_enc.shape[0] == 0:
@@ -242,13 +244,11 @@ def _ensure_encoded_features(X, x_vars):
         try:
             X_enc = np.asarray(X)
         except (TypeError, ValueError):
-            raise BadInputError(
-                "Encoded features must be a rectangular array."
-            ) from None
+            raise FedValueError(FedErrorReason.ENCODED_FEATURES_INVALID) from None
     check_dimensions(X_enc, (1, 2), input_name="Encoded features")
     if X_enc.ndim == 1:
         if not x_vars or X_enc.size % len(x_vars):
-            raise BadInputError("Features must match the configured feature columns.")
+            raise FedValueError(FedErrorReason.NB_FEATURE_SCHEMA_INVALID)
         X_enc = X_enc.reshape(-1, len(x_vars))
     if np.issubdtype(X_enc.dtype, np.floating):
         X_enc = np.where(np.isnan(X_enc), -1, X_enc)

@@ -168,9 +168,9 @@ class PCAColumnCreator(PreprocessingStep):
         model = FederatedPCA(agg_client=agg_client, copy=False)
         scores = model.fit_transform(X_values)
         if scores is None or scores.ndim != 2:
-            raise BadUserInput("PCA score execution did not return a valid matrix.")
+            raise RuntimeError("PCA score execution did not return a valid matrix.")
         if scores.shape[0] != len(data):
-            raise BadUserInput(
+            raise RuntimeError(
                 "PCA score row count does not match the input data row count."
             )
         if recipe is not None:

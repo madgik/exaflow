@@ -6,10 +6,11 @@ from typing import Sequence
 
 import numpy as np
 
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.linear_model.logistic_regression import (
     FederatedLogisticRegression,
 )
-from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
@@ -41,17 +42,9 @@ def _safe_exp(values) -> np.ndarray:
     return np.exp(np.clip(values, lower, upper))
 
 
-def _validate_binary_events(events: np.ndarray) -> None:
-    if events.ndim != 1:
-        raise BadInputError("events must be one-dimensional.")
-    unique_values = np.unique(events)
-    if not np.isin(unique_values, [0.0, 1.0]).all():
-        raise BadInputError("cox_regression_stacked expects a binary event indicator.")
-
-
 def _grouped_last_indices(size: int, n_groups: int) -> np.ndarray:
     if n_groups <= 0:
-        raise BadInputError("n_groups must be positive.")
+        raise FedValueError(FedErrorReason.GROUP_COUNT_INVALID)
     if size <= n_groups:
         return np.arange(size, dtype=int)
     groups = np.array_split(np.arange(size, dtype=int), n_groups)
@@ -182,9 +175,7 @@ class FederatedStackedCoxRegression(FederatedEstimator):
             ).reshape(-1)[0]
         )
         if global_n_events <= 0:
-            raise BadInputError(
-                "cox_regression_stacked requires at least one observed event globally."
-            )
+            raise FedValueError(FedErrorReason.STACKED_COX_GLOBAL_EVENTS_REQUIRED)
         max_time_bins = self._recommended_max_time_bins(
             n_events=global_n_events,
             n_covariates=X.shape[1],
@@ -290,10 +281,7 @@ class FederatedStackedCoxRegression(FederatedEstimator):
             n_covariates=n_covariates,
         )
         if max_identifiable <= 0:
-            raise BadInputError(
-                "cox_regression_stacked requires more observed events than covariates "
-                "to fit the stacked logistic model."
-            )
+            raise FedValueError(FedErrorReason.STACKED_COX_EVENTS_INSUFFICIENT)
         return max(1, min(max_identifiable, int(n_events) // 2))
 
     @classmethod
@@ -308,9 +296,7 @@ class FederatedStackedCoxRegression(FederatedEstimator):
         event_times = event_times[np.isfinite(event_times)]
         event_times = np.unique(event_times[event_times > 0])
         if event_times.size == 0:
-            raise BadInputError(
-                "cox_regression_stacked requires at least one observed event."
-            )
+            raise FedValueError(FedErrorReason.STACKED_COX_EVENTS_REQUIRED)
         if max_time_bins is None or event_times.size <= max_time_bins:
             return event_times
 
@@ -388,7 +374,7 @@ class FederatedStackedCoxRegression(FederatedEstimator):
         bins = as_numeric_array(time_bins, input_name="Time bins").reshape(-1)
         check_array(bins, policy=ArrayPolicy(dimensions=(1,)), input_name="Time bins")
         if bins.size == 0:
-            raise BadInputError("time grid must contain at least one value.")
+            raise FedValueError(FedErrorReason.TIME_GRID_EMPTY)
         if np.isclose(bins[0], 0.0):
             cls._validate_time_bins(time_bins=bins, times=times)
             bin_start_indices = np.array(
@@ -423,7 +409,7 @@ class FederatedStackedCoxRegression(FederatedEstimator):
         n_obs, n_covariates = X_sorted.shape
         n_time_bins = len(bin_start_indices) - 1
         if n_time_bins <= 0:
-            raise BadInputError("time_bins must define at least one interval.")
+            raise FedValueError(FedErrorReason.TIME_BINS_EMPTY)
 
         risk_set_sizes = n_obs - bin_start_indices[:-1]
         stacked_size = int(np.sum(risk_set_sizes))
@@ -459,7 +445,7 @@ class FederatedStackedCoxRegression(FederatedEstimator):
         n_obs, n_covariates = X_sorted.shape
         n_time_bins = len(event_times)
         if n_time_bins <= 0:
-            raise BadInputError("event_times must define at least one failure time.")
+            raise FedValueError(FedErrorReason.EVENT_TIME_INTERVAL_EMPTY)
 
         risk_set_sizes = np.array(
             [
@@ -495,16 +481,13 @@ class FederatedStackedCoxRegression(FederatedEstimator):
     def _validate_time_bins(*, time_bins: np.ndarray, times: np.ndarray) -> None:
         bins = np.asarray(time_bins, dtype=float).reshape(-1)
         if bins.size < 2:
-            raise BadInputError("time_bins must contain at least two cut points.")
+            raise FedValueError(FedErrorReason.TIME_BINS_TOO_SHORT)
         if not np.isclose(bins[0], 0.0):
-            raise BadInputError("time_bins must start at 0.")
+            raise FedValueError(FedErrorReason.TIME_BINS_START_INVALID)
         if not np.all(np.diff(bins) > 0):
-            raise BadInputError("time_bins must be strictly increasing.")
+            raise FedValueError(FedErrorReason.TIME_BINS_ORDER_INVALID)
         if bins[-1] <= float(np.max(times)):
-            raise BadInputError(
-                "The final time bin cut point must be greater than the "
-                "maximum time value."
-            )
+            raise FedValueError(FedErrorReason.TIME_BINS_END_INVALID)
 
     @staticmethod
     def _validate_event_times(
@@ -518,8 +501,8 @@ class FederatedStackedCoxRegression(FederatedEstimator):
             distinct, policy=ArrayPolicy(dimensions=(1,)), input_name="Event times"
         )
         if distinct.size < 1:
-            raise BadInputError("event_times must contain at least one failure time.")
+            raise FedValueError(FedErrorReason.EVENT_TIMES_EMPTY)
         if not np.all(np.diff(distinct) > 0):
-            raise BadInputError("event_times must be strictly increasing.")
+            raise FedValueError(FedErrorReason.EVENT_TIMES_ORDER_INVALID)
         if np.min(distinct) <= 0:
-            raise BadInputError("event_times must be strictly positive.")
+            raise FedValueError(FedErrorReason.EVENT_TIMES_POSITIVE_REQUIRED)

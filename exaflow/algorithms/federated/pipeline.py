@@ -8,6 +8,9 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedTypeError
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
 from exaflow.algorithms.federated.utils.interfaces import FederatedTransformer
@@ -45,7 +48,10 @@ class FederatedPipeline:
 
         for name, step in self.steps[:-1]:
             if not isinstance(step, FederatedTransformer):
-                raise TypeError(f"Pipeline step '{name}' is not a transformer.")
+                raise FedTypeError(
+                    FedErrorReason.PIPELINE_TRANSFORMER_REQUIRED,
+                    name=name,
+                )
             step.fit(
                 agg_client=agg_client,
                 data=data,
@@ -64,7 +70,7 @@ class FederatedPipeline:
             return self
 
         if y is None:
-            raise ValueError("Pipeline estimator fit requires y.")
+            raise FedValueError(FedErrorReason.PIPELINE_TARGET_REQUIRED)
 
         X = self.transform(
             data,
@@ -88,19 +94,19 @@ class FederatedPipeline:
             steps = steps[:-1]
         for idx, (name, step) in enumerate(steps):
             if not isinstance(step, FederatedTransformer):
-                raise TypeError(f"Pipeline step '{name}' is not a transformer.")
-            if not isinstance(X, pd.DataFrame) and idx < len(steps) - 1:
-                raise TypeError(
-                    "Pipeline step outputs ndarray before final step. "
-                    "Only the last step may output an array."
+                raise FedTypeError(
+                    FedErrorReason.PIPELINE_TRANSFORMER_REQUIRED,
+                    name=name,
                 )
+            if not isinstance(X, pd.DataFrame) and idx < len(steps) - 1:
+                raise FedTypeError(FedErrorReason.PIPELINE_INTERMEDIATE_TYPE_INVALID)
             X = step.transform(
                 X,
                 categorical_vars=cat_vars,
                 numerical_vars=num_vars,
             )
         if not isinstance(X, np.ndarray):
-            raise TypeError("Pipeline transformers must return ndarray.")
+            raise FedTypeError(FedErrorReason.PIPELINE_OUTPUT_TYPE_INVALID)
         return X
 
     def fit_transform(

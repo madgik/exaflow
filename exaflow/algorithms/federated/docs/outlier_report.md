@@ -23,6 +23,8 @@ The helper also supports tail selection with `left`, `right`, and `both`.
 
 ## Privacy
 
-The implementation raises `InsufficientDataError` when a local dataset has too
-few non-missing values for a configured variable. Small non-zero outlier counts
-are returned as `null`.
+The implementation raises `FedObservationError`, also a `ValueError`, when
+a local dataset has too few non-missing numeric values for a configured
+variable. Its reason is `FedErrorReason.OUTLIER_OBSERVATIONS_INSUFFICIENT`.
+The shared Exareme3 boundary translates that reason to `InsufficientDataError`.
+Small non-zero outlier counts are returned as `null`.

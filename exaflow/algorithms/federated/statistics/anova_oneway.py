@@ -9,7 +9,8 @@ import pandas as pd
 import scipy.stats as st
 from statsmodels.stats.libqsturng import psturng
 
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.validation import as_numeric_array
 from exaflow.algorithms.federated.validation import check_consistent_length
 from exaflow.algorithms.federated.validation import check_sample_counts
@@ -54,12 +55,10 @@ class FederatedAnovaOneWay:
         check_consistent_length(
             groups,
             categories,
-            message="Provide one category label for each ANOVA group.",
+            reason=FedErrorReason.ANOVA_GROUP_LABEL_MISMATCH,
         )
         if len(categories) < 2:
-            raise BadInputError(
-                "Cannot perform Anova one-way. Covariable has only one level."
-            )
+            raise FedValueError(FedErrorReason.INSUFFICIENT_ANOVA_LEVELS)
         stats = self._collect_stats(groups, categories)
 
         group_stats_count = stats["group_stats_count"]
@@ -74,12 +73,14 @@ class FederatedAnovaOneWay:
         group_stats_index = stats["group_stats_index"]
 
         if len(group_stats_index) < 2:
-            raise BadInputError(
-                "Cannot perform Anova one-way. Covariable has only one level."
-            )
+            raise FedValueError(FedErrorReason.INSUFFICIENT_ANOVA_LEVELS)
 
         check_sample_counts(
-            n_obs, minimum=len(group_stats_index), name="One-way ANOVA", strict=True
+            n_obs,
+            minimum=len(group_stats_index),
+            name="One-way ANOVA",
+            strict=True,
+            reason=FedErrorReason.INSUFFICIENT_OBSERVATIONS,
         )
         df_explained = len(group_stats_index) - 1
         df_residual = n_obs - len(group_stats_index)

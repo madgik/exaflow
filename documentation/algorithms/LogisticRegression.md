@@ -137,7 +137,7 @@ Output:
   These checks raise local errors before estimation; the execution runtime
   handles request failure and cleanup without additional validation aggregation.
   Prediction checks compatible feature counts. Invalid inputs receive explicit
-  `BadInputError` messages; successful responses and numerical calculations are
+  `FedError` diagnostics; successful responses and numerical calculations are
   unchanged.
 
 ## Outputs

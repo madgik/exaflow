@@ -20,12 +20,15 @@ Apply each method's existing normalization before checking its effective inputs.
 Do not introduce uniform restrictions on missing values, empty partitions,
 feature counts, or class availability. Preserve method-specific behavior.
 
-Validators raise `BadInputError` locally without performing aggregation. The
+Validators raise `FedError` subclasses locally without performing aggregation. The
 caller owns error propagation, cancellation, and cleanup of the distributed
 computation. Exareme3 handles request failure and aggregation cleanup through
 its existing worker/controller error handling; it does not guarantee immediate
 cancellation of every running participant. Independent callers must provide
-their own lifecycle handling. Participants still require the same model
+their own lifecycle handling. Exceptions and mandatory `FedErrorReason` members
+are defined in `exceptions.py`; Exareme3 maps reasons to its own exception types
+and message policies. Explicit library failure raises and translation coverage
+are checked by standalone CI. Participants still require the same model
 configuration and aligned feature layout for the mathematical aggregations.
 
 Validation unit tests live in `tests/standalone_tests/federated_validation/`.

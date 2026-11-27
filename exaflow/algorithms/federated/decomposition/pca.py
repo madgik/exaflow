@@ -4,6 +4,8 @@ from typing import Optional
 
 import numpy as np
 
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.utils import to_numpy
 from exaflow.algorithms.federated.validation import BOOLEAN_RULE
 from exaflow.algorithms.federated.validation import ArrayPolicy
@@ -27,7 +29,7 @@ def canonicalize_component_signs(components):
     """
     components = np.asarray(components, dtype=float)
     if components.ndim != 2:
-        raise ValueError("components must be a two-dimensional array.")
+        raise FedValueError(FedErrorReason.PCA_COMPONENT_DIMENSIONS_INVALID)
 
     canonicalized = np.array(components, copy=True)
     absolute_loadings = np.abs(canonicalized)
@@ -73,7 +75,12 @@ class FederatedPCA:
         total_sx = np.asarray(total_sx, dtype=float)
         total_sxx = np.asarray(total_sxx, dtype=float)
 
-        check_sample_counts(total_n_obs, minimum=2, name="PCA")
+        check_sample_counts(
+            total_n_obs,
+            minimum=2,
+            name="PCA",
+            reason=FedErrorReason.INSUFFICIENT_OBSERVATIONS,
+        )
         means = total_sx / total_n_obs
         variances = (total_sxx - total_n_obs * means**2) / (total_n_obs - 1)
         variances = np.maximum(variances, 0.0)

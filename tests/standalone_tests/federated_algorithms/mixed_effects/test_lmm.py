@@ -9,9 +9,9 @@ import pytest
 import statsmodels.api as sm
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
+from exaflow.algorithms.federated.exceptions import FedError
 from exaflow.algorithms.federated.mixed_effects import FederatedLMM
 from exaflow.algorithms.federated.mixed_effects.lmm import _LMMRemlAggregator
-from exaflow.algorithms.federated.utils import BadInputError
 from tests.standalone_tests.federated_algorithms.utils import FederatedAlgorithmTest
 from tests.standalone_tests.federated_algorithms.utils.simulated_agg_client import (
     AggregationCoordinator,
@@ -589,15 +589,15 @@ def test_lmm_invalid_inputs_raise():
     case = CASE_MATRIX[0]
     X, y, center_ids = synth_lmm_case(case)
 
-    with pytest.raises(BadInputError):
+    with pytest.raises(FedError):
         FederatedLMM(init_sigma2=-1.0)
-    with pytest.raises(BadInputError):
+    with pytest.raises(FedError):
         FederatedLMM(init_sigma2=1e-8, lower_bound=1e-6)
 
     coordinator = AggregationCoordinator(n_workers=1)
     agg_client = SimulatedAggClient(worker_id=0, coordinator=coordinator)
     model = FederatedLMM()
-    with pytest.raises(BadInputError):
+    with pytest.raises(FedError):
         model.fit(
             X,
             y,

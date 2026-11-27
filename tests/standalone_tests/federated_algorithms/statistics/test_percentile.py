@@ -4,6 +4,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedObservationError
+from exaflow.algorithms.federated.exceptions import FedStateError
+from exaflow.algorithms.federated.exceptions import FedTypeError
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.statistics.percentile import Percentile
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
@@ -158,6 +163,70 @@ INTEGER_TEST_CASES = [
 ]
 
 
+@pytest.fixture
+def percentile():
+    client = SimulatedAggClient(
+        worker_id=0, coordinator=AggregationCoordinator(n_workers=1)
+    )
+    return Percentile(NumpyAggregator(client))
+
+
+@pytest.mark.parametrize("phase", ["floating", "integer_initial", "integer_refinement"])
+@pytest.mark.parametrize(
+    "error",
+    [
+        FedValueError(FedErrorReason.HISTOGRAM_ARRAY_DIMENSIONS_INVALID),
+        FedTypeError(FedErrorReason.NUMPY_ARRAY_REQUIRED),
+        FedStateError(FedErrorReason.MODEL_NOT_FITTED),
+        FedObservationError(FedErrorReason.DATA_ARRAY_EMPTY),
+    ],
+    ids=["value", "type", "state", "unrelated_observation"],
+)
+def test_unrelated_histogram_errors_propagate(percentile, monkeypatch, phase, error):
+    histogram = (
+        percentile.simple_hist if phase == "floating" else percentile.wilkinson_hist
+    )
+    original_compute = histogram.compute
+    calls = 0
+
+    def compute(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == (2 if phase == "integer_refinement" else 1):
+            raise error
+        return original_compute(*args, **kwargs)
+
+    monkeypatch.setattr(histogram, "compute", compute)
+    with pytest.raises(type(error)) as exc_info:
+        percentile.compute(
+            pd.Series([0.0, 100.0]),
+            0.75,
+            num_bins=2,
+            is_integer=phase != "floating",
+        )
+    assert exc_info.value is error
+
+
+def test_integer_refinement_bounds_failure_retains_approximation(
+    percentile, monkeypatch
+):
+    original_compute = percentile.wilkinson_hist.compute
+    calls = 0
+
+    def compute(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise FedValueError(FedErrorReason.HISTOGRAM_FINITE_VALUES_REQUIRED)
+        return original_compute(*args, **kwargs)
+
+    monkeypatch.setattr(percentile.wilkinson_hist, "compute", compute)
+    result = percentile.compute(
+        pd.Series([0.0, 100.0]), 0.75, num_bins=2, is_integer=True
+    )
+    assert result == (50.0, 0.5)
+
+
 class TestPercentile(FederatedAlgorithmTest):
     def compute_centralized_result(self, X, y, **kwargs):
         x = np.asarray(X, dtype=float)
@@ -218,7 +287,13 @@ class TestPercentile(FederatedAlgorithmTest):
             X=x, y=np.zeros(len(x)), n_workers=3, q=case["q"], x=x, is_integer=True
         )
 
-    def test_all_nans_returns_none(self):
+    @pytest.mark.parametrize("is_integer", [False, True])
+    @pytest.mark.parametrize(
+        "values",
+        [[], [np.nan] * 5, [1.0, 2.0, np.inf], [1.0, 2.0, -np.inf]],
+        ids=["empty", "all_nan", "positive_infinity", "negative_infinity"],
+    )
+    def test_nonfinite_global_bounds_return_none(self, values, is_integer):
         coordinator = AggregationCoordinator(n_workers=1)
         results = [None]
         errors = [None]
@@ -227,7 +302,9 @@ class TestPercentile(FederatedAlgorithmTest):
             try:
                 aggregator = NumpyAggregator(agg_client)
                 algo = Percentile(aggregator)
-                results[0] = algo.compute(pd.Series([float("nan")] * 5), 0.5)
+                results[0] = algo.compute(
+                    pd.Series(values, dtype=float), 0.5, is_integer=is_integer
+                )
             except Exception as exc:
                 errors[0] = exc
 

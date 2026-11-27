@@ -8,6 +8,8 @@ from exaflow.algorithms.federated.compose.column_transformer import (
     FederatedColumnTransformer,
 )
 from exaflow.algorithms.federated.compose.passthrough import FederatedPassthrough
+from exaflow.algorithms.federated.exceptions import FedError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
 from exaflow.algorithms.federated.feature_engineering.one_hot_encoder import (
     FederatedOneHotEncoder,
 )
@@ -32,14 +34,13 @@ from exaflow.algorithms.federated.model_selection.cross_validation.splitter_kfol
 from exaflow.algorithms.federated.outliers.outlier_report import OutlierRule
 from exaflow.algorithms.federated.outliers.outlier_report import WinsorizationHelper
 from exaflow.algorithms.federated.pipeline import FederatedPipeline
-from exaflow.algorithms.federated.utils import BadInputError
 
 
 @pytest.mark.parametrize(
     "encoder", [FederatedOneHotEncoder, FederatedOrdinalEncoder, FederatedPassthrough]
 )
 def test_transformers_report_invalid_frame_types(encoder):
-    with pytest.raises(BadInputError, match="DataFrame"):
+    with pytest.raises(FedError, match="DataFrame"):
         encoder().transform(None, categorical_vars=[], numerical_vars=[])
 
 
@@ -48,14 +49,14 @@ def test_ordinal_unknown_policy_is_checked_even_for_empty_columns():
     encoder = FederatedOrdinalEncoder(
         categories={"x": ["a"]}, handle_unknown="private-value"
     )
-    with pytest.raises(BadInputError, match="handle_unknown"):
+    with pytest.raises(FedError, match="handle_unknown"):
         encoder.fit(agg_client=client, data=pd.DataFrame(), categorical_vars=[])
     assert client.mock_calls == []
 
 
 @pytest.mark.parametrize("transformer", [FederatedOneHotEncoder, FederatedPassthrough])
 def test_numerical_conversion_errors_do_not_echo_data(transformer):
-    with pytest.raises(BadInputError) as error:
+    with pytest.raises(FedError) as error:
         transformer().transform(
             pd.DataFrame({"x": ["private-value"]}),
             categorical_vars=[],
@@ -70,7 +71,7 @@ def test_column_transformer_checks_options_before_fitting_components():
     transformer = FederatedColumnTransformer(
         [("x", component, ["x"])], remainder="private-value"
     )
-    with pytest.raises(BadInputError, match="remainder"):
+    with pytest.raises(FedError, match="remainder"):
         transformer.fit(
             agg_client=client,
             data=pd.DataFrame({"x": [1]}),
@@ -91,10 +92,28 @@ def test_column_transformer_rejects_inconsistent_component_rows():
         categorical_vars=[],
         numerical_vars=["x"],
     )
-    with pytest.raises(BadInputError):
+    with pytest.raises(FedError):
         transformer.transform(
             pd.DataFrame({"x": [1, 2]}), categorical_vars=[], numerical_vars=["x"]
         )
+
+
+def test_column_transformer_identifies_nonnumeric_component_output():
+    component = Mock()
+    component.transform.return_value = np.array([["private-value"]])
+    data = pd.DataFrame({"x": [1]})
+    transformer = FederatedColumnTransformer([("x", component, ["x"])])
+    transformer.fit(
+        agg_client=Mock(), data=data, categorical_vars=[], numerical_vars=["x"]
+    )
+
+    with pytest.raises(FedError) as error:
+        transformer.transform(data, categorical_vars=[], numerical_vars=["x"])
+
+    assert error.value.reason is FedErrorReason.TRANSFORMER_OUTPUT_NONNUMERIC
+    assert isinstance(error.value.__cause__, FedError)
+    assert error.value.__cause__.reason is FedErrorReason.NUMERIC_VALUES_REQUIRED
+    assert "private-value" not in str(error.value)
 
 
 def test_pipeline_checks_outcome_rows_before_fitting_components():
@@ -102,7 +121,7 @@ def test_pipeline_checks_outcome_rows_before_fitting_components():
     pipeline = FederatedPipeline(
         [("numeric", FederatedPassthrough()), ("model", Mock())]
     )
-    with pytest.raises(BadInputError):
+    with pytest.raises(FedError):
         pipeline.fit(
             agg_client=client,
             data=pd.DataFrame({"x": [1, 2]}),
@@ -116,20 +135,20 @@ def test_pipeline_checks_outcome_rows_before_fitting_components():
 @pytest.mark.parametrize("n_splits", [1, 0, -1])
 def test_kfold_checks_effective_split_count(n_splits):
     splitter = FederatedKFoldSplitter(n_splits)
-    with pytest.raises(BadInputError, match="n_splits"):
+    with pytest.raises(FedError, match="n_splits"):
         splitter.split_indices(5)
 
 
 def test_kfold_checks_row_alignment_without_converting_buffers():
     splitter = FederatedKFoldSplitter(2)
-    with pytest.raises(BadInputError):
+    with pytest.raises(FedError):
         splitter.split(np.ones((4, 2)), np.ones(3))
 
 
 def test_cross_validator_checks_frame_outcome_alignment_before_splitting():
     splitter = Mock()
     cv = FederatedCrossValidator(estimator=Mock(), splitter=splitter, scorer=Mock())
-    with pytest.raises(BadInputError):
+    with pytest.raises(FedError):
         cv.evaluate(
             None,
             np.ones(1),
@@ -152,13 +171,13 @@ def test_cross_validator_checks_frame_outcome_alignment_before_splitting():
 def test_scorers_reject_broadcastable_prediction_lengths(scorer):
     results = Mock()
     results.predict.return_value = np.array([0.5])
-    with pytest.raises(BadInputError):
+    with pytest.raises(FedError):
         scorer().local(results, np.ones((2, 1)), np.array([0, 1]))
 
 
 def test_binary_scorer_rejects_nonbinary_targets_before_prediction():
     results = Mock()
-    with pytest.raises(BadInputError, match="encoded"):
+    with pytest.raises(FedError, match="encoded"):
         FederatedClassificationScorer().local(
             results, np.ones((2, 1)), np.array([0, 2])
         )
@@ -181,7 +200,7 @@ def test_threshold_validation_keeps_existing_order_and_infinite_sentinels(thresh
     ],
 )
 def test_direct_outlier_rules_are_validated(strategy, tail, fold):
-    with pytest.raises(BadInputError):
+    with pytest.raises(FedError):
         WinsorizationHelper.compute_bounds(
             pd.Series([1, 2]), OutlierRule("x", strategy, tail, fold)
         )
@@ -191,7 +210,7 @@ def test_direct_outlier_rules_are_validated(strategy, tail, fold):
 def test_ordinal_category_order_is_checked_without_aggregation(categories):
     client = Mock()
     encoder = FederatedOrdinalEncoder(categories={"x": categories})
-    with pytest.raises(BadInputError, match="Category ordering"):
+    with pytest.raises(FedError, match="Category ordering"):
         encoder.fit(
             agg_client=client, data=pd.DataFrame({"x": ["a"]}), categorical_vars=["x"]
         )
@@ -214,13 +233,13 @@ def test_column_transformer_retains_one_dimensional_component_outputs():
 @pytest.mark.parametrize("n_train, p", [(-1, 1), (5, -1), (2.5, 1)])
 def test_regression_scorer_validates_counts_before_aggregation(n_train, p):
     client = Mock()
-    with pytest.raises(BadInputError):
+    with pytest.raises(FedError):
         FederatedRegressionScorer().aggregate({}, client, n_train, p)
     assert client.mock_calls == []
 
 
 def test_kfold_random_state_errors_are_reported_before_splitting():
-    with pytest.raises(BadInputError, match="K-fold"):
+    with pytest.raises(FedError, match="K-fold"):
         FederatedKFoldSplitter(
             2, shuffle=True, random_state="private-value"
         ).split_indices(4)

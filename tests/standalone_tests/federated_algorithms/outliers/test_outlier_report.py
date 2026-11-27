@@ -6,12 +6,14 @@ import pytest
 
 from exaflow.algorithms import specifications as specs
 from exaflow.algorithms.exareme3.outliers.outlier_report import OutlierReport
+from exaflow.algorithms.exareme3.outliers.outlier_report import local_step
+from exaflow.algorithms.federated.exceptions import FedObservationError
 from exaflow.algorithms.federated.outliers.outlier_report import FederatedOutlierReport
 from exaflow.algorithms.federated.outliers.outlier_report import OutlierRule
 from exaflow.algorithms.federated.outliers.outlier_report import WinsorizationHelper
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
+from exaflow.worker import config as worker_config
 from exaflow.worker_communication import BadUserInput
-from exaflow.worker_communication import InsufficientDataError
 
 
 def _make_algorithm(params):
@@ -214,16 +216,24 @@ def test_report_keeps_zero_counts_visible():
     assert payload["total_outlier_percentage"] == 0.0
 
 
-def test_report_raises_insufficient_data_for_small_dataset():
+def test_report_requires_minimum_observations():
     data = pd.DataFrame({"dataset": ["d1", "d1"], "v": [1.0, 2.0]})
     report = FederatedOutlierReport()
 
-    with pytest.raises(InsufficientDataError, match="Insufficient non-missing data"):
+    with pytest.raises(FedObservationError, match="Insufficient non-missing data"):
         report.report(
             data=data,
             rules={"v": OutlierRule("v", "iqr", "both", 1.5)},
             min_row_count=3,
         )
+
+
+def test_exareme3_report_leaves_translation_to_shared_boundary(monkeypatch):
+    data = pd.DataFrame({"dataset": ["d1", "d1"], "v": [1.0, 2.0]})
+    monkeypatch.setattr(worker_config.privacy, "minimum_row_count", 3)
+
+    with pytest.raises(FedObservationError):
+        local_step(data, rules={"v": {"strategy": "iqr", "tail": "both", "fold": 1.5}})
 
 
 def test_report_returns_local_dataset_records_without_describe_fields():

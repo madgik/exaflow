@@ -9,13 +9,13 @@ import pytest
 from exaflow.algorithms.exareme3.linear_model.cox_regression_stacked import (
     _to_binary_event_array,
 )
+from exaflow.algorithms.federated.exceptions import FedError
 from exaflow.algorithms.federated.linear_model.cox_regression_stacked import (
     FederatedStackedCoxRegression,
 )
 from exaflow.algorithms.federated.linear_model.logistic_regression import (
     FederatedLogisticRegression,
 )
-from exaflow.algorithms.federated.utils import BadInputError
 from tests.standalone_tests.federated_algorithms.linear_model._cox_case_utils import (
     CASE_MATRIX,
 )
@@ -26,7 +26,7 @@ from tests.standalone_tests.federated_algorithms.linear_model._cox_case_utils im
     simulate_cox_case,
 )
 from tests.standalone_tests.federated_algorithms.linear_model.cox_vs_stat_models import (
-    CoxReferencePH,
+    fit_statsmodels_cox,
 )
 from tests.standalone_tests.federated_algorithms.utils import FederatedAlgorithmTest
 from tests.standalone_tests.federated_algorithms.utils.dummy_agg_client import (
@@ -187,16 +187,7 @@ class TestFederatedStackedCoxRegression(FederatedAlgorithmTest):
         events = y[:, 1]
         stacking = _fit_centralized_stacking(X, times, events)
         t0 = perf_counter()
-        reference = (
-            CoxReferencePH(ties="breslow")
-            .fit(
-                X,
-                times,
-                events,
-                feature_names=stacking["indep_vars"],
-            )
-            .summary()
-        )
+        reference = fit_statsmodels_cox(X, times, events)
         reference["fit_time_sec"] = float(perf_counter() - t0)
         return {
             "stacking": stacking,
@@ -502,7 +493,7 @@ def test_stacked_cox_rejects_when_global_events_are_zero():
     X = np.array([[0.1], [0.4], [-0.2], [0.7]], dtype=float)
     y = np.array([[2.0, 0.0], [5.0, 0.0], [7.0, 0.0], [8.0, 0.0]], dtype=float)
 
-    with pytest.raises(BadInputError, match="observed event"):
+    with pytest.raises(FedError, match="observed event"):
         _simulate_federated_execution(
             2,
             lambda worker_id, agg_client: FederatedStackedCoxRegression(
@@ -520,7 +511,7 @@ def test_stacked_cox_rejects_zero_covariates_after_encoding():
     X = np.empty((4, 0), dtype=float)
     y = np.array([[2.0, 1.0], [5.0, 0.0], [7.0, 1.0], [8.0, 0.0]], dtype=float)
 
-    with pytest.raises(BadInputError, match="at least one covariate"):
+    with pytest.raises(FedError, match="at least one covariate"):
         FederatedStackedCoxRegression(time_grid_strategy="distinct_event_times").fit(
             X,
             y,

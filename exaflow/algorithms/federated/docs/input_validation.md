@@ -1,11 +1,11 @@
 # Federated package input validation
 
-Validation is local and raises `BadInputError`, a `ValueError` subclass. Expected
-conversion failures are reported without echoing row values. The package does
+Validation is local and raises `FedError` subclasses requiring a
+`FedErrorReason` enum member. Expected conversion failures are reported
+without echoing row values. The package does
 not coordinate error propagation or cancellation: callers own the distributed
-execution lifecycle. Exareme3 converts worker input errors to user errors and
-cleans up the request's aggregation context; running peers need not stop
-immediately.
+execution lifecycle. Exareme3 chooses an application exception and message from
+the reason and cleans up aggregation state; running peers need not stop immediately.
 
 The changes preserve successful numerical calculations, public signatures,
 result shapes, defaults, existing conversions, missing-value policies, and
@@ -54,10 +54,59 @@ never inferred from the data.
 | `check_survival_target`, `check_survival_inputs` | Shared Cox target parsing and the two models' existing local survival requirements. |
 
 `ValidationIssue` supplies a code, input name and safe message on structured
-helper errors. Existing method-specific `BadInputError` checks remain valid;
-callers should catch `BadInputError` rather than depend on its private subclass.
+helper errors. Callers catch `FedError` for structured and method-specific
+failures.
 Transport and programming errors are not captured by a validation context or
 converted into validation failures.
+
+## Error reasons and message policies
+
+Every explicit library failure supplies a concrete enum reason and its diagnostic
+fields. Values and statistical constraints use `FedValueError`, unsupported types
+use `FedTypeError`, invalid call sequences use `FedStateError`, and observation
+requirements use `FedObservationError`. All inherit from `FedError` and preserve
+the corresponding Python `ValueError`, `TypeError`, or `RuntimeError` semantics.
+
+```python
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedObservationError
+
+raise FedObservationError(
+    FedErrorReason.INSUFFICIENT_FOLD_SAMPLES,
+    n_samples=n_rows,
+    n_splits=n_splits,
+)
+```
+
+Members in `exceptions.py` contain a stable code and a diagnostic
+template. Separate members can share a template when different conditions need
+different application policies. Declare members using `error_reason(template)`;
+the string code is generated from the lowercase enum name, without a handwritten
+code or `auto()` in each declaration. Reordering reasons does not change their
+values, and identical templates do not create aliases.
+The shared constructor requires the enum,
+stores it in `.reason`, retains the keyword arguments in `.details`, and stores
+the formatted diagnostic in `.message` and `str(error)`. Invalid reason types
+raise `FedTypeError` with `INVALID_ERROR_REASON`; a missing required argument
+raises Python's `TypeError`, and missing template fields raise `KeyError`.
+
+The centralized Exareme3 adapter declares an explicit policy for every enum
+member as `(exception_type, message_or_KEEP_MESSAGE)`. It catches only
+`FedError` subclasses. The reason independently selects `BadUserInput`,
+`AnalysisExecutionError`, `InsufficientDataError`, or a native exception; the source
+class does not assign user responsibility. The application classification rules
+are documented in `documentation/context/conventions.md`. `KEEP_MESSAGE` retains
+the diagnostic for any target type.
+Standalone CI checks policy coverage and explicit failure raises. The constructor
+enforces enum types at runtime. Add a policy entry when adding a reason.
+
+This Python interface replaces `BadInputError` and `BadInputReason` imports
+without aliases. Shared checks accept concrete enum reasons. Runtime-owned
+request checks raise `BadUserInput` directly. Dependency exceptions and framework
+wrappers retain their existing library behaviour; no blanket normalization is
+introduced. There are no private control-flow exceptions in the current package.
+Rollback requires reverting the constructor, migrated callers, and policies
+together.
 
 ## Algorithm coverage
 
@@ -92,7 +141,7 @@ operations also check current mutable parameters that they consume.
 | Binned Mann–Whitney U | Supported alternative, Boolean continuity flag and integral bins of at least two, before aggregation. Existing filtering of non-finite observations, group counts, ties and zero-variance guard retained. |
 | Cross-tabulation | Required frame columns and Boolean `dropna`; existing category union, explicit-category reindexing, missing-value handling, pruning and empty-table guard retained. |
 | Chi-squared | Delegates frame/table validation to cross-tabulation and mathematical table checks to SciPy; no duplicated wrapper validation or new minimum category count. |
-| Fisher exact | Same cross-tabulation validation and existing final 2x2 requirement. No extra category-discovery collective added. |
+| Fisher exact | Same cross-tabulation validation and existing final 2x2 requirement. Unsupported shapes raise `FedValueError` with `FedErrorReason.FISHER_TABLE_SHAPE` and `shape` details. No extra category-discovery collective added. |
 | Describe | Frame check; existing per-variable missing-value handling, missing-column behavior and local/global record privacy masking retained. |
 | Descriptive statistics facade | Delegates to describe, histogram and Pearson implementations, without duplicating their checks. |
 | Primitive statistics | Finite numeric `ddof` where consumed, including existing support for negative/fractional finite values; existing ndarray/rank, paired-shape and global-count guards retained. No new blanket missing-value rule. |
@@ -109,6 +158,14 @@ operations also check current mutable parameters that they consume.
 | Multiclass scorer | Nonempty prediction/target rank and length alignment; existing empty paths and ignored unknown labels retained. |
 | Outlier reporting/winsorization | Supported strategy/tail, finite valid fold and required report columns. Existing numerical coercion, per-dataset computation, suppression and privacy thresholds remain. Direct core callers receive input errors rather than relying on wrapper parameter validation. |
 | SQL and aggregation utilities | Existing specialized array/category/aggregation checks retained. No blanket numeric conversion of categorical values and no new collectives. |
+
+Percentile ignores NaNs when determining global bounds. Globally empty,
+all-NaN data, or non-finite bounds caused by infinities produce `None` in either
+mode; infinities are not filtered to compute a result from the remaining values.
+The floating-point path checks bounds before calling the histogram. The integer
+path recovers only from `HISTOGRAM_FINITE_VALUES_REQUIRED`: it returns `None`
+initially or retains an approximation if refinement cannot determine finite
+bounds. Other histogram failures propagate to the caller.
 
 ## Exareme3 boundary
 
@@ -128,14 +185,14 @@ category-to-binary conversion remain request/metadata concerns.
 
 ## Invalid-input errors and compatibility
 
-New or clearer `BadInputError` failures include malformed numeric inputs,
+Explicit `FedError` failures include malformed numeric inputs,
 non-finite solver settings, unsupported options, mismatched target or prediction
 lengths, invalid effective feature widths, bad component structure, invalid
 category ordering and insufficient global PCA/ANOVA observations. These replace
 incidental broadcasting, NumPy/pandas/SciPy failures or invalid mathematical
 results for unsupported inputs. Structured errors do not include raw row values.
-Existing specialized primitive/type errors are retained where no migration was
-needed. Global count checks use existing aggregates, never an extra validation
+Existing primitive/type diagnostics now use the corresponding `FedError`
+subclass. Global count checks use existing aggregates, never an extra validation
 round.
 
 There are no added aggregation calls. The existing K-means finite-status sum is

@@ -4,6 +4,9 @@ from abc import abstractmethod
 import numpy as np
 import pandas as pd
 
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedTypeError
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 
 
@@ -226,9 +229,9 @@ class NumpyUnaryAggregationFunction(ABC):
 
     def __call__(self, x: np.ndarray, *args, **kwargs):
         if not isinstance(x, np.ndarray):
-            raise TypeError("Input must be a numpy array")
+            raise FedTypeError(FedErrorReason.NUMPY_ARRAY_REQUIRED)
         if x.ndim > 1:
-            raise ValueError("Input must be a 1D array")
+            raise FedValueError(FedErrorReason.ONE_DIMENSIONAL_ARRAY_REQUIRED)
         self.compute(x, **kwargs)
 
     @abstractmethod
@@ -242,9 +245,9 @@ class NumpyBinaryAggregationFunction(ABC):
 
     def __call__(self, x: np.ndarray, y: np.ndarray, *args, **kwargs):
         if not isinstance(x, np.ndarray) or not isinstance(y, np.ndarray):
-            raise TypeError("Inputs must be numpy arrays")
+            raise FedTypeError(FedErrorReason.NUMPY_ARRAYS_REQUIRED)
         if x.ndim > 1 or y.ndim > 1:
-            raise ValueError("Inputs must be 1D arrays")
+            raise FedValueError(FedErrorReason.ONE_DIMENSIONAL_ARRAYS_REQUIRED)
         self.compute(x, **kwargs)
 
     @abstractmethod

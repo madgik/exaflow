@@ -7,7 +7,8 @@ from typing import Sequence
 import numpy as np
 from scipy import stats
 
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
@@ -166,9 +167,7 @@ class FederatedClassicalCoxRegression(FederatedEstimator):
             agg_client=agg_client,
         )
         if n_events <= 0:
-            raise BadInputError(
-                "cox_regression_classical requires at least one observed event globally."
-            )
+            raise FedValueError(FedErrorReason.COX_GLOBAL_EVENTS_REQUIRED)
 
         beta = np.zeros(n_covariates, dtype=float)
         converged = False
@@ -288,9 +287,7 @@ class FederatedClassicalCoxRegression(FederatedEstimator):
             dtype=float,
         )
         if global_event_times.size == 0:
-            raise BadInputError(
-                "cox_regression_classical requires at least one observed event."
-            )
+            raise FedValueError(FedErrorReason.COX_EVENTS_REQUIRED)
         return np.sort(global_event_times)
 
     @staticmethod
@@ -412,9 +409,7 @@ class FederatedClassicalCoxRegression(FederatedEstimator):
         s2: np.ndarray,
     ) -> tuple[float, np.ndarray, np.ndarray]:
         if np.any(s0 <= 0):
-            raise BadInputError(
-                "Encountered an empty or invalid risk set while fitting cox_regression_classical."
-            )
+            raise FedValueError(FedErrorReason.COX_RISK_SET_INVALID)
 
         linear_event_term = float(np.sum(e1 @ beta))
         loglik = linear_event_term - float(np.sum(d * np.log(s0)))

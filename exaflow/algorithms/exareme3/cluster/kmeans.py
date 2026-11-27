@@ -6,6 +6,7 @@ from typing import Optional
 
 import numpy as np
 from pydantic import BaseModel
+from pydantic import FiniteFloat
 from pydantic import model_validator
 
 from exaflow.algorithms import specifications as specs
@@ -72,7 +73,7 @@ class KMeansReusablePreprocessing(BaseModel):
     enumeration_prefix: str
     preprocessing_name: str
     cluster_variables: List[str]
-    centers: Dict[str, Dict[str, float]]
+    centers: Dict[str, Dict[str, FiniteFloat]]
     source_context: KMeansReplaySourceContext
     available_outputs: List[KMeansReusableOutput]
     cluster_choices: List[KMeansClusterChoice]

@@ -9,10 +9,14 @@ import pytest
 from exaflow.aggregation_clients.controller_aggregation_client import (
     ControllerAggregationClient,
 )
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.controller.services.controller_shutdown import SHUTDOWN_CLEANUP_TIMEOUT
 from exaflow.controller.services.errors import ControllerShuttingDownError
 from exaflow.controller.services.exareme3 import strategies
 from exaflow.protos.aggregation_server import aggregation_server_pb2 as agg_pb2
+from exaflow.worker_communication import AnalysisExecutionError
+from exaflow.worker_communication import BadUserInput
 
 
 class _RecordingAggregationClient:
@@ -36,8 +40,27 @@ class _RecordingAggregationClient:
         self.calls.append("close")
 
 
+@pytest.mark.parametrize(
+    "error, expected_error",
+    [
+        (ValueError("worker failed"), ValueError),
+        (
+            FedValueError(
+                FedErrorReason.INSUFFICIENT_OBSERVATIONS,
+                name="Sample",
+                comparison="at least",
+                minimum=2,
+            ),
+            BadUserInput,
+        ),
+        (
+            FedValueError(FedErrorReason.LOGISTIC_CONVERGENCE_FAILED),
+            AnalysisExecutionError,
+        ),
+    ],
+)
 def test_aggregation_strategy_cleans_up_and_closes_client_when_algorithm_fails(
-    monkeypatch,
+    monkeypatch, error, expected_error
 ):
     created = []
 
@@ -52,10 +75,10 @@ def test_aggregation_strategy_cleans_up_and_closes_client_when_algorithm_fails(
         return client
 
     async def failing_execute(self):
-        raise ValueError("worker failed")
+        raise error
 
     monkeypatch.setattr(strategies, "ControllerAggregationClient", factory)
-    monkeypatch.setattr(strategies.Exareme3Strategy, "execute", failing_execute)
+    monkeypatch.setattr(strategies.Exareme3Strategy, "_execute", failing_execute)
     strategy = object.__new__(strategies.Exareme3WithAggregationServerStrategy)
     strategy._request_id = "req"
     strategy._context_id = "ctx"
@@ -63,7 +86,7 @@ def test_aggregation_strategy_cleans_up_and_closes_client_when_algorithm_fails(
     strategy._logger = logging.getLogger(__name__)
     strategy._controller = types.SimpleNamespace(task_timeout=300)
 
-    with pytest.raises(ValueError, match="worker failed"):
+    with pytest.raises(expected_error):
         asyncio.run(strategy.execute())
 
     assert created[-1].calls == [

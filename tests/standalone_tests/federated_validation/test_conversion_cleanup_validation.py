@@ -2,11 +2,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from exaflow.algorithms.federated.exceptions import FedError
 from exaflow.algorithms.federated.feature_engineering.ordinal_encoder import (
     FederatedOrdinalEncoder,
 )
 from exaflow.algorithms.federated.mixed_effects import mixed_effects_utils
-from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils import as_numeric_array
 from exaflow.algorithms.federated.validation import ArrayPolicy
 from exaflow.algorithms.federated.validation import check_array
@@ -39,7 +39,7 @@ def test_default_array_dtype_keeps_existing_float_conversion():
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
 @pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
 def test_explicit_dtype_retains_finite_validation(dtype, value):
-    with pytest.raises(BadInputError, match="finite"):
+    with pytest.raises(FedError, match="finite"):
         check_array(
             np.array([value], dtype=dtype),
             policy=ArrayPolicy(dimensions=(1,)),
@@ -78,7 +78,7 @@ def test_mixed_effects_keeps_existing_list_outcome_conversion():
 
 @pytest.mark.parametrize("outcome", [[np.nan], [np.inf], [-np.inf]])
 def test_mixed_effects_still_rejects_nonfinite_outcomes(outcome):
-    with pytest.raises(BadInputError, match="finite"):
+    with pytest.raises(FedError, match="finite"):
         mixed_effects_utils.validate_inputs(
             np.ones((1, 1)), np.asarray(outcome), np.array(["a"])
         )
@@ -102,7 +102,7 @@ def test_series_conversion_preserves_numpy_values_and_missing_value_behaviour(se
     try:
         expected = np.asarray(series, dtype=float)
     except (TypeError, ValueError, OverflowError):
-        with pytest.raises(BadInputError, match="numeric values"):
+        with pytest.raises(FedError, match="numeric values"):
             as_numeric_array(series, input_name="Features")
     else:
         actual = as_numeric_array(series, input_name="Features")
@@ -121,7 +121,7 @@ def test_numpy_backed_series_conversion_reuses_read_only_values():
 
 @pytest.mark.parametrize("series_dtype", [object, "string"])
 def test_series_conversion_errors_do_not_echo_values(series_dtype):
-    with pytest.raises(BadInputError) as error:
+    with pytest.raises(FedError) as error:
         as_numeric_array(
             pd.Series(["private-value"], dtype=series_dtype), input_name="Features"
         )
@@ -144,7 +144,7 @@ def test_ordinal_transform_validates_category_mutations_after_fit(categories):
     encoder.fit(agg_client=None, data=data, categorical_vars=["x"])
     encoder.categories_["x"] = categories
 
-    with pytest.raises(BadInputError, match="Category ordering"):
+    with pytest.raises(FedError, match="Category ordering"):
         encoder.transform(data, categorical_vars=["x"])
 
 
@@ -162,7 +162,7 @@ def test_ordinal_transform_rejects_unknown_values_when_requested():
     encoder.fit(
         agg_client=None, data=pd.DataFrame({"x": ["a"]}), categorical_vars=["x"]
     )
-    with pytest.raises(BadInputError, match="Unknown categories"):
+    with pytest.raises(FedError, match="Unknown categories"):
         encoder.transform(pd.DataFrame({"x": ["b"]}), categorical_vars=["x"])
 
 

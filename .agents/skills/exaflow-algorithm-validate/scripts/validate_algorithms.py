@@ -32,6 +32,11 @@ PLACEHOLDER_PATTERN = re.compile(
     r"\bTODO\b|NotImplementedError|__REPLACE_ME_[A-Z0-9_]*__"
 )
 
+FEDERATED_ERROR_TESTS = (
+    "tests/standalone_tests/test_federated_exception_convention.py",
+    "tests/standalone_tests/exareme3/test_error_translation.py",
+)
+
 PREFERRED_DOC_PATHS = {
     "anova_oneway": "documentation/algorithms/ANOVAOneWay.md",
     "anova_twoway": "documentation/algorithms/ANOVATwoWay.md",
@@ -1057,6 +1062,29 @@ def run_fast_tier(
     algorithms: list[str],
     repo_root: Path,
 ) -> None:
+    error_command = ["uv", "run", "pytest", "-q", *FEDERATED_ERROR_TESTS]
+    rc, stdout, stderr = run_command(error_command, cwd=repo_root)
+    error_output = "\n".join(part for part in (stdout, stderr) if part)
+    register(
+        report,
+        algorithm="*",
+        phase="runtime",
+        check="federated_error_contract",
+        status="pass" if rc == 0 else "failed",
+        severity="pass" if rc == 0 else "failed",
+        message="Federated error contract checks passed."
+        if rc == 0
+        else (error_output or "Federated error contract checks failed."),
+        path=None,
+        repo_root=repo_root,
+        next_action=(
+            f"Run `{' '.join(error_command)}` from the repository root and fix "
+            "the reported exception conventions or translation policies."
+            if rc != 0
+            else None
+        ),
+    )
+
     standalone_files: list[str] = []
     for algorithm in algorithms:
         for path in discover_standalone_paths(repo_root, algorithm):

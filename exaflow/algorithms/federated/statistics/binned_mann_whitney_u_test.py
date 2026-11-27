@@ -5,8 +5,10 @@ from numbers import Integral
 import numpy as np
 from scipy.stats import norm
 
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedObservationError
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.statistics.histogram import SimpleHistogram
-from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
@@ -75,7 +77,7 @@ class FederatedBinnedMannWhitneyUTest:
         n2 = int(self.agg.global_count(y))
 
         if n1 == 0 or n2 == 0:
-            raise BadInputError("Both groups must have at least one observation.")
+            raise FedObservationError(FedErrorReason.MANN_WHITNEY_GROUP_EMPTY)
 
         sum_ranks_y, bin_counts = self._rank(x, y, num_bins)
 
@@ -88,7 +90,7 @@ class FederatedBinnedMannWhitneyUTest:
 
         sigma = np.sqrt(n1 * n2 * (n + 1 - tie_correction) / 12.0)
         if sigma == 0:
-            raise BadInputError("Standard deviation is zero; cannot compute z-score.")
+            raise FedValueError(FedErrorReason.ZERO_RANK_VARIATION)
 
         # Mirror scipy.stats.mannwhitneyu(method="asymptotic"): pick the U for
         # the alternative, always test its upper tail, and apply the continuity

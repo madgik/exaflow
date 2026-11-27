@@ -99,6 +99,22 @@ def _agg_client():
     return SimulatedAggClient(worker_id=0, coordinator=coordinator)
 
 
+@pytest.mark.parametrize(
+    "scores, message",
+    [
+        (None, "valid matrix"),
+        (np.ones(6), "valid matrix"),
+        (np.ones((5, 3)), "row count"),
+    ],
+)
+def test_invalid_pca_output_is_an_internal_error(monkeypatch, scores, message):
+    creator = _validate(_creator(["PC1"]))
+    monkeypatch.setattr(FederatedPCA, "fit_transform", lambda self, X: scores)
+
+    with pytest.raises(RuntimeError, match=message):
+        creator.transform_data(data=_data(), agg_client=_agg_client())
+
+
 @pytest.mark.parametrize("count", [1, 2, 3])
 def test_creator_supports_one_two_and_more_dynamic_components(count):
     selected = [f"PC{index}" for index in range(1, count + 1)]

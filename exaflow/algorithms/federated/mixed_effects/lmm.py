@@ -7,6 +7,10 @@ from typing import Any
 import numpy as np
 from scipy import stats
 
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedObservationError
+from exaflow.algorithms.federated.exceptions import FedStateError
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.mixed_effects.mixed_effects_utils import apply_weights
 from exaflow.algorithms.federated.mixed_effects.mixed_effects_utils import (
     build_local_hist,
@@ -29,7 +33,6 @@ from exaflow.algorithms.federated.mixed_effects.mixed_effects_utils import (
 from exaflow.algorithms.federated.mixed_effects.mixed_effects_utils import (
     validate_inputs,
 )
-from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
@@ -319,7 +322,7 @@ class FederatedLMM(FederatedEstimator):
             nonnegative=self._nonnegative_parameters,
         )
         if min_iter > max_iter:
-            raise BadInputError("min_iter cannot be greater than max_iter.")
+            raise FedValueError(FedErrorReason.LMM_ITERATION_RANGE_INVALID)
         check_scalar(
             upper_bound,
             name="upper_bound",
@@ -333,9 +336,7 @@ class FederatedLMM(FederatedEstimator):
             or init_sigma2 > upper_bound
             or init_sigma_u2 > upper_bound
         ):
-            raise BadInputError(
-                "init_sigma2 and init_sigma_u2 must be within [lower_bound, upper_bound]."
-            )
+            raise FedValueError(FedErrorReason.LMM_INITIAL_VARIANCE_INVALID)
 
         self.fit_intercept = fit_intercept
         self.max_iter = int(max_iter)
@@ -635,9 +636,7 @@ class FederatedLMM(FederatedEstimator):
             ).reshape(-1)[0]
         )
         if n_obs <= X.shape[1]:
-            raise BadInputError(
-                "LMM cannot run because observations are fewer than predictors."
-            )
+            raise FedObservationError(FedErrorReason.LMM_OBSERVATIONS_INSUFFICIENT)
 
         cluster_stats, cluster_sizes, cluster_sums = _prepare_cluster_stats(
             X,
@@ -753,7 +752,7 @@ class FederatedLMM(FederatedEstimator):
                 break
 
         if final_profile is None:  # pragma: no cover - defensive
-            raise RuntimeError("LMM finished without a profile state.")
+            raise FedStateError(FedErrorReason.LMM_PROFILE_STATE_MISSING)
 
         cov_params = final_profile.a_inv
         bse = np.sqrt(np.maximum(np.diag(cov_params), 0.0))

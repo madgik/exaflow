@@ -222,11 +222,6 @@ class KMeansClusterCreator(PreprocessingStep):
 
     def transform_data(self, *, data: pd.DataFrame, agg_client=None) -> pd.DataFrame:
         if self._centers is None:
-            if agg_client is None:
-                raise BadUserInput(
-                    "An aggregation client is required when fitting K-means "
-                    "without reusable_preprocessing."
-                )
             model = FederatedKMeans(
                 n_clusters=self._params["k"],
                 init_method=self._params.get("init_method", INIT_RANDOM_RANGE),

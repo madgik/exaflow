@@ -3,6 +3,8 @@ import pandas as pd
 import pytest
 from scipy.stats import fisher_exact
 
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.statistics.fisher_exact import FisherExact
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
@@ -155,4 +157,32 @@ class TestFederatedFisherExact(FederatedAlgorithmTest):
             outcome="outcome",
             outcome_categories=case["outcome_categories"],
             dropna=case["dropna"],
+        )
+
+    @pytest.mark.parametrize(
+        "factor_values, shape",
+        [
+            (["A", "A", "B", "B", "B", "B", "C", "C"], (3, 2)),
+            (["A"] * 8, (1, 2)),
+        ],
+        ids=["3x2", "1x2"],
+    )
+    def test_rejects_unsupported_table_shape(self, factor_values, shape):
+        dataset = pd.DataFrame({"factor": factor_values, "outcome": ["X", "Y"] * 4})
+
+        with pytest.raises(FedValueError) as exc_info:
+            self.run_comparison(
+                X=dataset,
+                y=dataset["outcome"],
+                n_workers=2,
+                factor="factor",
+                outcome="outcome",
+                dropna=True,
+            )
+
+        assert type(exc_info.value) is FedValueError
+        assert exc_info.value.reason is FedErrorReason.FISHER_TABLE_SHAPE
+        assert exc_info.value.details["shape"] == shape
+        assert str(exc_info.value) == (
+            f"Expected a 2x2 contingency table, got shape {shape}."
         )

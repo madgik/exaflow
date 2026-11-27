@@ -14,6 +14,7 @@ from exaflow.controller.services.errors import WorkerTaskTimeoutError
 from exaflow.controller.services.errors import WorkerUnresponsiveError
 from exaflow.controller.worker_client.app import WorkerMessageTooLargeError
 from exaflow.data_filters import FilterError
+from exaflow.worker_communication import AnalysisExecutionError
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import DataModelUnavailable
 from exaflow.worker_communication import DatasetUnavailable
@@ -34,6 +35,7 @@ class HTTPStatusCode(enum.IntEnum):
     UNPROCESSABLE_CONTENT = 422
     BAD_USER_INPUT = 460
     INSUFFICIENT_DATA_ERROR = 461
+    ANALYSIS_EXECUTION_ERROR = 462
     SERVICE_UNAVAILABLE = 503
     WORKER_UNRESPONSIVE_ALGORITHM_EXECUTION_ERROR = 512
     WORKER_TASK_TIMEOUT_ALGORITHM_EXECUTION_ERROR = 513
@@ -49,6 +51,7 @@ ERROR_RESPONSES = {
     RequestValidationError: (HTTPStatusCode.UNPROCESSABLE_CONTENT, logging.INFO),
     FilterError: (HTTPStatusCode.BAD_REQUEST, logging.INFO),
     BadUserInput: (HTTPStatusCode.BAD_USER_INPUT, logging.INFO),
+    AnalysisExecutionError: (HTTPStatusCode.ANALYSIS_EXECUTION_ERROR, logging.INFO),
     DataModelUnavailable: (HTTPStatusCode.BAD_USER_INPUT, logging.INFO),
     DatasetUnavailable: (HTTPStatusCode.BAD_USER_INPUT, logging.INFO),
     InsufficientDataError: (
@@ -83,6 +86,8 @@ def http_error_body(error: Exception) -> str:
 
 
 def _log_prefix(error_type: type[Exception]) -> str:
+    if error_type is AnalysisExecutionError:
+        return "Analysis Execution Error"
     if error_type in _INTERNAL_SERVER_ERROR_TYPES:
         return "Internal Server Error"
     return "Request Error"

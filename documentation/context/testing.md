@@ -49,6 +49,34 @@ For shared validation and all federated algorithm integrations:
 uv run pytest -q tests/standalone_tests/federated_validation tests/standalone_tests/federated_algorithms
 ```
 
+The standalone exception-convention test checks every explicit library failure
+raise for a `FedError` subclass and a supplied reason. The shared constructor
+owns runtime enum validation. Translation tests require an explicit exception
+class and message policy for every `FedErrorReason`, including `KEEP_MESSAGE`.
+Focused runtime tests cover worker logging, cleanup, observation failures, native
+exception targets, and controller construction, preprocessing, and execution.
+Worker RPC tests distinguish internal execution failures from connection failures.
+Recognized computational failures are checked separately from user-input errors:
+translation and controller tests cover `AnalysisExecutionError`, HTTP 462, and
+RabbitMQ's matching error code. A real worker gRPC round trip checks all analysis
+error categories, including generic handling of internal diagnostics. Focused
+tests cover nonnumeric transformer output, invalid PCA output, nonfinite input
+observations versus computed K-means centers, and finite replay-center validation.
+
+Both algorithm validator tiers run the exception-convention and translation test
+modules once per invocation with selected algorithms. The separate
+`federated_error_contract` result must pass before integration can report
+`"done": true`. Failure output includes the pytest diagnostics and rerun command.
+See the [canonical error contract](conventions.md#federated-error-contract).
+
+```bash
+uv run pytest -q tests/standalone_tests/test_federated_exception_convention.py tests/standalone_tests/controller/test_worker_rpc_errors.py
+```
+
+```bash
+uv run pytest -q tests/standalone_tests/exareme3/test_error_translation.py tests/standalone_tests/exareme3/test_udf_service.py tests/standalone_tests/controller/services/test_exareme3_strategy_execution.py
+```
+
 ## Algorithm Integration Tooling
 
 Runtime wrapper tests follow domain folders under

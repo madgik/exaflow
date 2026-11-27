@@ -11,16 +11,20 @@ from exaflow import exareme3_preprocessing_step_classes
 from exaflow.aggregation_clients.exareme3_udf_aggregation_client import (
     Exareme3UDFAggregationClient as AggregationClient,
 )
+from exaflow.algorithms.exareme3.utils.error_translation import (
+    translate_federated_error,
+)
 from exaflow.algorithms.exareme3.utils.metadata_enums import enforce_enum_order
 from exaflow.algorithms.exareme3.utils.registry import AGGREGATION_CLIENT_PARAMETER_NAME
 from exaflow.algorithms.exareme3.utils.registry import exareme3_registry
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedError
 from exaflow.algorithms.utils.pandas_utils import convert_to_pandas_dataframe
 from exaflow.worker import config as worker_config
 from exaflow.worker.exareme3.lazy_aggregation import lazy_agg
 from exaflow.worker.exareme3.udf.udf_db import load_algorithm_arrow_table
 from exaflow.worker.utils.logger import get_logger
 from exaflow.worker.utils.logger import initialise_logger
+from exaflow.worker_communication import AnalysisExecutionError
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import InsufficientDataError
 from exaflow.worker_communication import RunUdfSystemArgs
@@ -67,13 +71,25 @@ def run_udf(
                 udf_registry_key
             ),
         )
-    except BadInputError as e:
+    except FedError as e:
+        error = translate_federated_error(e)
+        log_message = (
+            "Insufficient data for computation."
+            if isinstance(error, InsufficientDataError)
+            else str(error)
+        )
         logger = get_logger()
         logger.info(
-            f"Bad input while calling udf. (request_id={request_id})(udf={udf_registry_key})(error={e})"
+            f"Algorithm failure while calling udf. (request_id={request_id})(udf={udf_registry_key})(error={log_message})"
         )
         _unregister_aggregation_client(agg_client)
-        raise BadUserInput(str(e)) from e
+        raise error from e
+    except (BadUserInput, AnalysisExecutionError) as e:
+        get_logger().info(
+            f"Analysis failure while calling udf. (request_id={request_id})(udf={udf_registry_key})(error={e})"
+        )
+        _unregister_aggregation_client(agg_client)
+        raise
     except TypeError as e:
         logger = get_logger()
         logger.error(

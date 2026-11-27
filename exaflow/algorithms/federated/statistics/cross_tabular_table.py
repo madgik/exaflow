@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
 
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
@@ -101,7 +102,7 @@ class CrossTabTable:
         ]
 
         if cross_tab.empty or cross_tab.size == 0:
-            raise BadInputError("Contingency table is empty after pruning.")
+            raise FedValueError(FedErrorReason.EMPTY_CONTINGENCY_TABLE)
 
         return cross_tab
 

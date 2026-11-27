@@ -4,11 +4,8 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 
-
-class BadInputError(ValueError):
-    def __init__(self, message):
-        super().__init__(message)
-        self.message = message
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 
 
 def as_numeric_array(data, *, input_name: str, dtype=float) -> np.ndarray:
@@ -18,7 +15,10 @@ def as_numeric_array(data, *, input_name: str, dtype=float) -> np.ndarray:
             return data.to_numpy(dtype=dtype, copy=False)
         return np.asarray(data, dtype=dtype)
     except (TypeError, ValueError, OverflowError):
-        raise BadInputError(f"{input_name} must contain numeric values.") from None
+        raise FedValueError(
+            FedErrorReason.NUMERIC_VALUES_REQUIRED,
+            input_name=input_name,
+        ) from None
 
 
 def to_numpy(x) -> np.ndarray:

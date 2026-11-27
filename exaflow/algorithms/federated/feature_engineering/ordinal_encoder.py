@@ -7,7 +7,8 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedTransformer
 from exaflow.algorithms.federated.validation import as_scalar
@@ -51,10 +52,7 @@ class FederatedOrdinalEncoder(FederatedTransformer):
         check_dataframe(data)
         check_choice(self.handle_unknown, ("ignore", "error"), name="handle_unknown")
         if not self._preset_categories:
-            raise BadInputError(
-                "FederatedOrdinalEncoder requires categories to be provided "
-                "via the constructor."
-            )
+            raise FedValueError(FedErrorReason.ENCODER_CATEGORIES_REQUIRED)
         for var in categorical_vars:
             check_category_order(self._preset_categories.get(var, []))
         self.categories_ = {
@@ -96,9 +94,7 @@ class FederatedOrdinalEncoder(FederatedTransformer):
             cat = pd.Categorical(col, dtype=dtype)
             codes = cat.codes
             if self.handle_unknown == "error" and np.any(codes < 0):
-                raise BadInputError(
-                    f"Unknown categories encountered in column '{var}'."
-                )
+                raise FedValueError(FedErrorReason.ENCODER_UNKNOWN_CATEGORY, var=var)
             if self.handle_unknown == "ignore":
                 codes = np.where(codes < 0, self.unknown_value, codes)
             encoded[:, idx] = codes

@@ -5,8 +5,8 @@ import threading
 import numpy as np
 import pytest
 
+from exaflow.algorithms.federated.exceptions import FedError
 from exaflow.algorithms.federated.mixed_effects import FederatedGLMMBinary
-from exaflow.algorithms.federated.utils import BadInputError
 from tests.standalone_tests.federated_algorithms.mixed_effects.glmm_test_template import (
     CASE_MATRIX,
 )
@@ -280,7 +280,7 @@ def test_glmm_binary_rejects_disabling_laplace_corrections():
     assert np.isfinite(with_laplace.sigma_u2)
     assert with_laplace.nobs == X.shape[0]
 
-    with pytest.raises(BadInputError):
+    with pytest.raises(FedError):
         FederatedGLMMBinary(
             **build_binary_model_kwargs(
                 fit_intercept=case.fit_intercept,
@@ -299,7 +299,7 @@ def test_glmm_binary_invalid_inputs_raise():
     coordinator = AggregationCoordinator(n_workers=1)
     agg_client = SimulatedAggClient(worker_id=0, coordinator=coordinator)
     model = FederatedGLMMBinary()
-    with pytest.raises(BadInputError):
+    with pytest.raises(FedError):
         model.fit(
             X,
             y_bad,

@@ -18,7 +18,7 @@ from exaflow.algorithms.federated.linear_model.cox_regression_classical import (
 from exaflow.algorithms.federated.linear_model.logistic_regression import (
     FederatedLogisticRegression,
 )
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.worker_communication import BadUserInput
 
 
 class ClassicalCoxRegressionSummary(BaseModel):
@@ -145,13 +145,13 @@ class ClassicalCoxRegression(Algorithm):
         positive_class = self.get_parameter("positive_class")
 
         if event_var not in self.x:
-            raise BadInputError(
+            raise BadUserInput(
                 "event_var must refer to one of the selected x variables."
             )
 
         covariate_vars = [var for var in self.x if var != event_var]
         if not covariate_vars:
-            raise BadInputError(
+            raise BadUserInput(
                 "cox_regression_classical requires at least one covariate besides event_var."
             )
 
@@ -185,7 +185,7 @@ class ClassicalCoxRegression(Algorithm):
 def _to_binary_event_array(series, *, positive_class, agg_client) -> np.ndarray:
     non_null = series.dropna()
     if non_null.empty:
-        raise BadInputError("Event indicator contains only missing values.")
+        raise BadUserInput("Event indicator contains only missing values.")
 
     global_levels = list(agg_client.union(non_null.tolist()))
     if positive_class is not None:
@@ -198,7 +198,7 @@ def _to_binary_event_array(series, *, positive_class, agg_client) -> np.ndarray:
             for level in global_levels
         }
         if coerced not in coerced_global_levels:
-            raise BadInputError(
+            raise BadUserInput(
                 "positive_class for event_var should match one of the observed "
                 "event variable levels."
             )
@@ -218,7 +218,7 @@ def _to_binary_event_array(series, *, positive_class, agg_client) -> np.ndarray:
     if set(global_levels).issubset({False, True}):
         return series.astype(float).to_numpy(copy=False)
 
-    raise BadInputError(
+    raise BadUserInput(
         "Event variable must be stored as 0/1 or false/true, or positive_class "
         "must be provided to define which observed level maps to event=1."
     )

@@ -16,6 +16,7 @@ from exaflow.controller.services.errors import WorkerTaskTimeoutError
 from exaflow.controller.services.errors import WorkerUnresponsiveError
 from exaflow.controller.worker_client.app import WorkerMessageTooLargeError
 from exaflow.data_filters import FilterError
+from exaflow.worker_communication import AnalysisExecutionError
 from exaflow.worker_communication import BadUserInput
 from exaflow.worker_communication import DataModelUnavailable
 from exaflow.worker_communication import DatasetUnavailable
@@ -37,6 +38,10 @@ def test_error_responses_are_one_table():
         ),
         FilterError: (HTTPStatusCode.BAD_REQUEST, logging.INFO),
         BadUserInput: (HTTPStatusCode.BAD_USER_INPUT, logging.INFO),
+        AnalysisExecutionError: (
+            HTTPStatusCode.ANALYSIS_EXECUTION_ERROR,
+            logging.INFO,
+        ),
         DataModelUnavailable: (HTTPStatusCode.BAD_USER_INPUT, logging.INFO),
         DatasetUnavailable: (HTTPStatusCode.BAD_USER_INPUT, logging.INFO),
         InsufficientDataError: (

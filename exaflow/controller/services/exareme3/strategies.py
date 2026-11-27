@@ -8,6 +8,10 @@ from exaflow import exareme3_preprocessing_step_classes
 from exaflow.aggregation_clients.controller_aggregation_client import (
     ControllerAggregationClient,
 )
+from exaflow.algorithms.exareme3.utils.error_translation import (
+    translate_federated_error,
+)
+from exaflow.algorithms.federated.exceptions import FedError
 from exaflow.algorithms.utils.inputdata_utils import Inputdata
 from exaflow.controller import config as controller_config
 from exaflow.controller.federation_info_logs import log_experiment_execution
@@ -63,6 +67,12 @@ class Exareme3Strategy(AlgorithmExecutionStrategyI):
         return transformed_inputdata, transformed_metadata
 
     async def execute(self) -> str:
+        try:
+            return await self._execute()
+        except FedError as exc:
+            raise translate_federated_error(exc) from exc
+
+    async def _execute(self) -> str:
         source_inputdata = Inputdata(
             data_model=self._analysis_request_dto.inputdata.data_model,
             datasets=self._analysis_request_dto.inputdata.datasets,

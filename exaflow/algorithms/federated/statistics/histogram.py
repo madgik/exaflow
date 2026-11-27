@@ -11,7 +11,8 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
@@ -102,21 +103,24 @@ class SimpleHistogram:
             - bin_edges: The edges of the bins used for the histogram.
 
         Raises:
-            BadInputError: If 'x' is not a 1D array or if no finite data is
+            FedValueError: If 'x' is not a 1D array or if no finite data is
                           available globally to determine histogram bounds.
         """
         check_scalar(num_bins, name="num_bins", minimum=1, target_type=Integral)
         if bounds is not None:
             check_interval(bounds, strict=False)
         check_dimensions(
-            x, (1,), input_name="Input 'x'", message="Input 'x' must be a 1D array."
+            x,
+            (1,),
+            input_name="Input 'x'",
+            reason=FedErrorReason.HISTOGRAM_ARRAY_DIMENSIONS_INVALID,
         )
 
         if bounds is None:
             min_val = float(self.agg.global_min(x))
             max_val = float(self.agg.global_max(x))
             if not np.isfinite(min_val) or not np.isfinite(max_val):
-                raise BadInputError("No finite data available to compute histogram.")
+                raise FedValueError(FedErrorReason.HISTOGRAM_FINITE_VALUES_REQUIRED)
             if min_val == max_val:
                 max_val = min_val + 1.0
 
@@ -155,10 +159,13 @@ class CategoricalHistogram:
             - counts: Federated counts for each category (dtype=float).
 
         Raises:
-            BadInputError: If 'x' is not a 1D array.
+            FedValueError: If 'x' is not a 1D array.
         """
         check_dimensions(
-            x, (1,), input_name="Input 'x'", message="Input 'x' must be a 1D array."
+            x,
+            (1,),
+            input_name="Input 'x'",
+            reason=FedErrorReason.HISTOGRAM_ARRAY_DIMENSIONS_INVALID,
         )
 
         # Ensure we work with object array to handle None/NaN consistently
@@ -225,18 +232,21 @@ class WilkinsonHistogram:
             (counts, bin_edges) where bin_edges are aligned to the nice step.
 
         Raises:
-            BadInputError: If x is not 1D or if no finite data is available.
+            FedValueError: If x is not 1D or if no finite data is available.
         """
         check_scalar(num_bins, name="num_bins", minimum=1, target_type=Integral)
         check_scalar(min_step, name="min_step", minimum=0)
         check_dimensions(
-            x, (1,), input_name="Input 'x'", message="Input 'x' must be a 1D array."
+            x,
+            (1,),
+            input_name="Input 'x'",
+            reason=FedErrorReason.HISTOGRAM_ARRAY_DIMENSIONS_INVALID,
         )
 
         min_val = self.agg.global_min(x)
         max_val = self.agg.global_max(x)
         if not np.isfinite(min_val) or not np.isfinite(max_val):
-            raise BadInputError("No finite data available to compute histogram.")
+            raise FedValueError(FedErrorReason.HISTOGRAM_FINITE_VALUES_REQUIRED)
 
         _, new_min, new_max, new_num_bins = _wilkinson_step(
             float(min_val), float(max_val), num_bins, min_step=min_step

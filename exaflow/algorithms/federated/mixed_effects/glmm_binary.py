@@ -7,6 +7,8 @@ from typing import Any
 import numpy as np
 from scipy import stats
 
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.mixed_effects.mixed_effects_utils import clip_probs
 from exaflow.algorithms.federated.mixed_effects.mixed_effects_utils import (
     glm_logistic_score_hessian_block,
@@ -26,7 +28,6 @@ from exaflow.algorithms.federated.mixed_effects.mixed_effects_utils import (
 from exaflow.algorithms.federated.mixed_effects.mixed_effects_utils import (
     validate_inputs,
 )
-from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
@@ -112,11 +113,15 @@ class _GLMMAggregator:
         score = payload.get("score")
         h_packed = payload.get("h_packed")
         if score is None or h_packed is None:
-            raise BadInputError("payload must contain 'score' and 'h_packed'")
+            raise FedValueError(FedErrorReason.GLMM_PAYLOAD_INVALID)
 
         s = np.asarray(score, dtype=np.float64).reshape(-1)
         if s.shape[0] != self.q:
-            raise BadInputError(f"score length {s.shape[0]} != q={self.q}")
+            raise FedValueError(
+                FedErrorReason.GLMM_SCORE_LENGTH_INVALID,
+                score_length=s.shape[0],
+                q=self.q,
+            )
 
         h_block = unpack_upper_triangle(np.asarray(h_packed, dtype=np.float64), self.q)
         h_block = 0.5 * (h_block + h_block.T)
@@ -134,7 +139,11 @@ class _GLMMAggregator:
     ) -> np.ndarray:
         theta = np.asarray(theta, dtype=np.float64).reshape(-1)
         if theta.shape[0] != self.q:
-            raise BadInputError(f"theta length {theta.shape[0]} != q={self.q}")
+            raise FedValueError(
+                FedErrorReason.GLMM_THETA_LENGTH_INVALID,
+                theta_length=theta.shape[0],
+                q=self.q,
+            )
 
         h = 0.5 * (self.h + self.h.T)
         s = self.s.copy()
@@ -303,10 +312,7 @@ class FederatedGLMMBinary(FederatedEstimator):
             nonnegative=self._nonnegative_parameters,
         )
         if not add_laplace_corrections:
-            raise BadInputError(
-                "FederatedGLMMBinary requires add_laplace_corrections=True to "
-                "estimate sigma_u2 correctly."
-            )
+            raise FedValueError(FedErrorReason.GLMM_LAPLACE_CONFIGURATION_INVALID)
 
         self.fit_intercept = bool(fit_intercept)
         self.max_iters = int(max_iters)
@@ -339,13 +345,13 @@ class FederatedGLMMBinary(FederatedEstimator):
         theta = np.asarray(theta, dtype=float).reshape(-1)
         p = theta.shape[0] - 1
         if theta.shape[0] != p + 1:
-            raise BadInputError("theta length mismatch.")
+            raise FedValueError(FedErrorReason.GLMM_THETA_SHAPE_INVALID)
 
         beta = theta[:p]
         log_su2 = float(theta[p])
         sigma_u2 = float(np.exp(log_su2))
         if sigma_u2 <= 0:
-            raise BadInputError("sigma_u2 must be positive.")
+            raise FedValueError(FedErrorReason.GLMM_VARIANCE_POSITIVE_REQUIRED)
         inv_su2 = 1.0 / sigma_u2
 
         score = np.zeros(p + 1, dtype=float)
@@ -472,7 +478,7 @@ class FederatedGLMMBinary(FederatedEstimator):
             )
         check_scalar(self.log_sigma_u2_init, name="log_sigma_u2_init")
         if not self.add_laplace_corrections:
-            raise BadInputError("GLMM binary requires add_laplace_corrections=True.")
+            raise FedValueError(FedErrorReason.GLMM_LAPLACE_REQUIRED)
         X = as_numeric_array(X, input_name="Features")
         check_dimensions(
             X, (1, 2) if self.fit_intercept else (2,), input_name="Features"
@@ -484,7 +490,7 @@ class FederatedGLMMBinary(FederatedEstimator):
 
         validate_inputs(X, y, center_ids, w)
         if not np.all(np.isin(y, [0.0, 1.0])):
-            raise BadInputError("GLMM binary expects y in {0,1}.")
+            raise FedValueError(FedErrorReason.GLMM_BINARY_TARGET_INVALID)
 
         n_obs = int(
             np.asarray(

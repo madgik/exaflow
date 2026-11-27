@@ -8,13 +8,14 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedObservationError
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.validation import as_scalar
 from exaflow.algorithms.federated.validation import check_choice
 from exaflow.algorithms.federated.validation import check_dataframe
 from exaflow.algorithms.federated.validation import check_scalar
 from exaflow.column_names import DATASET_COL
-from exaflow.worker_communication import InsufficientDataError
 
 
 class OutlierStrategy(str, Enum):
@@ -90,15 +91,13 @@ class WinsorizationHelper:
             else as_scalar(fold, float, name="fold")
         )
         if not np.isfinite(value):
-            raise BadInputError("Fold should be finite.")
+            raise FedValueError(FedErrorReason.OUTLIER_FOLD_FINITE_REQUIRED)
         if strategy == OutlierStrategy.QUANTILE.value:
             if value <= 0 or value >= 0.5:
-                raise BadInputError(
-                    "Quantile fold should be greater than 0 and less than 0.5."
-                )
+                raise FedValueError(FedErrorReason.OUTLIER_QUANTILE_FOLD_INVALID)
             return value
         if value <= 0:
-            raise BadInputError("Fold should be greater than 0.")
+            raise FedValueError(FedErrorReason.OUTLIER_FOLD_POSITIVE_REQUIRED)
         return value
 
     @staticmethod
@@ -131,7 +130,10 @@ class WinsorizationHelper:
             lower = float(values.quantile(rule.fold))
             upper = float(values.quantile(1.0 - rule.fold))
         else:  # pragma: no cover - validated before this point
-            raise ValueError(f"Unsupported outlier strategy '{rule.strategy}'.")
+            raise FedValueError(
+                FedErrorReason.OUTLIER_STRATEGY_UNSUPPORTED,
+                strategy=rule.strategy,
+            )
 
         if rule.tail == OutlierTail.LEFT.value:
             return OutlierBounds(lower=lower, upper=None)
@@ -204,9 +206,11 @@ class FederatedOutlierReport:
         values = pd.to_numeric(series.dropna(), errors="coerce").dropna()
         num_dtps = int(len(values))
         if num_dtps < min_row_count:
-            raise InsufficientDataError(
-                f"Insufficient non-missing data for variable '{rule.variable}': "
-                f"{num_dtps} rows; minimum required is {min_row_count}."
+            raise FedObservationError(
+                FedErrorReason.OUTLIER_OBSERVATIONS_INSUFFICIENT,
+                variable=rule.variable,
+                num_dtps=num_dtps,
+                min_row_count=min_row_count,
             )
 
         bounds = WinsorizationHelper.compute_bounds(values, rule)

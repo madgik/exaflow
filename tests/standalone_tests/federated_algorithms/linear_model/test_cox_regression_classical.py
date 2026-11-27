@@ -9,13 +9,13 @@ import pytest
 from exaflow.algorithms.exareme3.linear_model.cox_regression_classical import (
     _to_binary_event_array,
 )
+from exaflow.algorithms.federated.exceptions import FedError
 from exaflow.algorithms.federated.linear_model.cox_regression_classical import (
     FederatedClassicalCoxRegression,
 )
 from exaflow.algorithms.federated.linear_model.cox_regression_stacked import (
     FederatedStackedCoxRegression,
 )
-from exaflow.algorithms.federated.utils import BadInputError
 from tests.standalone_tests.federated_algorithms.linear_model._cox_case_utils import (
     CASE_MATRIX,
 )
@@ -26,7 +26,7 @@ from tests.standalone_tests.federated_algorithms.linear_model._cox_case_utils im
     simulate_cox_case,
 )
 from tests.standalone_tests.federated_algorithms.linear_model.cox_vs_stat_models import (
-    CoxReferencePH,
+    fit_statsmodels_cox,
 )
 from tests.standalone_tests.federated_algorithms.utils import FederatedAlgorithmTest
 from tests.standalone_tests.federated_algorithms.utils.dummy_agg_client import (
@@ -54,16 +54,7 @@ class TestFederatedClassicalCoxRegression(FederatedAlgorithmTest):
         feature_names = [f"x{i}" for i in range(X.shape[1])]
 
         t0 = perf_counter()
-        reference = (
-            CoxReferencePH(ties="breslow")
-            .fit(
-                X,
-                times,
-                events,
-                feature_names=feature_names,
-            )
-            .summary()
-        )
+        reference = fit_statsmodels_cox(X, times, events)
         reference["fit_time_sec"] = float(perf_counter() - t0)
         t0 = perf_counter()
         y_survival = np.column_stack([times, events])
@@ -262,7 +253,7 @@ def test_classical_cox_rejects_when_global_events_are_zero():
     X = np.array([[0.1], [0.4], [-0.2], [0.7]], dtype=float)
     y = np.array([[2.0, 0.0], [5.0, 0.0], [7.0, 0.0], [8.0, 0.0]], dtype=float)
 
-    with pytest.raises(BadInputError, match="observed event"):
+    with pytest.raises(FedError, match="observed event"):
         _simulate_federated_execution(
             2,
             lambda worker_id, agg_client: FederatedClassicalCoxRegression(

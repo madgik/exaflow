@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 from scipy.stats import mannwhitneyu
 
+from exaflow.algorithms.federated.exceptions import FedError
 from exaflow.algorithms.federated.statistics.binned_mann_whitney_u_test import (
     FederatedBinnedMannWhitneyUTest,
 )
@@ -250,10 +251,9 @@ class TestFederatedBinnedMannWhitneyUTest(FederatedAlgorithmTest):
             )
 
     def test_all_same_values_raises(self):
-        """All-constant data makes sigma=0 which should raise BadInputError."""
+        """All-constant data makes sigma=0 which should raise FedValueError."""
         import threading
 
-        from exaflow.algorithms.federated.utils import BadInputError
         from tests.standalone_tests.federated_algorithms.utils.simulated_agg_client import (
             AggregationCoordinator,
         )
@@ -281,16 +281,15 @@ class TestFederatedBinnedMannWhitneyUTest(FederatedAlgorithmTest):
         t.start()
         t.join()
 
-        assert isinstance(errors[0], BadInputError)
+        assert isinstance(errors[0], FedError)
 
     def test_num_bins_below_two_raises(self):
-        """num_bins < 2 cannot form a histogram and must raise BadInputError."""
-        from exaflow.algorithms.federated.utils import BadInputError
+        """num_bins < 2 cannot form a histogram and must raise FedValueError."""
 
         a = np.arange(1, 21, dtype=float)
         b = np.arange(1, 21, dtype=float) + 0.5
         _, error = _compute_single_worker(a, b, num_bins=1)
-        assert isinstance(error, BadInputError)
+        assert isinstance(error, FedError)
 
     def test_non_finite_values_are_dropped(self):
         """+/-inf and NaN are filtered so results match the finite-only data."""

@@ -1,8 +1,9 @@
 import pandas as pd
 from scipy.stats import fisher_exact
 
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.statistics.cross_tabular_table import CrossTabTable
-from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
@@ -67,8 +68,9 @@ class FisherExact:
         )
 
         if cross_tab_table.shape != (2, 2):
-            raise BadInputError(
-                "Fisher's Exact Test is only well-defined for 2x2 tables."
+            raise FedValueError(
+                FedErrorReason.FISHER_TABLE_SHAPE,
+                shape=cross_tab_table.shape,
             )
 
         odds_ratio, p_value = fisher_exact(cross_tab_table)

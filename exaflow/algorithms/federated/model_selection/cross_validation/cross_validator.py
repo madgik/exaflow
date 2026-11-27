@@ -3,6 +3,9 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedTypeError
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.utils.interfaces import FederatedScorer
@@ -44,9 +47,9 @@ class FederatedCrossValidator:
 
         if data is not None:
             if categorical_vars is None or numerical_vars is None:
-                raise ValueError("categorical_vars and numerical_vars are required.")
+                raise FedValueError(FedErrorReason.CV_FEATURE_VARIABLES_REQUIRED)
             if not hasattr(self.splitter, "split_indices"):
-                raise TypeError("Splitter must support split_indices for DataFrame CV.")
+                raise FedTypeError(FedErrorReason.CV_SPLITTER_INTERFACE_INVALID)
 
             for train_idx, test_idx in self.splitter.split_indices(len(data)):
                 train_df = data.iloc[train_idx]
@@ -84,7 +87,7 @@ class FederatedCrossValidator:
                     metrics_per_fold.setdefault(key, []).append(value)
         else:
             if X is None:
-                raise ValueError("X is required when data is not provided.")
+                raise FedValueError(FedErrorReason.CV_INPUT_REQUIRED)
             for X_train, y_train, X_test, y_test in self.splitter.split(X, y):
                 results = self.estimator.fit(X_train, y_train, agg_client=agg_client)
                 n_train = int(getattr(results, "nobs", 0))

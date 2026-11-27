@@ -7,6 +7,8 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.utils.agg_client import AggregationClient
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimatorResults
 from exaflow.algorithms.federated.utils.interfaces import FederatedScorer
@@ -41,9 +43,7 @@ class FederatedMulticlassClassificationScorer(FederatedScorer):
     ) -> dict:
         labels = self.labels or getattr(results, "labels", None)
         if labels is None:
-            raise ValueError(
-                "Labels must be provided or available on estimator results."
-            )
+            raise FedValueError(FedErrorReason.SCORER_LABELS_REQUIRED)
         label_to_idx = {label: idx for idx, label in enumerate(labels)}
 
         y_true = np.asarray(y_test)

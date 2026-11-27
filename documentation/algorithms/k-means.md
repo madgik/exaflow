@@ -253,7 +253,8 @@ The creator's output enumeration specification is:
 Clients generate categories by concatenating the prefix with numbers 1 through
 `k`, without inspecting nested centers. The creator validates that these
 identifiers exactly match its replay model. It also requires the original data
-model, datasets, filters, and clustering features. Assignment uses generated
+model, datasets, filters, and clustering features. Replay center coordinates must
+be finite numerical values. Assignment uses generated
 numeric order, including for more than nine clusters or prefixes containing
 underscores.
 

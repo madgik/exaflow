@@ -6,7 +6,8 @@ from typing import Optional
 
 import numpy as np
 
-from exaflow.algorithms.federated.utils import BadInputError
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.utils import to_numpy
 from exaflow.algorithms.federated.utils.interfaces import FederatedEstimator
 from exaflow.algorithms.federated.validation import as_numeric_array
@@ -27,11 +28,13 @@ def assign_clusters(x, centers):
         X = X.reshape(-1, 1)
     centers = as_numeric_array(centers, input_name="Centers")
     if centers.ndim != 2 or centers.shape[0] == 0:
-        raise BadInputError("At least one two-dimensional center is required.")
+        raise FedValueError(FedErrorReason.KMEANS_CENTERS_REQUIRED)
     if X.shape[1] != centers.shape[1]:
-        raise BadInputError("Observations and centers must have matching features.")
-    if not np.all(np.isfinite(X)) or not np.all(np.isfinite(centers)):
-        raise BadInputError("K-means requires finite numerical values.")
+        raise FedValueError(FedErrorReason.KMEANS_FEATURE_MISMATCH)
+    if not np.all(np.isfinite(X)):
+        raise FedValueError(FedErrorReason.KMEANS_FINITE_VALUES_REQUIRED)
+    if not np.all(np.isfinite(centers)):
+        raise FedValueError(FedErrorReason.KMEANS_CENTERS_FINITE_VALUES_REQUIRED)
     return FederatedKMeans._assign_labels(X, centers).astype(int, copy=False)
 
 
@@ -112,10 +115,7 @@ class FederatedKMeans(FederatedEstimator):
         local_invalid = 0.0 if np.all(np.isfinite(X)) else 1.0
         global_invalid = float(self._agg_client.sum([local_invalid])[0])
         if global_invalid > 0.0:
-            raise BadInputError(
-                "K-means requires finite numerical values. Apply missing-value "
-                "handling and remove infinite values before fitting."
-            )
+            raise FedValueError(FedErrorReason.KMEANS_FIT_FINITE_VALUES_REQUIRED)
 
         n_local, n_features = X.shape
         self.n_features_ = int(n_features)
@@ -208,9 +208,9 @@ class FederatedKMeans(FederatedEstimator):
         k_min = as_scalar(k_min, int, name="k_min")
         k_max = as_scalar(k_max, int, name="k_max")
         if k_min < 1:
-            raise BadInputError("k_min must be greater than or equal to 1.")
+            raise FedValueError(FedErrorReason.KMEANS_MIN_CLUSTERS_INVALID)
         if k_max < k_min:
-            raise BadInputError("k_max must be greater than or equal to k_min.")
+            raise FedValueError(FedErrorReason.KMEANS_CLUSTER_RANGE_INVALID)
 
         models_by_k = {}
         inertia_by_k = {}
@@ -337,8 +337,9 @@ class FederatedKMeans(FederatedEstimator):
             INIT_RANDOM_RANGE,
             INIT_MULTI_START_RANDOM_RANGE,
         }:
-            raise ValueError(
-                f"Unsupported KMeans initialization method: '{self.init_method}'."
+            raise FedValueError(
+                FedErrorReason.KMEANS_INITIALIZATION_UNSUPPORTED,
+                init_method=self.init_method,
             )
         rng = np.random.RandomState(seed=self.random_state + int(init_idx))
         return rng.uniform(
@@ -349,13 +350,14 @@ class FederatedKMeans(FederatedEstimator):
 
     def _effective_n_init(self):
         if self.n_init < 1:
-            raise BadInputError("n_init must be greater than or equal to 1.")
+            raise FedValueError(FedErrorReason.KMEANS_INITIALIZATIONS_INVALID)
         if self.init_method == INIT_RANDOM_RANGE:
             return 1
         if self.init_method == INIT_MULTI_START_RANDOM_RANGE:
             return self.n_init
-        raise BadInputError(
-            f"Unsupported KMeans initialization method: '{self.init_method}'."
+        raise FedValueError(
+            FedErrorReason.KMEANS_INITIALIZATION_UNSUPPORTED,
+            init_method=self.init_method,
         )
 
     def _validate_hyperparameters(self):

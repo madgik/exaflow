@@ -5,9 +5,10 @@ from typing import Tuple
 import numpy as np
 from pandas.core.series import Series
 
+from exaflow.algorithms.federated.exceptions import FedErrorReason
+from exaflow.algorithms.federated.exceptions import FedValueError
 from exaflow.algorithms.federated.statistics.histogram import SimpleHistogram
 from exaflow.algorithms.federated.statistics.histogram import WilkinsonHistogram
-from exaflow.algorithms.federated.utils import BadInputError
 from exaflow.algorithms.federated.utils.aggregators.numpy_aggregator import (
     NumpyAggregator,
 )
@@ -78,12 +79,9 @@ class Percentile:
             return None
         if min_val == max_val:
             return min_val, (0.0 if q == 0 else 1.0)
-        try:
-            bin_count, bin_edges = self.simple_hist.compute(
-                x.values, num_bins, bounds=(min_val, max_val)
-            )
-        except BadInputError:
-            return None
+        bin_count, bin_edges = self.simple_hist.compute(
+            x.values, num_bins, bounds=(min_val, max_val)
+        )
 
         n = int(sum(bin_count))
         if n == 0 or q == 0:
@@ -146,7 +144,9 @@ class Percentile:
             bin_count, bin_edges = self.wilkinson_hist.compute(
                 data, num_bins, min_step=1.0
             )
-        except BadInputError:
+        except FedValueError as exc:
+            if exc.reason is not FedErrorReason.HISTOGRAM_FINITE_VALUES_REQUIRED:
+                raise
             return None
 
         n = int(sum(bin_count))
@@ -179,7 +179,12 @@ class Percentile:
                             bin_count, bin_edges = self.wilkinson_hist.compute(
                                 sub, num_bins, min_step=1.0
                             )
-                        except BadInputError:
+                        except FedValueError as exc:
+                            if (
+                                exc.reason
+                                is not FedErrorReason.HISTOGRAM_FINITE_VALUES_REQUIRED
+                            ):
+                                raise
                             value = lo  # approximate: cannot refine further
                     break
             else:

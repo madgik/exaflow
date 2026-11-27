@@ -99,6 +99,21 @@ run, elapsed time, and any blocker.
 The gate fails on warnings for new algorithms. Treat every `failed` and `warn`
 entry as something to fix before the integration is complete.
 
+## Error Contract
+
+Follow the canonical
+[federated error contract](context/conventions.md#federated-error-contract)
+when implementing failures. Define reasons in `federated/exceptions.py`, raise
+the appropriate `FedError` subclass, and register each reason's exception type
+and message policy in the shared Exareme3 translator. A library diagnostic does
+not automatically indicate bad user input. Keeping its text requires an explicit
+`KEEP_MESSAGE` policy. Shared worker/controller boundaries handle translation;
+algorithm wrappers generally need no additional translation catches.
+
+Fast and strict validation run the existing convention and translation tests
+once and report `federated_error_contract`. Its failure prevents integration
+completion. The canonical contract includes examples and the focused rerun command.
+
 ## Files You Normally Implement
 
 | File | Purpose |
@@ -187,6 +202,8 @@ tests without invoking them.
 - The algorithm appears in the runtime catalog.
 - Exareme3 wrapper and federated core import successfully.
 - Standalone parity tests pass.
+- Library failures have registered reasons and explicit translation policies,
+  and `federated_error_contract` passes.
 - Prod validation test and expected fixture exist, and the fixture has at least
   one runnable test case.
 - User docs and federated docs exist.

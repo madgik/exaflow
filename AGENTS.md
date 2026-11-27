@@ -141,6 +141,13 @@ ownership. Non-negotiable boundaries:
 - Worker data loading and UDF execution in `exaflow/worker`.
 - Runtime wrappers and specs in `exaflow/algorithms/exareme3`; testable federated
   core in `exaflow/algorithms/federated`.
+- Library-authored failures must use `FedError` subclasses with mandatory
+  `FedErrorReason` members. Exareme3 owns the application exception types and
+  message policies: `BadUserInput` requires a meaningful input adjustment,
+  `AnalysisExecutionError` reports a recognized computational failure, and
+  programming/integration defects follow the system-error path.
+  Follow the [federated error contract](documentation/context/conventions.md#federated-error-contract)
+  for reason registration, shared translation boundaries, and required checks.
 - Organize Exareme3 runtime modules by domain. Keep reports, preprocessing steps,
   and model CV variants beside their related algorithms; do not introduce a
   generic preprocessing folder. `PreprocessingStep` inheritance and the registry

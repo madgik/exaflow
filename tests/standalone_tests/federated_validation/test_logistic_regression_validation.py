@@ -3,13 +3,13 @@ from unittest.mock import Mock
 import numpy as np
 import pytest
 
+from exaflow.algorithms.federated.exceptions import FedError
 from exaflow.algorithms.federated.linear_model.logistic_regression import (
     FederatedLogisticRegression,
 )
 from exaflow.algorithms.federated.linear_model.logistic_regression import (
     FederatedLogisticRegressionResults,
 )
-from exaflow.algorithms.federated.utils import BadInputError
 
 
 @pytest.mark.parametrize("value", ["false", 1, None, [True]])
@@ -18,7 +18,7 @@ def test_parameter_validation_precedes_estimation(value):
     model._collect_stats = Mock(side_effect=AssertionError("Estimation must not run"))
     client = Mock()
 
-    with pytest.raises(BadInputError, match="fit_intercept must be a boolean"):
+    with pytest.raises(FedError, match="fit_intercept must be a boolean"):
         model.fit([[1.0], [2.0]], [0, 1], agg_client=client)
 
     model._collect_stats.assert_not_called()
@@ -28,7 +28,7 @@ def test_parameter_validation_precedes_estimation(value):
 def test_parameter_validation_checks_current_value():
     model = FederatedLogisticRegression()
     model.fit_intercept = "false"
-    with pytest.raises(BadInputError, match="fit_intercept must be a boolean"):
+    with pytest.raises(FedError, match="fit_intercept must be a boolean"):
         model._validate_fit_inputs([[1.0]], [0])
 
 
@@ -109,7 +109,7 @@ def test_invalid_inputs_are_rejected_before_estimation(X, y, message):
     model._collect_stats = Mock(side_effect=AssertionError("Estimation must not run"))
     client = Mock()
 
-    with pytest.raises(BadInputError, match=message) as error:
+    with pytest.raises(FedError, match=message) as error:
         model.fit(X, y, agg_client=client)
 
     assert "private-value" not in str(error.value)
@@ -136,7 +136,7 @@ def test_estimation_errors_propagate_after_local_validation(error_type):
 def test_global_count_validation_preserves_existing_thresholds(
     nobs, p, positive, message
 ):
-    with pytest.raises(BadInputError, match=message):
+    with pytest.raises(FedError, match=message):
         FederatedLogisticRegression._handle_logreg_errors(nobs, p, positive)
 
 
@@ -150,7 +150,7 @@ def test_prediction_validates_effective_feature_count(intercept):
     results.params = np.array([0.5, 0.25])
     results.fit_intercept = intercept
 
-    with pytest.raises(BadInputError, match="Prediction features must match"):
+    with pytest.raises(FedError, match="Prediction features must match"):
         results.predict(np.ones((3, 3)))
 
 
@@ -159,7 +159,7 @@ def test_prediction_validates_numeric_finite_values(value):
     results = object.__new__(FederatedLogisticRegressionResults)
     results.params = np.array([0.5, 0.25])
     results.fit_intercept = True
-    with pytest.raises(BadInputError) as error:
+    with pytest.raises(FedError) as error:
         results.predict([[value]])
     assert "private-value" not in str(error.value)
 
